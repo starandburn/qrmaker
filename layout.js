@@ -7,17 +7,6 @@ const toggleGrid = document.getElementById("toggleGrid");
 const toggleEmpty = document.getElementById("toggleEmpty");
 const toggleCursor = document.getElementById("toggleCursor");
 
-const DIR_UP = "up";
-const DIR_RIGHT = "right";
-const DIR_DOWN = "down";
-const DIR_LEFT = "left";
-
-const cursorPos = {
-  row: 3,
-  col: 2,
-  dir: DIR_DOWN,
-};
-
 function refreshConfirm(){
   if(!confirmBox || !txtInput) return;
   const v = txtInput.value;
@@ -75,7 +64,9 @@ function fitSquare(){
 
   sq.style.width = size + "px";
   sq.style.height = size + "px";
-  drawCursor();
+  if(typeof window.drawCursor === "function"){
+    window.drawCursor();
+  }
 }
 
 window.addEventListener("resize", () => requestAnimationFrame(fitSquare));
@@ -104,52 +95,6 @@ if(toggleCursor){
   toggleCursor.addEventListener("change", syncViewToggles);
 }
 syncViewToggles();
-
-function ensureCells(){
-  const gridArea = document.querySelector(".grid-area");
-  const cells = gridArea?.querySelector(".qr-cells");
-  if(!gridArea || !cells) return;
-  if(cells.childElementCount === 25 * 25) return;
-  const frag = document.createDocumentFragment();
-  for(let r = 1; r <= 25; r++){
-    for(let c = 1; c <= 25; c++){
-      const div = document.createElement("div");
-      div.className = "cell";
-      div.dataset.row = r;
-      div.dataset.col = c;
-      frag.appendChild(div);
-    }
-  }
-  cells.appendChild(frag);
-}
-
-function drawCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.dir){
-  const gridArea = document.querySelector(".grid-area");
-  const cursor = gridArea?.querySelector(".qr-cursor");
-  if(!gridArea || !cursor) return;
-
-  const r = Math.min(25, Math.max(1, row));
-  const c = Math.min(25, Math.max(1, col));
-  cursorPos.row = r;
-  cursorPos.col = c;
-  cursorPos.dir = dir;
-
-  const cellW = gridArea.clientWidth / 25;
-  const cellH = gridArea.clientHeight / 25;
-  const x = (c - 1) * cellW;
-  const y = (r - 1) * cellH;
-
-  const angle = dir === DIR_RIGHT ? 90
-    : dir === DIR_DOWN ? 180
-    : dir === DIR_LEFT ? 270
-    : 0;
-
-  cursor.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
-}
-
-
-ensureCells();
-drawCursor(3, 2, DIR_DOWN);
 
 document.addEventListener("DOMContentLoaded", ()=>{
   const y = document.getElementById("currentYear");
