@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>プログラミング体験学習 / QRコード作成</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  プログラミング体験学習 / QRコード作成
+</header>
+
+<main>
+  <section class="col">
+    <div class="panel input-panel">
+      <div>
+        <div class="panel-title">入力パネル</div>
+        <div class="input-row">
+          <input id="txtInput" type="text" value="ABCDE">
+          <button id="btnClear" type="button">クリア</button>
+        </div>
+      </div>
+
+      <details open>
+        <summary>確認エリア</summary>
+        <div id="confirmBox" class="confirm-box"></div>
+      </details>
+    </div>
+
+    <div class="panel code-panel">
+      <div class="panel-title">コードパネル</div>
+      <textarea>init
+mask</textarea>
+    </div>
+  </section>
+
+  <section class="col">
+    <div class="panel">
+      <div class="panel-title">制御パネル</div>
+      <button type="button">実行</button>
+      <button type="button">リセット</button>
+    </div>
+
+    <div class="panel view-panel">
+      <div class="panel-title">表示パネル</div>
+      <div class="view-area">
+        <div class="square">正方形</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  © 2025 Sample Footer
+</footer>
+
+<script src="layout.js"></script>
+</body>
+</html>
