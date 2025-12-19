@@ -3,57 +3,92 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>プログラミング体験学習 / QRコード作成</title>
+<title>プログラミング体験教材 / QRコード作成</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-<header>
-  プログラミング体験学習 / QRコード作成
+<header class="page-head">
+  <div class="head-flex">
+    <div class="title-row">
+      <img class="title-icon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAAZAQAAAADskrjOAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAACKSURBVHjaAH0Agv8AATRAfwB9Qt9/AEUUUX8ARYxRfwBFXdF/AH0+X38AAVVAfwD/EP//ANxLnf8Ac84ffwAAO0R/AINo+/8ATfMefwDHo95/AHmnmn8Ah/Ku/wBVKwL/AP8Kcv8AAT5SfwB9SXN/AEUxBn8ARYLz/wBFZWV/AH1wdv8AAWUWfwMAYckvc7Da2TIAAAAASUVORK5CYII=" alt="QRコードアイコン">
+      <div class="title-text">
+        <p class="subtitle">プログラミング体験学習</p>
+        <p class="title">QRコードを作成してみよう！</p>
+      </div>
+    </div>
+    <div class="school-block">
+      <a class="school-link" href="https://www.nkk.ac.jp" target="_blank" rel="noopener noreferrer">
+      <img class="school-logo" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhLS0gR2VuZXJhdG9yOiBBZG9iZSBJbGx1c3RyYXRvciAxNS4xLjAsIFNWRyBFeHBvcnQgUGx1Zy1JbiAgLS0+DQo8IURPQ1RZUEUgc3ZnIFBVQkxJQyAiLS8vVzNDLy9EVEQgU1ZHIDEuMS8vRU4iICJodHRwOi8vd3d3LnczLm9yZy9HcmFwaGljcy9TVkcvMS4xL0RURC9zdmcxMS5kdGQiIFsNCgk8IUVOVElUWSBuc19mbG93cyAiaHR0cDovL25zLmFkb2JlLmNvbS9GbG93cy8xLjAvIj4NCl0+DQo8c3ZnIHZlcnNpb249IjEuMSINCgkgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeG1sbnM6YT0iaHR0cDovL25zLmFkb2JlLmNvbS9BZG9iZVNWR1ZpZXdlckV4dGVuc2lvbnMvMy4wLyINCgkgeD0iMHB4IiB5PSIwcHgiIHdpZHRoPSIxMDBweCIgaGVpZ2h0PSIxMTNweCIgdmlld0JveD0iMCAwIDEwMCAxMTMiIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDEwMCAxMTMiIHhtbDpzcGFjZT0icHJlc2VydmUiPg0KPGRlZnM+DQo8L2RlZnM+DQo8cGF0aCBmaWxsPSIjMDBBMEU5IiBkPSJNOTQuNSwxMDkuNEwxMy44LDI4Ljd2ODQuN0gwVjMuM0MwLDAuNCwzLjYtMS4xLDUuNiwxbDQ0LjQsNDQuNEw5NC41LDFjMi4xLTIuMSw1LjYtMC42LDUuNiwyLjN2MTAzLjgNCglDMTAwLjIsMTEwLDk2LjYsMTExLjUsOTQuNSwxMDkuNCBNNTkuOSw1NS4ybDI2LjUsMjYuNXYtNTNMNTkuOSw1NS4yeiIvPg0KPC9zdmc+DQo=" alt="学校ロゴ">
+      <div class="school-text">
+        <p class="school-ja">日本国際工科専門学校</p>
+        <p class="school-en">Japan International Institute of Cybernetics</p>
+      </div>
+      </a>
+    </div>
+  </div>
 </header>
 
-<main>
-  <section class="col">
-    <div class="panel input-panel">
-      <div>
-        <div class="panel-title">入力パネル</div>
+<main class="layout">
+  <section class="left-col">
+    <div class="panel pastel-1 input-panel">
+      <div class="row">
+        <div class="label">QRコードにしたい文字（半角英数字で32文字まで）<span id="inputGuide" class="input-guide"></span></div>
         <div class="input-row">
-          <input id="txtInput" type="text" value="ABCDE">
+          <input id="txtInput" type="text" value="Hello, World!" maxlength="32" inputmode="latin" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false">
           <button id="btnClear" type="button">クリア</button>
         </div>
       </div>
 
-      <details open>
-        <summary>確認エリア</summary>
+      <details open class="confirm-panel">
+        <summary>入力確認</summary>
         <div id="confirmBox" class="confirm-box"></div>
       </details>
     </div>
 
-    <div class="panel code-panel">
-      <div class="panel-title">コードパネル</div>
-      <textarea>init
-mask</textarea>
+    <div class="panel pastel-3 code-panel">
+      <div class="panel-title">QRコードを描く処理を記述する</div>
+      <textarea id="studentCode" spellcheck="false" autocorrect="off" autocomplete="off" autocapitalize="off">
+init
+repeat
+  if blank? put
+  move left
+  if blank? put
+  move
+  if clash?
+    move left
+    if timing? move left
+    turn
+  else
+    move right
+  endif
+endrepeat
+mask
+</textarea>
     </div>
   </section>
 
-  <section class="col">
-    <div class="panel">
-      <div class="panel-title">制御パネル</div>
-      <button type="button">実行</button>
-      <button type="button">リセット</button>
+  <section class="right-col">
+    <div class="panel pastel-5 control-panel">
+      <div class="qr-head">
+        <button type="button">リセット</button>
+        <button type="button">作成実行</button>
+        <span class="status-hint">プレビュー用ダミー操作</span>
+      </div>
     </div>
 
-    <div class="panel view-panel">
-      <div class="panel-title">表示パネル</div>
+    <div class="panel qr-panel view-panel">
+      <div class="panel-title">プレビュー</div>
       <div class="view-area">
-        <div class="square">正方形</div>
+        <div class="square">プレビュー</div>
       </div>
     </div>
   </section>
 </main>
 
-<footer>
-  © 2025 Sample Footer
+<footer class="page-footer">
+<p>&copy; 2025 - <span id="currentYear">????</span> Japan International Institute of Cybernetics. All Rights Reserved.</p>
+  <p>QRコードは<a href="https://www.denso-wave.com/ja/system/qr/" target="_blank" rel="noopener noreferrer">株式会社デンソーウェーブ</a>の登録商標です</p>
 </footer>
 
 <script src="layout.js"></script>
