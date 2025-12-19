@@ -2,6 +2,9 @@ const txtInput = document.getElementById("txtInput");
 const confirmBox = document.getElementById("confirmBox");
 const btnClear = document.getElementById("btnClear");
 const inputGuide = document.getElementById("inputGuide");
+const toggleGuide = document.getElementById("toggleGuide");
+const toggleGrid = document.getElementById("toggleGrid");
+const toggleEmpty = document.getElementById("toggleEmpty");
 
 function refreshConfirm(){
   if(!confirmBox || !txtInput) return;
@@ -65,6 +68,25 @@ function fitSquare(){
 window.addEventListener("resize", () => requestAnimationFrame(fitSquare));
 window.addEventListener("load", () => requestAnimationFrame(fitSquare));
 requestAnimationFrame(fitSquare);
+
+function syncViewToggles(){
+  const area = document.querySelector(".view-area");
+  if(!area) return;
+  area.classList.toggle("hide-guide", toggleGuide && !toggleGuide.checked);
+  area.classList.toggle("hide-grid", toggleGrid && !toggleGrid.checked);
+  area.classList.toggle("hide-empty", toggleEmpty && !toggleEmpty.checked);
+}
+
+if(toggleGuide){
+  toggleGuide.addEventListener("change", syncViewToggles);
+}
+if(toggleGrid){
+  toggleGrid.addEventListener("change", syncViewToggles);
+}
+if(toggleEmpty){
+  toggleEmpty.addEventListener("change", syncViewToggles);
+}
+syncViewToggles();
 
 document.addEventListener("DOMContentLoaded", ()=>{
   const y = document.getElementById("currentYear");
