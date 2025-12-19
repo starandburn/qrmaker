@@ -71,14 +71,15 @@ mask
   <section class="right-col">
     <div class="panel pastel-5 control-panel">
       <div class="qr-head">
-        <button type="button">リセット</button>
-        <button type="button">作成実行</button>
+        <button id="btnInit" type="button">リセット</button>
+        <button id="btnGenerate" type="button">作成実行</button>
         <span class="status-hint">プレビュー用ダミー操作</span>
       </div>
     </div>
 
     <div class="panel qr-panel view-panel">
       <div class="qr-controls">
+        <label><input type="checkbox" id="toggleCursor" checked> カーソル</label>
         <label><input type="checkbox" id="toggleGuide" checked> ガイド</label>
         <label><input type="checkbox" id="toggleGrid" checked> グリッド</label>
         <label><input type="checkbox" id="toggleEmpty" checked> 未配置セル</label>
@@ -103,6 +104,7 @@ mask
                 <span>21</span><span>22</span><span>23</span><span>24</span><span>25</span>
               </div>
               <div class="grid-area">
+                <div class="qr-cells"></div>
                 <div class="qr-cursor"></div>
               </div>
             </div>
@@ -119,5 +121,6 @@ mask
 </footer>
 
 <script src="layout.js"></script>
+<script src="main.js"></script>
 </body>
 </html>

@@ -204,18 +204,27 @@ main.layout{
 button{
   padding:6px 11px;
   border:1px solid #cfd6df;
-  background: linear-gradient(180deg, #ffffff, #f3f6fb);
-  color:#2b2f33;
+  background: linear-gradient(180deg, #ffffff, #eef3fb);
+  color:#1f2f3a;
   font-weight:600;
   border-radius:8px;
   cursor:pointer;
   box-shadow:0 2px 6px rgba(0,0,0,0.08);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.08s ease, border-color 0.15s ease;
 }
 
 button:hover{
-  background:#f7f9fc;
+  background:#e8f1ff;
+  border-color:#a8b7d5;
+  box-shadow:0 3px 8px rgba(0,0,0,0.12);
 }
 
+button:active{
+  transform: translateY(1px);
+  box-shadow:0 1px 4px rgba(0,0,0,0.12);
+  background:#dce8ff;
+  border-color:#94a6ca;
+}
 details.confirm-panel{
   border:1px solid #cfd6df;
   border-radius:8px;
@@ -357,6 +366,8 @@ textarea{
   background:#f7f8fa;
   border-right:1px solid #cfd3da;
   border-bottom:1px solid #cfd3da;
+  position:relative;
+  z-index:1;
 }
 
 .guide-col{
@@ -369,6 +380,8 @@ textarea{
   border-bottom:1px solid #cfd3da;
   border-top:1px solid #cfd3da;
   border-right:1px solid #cfd3da;
+  position:relative;
+  z-index:1;
 }
 .guide-col span{
   display:flex;
@@ -389,6 +402,8 @@ textarea{
   background:#f7f8fa;
   border-right:1px solid #cfd3da;
   border-left:1px solid #cfd3da;
+  position:relative;
+  z-index:1;
 }
 .guide-row span{
   display:flex;
@@ -409,6 +424,8 @@ textarea{
   position:relative;
   background:rgba(0,0,0,0.05);
   border:1px solid #cfd3da;
+  overflow:visible;
+  z-index:5;
 }
 .grid-area::before{
   content:"";
@@ -431,8 +448,63 @@ textarea{
   box-sizing:border-box;
   border:3px solid #e60000;
   border-radius:2px;
-  background:rgba(230,0,0,0.08);
+  background:transparent;
   pointer-events:none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  box-shadow: inset 0 0 0 1px #fff, 0 0 0 2px #fff;
+  z-index:10;
+}
+.qr-cursor::before,
+.qr-cursor::after{
+  content:"";
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  width:0;
+  height:0;
+}
+.qr-cursor::before{
+  top:-12px;
+  border-left:9px solid transparent;
+  border-right:9px solid transparent;
+  border-bottom:14px solid #fff;
+}
+.qr-cursor::after{
+  top:-10px;
+  border-left:7px solid transparent;
+  border-right:7px solid transparent;
+  border-bottom:11px solid #e60000;
+}
+
+.view-area.hide-cursor .qr-cursor{
+  display:none;
+}
+
+.qr-cells{
+  position:absolute;
+  inset:0;
+  display:grid;
+  grid-template-columns: repeat(25, 1fr);
+  grid-template-rows: repeat(25, 1fr);
+  pointer-events:none;
+  z-index:2;
+}
+
+.qr-cells .cell{
+  width:100%;
+  height:100%;
+  box-sizing:border-box;
+  background:transparent;
+}
+
+.qr-cells .cell.white{
+  background:#fff;
+}
+
+.qr-cells .cell.black{
+  background:#000;
 }
 
 .view-area.hide-guide .guide-corner,
