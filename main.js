@@ -4,6 +4,7 @@
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");
   const btnPatternFill = document.getElementById("btnPatternFill");
+  const btnMask = document.getElementById("btnMask");
   if(!btnGenerate || !btnInit) return;
 
   const DIR_UP = "up";
@@ -202,6 +203,9 @@
   window.buildFunctionSet = buildFunctionSet;
 
   const dirs = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
+  const MASK_FUNCTIONS = {
+    0: (r, c) => ((r + c) % 2) === 0, // r,c are 0-based
+  };
 
   function randomInt(min, max){
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -268,7 +272,7 @@
 
   btnInit.addEventListener("click", () => {
     if(isStepFillRunning) return;
-    drawBasePatterns("red");
+    clearAllCells();
     updateCursor(cursorPos.row, cursorPos.col, cursorPos.dir);
   });
 
@@ -329,6 +333,24 @@
       isStepFillRunning = false;
     }
   });
+
+  if(btnMask){
+    btnMask.addEventListener("click", () => {
+      if(isStepFillRunning) return;
+      const maskFn = MASK_FUNCTIONS[0];
+      if(!maskFn) return;
+      const funcSet = buildFunctionSet();
+      setRenderMode(RENDER_BUFFERED);
+      for(const { row, col, value, color } of cellStates.values()){
+        if(value !== 0 && value !== 1) continue;
+        if(funcSet.has(`${row}-${col}`)) continue;
+        const masked = value ^ (maskFn(row - 1, col - 1) ? 1 : 0);
+        setCell(row, col, masked, color || "black");
+      }
+      flushRender();
+      setRenderMode(RENDER_IMMEDIATE);
+    });
+  }
 
   function drawFinder(topRow, leftCol, color = "red"){
     // 7x7 finder (black outer ring, white ring around as separator)
