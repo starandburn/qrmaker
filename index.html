@@ -40,8 +40,11 @@
         </div>
       </div>
 
-      <details open class="pattern-panel">
-        <summary>コードパターン</summary>
+      <details open class="pattern-panel" id="patternDetails">
+        <summary class="pattern-summary">
+          <span class="summary-title"><span id="patternToggleText">コードパターンを表示</span></span>
+          <a href="#" id="asciiLink" class="ascii-link">文字パターン対応表</a>
+        </summary>
         <div id="patternBox" class="pattern-box"></div>
       </details>
     </div>
@@ -114,6 +117,18 @@ mask
     </div>
   </section>
 </main>
+
+<div id="asciiModal" class="ascii-modal hidden" role="dialog" aria-modal="true">
+  <div class="ascii-modal-content">
+    <div class="ascii-modal-head">
+      <span>文字とビット列の対応表</span>
+      <button type="button" id="asciiClose" class="ascii-modal-close">閉じる</button>
+    </div>
+    <div class="ascii-modal-body">
+      <div id="asciiTable" class="ascii-table"></div>
+    </div>
+  </div>
+</div>
 
 <footer class="page-footer">
 <p>&copy; 2025 - <span id="currentYear">????</span> Japan International Institute of Cybernetics. All Rights Reserved.</p>

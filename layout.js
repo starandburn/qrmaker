@@ -6,6 +6,12 @@ const toggleGuide = document.getElementById("toggleGuide");
 const toggleGrid = document.getElementById("toggleGrid");
 const toggleEmpty = document.getElementById("toggleEmpty");
 const toggleCursor = document.getElementById("toggleCursor");
+const patternDetails = document.getElementById("patternDetails");
+const patternToggleText = document.getElementById("patternToggleText");
+const asciiLink = document.getElementById("asciiLink");
+const asciiModal = document.getElementById("asciiModal");
+const asciiClose = document.getElementById("asciiClose");
+const asciiTable = document.getElementById("asciiTable");
 
 // Reed-Solomon (QR, GF(256), poly 0x11d) helpers
 const GF256_EXP = new Array(512);
@@ -67,11 +73,14 @@ function computeParity(dataCodewords, ecLen){
   return ec;
 }
 
-function createSection(titleText, groups, { small = false, breakAfterTerminator = false } = {}){
+function createSection(titleText, groups, { small = false, breakAfterTerminator = false, sectionClass = "" } = {}){
   const gapLarge = 7;
   const gapSmall = 6.25;
   const section = document.createElement("div");
   section.className = "pattern-section";
+  if(sectionClass){
+    section.classList.add(sectionClass);
+  }
   const title = document.createElement("div");
   title.className = "pattern-title";
   title.textContent = titleText;
@@ -148,6 +157,41 @@ function createSection(titleText, groups, { small = false, breakAfterTerminator 
   return section;
 }
 
+function renderAsciiTable(){
+  if(!asciiTable) return;
+  if(asciiTable.dataset.rendered === "1") return;
+  asciiTable.innerHTML = "";
+  const frag = document.createDocumentFragment();
+  for(let code = 32; code <= 126; code++){
+    const entry = document.createElement("div");
+    entry.className = "ascii-entry";
+
+    const charLabel = document.createElement("div");
+    charLabel.className = "ascii-char";
+    const disp = code === 32 ? "空白" : String.fromCharCode(code);
+    charLabel.textContent = disp;
+    entry.appendChild(charLabel);
+
+    const codeLabel = document.createElement("div");
+    codeLabel.className = "ascii-code";
+    codeLabel.textContent = String(code);
+    entry.appendChild(codeLabel);
+
+    const bitsWrap = document.createElement("div");
+    bitsWrap.className = "ascii-bits";
+    const bits = code.toString(2).padStart(8, "0");
+    for(const b of bits){
+      const cell = document.createElement("div");
+      cell.className = "ascii-bit " + (b === "1" ? "ascii-bit1" : "ascii-bit0");
+      bitsWrap.appendChild(cell);
+    }
+    entry.appendChild(bitsWrap);
+    frag.appendChild(entry);
+  }
+  asciiTable.appendChild(frag);
+  asciiTable.dataset.rendered = "1";
+}
+
 function refreshPattern(){
   if(!patternBox || !txtInput) return;
   const input = txtInput.value;
@@ -215,9 +259,9 @@ function refreshPattern(){
   }));
 
   patternBox.innerHTML = "";
-  const sectionA = createSection("A.QRコードの基本情報パターン （種別はバイトモード[4]固定）", groupA);
-  const sectionB = createSection("B.各文字に対応したパターン（1文字8桁・終端のみ4桁、32文字に満たない部分を固定パターンで埋める）", groupB, { breakAfterTerminator: false });
-  const sectionC = createSection("C.読み取りミスを減らすためにAとBから規則的に計算されたパターン", groupC);
+  const sectionA = createSection("A.QRコードの基本情報パターン （種別はバイトモード[4]固定）", groupA, { sectionClass: "section-a" });
+  const sectionB = createSection("B.各文字に対応したパターン（1文字8桁・終端のみ4桁、32文字に満たない部分を固定パターンで埋める）", groupB, { breakAfterTerminator: false, sectionClass: "section-b" });
+  const sectionC = createSection("C.読み取りミスを減らすためにAとBから規則的に計算されたパターン", groupC, { sectionClass: "section-c" });
 
   patternBox.appendChild(sectionA);
   patternBox.appendChild(sectionB);
@@ -292,9 +336,47 @@ if(toggleCursor){
 }
 syncViewToggles();
 
+function openAsciiModal(ev){
+  if(ev){ ev.preventDefault(); }
+  renderAsciiTable();
+  if(asciiModal){
+    asciiModal.classList.remove("hidden");
+  }
+}
+function closeAsciiModal(ev){
+  if(ev){ ev.preventDefault(); }
+  if(asciiModal){
+    asciiModal.classList.add("hidden");
+  }
+}
+if(asciiLink){
+  asciiLink.addEventListener("click", openAsciiModal);
+  asciiLink.addEventListener("click", (ev) => ev.stopPropagation());
+}
+if(asciiClose){
+  asciiClose.addEventListener("click", closeAsciiModal);
+}
+if(asciiModal){
+  asciiModal.addEventListener("click", (ev) => {
+    if(ev.target === asciiModal){
+      closeAsciiModal();
+    }
+  });
+}
+
 document.addEventListener("DOMContentLoaded", ()=>{
   const y = document.getElementById("currentYear");
   if(y){
     y.textContent = String(new Date().getFullYear());
   }
 });
+
+function updatePatternToggleText(){
+  if(patternToggleText && patternDetails){
+    patternToggleText.textContent = patternDetails.open ? "コードパターンを隠す" : "コードパターンを表示";
+  }
+}
+if(patternDetails){
+  patternDetails.addEventListener("toggle", updatePatternToggleText);
+  updatePatternToggleText();
+}

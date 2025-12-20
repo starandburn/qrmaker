@@ -236,6 +236,46 @@ details.pattern-panel summary{
   cursor:pointer;
   font-weight:700;
   font-size:13px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:4px 2px;
+  border-radius:0;
+  background:transparent;
+  border:none;
+  box-shadow:none;
+}
+.summary-title{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  color:#000;
+  text-decoration:none;
+}
+.summary-title::before{
+  content:"▼";
+  display:inline-block;
+  font-size:12px;
+  transform:rotate(0deg);
+  transition: transform 0.15s ease;
+  margin-right:4px;
+}
+details.pattern-panel:not([open]) .summary-title::before{
+  transform:rotate(-90deg);
+}
+.ascii-link{
+  font-size:12px;
+  font-weight:600;
+  color:#1b66ff;
+  text-decoration:none;
+  padding:2px 8px;
+  border:1px solid #cfd6df;
+  border-radius:12px;
+  background: linear-gradient(180deg, #ffffff, #f3f6fb);
+  box-shadow:0 1px 3px rgba(0,0,0,0.08);
+}
+.ascii-link:hover{
+  text-decoration:underline;
 }
 
 .pattern-box{
@@ -278,6 +318,88 @@ details.pattern-panel summary{
   align-content: flex-start;
 }
 
+/* ASCII modal */
+.ascii-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.28);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  z-index:200;
+}
+.ascii-modal.hidden{
+  display:none;
+}
+.ascii-modal-content{
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 14px 30px rgba(0,0,0,0.2);
+  width:min(960px, 92vw);
+  max-height:86vh;
+  display:flex;
+  flex-direction:column;
+}
+.ascii-modal-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 16px;
+  border-bottom:1px solid #eee;
+  font-weight:700;
+}
+.ascii-modal-body{
+  padding:8px 10px 12px;
+  overflow:auto;
+}
+.ascii-modal-close{
+  border:1px solid #ccc;
+  background:#f7f7f7;
+  border-radius:8px;
+  padding:4px 10px;
+  cursor:pointer;
+}
+.ascii-table{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));
+  gap:6px;
+}
+.ascii-entry{
+  display:grid;
+  grid-template-columns:32px 34px 1fr;
+  gap:4px;
+  align-items:center;
+  padding:4px 6px;
+  border:1px solid #ddd;
+  border-radius:6px;
+  background:#fff;
+  font-size:12px;
+}
+.ascii-entry .ascii-char{
+  font-weight:700;
+}
+.ascii-entry .ascii-code{
+  text-align:right;
+  font-variant-numeric: tabular-nums;
+}
+.ascii-bits{
+  display:grid;
+  grid-template-columns:repeat(8, 10px);
+  gap:1px;
+}
+.ascii-bit{
+  width:10px;
+  height:10px;
+  border:1px solid #999;
+  box-sizing:border-box;
+}
+.ascii-bit1{
+  background:#000;
+}
+.ascii-bit0{
+  background:#fff;
+}
 
 .bit-block{
   display:flex;
@@ -339,6 +461,18 @@ details.pattern-panel summary{
 
 .bit-cell.bit-1{
   background:#000;
+}
+.pattern-section.section-a .bit-cell{
+  border-color:#3b73c6;
+}
+.pattern-section.section-a .bit-cell.bit-1{
+  background:#3b73c6;
+}
+.pattern-section.section-c .bit-cell{
+  border-color:#2f8b55;
+}
+.pattern-section.section-c .bit-cell.bit-1{
+  background:#2f8b55;
 }
 
 /* bit-gap removed in favour of per-cell margin */
