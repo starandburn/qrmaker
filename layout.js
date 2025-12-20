@@ -64,8 +64,8 @@ function fitSquare(){
 
   sq.style.width = size + "px";
   sq.style.height = size + "px";
-  if(typeof window.drawCursor === "function"){
-    window.drawCursor();
+  if(typeof window.updateCursor === "function"){
+    window.updateCursor();
   }
 }
 

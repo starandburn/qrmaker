@@ -12,12 +12,19 @@
   const DIR_RIGHT = "right";
   const DIR_DOWN = "down";
   const DIR_LEFT = "left";
+  const RENDER_IMMEDIATE = "immediate";
+  const RENDER_BUFFERED = "buffered";
+  const STEP_DELAY_MS = 12;
 
   const cursorPos = {
     row: 3,
     col: 2,
     dir: DIR_DOWN,
   };
+  const pendingCells = new Map();
+  let pendingCursor = null;
+  let renderMode = RENDER_IMMEDIATE;
+  let isStepFillRunning = false;
 
   function ensureCells(){
     const gridArea = document.querySelector(".grid-area");
@@ -37,7 +44,7 @@
     cells.appendChild(frag);
   }
 
-  function drawCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.dir){
+  function applyCursor(row, col, dir){
     const gridArea = document.querySelector(".grid-area");
     const cursor = gridArea?.querySelector(".qr-cursor");
     if(!gridArea || !cursor) return;
@@ -65,7 +72,20 @@
     cursor.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
   }
 
-  function setCell(row, col, value){
+  function updateCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.dir){
+    const r = Math.min(25, Math.max(1, row));
+    const c = Math.min(25, Math.max(1, col));
+    cursorPos.row = r;
+    cursorPos.col = c;
+    cursorPos.dir = dir;
+    if(renderMode === RENDER_BUFFERED){
+      pendingCursor = { row: r, col: c, dir };
+      return;
+    }
+    applyCursor(r, c, dir);
+  }
+
+  function applySetCell(row, col, value){
     ensureCells();
     const cells = document.querySelectorAll(".qr-cells .cell");
     if(!cells || cells.length === 0) return;
@@ -88,15 +108,55 @@
     }
   }
 
+  function setCell(row, col, value){
+    if(renderMode === RENDER_BUFFERED){
+      const r = Math.min(25, Math.max(1, row));
+      const c = Math.min(25, Math.max(1, col));
+      pendingCells.set(`${r}-${c}`, { row: r, col: c, value });
+      return;
+    }
+    applySetCell(row, col, value);
+  }
+
+  function flushRender(){
+    if(renderMode !== RENDER_BUFFERED) return;
+    if(pendingCells.size > 0){
+      ensureCells();
+      for(const { row, col, value } of pendingCells.values()){
+        applySetCell(row, col, value);
+      }
+      pendingCells.clear();
+    }
+    if(pendingCursor){
+      applyCursor(pendingCursor.row, pendingCursor.col, pendingCursor.dir);
+      pendingCursor = null;
+    }
+  }
+
+  function setRenderMode(mode){
+    renderMode = mode === RENDER_BUFFERED ? RENDER_BUFFERED : RENDER_IMMEDIATE;
+    if(renderMode === RENDER_IMMEDIATE){
+      flushRender();
+    }
+  }
+
+  function sleep(ms){
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
   // 外からも使えるように export
   window.DIR_UP = DIR_UP;
   window.DIR_RIGHT = DIR_RIGHT;
   window.DIR_DOWN = DIR_DOWN;
   window.DIR_LEFT = DIR_LEFT;
+  window.RENDER_IMMEDIATE = RENDER_IMMEDIATE;
+  window.RENDER_BUFFERED = RENDER_BUFFERED;
   window.cursorPos = cursorPos;
-  window.drawCursor = drawCursor;
+  window.updateCursor = updateCursor;
   window.setCell = setCell;
   window.ensureCells = ensureCells;
+  window.flushRender = flushRender;
+  window.setRenderMode = setRenderMode;
 
   const dirs = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
 
@@ -105,6 +165,16 @@
   }
 
   btnInit.addEventListener("click", () => {
+    if(isStepFillRunning) return;
+    setRenderMode(RENDER_BUFFERED);
+    for(let r = 1; r <= 25; r++){
+      for(let c = 1; c <= 25; c++){
+        setCell(r, c, randomInt(0, 1));
+      }
+    }
+    flushRender();
+    setRenderMode(RENDER_IMMEDIATE);
+
     // 外周からランダムに選び、外向きにする
     const edge = randomInt(0, 3); // 0:top,1:right,2:bottom,3:left
     let row = 1;
@@ -127,15 +197,32 @@
       col = 1;
       dir = DIR_LEFT;
     }
-    drawCursor(row, col, dir);
+    updateCursor(row, col, dir);
   });
 
-  btnGenerate.addEventListener("click", () => {
-    const val = randomInt(0, 1);
-    setCell(cursorPos.row, cursorPos.col, val);
+  btnGenerate.addEventListener("click", async () => {
+    if(isStepFillRunning) return;
+    isStepFillRunning = true;
+    btnGenerate.disabled = true;
+    btnInit.disabled = true;
+    try{
+      setRenderMode(RENDER_IMMEDIATE);
+      ensureCells();
+      for(let r = 1; r <= 25; r++){
+        for(let c = 1; c <= 25; c++){
+          setCell(r, c, randomInt(0, 1));
+          updateCursor(r, c, c === 25 ? DIR_DOWN : DIR_RIGHT);
+          await sleep(STEP_DELAY_MS);
+        }
+      }
+    }finally{
+      btnGenerate.disabled = false;
+      btnInit.disabled = false;
+      isStepFillRunning = false;
+    }
   });
 
   // 初期描画
   ensureCells();
-  drawCursor(cursorPos.row, cursorPos.col, cursorPos.dir);
+  updateCursor(cursorPos.row, cursorPos.col, cursorPos.dir);
 })();
