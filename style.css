@@ -413,6 +413,22 @@ details.pattern-panel:not([open]) .summary-title::before{
   line-height: 0;    
   padding-bottom: 0;
 }
+.bit-block.col-yellow .bit-cell{
+  border-color:#927600;
+  background:#fff7c8;
+}
+.bit-block.col-yellow .bit-cell.bit-1{
+  background:#927600;
+  border-color:#927600;
+}
+.bit-block.col-purple .bit-cell{
+  border-color:#5a2d80;
+  background:#faf5ff;
+}
+.bit-block.col-purple .bit-cell.bit-1{
+  background:#5a2d80;
+  border-color:#5a2d80;
+}
 .bit-block .bit-label:empty{
   display:none;
 }
@@ -661,11 +677,14 @@ textarea{
   position:absolute;
   inset:0;
   background-image:
-    linear-gradient(to right, rgba(0,0,0,0.12) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0,0,0,0.12) 1px, transparent 1px);
+    linear-gradient(to right, rgba(0,0,0,0.14) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0,0,0,0.14) 1px, transparent 1px),
+    linear-gradient(to right, rgba(255,255,255,0.35) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.35) 1px, transparent 1px);
   background-size: calc(100% / 25) calc(100% / 25);
   pointer-events:none;
   opacity:1;
+  z-index:3; /* keep grid lines visible over filled cells */
 }
 
 .qr-cursor{
@@ -737,15 +756,21 @@ textarea{
   height:100%;
   box-sizing:border-box;
   background:transparent;
+  border:none;
 }
 
-.qr-cells .cell.white{
-  background:#fff;
-}
-
-.qr-cells .cell.black{
-  background:#000;
-}
+.qr-cells .cell.state-0{ background:#fff; }
+.qr-cells .cell.state-1{ background:#000; }
+.qr-cells .cell.col-red.state-0{ background:#fffafa; }
+.qr-cells .cell.col-red.state-1{ background:#8c0000; }
+.qr-cells .cell.col-blue.state-0{ background:#f8faff; }
+.qr-cells .cell.col-blue.state-1{ background:#1f4a85; }
+.qr-cells .cell.col-green.state-0{ background:#f6fdf8; }
+.qr-cells .cell.col-green.state-1{ background:#184c2d; }
+.qr-cells .cell.col-yellow.state-0{ background:#fff7c8; }
+.qr-cells .cell.col-yellow.state-1{ background:#927600; }
+.qr-cells .cell.col-purple.state-0{ background:#faf5ff; }
+.qr-cells .cell.col-purple.state-1{ background:#5a2d80; }
 
 .view-area.hide-guide .guide-corner,
 .view-area.hide-guide .guide-col,

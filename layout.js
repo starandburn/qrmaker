@@ -6,6 +6,7 @@ const toggleGuide = document.getElementById("toggleGuide");
 const toggleGrid = document.getElementById("toggleGrid");
 const toggleEmpty = document.getElementById("toggleEmpty");
 const toggleCursor = document.getElementById("toggleCursor");
+const toggleColor = document.getElementById("toggleColor");
 const patternDetails = document.getElementById("patternDetails");
 const patternToggleText = document.getElementById("patternToggleText");
 const asciiLink = document.getElementById("asciiLink");
@@ -101,6 +102,9 @@ function createSection(titleText, groups, { small = false, breakAfterTerminator 
 
     const block = document.createElement("div");
     block.className = "bit-block";
+    if(g.color){
+      block.classList.add(`col-${g.color}`);
+    }
 
     if(g.label && !g.labelFullLine){
       const labelEl = document.createElement("div");
@@ -225,7 +229,7 @@ function refreshPattern(){
 
   // Terminator (up to 4 bits)
   const terminatorBits = "0000";
-  groupB.push({ label: `終端:0`, bits: terminatorBits, terminator: true });
+  groupB.push({ label: `終端:0`, bits: terminatorBits, terminator: true, color: "yellow" });
   bitStream += terminatorBits;
 
   // Align to byte boundary with zero padding if needed
@@ -247,7 +251,7 @@ function refreshPattern(){
     const padVal = PAD_CODEWORDS[padIdx % PAD_CODEWORDS.length];
     dataCodewords.push(padVal);
     const label = `固定:${padVal}`;
-    groupB.push({ label, bits: padVal.toString(2).padStart(8, "0") });
+    groupB.push({ label, bits: padVal.toString(2).padStart(8, "0"), color: "purple" });
     padIdx++;
   }
 
@@ -266,6 +270,7 @@ function refreshPattern(){
   patternBox.appendChild(sectionA);
   patternBox.appendChild(sectionB);
   patternBox.appendChild(sectionC);
+  window.patternData = { A: groupA, B: groupB, C: groupC };
   refreshGuide();
 }
 
@@ -284,6 +289,9 @@ if(btnClear){
     txtInput.value = "";
     refreshPattern();
     txtInput.focus();
+    if(typeof window.clearAllCells === "function"){
+      window.clearAllCells();
+    }
   });
 }
 
