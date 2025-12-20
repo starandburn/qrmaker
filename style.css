@@ -463,16 +463,18 @@ details.pattern-panel:not([open]) .summary-title::before{
   background:#000;
 }
 .pattern-section.section-a .bit-cell{
-  border-color:#3b73c6;
+  border-color:#2f63af;
+  background:#f5f8ff;
 }
 .pattern-section.section-a .bit-cell.bit-1{
-  background:#3b73c6;
+  background:#2f63af;
 }
 .pattern-section.section-c .bit-cell{
-  border-color:#2f8b55;
+  border-color:#277347;
+  background:#f3fbf5;
 }
 .pattern-section.section-c .bit-cell.bit-1{
-  background:#2f8b55;
+  background:#277347;
 }
 
 /* bit-gap removed in favour of per-cell margin */
