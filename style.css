@@ -225,19 +225,20 @@ button:active{
   background:#dce8ff;
   border-color:#94a6ca;
 }
-details.confirm-panel{
+details.pattern-panel{
   border:1px solid #cfd6df;
   border-radius:8px;
   background:rgba(255,255,255,0.6);
   padding:6px 8px;
 }
 
-details.confirm-panel summary{
+details.pattern-panel summary{
   cursor:pointer;
   font-weight:700;
+  font-size:13px;
 }
 
-.confirm-box{
+.pattern-box{
   margin-top:4px;
   padding:0;
   background:transparent;
@@ -251,24 +252,24 @@ details.confirm-panel summary{
   color:#2b2416;
 }
 
-.confirm-section{
+.pattern-section{
   margin-bottom:4px;
-  background:#fffdf7;
+  background:#fffefb;
   border:1px solid #cfd6df;
   border-radius:8px;
   padding:8px;
 }
-.confirm-section:last-child{
+.pattern-section:last-child{
   margin-bottom:0;
 }
 
-.confirm-title{
+.pattern-title{
   font-weight:700;
   margin-bottom:6px;
   font-size:14px;
 }
 
-.confirm-row{
+.pattern-row{
   display:flex;
   flex-wrap:wrap;
   column-gap:0;
@@ -307,7 +308,7 @@ details.confirm-panel summary{
 .bit-strip{
   display:grid;
   grid-auto-flow:column;
-  grid-auto-columns:14px;
+  grid-auto-columns:12px;
   column-gap:2px; /* 1bit境界 */
 }
 
@@ -324,8 +325,8 @@ details.confirm-panel summary{
 }
 
 .bit-cell{
-  width:14px;
-  height:14px;
+  width:12px;
+  height:12px;
   border:1px solid #444;
   box-sizing:border-box;
   background:#fff;

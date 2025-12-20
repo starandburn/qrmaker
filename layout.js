@@ -1,5 +1,5 @@
 const txtInput = document.getElementById("txtInput");
-const confirmBox = document.getElementById("confirmBox");
+const patternBox = document.getElementById("patternBox");
 const btnClear = document.getElementById("btnClear");
 const inputGuide = document.getElementById("inputGuide");
 const toggleGuide = document.getElementById("toggleGuide");
@@ -68,17 +68,17 @@ function computeParity(dataCodewords, ecLen){
 }
 
 function createSection(titleText, groups, { small = false, breakAfterTerminator = false } = {}){
-  const gapLarge = 6;
-  const gapSmall = 5.25;
+  const gapLarge = 7;
+  const gapSmall = 6.25;
   const section = document.createElement("div");
-  section.className = "confirm-section";
+  section.className = "pattern-section";
   const title = document.createElement("div");
-  title.className = "confirm-title";
+  title.className = "pattern-title";
   title.textContent = titleText;
   section.appendChild(title);
 
   const row = document.createElement("div");
-  row.className = "confirm-row";
+  row.className = "pattern-row";
 
   const totalBits = groups.reduce((sum, g) => sum + g.bits.length + (g.terminator ? 4 : 0), 0);
   let bitIndex = 0;
@@ -148,8 +148,8 @@ function createSection(titleText, groups, { small = false, breakAfterTerminator 
   return section;
 }
 
-function refreshConfirm(){
-  if(!confirmBox || !txtInput) return;
+function refreshPattern(){
+  if(!patternBox || !txtInput) return;
   const input = txtInput.value;
 
   // QR v2-L constants
@@ -196,12 +196,13 @@ function refreshConfirm(){
     const byteBits = bitStream.slice(i, i + 8);
     dataCodewords.push(parseInt(byteBits, 2));
   }
+  const missingPads = DATA_CODEWORDS - dataCodewords.length;
   let padIdx = 0;
   let firstPad = true;
   while(dataCodewords.length < DATA_CODEWORDS){
     const padVal = PAD_CODEWORDS[padIdx % PAD_CODEWORDS.length];
     dataCodewords.push(padVal);
-    const label = firstPad ? "以下、固定パターン(236, 17)の繰り返し" : "";
+    const label = firstPad ? `以下、固定パターン(236, 17)を${missingPads}回くりかえし` : "";
     const labelFullLine = firstPad;
     groupB.push({ label, labelFullLine, bits: padVal.toString(2).padStart(8, "0") });
     firstPad = false;
@@ -215,14 +216,14 @@ function refreshConfirm(){
     bits: val.toString(2).padStart(8, "0"),
   }));
 
-  confirmBox.innerHTML = "";
-  const sectionA = createSection("A.QRコードの基本情報パターン ※種類は8ビットモード(4)固定", groupA, { small: true });
-  const sectionB = createSection("B.各文字に対応したパターン（1文字8桁・終端のみ4桁、残りを固定パターンで埋める）", groupB, { small: true, breakAfterTerminator: false });
-  const sectionC = createSection("C.読み取りミスを減らすためにAとBから規則的に計算されたパターン", groupC, { small: true });
+  patternBox.innerHTML = "";
+  const sectionA = createSection("A.QRコードの基本情報パターン （種類はバイトモード[4]固定）", groupA);
+  const sectionB = createSection("B.各文字に対応したパターン（1文字8桁・終端のみ4桁、32文字に満たない部分を固定パターンで埋める）", groupB, { breakAfterTerminator: false });
+  const sectionC = createSection("C.読み取りミスを減らすためにAとBから規則的に計算されたパターン", groupC);
 
-  confirmBox.appendChild(sectionA);
-  confirmBox.appendChild(sectionB);
-  confirmBox.appendChild(sectionC);
+  patternBox.appendChild(sectionA);
+  patternBox.appendChild(sectionB);
+  patternBox.appendChild(sectionC);
   refreshGuide();
 }
 
@@ -233,18 +234,18 @@ function refreshGuide(){
 }
 
 if(txtInput){
-  txtInput.addEventListener("input", refreshConfirm);
+  txtInput.addEventListener("input", refreshPattern);
 }
 
 if(btnClear){
   btnClear.addEventListener("click", () => {
     txtInput.value = "";
-    refreshConfirm();
+    refreshPattern();
     txtInput.focus();
   });
 }
 
-refreshConfirm();
+refreshPattern();
 
 function fitSquare(){
   const area = document.querySelector(".view-area");
