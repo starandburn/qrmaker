@@ -163,23 +163,25 @@ function refreshPattern(){
   // A: モード(0100) + 文字数(8bit)
   const modeBits = "0100";
   const lenBits = input.length.toString(2).padStart(8, "0");
-  groupA.push({ label: "種類(4)", bits: modeBits });
-  groupA.push({ label: `文字数(${input.length})`, bits: lenBits });
+  groupA.push({ label: `種別:4`, bits: modeBits });
+  groupA.push({ label: `文字数:${input.length}`, bits: lenBits });
 
   // B: データ(ASCII) + 終端 + 0詰め + パディング
   let bitStream = modeBits + lenBits;
   for(let i = 0; i < input.length; i++){
     const code = input.charCodeAt(i) & 0xff; // ASCII 8bit
     const bits = code.toString(2).padStart(8, "0");
-    const dispChar = input[i] === " " ? "空白" : input[i];
-    const label = `${dispChar}(${code})`;
+    const dispChar = input[i] === " " ? "空白"
+      : input[i] === ":" ? "コロン(:)"
+      : input[i];
+    const label = `${dispChar}:${code}`;
     groupB.push({ label, bits });
     bitStream += bits;
   }
 
   // Terminator (up to 4 bits)
   const terminatorBits = "0000";
-  groupB.push({ label: "終端(0)※4桁", bits: terminatorBits, terminator: true });
+  groupB.push({ label: `終端:0`, bits: terminatorBits, terminator: true });
   bitStream += terminatorBits;
 
   // Align to byte boundary with zero padding if needed
@@ -196,28 +198,24 @@ function refreshPattern(){
     const byteBits = bitStream.slice(i, i + 8);
     dataCodewords.push(parseInt(byteBits, 2));
   }
-  const missingPads = DATA_CODEWORDS - dataCodewords.length;
   let padIdx = 0;
-  let firstPad = true;
   while(dataCodewords.length < DATA_CODEWORDS){
     const padVal = PAD_CODEWORDS[padIdx % PAD_CODEWORDS.length];
     dataCodewords.push(padVal);
-    const label = firstPad ? `以下、固定パターン(236, 17)を${missingPads}回くりかえし` : "";
-    const labelFullLine = firstPad;
-    groupB.push({ label, labelFullLine, bits: padVal.toString(2).padStart(8, "0") });
-    firstPad = false;
+    const label = `固定:${padVal}`;
+    groupB.push({ label, bits: padVal.toString(2).padStart(8, "0") });
     padIdx++;
   }
 
   // C: パリティ（RS 10バイト）
   const parity = computeParity(dataCodewords, EC_CODEWORDS);
-  const groupC = parity.map((val, idx) => ({
+  const groupC = parity.map(val => ({
     label: "",
     bits: val.toString(2).padStart(8, "0"),
   }));
 
   patternBox.innerHTML = "";
-  const sectionA = createSection("A.QRコードの基本情報パターン （種類はバイトモード[4]固定）", groupA);
+  const sectionA = createSection("A.QRコードの基本情報パターン （種別はバイトモード[4]固定）", groupA);
   const sectionB = createSection("B.各文字に対応したパターン（1文字8桁・終端のみ4桁、32文字に満たない部分を固定パターンで埋める）", groupB, { breakAfterTerminator: false });
   const sectionC = createSection("C.読み取りミスを減らすためにAとBから規則的に計算されたパターン", groupC);
 
