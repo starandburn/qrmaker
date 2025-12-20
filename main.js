@@ -199,6 +199,7 @@
   window.drawDarkModule = drawDarkModule;
   window.drawFormat = drawFormat;
   window.drawBasePatterns = drawBasePatterns;
+  window.buildFunctionSet = buildFunctionSet;
 
   const dirs = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
 
@@ -220,6 +221,51 @@
     setRenderMode(RENDER_IMMEDIATE);
   }
 
+  function buildFunctionSet(){
+    const set = new Set();
+    const add = (r, c) => {
+      if(r < 1 || r > 25 || c < 1 || c > 25) return;
+      set.add(`${r}-${c}`);
+    };
+    // finder + white separator (9x9 around each)
+    const finders = [
+      [1, 1],
+      [1, 19],
+      [19, 1],
+    ];
+    for(const [tr, tc] of finders){
+      for(let dr = -1; dr <= 7; dr++){
+        for(let dc = -1; dc <= 7; dc++){
+          add(tr + dr, tc + dc);
+        }
+      }
+    }
+    // timing (row 7, col 7)
+    for(let c = 1; c <= 25; c++) add(7, c);
+    for(let r = 1; r <= 25; r++) add(r, 7);
+    // alignment 5x5 at (19,19)
+    for(let dr = -2; dr <= 2; dr++){
+      for(let dc = -2; dc <= 2; dc++){
+        add(19 + dr, 19 + dc);
+      }
+    }
+    // dark module
+    add(18, 9);
+    // format info positions (both copies)
+    const coordsA = [
+      [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],
+      [8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8],
+    ];
+    const n = 25;
+    const coordsB = [
+      [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
+      [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
+    ];
+    for(const [r, c] of coordsA) add(r + 1, c + 1);
+    for(const [r, c] of coordsB) add(r + 1, c + 1);
+    return set;
+  }
+
   btnInit.addEventListener("click", () => {
     if(isStepFillRunning) return;
     drawBasePatterns("red");
@@ -232,15 +278,50 @@
     btnGenerate.disabled = true;
     btnInit.disabled = true;
     try{
-      setRenderMode(RENDER_IMMEDIATE);
-      ensureCells();
-      for(let r = 1; r <= 25; r++){
-        for(let c = 1; c <= 25; c++){
-          const color = COLORS[randomInt(0, COLORS.length - 1)];
-          setCell(r, c, randomInt(0, 1), color);
-          updateCursor(r, c, c === 25 ? DIR_DOWN : DIR_RIGHT);
-          await sleep(STEP_DELAY_MS);
+      // 機能パターンを描画してから、データをジグザグ配置
+      drawBasePatterns("red");
+      const funcSet = buildFunctionSet();
+      const bitsSeq = (() => {
+        const data = window.patternData;
+        if(!data) return [];
+        const ordered = ["A", "B", "C"];
+        const seq = [];
+        for(const key of ordered){
+          const groups = data[key] || [];
+          for(const g of groups){
+            const baseColor = g.color
+              || (g.terminator ? TERMINATOR_COLOR
+              : (GROUP_COLORS[key] || "black"));
+            for(const bit of g.bits){
+              seq.push({ bit: Number(bit), color: baseColor });
+            }
+          }
         }
+        return seq;
+      })();
+
+      let bitIdx = 0;
+      let col = 25;
+      let upward = true;
+      setRenderMode(RENDER_IMMEDIATE);
+      while(col > 0 && bitIdx < bitsSeq.length){
+        if(col === 7){ col--; continue; } // skip timing column
+        const colLeft = col - 1;
+        for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
+          const row = upward ? (25 - i) : (1 + i);
+          for(const c of [col, colLeft]){
+            if(c < 1) continue;
+            if(c === 7) continue;
+            if(funcSet.has(`${row}-${c}`)) continue;
+            const { bit, color } = bitsSeq[bitIdx];
+            setCell(row, c, bit, color || "black");
+            updateCursor(row, c, upward ? DIR_UP : DIR_DOWN);
+            bitIdx++;
+            if(bitIdx >= bitsSeq.length) break;
+          }
+        }
+        upward = !upward;
+        col -= 2;
       }
     }finally{
       btnGenerate.disabled = false;
@@ -405,4 +486,3 @@
     });
   }
 })();
-
