@@ -279,15 +279,16 @@
     updateCursor(cursorPos.row, cursorPos.col, cursorPos.dir);
   });
 
-    btnGenerate.addEventListener("click", async () => {
+  btnGenerate.addEventListener("click", async () => {
     if(isStepFillRunning) return;
     isStepFillRunning = true;
     btnGenerate.disabled = true;
     btnInit.disabled = true;
     try{
-      const stepEnabled = !!(stepMode && stepMode.checked);
+      const isStepModeOn = () => !!(stepMode && stepMode.checked);
+      let stepEnabled = isStepModeOn();
       setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
-      // 機�Eパターンを描画してから、データをジグザグ配置
+      // 機能パターンを描画してから、データをジグザグ配置
       drawBasePatterns("red", { deferFlush: !stepEnabled });
       const funcSet = buildFunctionSet();
       const bitsSeq = (() => {
@@ -327,6 +328,10 @@
             bitIdx++;
             if(stepEnabled){
               await sleep(STEP_DELAY_MS);
+              if(!isStepModeOn()){
+                stepEnabled = false;
+                setRenderMode(RENDER_BUFFERED);
+              }
             }
             if(bitIdx >= bitsSeq.length) break;
           }
