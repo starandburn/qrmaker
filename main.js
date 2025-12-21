@@ -803,8 +803,12 @@
     const line = document.createElement("div");
     line.className = "log-line";
     line.textContent = `${prefix}${message}`;
-    debugLog.appendChild(line);
-    debugLog.scrollTop = debugLog.scrollHeight;
+    if(debugLog.firstChild){
+      debugLog.insertBefore(line, debugLog.firstChild);
+    }else{
+      debugLog.appendChild(line);
+    }
+    debugLog.scrollTop = 0;
   }
 
   function showDebugCellResult(){

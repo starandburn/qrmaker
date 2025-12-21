@@ -154,9 +154,9 @@ main.layout{
   min-width:0;
 }
 .debug-panel{
-  margin-bottom:12px;
-  display:none;
-}
+    margin-bottom:6px;
+    display:none;
+  }
 .debug-row{
   display:flex;
   gap:8px;
@@ -197,9 +197,9 @@ main.layout{
 .debug-log{
   margin-top:8px;
   width:100%;
-  min-height:54px;
-  max-height:54px;
-  padding:8px;
+  min-height:56px;
+  max-height:56px;
+  padding:4px 6px;
   border:1px solid #cfd3da;
   border-radius:0;
   font-size:12px;
@@ -208,7 +208,7 @@ main.layout{
   background:#111;
   color:#fff;
   overflow-y:auto;
-  line-height:1.1;
+  line-height:1.05;
 }
 .debug-log .log-line{
   margin:0;
