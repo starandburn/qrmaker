@@ -47,6 +47,18 @@
   let pendingCursor = null;
   let renderMode = RENDER_IMMEDIATE;
   let isStepFillRunning = false;
+  let runId = 0;
+  function stopCurrentRun({ resetCursor = false, clear = false } = {}){
+    runId++;
+    isStepFillRunning = false;
+    if(clear){
+      clearAllCells();
+    }
+    if(resetCursor){
+      updateCursor(1, 1, DIR_DOWN);
+    }
+    setRenderMode(RENDER_IMMEDIATE);
+  }
 
   function ensureCells(){
     const gridArea = document.querySelector(".grid-area");
@@ -221,6 +233,7 @@
   window.drawFormat = drawFormat;
   window.drawBasePatterns = drawBasePatterns;
   window.buildFunctionSet = buildFunctionSet;
+  window.stopCurrentRun = stopCurrentRun;
 
   const dirs = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
   const MASK_FUNCTIONS = {
@@ -231,51 +244,88 @@
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
-  function drawBasePatterns(color = "red", { deferFlush = false } = {}){
+  function drawBasePatterns(color = "red", { deferFlush = false, currentRun } = {}){
+    if(currentRun !== undefined && currentRun !== runId) return false;
     setRenderMode(RENDER_BUFFERED);
     clearAllCells();
     updateCursor(1, 1, DIR_DOWN);
+    if(currentRun !== undefined && currentRun !== runId) return false;
     drawTiming(TIMING_COLOR);
+    if(currentRun !== undefined && currentRun !== runId) return false;
     drawFinder(1, 1, color);
+    if(currentRun !== undefined && currentRun !== runId) return false;
     drawFinder(1, 19, color);
+    if(currentRun !== undefined && currentRun !== runId) return false;
     drawFinder(19, 1, color);
+    if(currentRun !== undefined && currentRun !== runId) return false;
     drawAlignment(19, 19, color);
+    if(currentRun !== undefined && currentRun !== runId) return false;
     drawDarkModule(color);
+    if(currentRun !== undefined && currentRun !== runId) return false;
     drawFormat(0, FORMAT_COLOR);
     if(!deferFlush){
+      if(currentRun !== undefined && currentRun !== runId) return false;
       flushRender();
       setRenderMode(RENDER_IMMEDIATE);
     }
+    return true;
   }
 
-  async function drawBasePatternsStepped(color = "red"){
+  async function drawBasePatternsStepped(color = "red", { currentRun } = {}){
     clearAllCells();
     setRenderMode(RENDER_IMMEDIATE);
     updateCursor(1, 1, DIR_DOWN);
     let stepEnabled = isStepModeOn();
     const stepActive = () => stepEnabled && isStepModeOn();
+    const shouldAbort = () => (currentRun !== undefined && currentRun !== runId);
     const maybeStepDelay = async () => {
-      if(!stepActive()) return;
+      if(shouldAbort()) return false;
+      if(!stepActive()) return true;
       const delay = getStepDelay();
       if(delay > 0){
         await sleep(delay);
       }else{
         await new Promise(requestAnimationFrame);
       }
+      if(shouldAbort()) return false;
       if(!isStepModeOn()){
         stepEnabled = false;
         setRenderMode(RENDER_BUFFERED);
       }
+      return true;
     };
     let lastRow = 1;
     let lastCol = 1;
     let lastDir = DIR_DOWN;
     const moveCursorPath = async (targetRow, targetCol) => {
-      lastRow = targetRow;
-      lastCol = targetCol;
-      updateCursor(targetRow, targetCol, lastDir);
+      let r = lastRow;
+      let c = lastCol;
+      while(r !== targetRow || c !== targetCol){
+        if(shouldAbort()) return false;
+        let nr = r;
+        let nc = c;
+        if(r !== targetRow){
+          nr += (targetRow > r) ? 1 : -1;
+        }else if(c !== targetCol){
+          nc += (targetCol > c) ? 1 : -1;
+        }
+        const dr = nr - r;
+        const dc = nc - c;
+        if(Math.abs(dr) > Math.abs(dc)){
+          lastDir = dr > 0 ? DIR_DOWN : dr < 0 ? DIR_UP : lastDir;
+        }else if(Math.abs(dc) > 0){
+          lastDir = dc > 0 ? DIR_RIGHT : DIR_LEFT;
+        }
+        updateCursor(nr, nc, lastDir);
+        r = lastRow = nr;
+        c = lastCol = nc;
+        const cont = await maybeStepDelay();
+        if(cont === false) return false;
+      }
+      return !shouldAbort();
     };
     const stepCell = (row, col, value, cellColor) => {
+      if(shouldAbort()) return false;
       setCell(row, col, value, cellColor);
       const dr = row - lastRow;
       const dc = col - lastCol;
@@ -287,6 +337,7 @@
       updateCursor(row, col, lastDir);
       lastRow = row;
       lastCol = col;
+      return true;
     };
     const spiralOrder = size => {
       const coords = [];
@@ -308,20 +359,20 @@
       return coords;
     };
 
-    await moveCursorPath(1, 1);
+    if((await moveCursorPath(1, 1)) === false) return;
 
     // timing (row 7, col 7)
-    await moveCursorPath(7, 1);
+    if((await moveCursorPath(7, 1)) === false) return;
     for(let c = 1; c <= 25; c++){
       const bit = (c % 2 === 1) ? 1 : 0;
       stepCell(7, c, bit, TIMING_COLOR);
-      await maybeStepDelay();
+      if((await maybeStepDelay()) === false) return;
     }
-    await moveCursorPath(1, 7);
+    if((await moveCursorPath(1, 7)) === false) return;
     for(let r = 1; r <= 25; r++){
       const bit = (r % 2 === 1) ? 1 : 0;
       stepCell(r, 7, bit, TIMING_COLOR);
-      await maybeStepDelay();
+      if((await maybeStepDelay()) === false) return;
     }
 
     // finder 7x7 + separator
@@ -341,8 +392,8 @@
         const col = leftCol + c0;
         if(row < 1 || row > 25 || col < 1 || col > 25) continue;
         const bit = pattern[r0][c0];
-        stepCell(row, col, bit, color);
-        await maybeStepDelay();
+        if(!stepCell(row, col, bit, color)) return;
+        if((await maybeStepDelay()) === false) return;
       }
       const sRow = topRow - 1;
       const eRow = topRow + 7;
@@ -355,18 +406,18 @@
       for(let r = eRow - 1; r > sRow; r--) ring.push([r, sCol]);
       for(const [r, c] of ring){
         if(r < 1 || r > 25 || c < 1 || c > 25) continue;
-        stepCell(r, c, 0, color);
-        await maybeStepDelay();
+        if(!stepCell(r, c, 0, color)) return;
+        if((await maybeStepDelay()) === false) return;
       }
     };
     await drawFinderStep(1, 1);
-    await moveCursorPath(1, 19);
+    if((await moveCursorPath(1, 19)) === false) return;
     await drawFinderStep(1, 19);
-    await moveCursorPath(19, 1);
+    if((await moveCursorPath(19, 1)) === false) return;
     await drawFinderStep(19, 1);
 
     // alignment 5x5
-    await moveCursorPath(19, 19);
+    if((await moveCursorPath(19, 19)) === false) return;
     const drawAlignmentStep = async (centerRow, centerCol) => {
       const pattern = [
         [1,1,1,1,1],
@@ -383,16 +434,16 @@
         const col = leftCol + c0;
         if(row < 1 || row > 25 || col < 1 || col > 25) continue;
         const bit = pattern[r0][c0];
-        stepCell(row, col, bit, color);
-        await maybeStepDelay();
+        if(!stepCell(row, col, bit, color)) return;
+        if((await maybeStepDelay()) === false) return;
       }
     };
     await drawAlignmentStep(19, 19);
 
     // dark module
-    await moveCursorPath(18, 9);
-    stepCell(18, 9, 1, color);
-    await maybeStepDelay();
+    if((await moveCursorPath(18, 9)) === false) return;
+    if(!stepCell(18, 9, 1, color)) return;
+    if((await maybeStepDelay()) === false) return;
 
     // format info (two copies)
     const coordsA = [
@@ -404,19 +455,19 @@
       [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
       [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
     ];
-    await moveCursorPath(coordsA[0][0] + 1, coordsA[0][1] + 1);
+    if((await moveCursorPath(coordsA[0][0] + 1, coordsA[0][1] + 1)) === false) return;
     const bits15 = FORMAT_L[0];
     const drawFormatSide = async (coords) => {
       for(let i = 0; i < 15; i++){
         const bit = (bits15 >>> i) & 1;
         const [r, c] = coords[i];
-        stepCell(r + 1, c + 1, bit, FORMAT_COLOR);
-        await maybeStepDelay();
+        if(!stepCell(r + 1, c + 1, bit, FORMAT_COLOR)) return;
+        if((await maybeStepDelay()) === false) return;
       }
     };
     // 左上周りを先に、右下周りを後から描く
     await drawFormatSide(coordsA);
-    await moveCursorPath(coordsB[0][0] + 1, coordsB[0][1] + 1);
+    if((await moveCursorPath(coordsB[0][0] + 1, coordsB[0][1] + 1)) === false) return;
     await drawFormatSide(coordsB);
 
     await moveCursorPath(25, 25);
@@ -473,23 +524,37 @@
   }
 
   btnInit.addEventListener("click", () => {
-    if(isStepFillRunning) return;
+    runId++;
+    isStepFillRunning = false;
     clearAllCells();
     updateCursor(1, 1, DIR_DOWN);
+    btnGenerate.disabled = false;
+    btnInit.disabled = false;
+    setRenderMode(RENDER_IMMEDIATE);
   });
 
   btnGenerate.addEventListener("click", async () => {
-    if(isStepFillRunning) return;
+    // Advance runId to signal any in-flight render to cancel
+    const requestedRun = ++runId;
+    // If a run is active, wait briefly for it to stop
+    if(isStepFillRunning){
+      const start = Date.now();
+      while(isStepFillRunning && Date.now() - start < 2000){
+        await sleep(10);
+      }
+    }
     isStepFillRunning = true;
-    btnGenerate.disabled = true;
-    btnInit.disabled = true;
+    const currentRun = runId = requestedRun;
+    let aborted = false;
     try{
       let stepEnabled = isStepModeOn();
       setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
       if(stepEnabled){
-        await drawBasePatternsStepped("red");
+        await drawBasePatternsStepped("red", { currentRun });
+        if(currentRun !== runId){ aborted = true; return; }
       }else{
-        drawBasePatterns("red", { deferFlush: false });
+        const ok = drawBasePatterns("red", { deferFlush: false, currentRun });
+        if(currentRun !== runId || !ok){ aborted = true; return; }
       }
       // re-evaluate in case step mode changed during base patterns
       stepEnabled = isStepModeOn();
@@ -518,9 +583,11 @@
       let col = 25;
       let upward = true;
       while(col > 0 && bitIdx < bitsSeq.length){
+        if(currentRun !== runId){ aborted = true; break; }
         if(col === 7){ col--; continue; } // skip timing column
         const colLeft = col - 1;
         for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
+          if(currentRun !== runId){ aborted = true; break; }
           const row = upward ? (25 - i) : (1 + i);
           for(const c of [col, colLeft]){
             if(c < 1) continue;
@@ -530,9 +597,11 @@
             setCell(row, c, bit, color || "black");
             updateCursor(row, c, upward ? DIR_UP : DIR_DOWN);
             bitIdx++;
+            if(currentRun !== runId){ aborted = true; break; }
             if(stepEnabled){
               const delay = getStepDelay();
               await sleep(Math.max(0, delay));
+              if(currentRun !== runId){ aborted = true; break; }
               if(!isStepModeOn()){
                 stepEnabled = false;
                 setRenderMode(RENDER_BUFFERED);
@@ -544,12 +613,10 @@
         upward = !upward;
         col -= 2;
       }
-      if(!stepEnabled){
+      if(currentRun === runId && !stepEnabled){
         flushRender();
       }
     }finally{
-      btnGenerate.disabled = false;
-      btnInit.disabled = false;
       isStepFillRunning = false;
       setRenderMode(RENDER_IMMEDIATE);
     }

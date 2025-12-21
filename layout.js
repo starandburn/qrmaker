@@ -273,12 +273,12 @@ if(txtInput){
 
 if(btnClear){
   btnClear.addEventListener("click", () => {
+    if(typeof window.stopCurrentRun === "function"){
+      window.stopCurrentRun({ resetCursor: false, clear: false });
+    }
     txtInput.value = "";
     refreshPattern();
     txtInput.focus();
-    if(typeof window.clearAllCells === "function"){
-      window.clearAllCells();
-    }
   });
 }
 
