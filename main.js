@@ -889,6 +889,7 @@
 
   const logBuffer = window._logBuffer || [];
 
+  let lastLogBody = null;
   function appendDebugLog(message, { raw = false } = {}){
     const text = raw ? String(message) : (() => {
       const now = new Date();
@@ -897,19 +898,23 @@
       const ss = String(now.getSeconds()).padStart(2, "0");
       return `[${hh}:${mm}:${ss}] ${String(message)}`;
     })();
+    const body = String(message);
     if(!debugLog){
       logBuffer.push(text);
       return;
     }
+    const first = debugLog.firstChild;
+    if(first && first.dataset && first.dataset.body === body){
+      first.textContent += ".";
+      return;
+    }
     const line = document.createElement("div");
     line.className = "log-line";
+    line.dataset.body = body;
     line.textContent = text;
-    if(debugLog.firstChild){
-      debugLog.insertBefore(line, debugLog.firstChild);
-    }else{
-      debugLog.appendChild(line);
-    }
+    debugLog.insertBefore(line, first || null);
     debugLog.scrollTop = 0;
+    lastLogBody = body;
   }
 
   function runDebugEval(){
