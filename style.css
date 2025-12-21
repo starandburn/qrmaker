@@ -794,6 +794,8 @@ textarea{
 .qr-cells .cell.col-yellow.state-1{ background:#927600; }
 .qr-cells .cell.col-purple.state-0{ background:#faf5ff; }
 .qr-cells .cell.col-purple.state-1{ background:#5a2d80; }
+.qr-cells .cell.col-orange.state-0{ background:#fff0dc; }
+.qr-cells .cell.col-orange.state-1{ background:#c65a00; }
 
 .view-area.hide-guide .guide-corner,
 .view-area.hide-guide .guide-col,

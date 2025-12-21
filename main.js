@@ -24,10 +24,12 @@
   const pendingCells = new Map();
   const cellStates = new Map(); // key: "r-c", value: { row, col, value, color }
   let isColorEnabled = true;
-  const COLORS = ["black", "red", "blue", "green", "yellow", "purple"];
+  const COLORS = ["black", "red", "blue", "green", "yellow", "purple", "orange"];
   const GROUP_COLORS = { A: "blue", B: "black", C: "green" };
   const TERMINATOR_COLOR = "yellow";
   const PADDING_COLOR = "purple";
+  const TIMING_COLOR = "orange";
+  const FORMAT_COLOR = GROUP_COLORS.A || "blue";
   const FORMAT_L = [
     0b111011111000100, // mask 0
     0b111001011110011, // mask 1
@@ -228,13 +230,13 @@
   function drawBasePatterns(color = "red", { deferFlush = false } = {}){
     setRenderMode(RENDER_BUFFERED);
     clearAllCells();
-    drawTiming(color);
+    drawTiming(TIMING_COLOR);
     drawFinder(1, 1, color);
     drawFinder(1, 19, color);
     drawFinder(19, 1, color);
     drawAlignment(19, 19, color);
     drawDarkModule(color);
-    drawFormat(0, color);
+    drawFormat(0, FORMAT_COLOR);
     if(!deferFlush){
       flushRender();
       setRenderMode(RENDER_IMMEDIATE);
