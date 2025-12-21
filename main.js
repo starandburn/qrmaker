@@ -49,6 +49,8 @@
   const PADDING_COLOR = "purple";
   const TIMING_COLOR = "orange";
   const FORMAT_COLOR = GROUP_COLORS.A || "blue";
+  const TIMING_ROW = 7;
+  const TIMING_COL = 7;
 
   function isStepModeOn(){
     return !!(stepMode && stepMode.checked);
@@ -373,6 +375,93 @@
   window.cellRefFromRowCol = cellRefFromRowCol;
   window.moveCursor = moveCursor;
   window.turnCursor = turnCursor;
+  window.drawFunctionalPatterns = () => drawBasePatterns("red", { deferFlush: false, currentRun: runId });
+  window.initializeQRCode = async () => {
+    const current = ++runId;
+    await drawBasePatterns("red", { deferFlush: false, currentRun: current });
+    if(current !== runId) return false;
+    updateCursor(25, 25, DIR_UP);
+    return true;
+  };
+  window.fillDataAndParity = async () => {
+    const currentRun = runId;
+    let stepEnabled = isStepModeOn();
+    setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
+    const funcSet = buildFunctionSet();
+    const bitsSeq = (() => {
+      const data = window.patternData;
+      if(!data) return [];
+      const ordered = ["A", "B", "C"];
+      const seq = [];
+      for(const key of ordered){
+        const groups = data[key] || [];
+        for(const g of groups){
+          const baseColor = g.color
+            || (g.terminator ? TERMINATOR_COLOR
+            : (GROUP_COLORS[key] || "black"));
+          for(const bit of g.bits){
+            seq.push({ bit: Number(bit), color: baseColor });
+          }
+        }
+      }
+      return seq;
+    })();
+
+    let bitIdx = 0;
+    let col = 25;
+    let upward = true;
+    while(col > 0 && bitIdx < bitsSeq.length){
+      if(currentRun !== runId) break;
+      if(col === 7){ col--; continue; } // skip timing column
+      const colLeft = col - 1;
+      for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
+        if(currentRun !== runId) break;
+        const row = upward ? (25 - i) : (1 + i);
+        for(const c of [col, colLeft]){
+          if(c < 1) continue;
+          if(c === 7) continue;
+          if(funcSet.has(`${row}-${c}`)) continue;
+          const { bit, color } = bitsSeq[bitIdx];
+          setCell(row, c, bit, color || "black");
+          updateCursor(row, c, upward ? DIR_UP : DIR_DOWN);
+          bitIdx++;
+          if(currentRun !== runId) break;
+          if(stepEnabled){
+            const delay = getStepDelay();
+            await sleep(Math.max(0, delay));
+            if(currentRun !== runId) break;
+            if(!isStepModeOn()){
+              stepEnabled = false;
+              setRenderMode(RENDER_BUFFERED);
+            }
+          }
+          if(bitIdx >= bitsSeq.length) break;
+        }
+      }
+      upward = !upward;
+      col -= 2;
+    }
+    if(currentRun === runId && !stepEnabled){
+      flushRender();
+    }
+    return currentRun === runId;
+  };
+  window.isEmpty = () => {
+    const key = `${cursorPos.row}-${cursorPos.col}`;
+    return !cellStates.has(key);
+  };
+  window.isUsed = () => {
+    const key = `${cursorPos.row}-${cursorPos.col}`;
+    return cellStates.has(key);
+  };
+  window.isTimingCell = () => {
+    const { row, col } = cursorPos;
+    return row === TIMING_ROW || col === TIMING_COL;
+  };
+  window.isFunctionalCell = () => {
+    const funcSet = buildFunctionSet();
+    return funcSet.has(`${cursorPos.row}-${cursorPos.col}`);
+  };
   window.up = DIR_UP;
   window.right = DIR_RIGHT;
   window.down = DIR_DOWN;
@@ -879,11 +968,11 @@
     setRenderMode(RENDER_BUFFERED);
     for(let c = 1; c <= 25; c++){
       const bit = (c % 2 === 1) ? 1 : 0;
-      setCell(7, c, bit, color);
+      setCell(TIMING_ROW, c, bit, color);
     }
     for(let r = 1; r <= 25; r++){
       const bit = (r % 2 === 1) ? 1 : 0;
-      setCell(r, 7, bit, color);
+      setCell(r, TIMING_COL, bit, color);
     }
     flushRender();
     setRenderMode(RENDER_IMMEDIATE);
