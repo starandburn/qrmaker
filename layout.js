@@ -19,6 +19,20 @@ const asciiTable = document.getElementById("asciiTable");
 const toggleInputs = [toggleCursor, toggleGuide, toggleGrid, toggleEmpty, toggleColor].filter(Boolean);
 window.toggleInputs = toggleInputs;
 
+// Minimal logger stub (overridden later in main.js) to buffer early logs
+if(typeof window.log !== "function"){
+  window._logBuffer = window._logBuffer || [];
+  window.log = (msg) => {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    const line = `[${hh}:${mm}:${ss}] ${String(msg)}`;
+    window._logBuffer.push(line);
+    try{ console.log(msg); }catch(e){}
+  };
+}
+
 // Reed-Solomon (QR, GF(256), poly 0x11d) helpers
 const GF256_EXP = new Array(512);
 const GF256_LOG = new Array(256);
@@ -190,6 +204,9 @@ function renderAsciiTable(){
 }
 
 function refreshPattern(){
+  if(typeof window.log === "function"){
+    window.log("refreshPattern()");
+  }
   if(!txtInput) return;
   if(!patternRowA || !patternRowB || !patternRowC) return;
   const input = txtInput.value;
@@ -301,6 +318,9 @@ if(studentCode){
 refreshPattern();
 
 function fitSquare(){
+  if(typeof window.log === "function"){
+    window.log("fitSquare()");
+  }
   const area = document.querySelector(".view-area");
   const sq = document.querySelector(".square");
   if(!area || !sq) return;
@@ -326,6 +346,9 @@ requestAnimationFrame(fitSquare);
 window.fitSquare = fitSquare;
 
 function syncViewToggles(){
+  if(typeof window.log === "function"){
+    window.log("syncViewToggles()");
+  }
   const area = document.querySelector(".view-area");
   if(!area) return;
   area.classList.toggle("hide-guide", toggleGuide && !toggleGuide.checked);

@@ -97,11 +97,14 @@
     setRenderMode(RENDER_IMMEDIATE);
   }
 
+  let cellsInitialized = false;
   function ensureCells(){
     const gridArea = document.querySelector(".grid-area");
     const cells = gridArea?.querySelector(".qr-cells");
     if(!gridArea || !cells) return;
-    if(cells.childElementCount === 25 * 25) return;
+    if(cells.childElementCount === 25 * 25){
+      return;
+    }
     const frag = document.createDocumentFragment();
     for(let r = 1; r <= 25; r++){
       for(let c = 1; c <= 25; c++){
@@ -113,6 +116,10 @@
       }
     }
     cells.appendChild(frag);
+    if(!cellsInitialized && typeof window.log === "function"){
+      window.log("ensureCells(): grid initialized");
+    }
+    cellsInitialized = true;
   }
 
   function applyCursor(row, col, dir){
@@ -213,7 +220,6 @@
   }
 
   function applySetCell(row, col, value, color = "black"){
-    ensureCells();
     const cells = document.querySelectorAll(".qr-cells .cell");
     if(!cells || cells.length === 0) return;
     const r = Math.min(25, Math.max(1, row));
@@ -239,7 +245,9 @@
   }
 
   function clearAllCells(){
-    ensureCells();
+    if(typeof window.log === "function"){
+      window.log("clearAllCells()");
+    }
     const cells = document.querySelectorAll(".qr-cells .cell");
     if(!cells || cells.length === 0) return;
     for(const cell of cells){
@@ -261,7 +269,6 @@
   function flushRender(){
     if(renderMode !== RENDER_BUFFERED) return;
     if(pendingCells.size > 0){
-      ensureCells();
       for(const { row, col, value, color } of pendingCells.values()){
         applySetCell(row, col, value, color);
       }
@@ -880,16 +887,23 @@
     });
   }
 
-  function appendDebugLog(message){
-    if(!debugLog) return;
-    const now = new Date();
-    const hh = String(now.getHours()).padStart(2, "0");
-    const mm = String(now.getMinutes()).padStart(2, "0");
-    const ss = String(now.getSeconds()).padStart(2, "0");
-    const prefix = `[${hh}:${mm}:${ss}] `;
+  const logBuffer = window._logBuffer || [];
+
+  function appendDebugLog(message, { raw = false } = {}){
+    const text = raw ? String(message) : (() => {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, "0");
+      const mm = String(now.getMinutes()).padStart(2, "0");
+      const ss = String(now.getSeconds()).padStart(2, "0");
+      return `[${hh}:${mm}:${ss}] ${String(message)}`;
+    })();
+    if(!debugLog){
+      logBuffer.push(text);
+      return;
+    }
     const line = document.createElement("div");
     line.className = "log-line";
-    line.textContent = `${prefix}${message}`;
+    line.textContent = text;
     if(debugLog.firstChild){
       debugLog.insertBefore(line, debugLog.firstChild);
     }else{
@@ -937,6 +951,12 @@
 
   // Expose simple logger for debugging
   window.log = (msg) => {
+    // flush buffered entries if any
+    if(debugLog && logBuffer.length){
+      for(const buffered of logBuffer.splice(0)){
+        appendDebugLog(buffered, { raw: true });
+      }
+    }
     appendDebugLog(String(msg));
     try{
       console.log(msg);
