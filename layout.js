@@ -268,7 +268,12 @@ function refreshGuide(){
 }
 
 if(txtInput){
-  txtInput.addEventListener("input", refreshPattern);
+  txtInput.addEventListener("input", () => {
+    if(typeof window.stopCurrentRun === "function"){
+      window.stopCurrentRun({ resetCursor: false, clear: false });
+    }
+    refreshPattern();
+  });
 }
 
 if(btnClear){
@@ -279,6 +284,15 @@ if(btnClear){
     txtInput.value = "";
     refreshPattern();
     txtInput.focus();
+  });
+}
+
+const studentCode = document.getElementById("studentCode");
+if(studentCode){
+  studentCode.addEventListener("input", () => {
+    if(typeof window.stopCurrentRun === "function"){
+      window.stopCurrentRun({ resetCursor: false, clear: false });
+    }
   });
 }
 
