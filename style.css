@@ -778,7 +778,10 @@ textarea{
   width:100%;
   height:100%;
   box-sizing:border-box;
-  background:transparent;
+  background:#e2e4e8;
+  background-image:
+    linear-gradient(45deg, transparent 48%, rgba(255,255,255,0.9) 48%, rgba(255,255,255,0.9) 52%, transparent 52%),
+    linear-gradient(-45deg, transparent 48%, rgba(255,255,255,0.9) 48%, rgba(255,255,255,0.9) 52%, transparent 52%);
   border:none;
 }
 
@@ -808,6 +811,10 @@ textarea{
 
 .view-area.hide-empty .grid-area{
   background:#fff;
+}
+.view-area.hide-empty .qr-cells .cell:not(.state-0):not(.state-1){
+  background:transparent;
+  background-image:none;
 }
 
 .page-footer{
