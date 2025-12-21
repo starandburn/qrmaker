@@ -1,4 +1,3 @@
-// メイン動作用の簡易テストスクリプト
 
 (function(){
   const btnGenerate = document.getElementById("btnGenerate");
@@ -194,7 +193,7 @@
     }
   }
 
-  // 外からも使えるように export
+  // Export helpers to window
   window.DIR_UP = DIR_UP;
   window.DIR_RIGHT = DIR_RIGHT;
   window.DIR_DOWN = DIR_DOWN;
@@ -302,7 +301,6 @@
       const isStepModeOn = () => !!(stepMode && stepMode.checked);
       let stepEnabled = isStepModeOn();
       setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
-      // 機能パターンを描画してから、データをジグザグ配置
       drawBasePatterns("red", { deferFlush: !stepEnabled });
       const funcSet = buildFunctionSet();
       const bitsSeq = (() => {
@@ -342,7 +340,6 @@
             bitIdx++;
             if(stepEnabled){
               const delay = getStepDelay();
-              // delay 0 でも描画を反映するために明示的にyieldする
               await sleep(Math.max(0, delay));
               if(!isStepModeOn()){
                 stepEnabled = false;
@@ -503,7 +500,7 @@
     for(const key of ordered){
       const groups = data[key] || [];
       for(const g of groups){
-        const isPadding = typeof g.label === "string" && g.label.startsWith("固定");
+        const isPadding = !!g.padding;
         const isTerm = !!g.terminator;
         const baseColor = isTerm ? TERMINATOR_COLOR : isPadding ? PADDING_COLOR : (GROUP_COLORS[key] || "black");
         for(const bit of g.bits){

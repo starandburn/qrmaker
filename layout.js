@@ -236,7 +236,7 @@ function refreshPattern(){
   const mod8 = bitStream.length % 8;
   if(mod8 !== 0){
     const zeroPad = "0".repeat(8 - mod8);
-    groupB.push({ label: "0詰め", bits: zeroPad });
+    groupB.push({ label: "0詰め", bits: zeroPad, padding: true });
     bitStream += zeroPad;
   }
 
@@ -251,7 +251,7 @@ function refreshPattern(){
     const padVal = PAD_CODEWORDS[padIdx % PAD_CODEWORDS.length];
     dataCodewords.push(padVal);
     const label = `固定:${padVal}`;
-    groupB.push({ label, bits: padVal.toString(2).padStart(8, "0"), color: "purple" });
+    groupB.push({ label, bits: padVal.toString(2).padStart(8, "0"), color: "purple", padding: true });
     padIdx++;
   }
 
