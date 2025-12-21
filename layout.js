@@ -323,6 +323,7 @@ function fitSquare(){
 window.addEventListener("resize", () => requestAnimationFrame(fitSquare));
 window.addEventListener("load", () => requestAnimationFrame(fitSquare));
 requestAnimationFrame(fitSquare);
+window.fitSquare = fitSquare;
 
 function syncViewToggles(){
   const area = document.querySelector(".view-area");

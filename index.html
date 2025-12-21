@@ -85,12 +85,19 @@ mask
   </section>
 
   <section class="right-col">
+    <div class="panel pastel-4 debug-panel" id="debugPanel">
+      <div class="debug-row">
+        <span class="debug-label">セル座標</span>
+        <input id="debugCellInput" type="text" placeholder="例: a1, aa3" aria-label="セルアドレス">
+        <button id="debugCellButton" type="button">確認</button>
+      </div>
+      <div id="debugLog" class="debug-log" role="listbox" aria-live="polite" aria-label="ログ"></div>
+    </div>
     <div class="panel pastel-5 control-panel">
       <div class="qr-head">
         <button id="btnInit" type="button">リセット</button>
         <button id="btnGenerate" type="button">作成実行</button>
         <button id="btnMask" type="button">マスク適用(0)</button>
-        <button id="btnPatternFill" type="button">パターン塗り</button>
         <div class="step-controls">
           <label class="step-mode"><input type="checkbox" id="stepMode"> ステップ実行</label>
           <label class="step-speed"><span>速</span><input type="range" id="stepSpeed" min="0" max="120" value="60" disabled><span>遅</span></label>

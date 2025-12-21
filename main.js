@@ -2,8 +2,12 @@
 (function(){
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");
-  const btnPatternFill = document.getElementById("btnPatternFill");
   const btnMask = document.getElementById("btnMask");
+  const debugCellInput = document.getElementById("debugCellInput");
+  const debugCellButton = document.getElementById("debugCellButton");
+  const debugLog = document.getElementById("debugLog");
+  const debugPanel = document.getElementById("debugPanel");
+  const footerCopy = document.querySelector(".page-footer p:first-child");
   const stepMode = document.getElementById("stepMode");
   const stepSpeed = document.getElementById("stepSpeed");
   if(!btnGenerate || !btnInit) return;
@@ -33,6 +37,23 @@
 
   function isStepModeOn(){
     return !!(stepMode && stepMode.checked);
+  }
+
+  function parseCellRef(ref){
+    if(typeof ref !== "string") return null;
+    const m = ref.trim().match(/^([a-zA-Z]+)\s*([0-9]+)$/);
+    if(!m) return null;
+    const letters = m[1].toUpperCase();
+    let col = 0;
+    for(const ch of letters){
+      const n = ch.charCodeAt(0);
+      if(n < 65 || n > 90) return null; // not A-Z
+      col = col * 26 + (n - 64); // A=1
+    }
+    const row = parseInt(m[2], 10);
+    if(!Number.isInteger(row) || row < 1) return null;
+    if(col < 1) return null;
+    return { row, col };
   }
   const FORMAT_L = [
     0b111011111000100, // mask 0
@@ -234,6 +255,7 @@
   window.drawBasePatterns = drawBasePatterns;
   window.buildFunctionSet = buildFunctionSet;
   window.stopCurrentRun = stopCurrentRun;
+  window.parseCellRef = parseCellRef;
 
   const dirs = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
   const MASK_FUNCTIONS = {
@@ -754,39 +776,6 @@
     setRenderMode(RENDER_IMMEDIATE);
   }
 
-  function fillFromPattern(){
-    const data = window.patternData;
-    if(!data) return;
-    const ordered = ["A", "B", "C"];
-    const bitsSeq = [];
-    for(const key of ordered){
-      const groups = data[key] || [];
-      for(const g of groups){
-        const isPadding = !!g.padding;
-        const isTerm = !!g.terminator;
-        const baseColor = isTerm ? TERMINATOR_COLOR : isPadding ? PADDING_COLOR : (GROUP_COLORS[key] || "black");
-        for(const bit of g.bits){
-          bitsSeq.push({ bit: Number(bit), group: key, color: baseColor });
-        }
-      }
-    }
-    clearAllCells();
-    setRenderMode(RENDER_BUFFERED);
-    let idx = 0;
-    for(let r = 1; r <= 25 && idx < bitsSeq.length; r++){
-      for(let c = 1; c <= 25 && idx < bitsSeq.length; c++, idx++){
-        const { bit, color } = bitsSeq[idx];
-        setCell(r, c, bit, color || "black");
-      }
-    }
-    flushRender();
-    setRenderMode(RENDER_IMMEDIATE);
-  }
-
-  if(btnPatternFill){
-    btnPatternFill.addEventListener("click", fillFromPattern);
-  }
-
   if(stepMode){
     stepMode.addEventListener("change", syncStepControls);
   }
@@ -801,6 +790,52 @@
     colorToggleEl.addEventListener("change", () => {
       isColorEnabled = !!colorToggleEl.checked;
       reapplyCellColors();
+    });
+  }
+
+  function appendDebugLog(message){
+    if(!debugLog) return;
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2, "0");
+    const mm = String(now.getMinutes()).padStart(2, "0");
+    const ss = String(now.getSeconds()).padStart(2, "0");
+    const prefix = `[${hh}:${mm}:${ss}] `;
+    const line = document.createElement("div");
+    line.className = "log-line";
+    line.textContent = `${prefix}${message}`;
+    debugLog.appendChild(line);
+    debugLog.scrollTop = debugLog.scrollHeight;
+  }
+
+  function showDebugCellResult(){
+    if(!debugCellInput) return;
+    const ref = debugCellInput.value.trim();
+    const parsed = parseCellRef(ref);
+    if(!parsed){
+      appendDebugLog("無効なアドレスです");
+      return;
+    }
+    appendDebugLog(`row=${parsed.row}, col=${parsed.col}`);
+  }
+  if(debugCellButton){
+    debugCellButton.addEventListener("click", showDebugCellResult);
+  }
+  if(debugCellInput){
+    debugCellInput.addEventListener("keydown", (ev) => {
+      if(ev.key === "Enter"){
+        ev.preventDefault();
+        showDebugCellResult();
+      }
+    });
+  }
+
+  if(footerCopy && debugPanel){
+    footerCopy.addEventListener("dblclick", () => {
+      const isHidden = debugPanel.style.display === "none" || getComputedStyle(debugPanel).display === "none";
+      debugPanel.style.display = isHidden ? "block" : "none";
+      if(typeof window.fitSquare === "function"){
+        requestAnimationFrame(window.fitSquare);
+      }
     });
   }
 })();
