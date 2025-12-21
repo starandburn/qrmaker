@@ -30,6 +30,10 @@
   const PADDING_COLOR = "purple";
   const TIMING_COLOR = "orange";
   const FORMAT_COLOR = GROUP_COLORS.A || "blue";
+
+  function isStepModeOn(){
+    return !!(stepMode && stepMode.checked);
+  }
   const FORMAT_L = [
     0b111011111000100, // mask 0
     0b111001011110011, // mask 1
@@ -177,12 +181,12 @@
 
   function syncStepControls(){
     if(!stepSpeed) return;
-    const on = !!(stepMode && stepMode.checked);
+    const on = isStepModeOn();
     stepSpeed.disabled = !on;
   }
 
   function getStepDelay(){
-    if(!stepMode || !stepMode.checked) return 0;
+    if(!isStepModeOn()) return 0;
     const val = Number(stepSpeed ? stepSpeed.value : STEP_DELAY_MS);
     if(Number.isNaN(val)) return 0;
     return Math.max(0, Math.min(120, val));
@@ -238,6 +242,135 @@
     drawDarkModule(color);
     drawFormat(0, FORMAT_COLOR);
     if(!deferFlush){
+      flushRender();
+      setRenderMode(RENDER_IMMEDIATE);
+    }
+  }
+
+  async function drawBasePatternsStepped(color = "red"){
+    clearAllCells();
+    setRenderMode(RENDER_IMMEDIATE);
+    let stepEnabled = isStepModeOn();
+    const stepActive = () => stepEnabled && isStepModeOn();
+    const maybeStepDelay = async () => {
+      if(!stepActive()) return;
+      const delay = getStepDelay();
+      if(delay > 0){
+        await sleep(delay);
+      }else{
+        await new Promise(requestAnimationFrame);
+      }
+      if(!isStepModeOn()){
+        stepEnabled = false;
+        setRenderMode(RENDER_BUFFERED);
+      }
+    };
+    const stepCell = (row, col, value, cellColor, dir = DIR_RIGHT) => {
+      setCell(row, col, value, cellColor);
+      updateCursor(row, col, dir);
+    };
+
+    // timing (row 7, col 7)
+    for(let c = 1; c <= 25; c++){
+      const bit = (c % 2 === 1) ? 1 : 0;
+      stepCell(7, c, bit, TIMING_COLOR, DIR_RIGHT);
+      await maybeStepDelay();
+    }
+    for(let r = 1; r <= 25; r++){
+      const bit = (r % 2 === 1) ? 1 : 0;
+      stepCell(r, 7, bit, TIMING_COLOR, DIR_DOWN);
+      await maybeStepDelay();
+    }
+
+    // finder 7x7 + separator
+    const drawFinderStep = async (topRow, leftCol) => {
+      const pattern = [
+        [1,1,1,1,1,1,1],
+        [1,0,0,0,0,0,1],
+        [1,0,1,1,1,0,1],
+        [1,0,1,1,1,0,1],
+        [1,0,1,1,1,0,1],
+        [1,0,0,0,0,0,1],
+        [1,1,1,1,1,1,1],
+      ];
+      for(let r = 0; r < 7; r++){
+        for(let c = 0; c < 7; c++){
+          const row = topRow + r;
+          const col = leftCol + c;
+          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
+          const bit = pattern[r][c];
+          stepCell(row, col, bit, color, DIR_RIGHT);
+          await maybeStepDelay();
+        }
+      }
+      const sRow = topRow - 1;
+      const eRow = topRow + 7;
+      const sCol = leftCol - 1;
+      const eCol = leftCol + 7;
+      for(let r = sRow; r <= eRow; r++){
+        for(let c = sCol; c <= eCol; c++){
+          const insideCore = r >= topRow && r < topRow + 7 && c >= leftCol && c < leftCol + 7;
+          if(insideCore) continue;
+          if(r < 1 || r > 25 || c < 1 || c > 25) continue;
+          stepCell(r, c, 0, color, DIR_RIGHT);
+          await maybeStepDelay();
+        }
+      }
+    };
+    await drawFinderStep(1, 1);
+    await drawFinderStep(1, 19);
+    await drawFinderStep(19, 1);
+
+    // alignment 5x5
+    const drawAlignmentStep = async (centerRow, centerCol) => {
+      const pattern = [
+        [1,1,1,1,1],
+        [1,0,0,0,1],
+        [1,0,1,0,1],
+        [1,0,0,0,1],
+        [1,1,1,1,1],
+      ];
+      const topRow = centerRow - 2;
+      const leftCol = centerCol - 2;
+      for(let r = 0; r < 5; r++){
+        for(let c = 0; c < 5; c++){
+          const row = topRow + r;
+          const col = leftCol + c;
+          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
+          const bit = pattern[r][c];
+          stepCell(row, col, bit, color, DIR_RIGHT);
+          await maybeStepDelay();
+        }
+      }
+    };
+    await drawAlignmentStep(19, 19);
+
+    // dark module
+    stepCell(18, 9, 1, color, DIR_RIGHT);
+    await maybeStepDelay();
+
+    // format info (two copies)
+    const coordsA = [
+      [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],
+      [8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8],
+    ];
+    const n = 25;
+    const coordsB = [
+      [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
+      [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
+    ];
+    const bits15 = FORMAT_L[0];
+    for(let i = 0; i < 15; i++){
+      const bit = (bits15 >>> i) & 1;
+      const [r1, c1] = coordsA[i];
+      const [r2, c2] = coordsB[i];
+      stepCell(r1 + 1, c1 + 1, bit, FORMAT_COLOR, DIR_RIGHT);
+      await maybeStepDelay();
+      stepCell(r2 + 1, c2 + 1, bit, FORMAT_COLOR, DIR_DOWN);
+      await maybeStepDelay();
+    }
+
+    if(renderMode === RENDER_BUFFERED){
       flushRender();
       setRenderMode(RENDER_IMMEDIATE);
     }
@@ -300,10 +433,16 @@
     btnGenerate.disabled = true;
     btnInit.disabled = true;
     try{
-      const isStepModeOn = () => !!(stepMode && stepMode.checked);
       let stepEnabled = isStepModeOn();
       setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
-      drawBasePatterns("red", { deferFlush: !stepEnabled });
+      if(stepEnabled){
+        await drawBasePatternsStepped("red");
+      }else{
+        drawBasePatterns("red", { deferFlush: false });
+      }
+      // re-evaluate in case step mode changed during base patterns
+      stepEnabled = isStepModeOn();
+      setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
       const funcSet = buildFunctionSet();
       const bitsSeq = (() => {
         const data = window.patternData;
