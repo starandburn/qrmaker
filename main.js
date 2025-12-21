@@ -6,6 +6,7 @@
   const btnPatternFill = document.getElementById("btnPatternFill");
   const btnMask = document.getElementById("btnMask");
   const stepMode = document.getElementById("stepMode");
+  const stepSpeed = document.getElementById("stepSpeed");
   if(!btnGenerate || !btnInit) return;
 
   const DIR_UP = "up";
@@ -173,6 +174,19 @@
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
+  function syncStepControls(){
+    if(!stepSpeed) return;
+    const on = !!(stepMode && stepMode.checked);
+    stepSpeed.disabled = !on;
+  }
+
+  function getStepDelay(){
+    if(!stepMode || !stepMode.checked) return 0;
+    const val = Number(stepSpeed ? stepSpeed.value : STEP_DELAY_MS);
+    if(Number.isNaN(val)) return 0;
+    return Math.max(0, Math.min(120, val));
+  }
+
   function reapplyCellColors(){
     if(cellStates.size === 0) return;
     for(const { row, col, value, color } of cellStates.values()){
@@ -327,7 +341,9 @@
             updateCursor(row, c, upward ? DIR_UP : DIR_DOWN);
             bitIdx++;
             if(stepEnabled){
-              await sleep(STEP_DELAY_MS);
+              const delay = getStepDelay();
+              // delay 0 でも描画を反映するために明示的にyieldする
+              await sleep(Math.max(0, delay));
               if(!isStepModeOn()){
                 stepEnabled = false;
                 setRenderMode(RENDER_BUFFERED);
@@ -511,6 +527,11 @@
   if(btnPatternFill){
     btnPatternFill.addEventListener("click", fillFromPattern);
   }
+
+  if(stepMode){
+    stepMode.addEventListener("change", syncStepControls);
+  }
+  syncStepControls();
 
   ensureCells();
   clearAllCells();

@@ -78,7 +78,10 @@ mask
         <button id="btnGenerate" type="button">作成実行</button>
         <button id="btnMask" type="button">マスク適用(0)</button>
         <button id="btnPatternFill" type="button">パターン塗り</button>
-        <label class="step-mode"><input type="checkbox" id="stepMode"> ステップ実行</label>
+        <div class="step-controls">
+          <label class="step-mode"><input type="checkbox" id="stepMode"> ステップ実行</label>
+          <label class="step-speed"><span>速</span><input type="range" id="stepSpeed" min="0" max="120" value="60" disabled><span>遅</span></label>
+        </div>
       </div>
     </div>
 
