@@ -16,6 +16,8 @@ const asciiLink = document.getElementById("asciiLink");
 const asciiModal = document.getElementById("asciiModal");
 const asciiClose = document.getElementById("asciiClose");
 const asciiTable = document.getElementById("asciiTable");
+const toggleInputs = [toggleCursor, toggleGuide, toggleGrid, toggleEmpty, toggleColor].filter(Boolean);
+window.toggleInputs = toggleInputs;
 
 // Reed-Solomon (QR, GF(256), poly 0x11d) helpers
 const GF256_EXP = new Array(512);
@@ -330,6 +332,7 @@ function syncViewToggles(){
   area.classList.toggle("hide-empty", toggleEmpty && !toggleEmpty.checked);
   area.classList.toggle("hide-cursor", toggleCursor && !toggleCursor.checked);
 }
+window.syncViewToggles = syncViewToggles;
 
 if(toggleGuide){
   toggleGuide.addEventListener("change", syncViewToggles);

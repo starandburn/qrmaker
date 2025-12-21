@@ -528,6 +528,14 @@
     isStepFillRunning = false;
     clearAllCells();
     updateCursor(1, 1, DIR_DOWN);
+    if(Array.isArray(window.toggleInputs)){
+      for(const el of window.toggleInputs){
+        el.checked = true;
+      }
+      if(typeof window.syncViewToggles === "function"){
+        window.syncViewToggles();
+      }
+    }
     btnGenerate.disabled = false;
     btnInit.disabled = false;
     setRenderMode(RENDER_IMMEDIATE);
@@ -615,6 +623,14 @@
       }
       if(currentRun === runId && !stepEnabled){
         flushRender();
+      }
+      if(currentRun === runId && Array.isArray(window.toggleInputs)){
+        for(const el of window.toggleInputs){
+          el.checked = false;
+        }
+        if(typeof window.syncViewToggles === "function"){
+          window.syncViewToggles();
+        }
       }
     }finally{
       isStepFillRunning = false;
