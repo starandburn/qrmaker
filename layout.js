@@ -20,8 +20,8 @@ const toggleInputs = [toggleCursor, toggleGuide, toggleGrid, toggleEmpty, toggle
 window.toggleInputs = toggleInputs;
 
 // Minimal logger stub (overridden later in main.js) to buffer early logs
+window._logBuffer = window._logBuffer || [];
 if(typeof window.log !== "function"){
-  window._logBuffer = window._logBuffer || [];
   window.log = (msg) => {
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, "0");
@@ -204,9 +204,7 @@ function renderAsciiTable(){
 }
 
 function refreshPattern(){
-  if(typeof window.log === "function"){
-    window.log("refreshPattern()");
-  }
+  window.log("refreshPattern()");
   if(!txtInput) return;
   if(!patternRowA || !patternRowB || !patternRowC) return;
   const input = txtInput.value;
@@ -318,9 +316,7 @@ if(studentCode){
 refreshPattern();
 
 function fitSquare(){
-  if(typeof window.log === "function"){
-    window.log("fitSquare()");
-  }
+  window.log("fitSquare()");
   const area = document.querySelector(".view-area");
   const sq = document.querySelector(".square");
   if(!area || !sq) return;
@@ -346,9 +342,7 @@ requestAnimationFrame(fitSquare);
 window.fitSquare = fitSquare;
 
 function syncViewToggles(){
-  if(typeof window.log === "function"){
-    window.log("syncViewToggles()");
-  }
+  window.log("syncViewToggles()");
   const area = document.querySelector(".view-area");
   if(!area) return;
   area.classList.toggle("hide-guide", toggleGuide && !toggleGuide.checked);

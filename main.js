@@ -13,10 +13,24 @@
   const stepSpeedLabel = document.querySelector(".step-speed");
   if(!btnGenerate || !btnInit) return;
 
+  // Relative directions (turn relative to current)
   const DIR_UP = 0;
   const DIR_RIGHT = 1;
   const DIR_DOWN = 2;
   const DIR_LEFT = 3;
+  // Absolute cardinal directions
+  const CARD_NORTH = 4;
+  const CARD_EAST = 5;
+  const CARD_SOUTH = 6;
+  const CARD_WEST = 7;
+  const north = CARD_NORTH;
+  const east = CARD_EAST;
+  const south = CARD_SOUTH;
+  const west = CARD_WEST;
+  const n = CARD_NORTH;
+  const e = CARD_EAST;
+  const s = CARD_SOUTH;
+  const w = CARD_WEST;
   const RENDER_IMMEDIATE = "immediate";
   const RENDER_BUFFERED = "buffered";
   const STEP_DELAY_MS = 12;
@@ -116,7 +130,7 @@
       }
     }
     cells.appendChild(frag);
-    if(!cellsInitialized && typeof window.log === "function"){
+    if(!cellsInitialized){
       window.log("ensureCells(): grid initialized");
     }
     cellsInitialized = true;
@@ -219,6 +233,26 @@
     return updateCursor(targetRow, targetCol, cursorPos.dir);
   }
 
+  function turnCursor(dirArg){
+    let targetDir = cursorPos.dir;
+    if(dirArg === undefined){
+      targetDir = (cursorPos.dir + 2) % 4;
+      return updateCursor(cursorPos.row, cursorPos.col, targetDir);
+    }
+    switch(dirArg){
+      case CARD_NORTH: targetDir = DIR_UP; break;
+      case CARD_EAST:  targetDir = DIR_RIGHT; break;
+      case CARD_SOUTH: targetDir = DIR_DOWN; break;
+      case CARD_WEST:  targetDir = DIR_LEFT; break;
+      case DIR_UP:     targetDir = cursorPos.dir; break;
+      case DIR_RIGHT:  targetDir = (cursorPos.dir + 1) % 4; break;
+      case DIR_DOWN:   targetDir = (cursorPos.dir + 2) % 4; break;
+      case DIR_LEFT:   targetDir = (cursorPos.dir + 3) % 4; break;
+      default: return false;
+    }
+    return updateCursor(cursorPos.row, cursorPos.col, targetDir);
+  }
+
   function applySetCell(row, col, value, color = "black"){
     const cells = document.querySelectorAll(".qr-cells .cell");
     if(!cells || cells.length === 0) return;
@@ -245,9 +279,7 @@
   }
 
   function clearAllCells(){
-    if(typeof window.log === "function"){
-      window.log("clearAllCells()");
-    }
+    window.log("clearAllCells()");
     const cells = document.querySelectorAll(".qr-cells .cell");
     if(!cells || cells.length === 0) return;
     for(const cell of cells){
@@ -340,10 +372,27 @@
   window.parseCellRef = parseCellRef;
   window.cellRefFromRowCol = cellRefFromRowCol;
   window.moveCursor = moveCursor;
+  window.turnCursor = turnCursor;
   window.up = DIR_UP;
   window.right = DIR_RIGHT;
   window.down = DIR_DOWN;
   window.left = DIR_LEFT;
+  window.u = DIR_UP;
+  window.r = DIR_RIGHT;
+  window.d = DIR_DOWN;
+  window.l = DIR_LEFT;
+  window.CARD_NORTH = CARD_NORTH;
+  window.CARD_EAST = CARD_EAST;
+  window.CARD_SOUTH = CARD_SOUTH;
+  window.CARD_WEST = CARD_WEST;
+  window.north = north;
+  window.east = east;
+  window.south = south;
+  window.west = west;
+  window.n = n;
+  window.e = e;
+  window.s = s;
+  window.w = w;
 
   const dirs = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
   const MASK_FUNCTIONS = {
@@ -932,14 +981,10 @@
     try{
       const result = (0, eval)(evalCode); // global eval so window.* が使える
       appendDebugLog(`OK: ${String(result)}`);
-      if(typeof window.log === "function"){
-        window.log(`eval result: ${String(result)}`);
-      }
+      window.log(`eval result: ${String(result)}`);
     }catch(err){
       appendDebugLog(`ERR: ${err}`);
-      if(typeof window.log === "function"){
-        window.log(err);
-      }
+      window.log(err);
     }
   }
   if(debugCellButton){
