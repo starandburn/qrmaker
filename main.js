@@ -51,6 +51,7 @@
   const FORMAT_COLOR = GROUP_COLORS.A || "blue";
   const TIMING_ROW = 7;
   const TIMING_COL = 7;
+  let lastMoveBlocked = false;
 
   function isStepModeOn(){
     return !!(stepMode && stepMode.checked);
@@ -182,6 +183,7 @@
   }
 
   function moveCursor(...args){
+    lastMoveBlocked = false;
     let targetRow = cursorPos.row;
     let targetCol = cursorPos.col;
     let targetDir = cursorPos.dir;
@@ -230,9 +232,16 @@
 
     // clamp and validate bounds before applying; if out of bounds, do nothing
     if(targetRow < 1 || targetRow > 25 || targetCol < 1 || targetCol > 25){
+      lastMoveBlocked = true;
       return false;
     }
-    return updateCursor(targetRow, targetCol, cursorPos.dir);
+    const ok = updateCursor(targetRow, targetCol, cursorPos.dir);
+    if(!ok){
+      lastMoveBlocked = true;
+      return false;
+    }
+    lastMoveBlocked = false;
+    return true;
   }
 
   function turnCursor(dirArg){
@@ -380,14 +389,13 @@
     const current = ++runId;
     await drawBasePatterns("red", { deferFlush: false, currentRun: current });
     if(current !== runId) return false;
-    updateCursor(25, 25, DIR_UP);
+    turnCursor(DIR_UP);
     return true;
   };
-  window.fillDataAndParity = async () => {
+  window.buildQRCode = async () => {
     const currentRun = runId;
     let stepEnabled = isStepModeOn();
     setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
-    const funcSet = buildFunctionSet();
     const bitsSeq = (() => {
       const data = window.patternData;
       if(!data) return [];
@@ -407,23 +415,32 @@
       return seq;
     })();
 
-    let bitIdx = 0;
-    let col = 25;
-    let upward = true;
-    while(col > 0 && bitIdx < bitsSeq.length){
-      if(currentRun !== runId) break;
-      if(col === 7){ col--; continue; } // skip timing column
-      const colLeft = col - 1;
-      for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
+    // Start at bottom-right, facing up
+    turnCursor(CARD_NORTH);
+
+      let bitIdx = 0;
+      let col = 25;
+      let upward = true;
+      while(col > 0 && bitIdx < bitsSeq.length){
         if(currentRun !== runId) break;
-        const row = upward ? (25 - i) : (1 + i);
-        for(const c of [col, colLeft]){
-          if(c < 1) continue;
-          if(c === 7) continue;
-          if(funcSet.has(`${row}-${c}`)) continue;
+        if(col === TIMING_COL){ col--; continue; } // skip timing column
+        const colLeft = col - 1;
+        for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
+          if(currentRun !== runId) break;
+          const row = upward ? (25 - i) : (1 + i);
+          // Face the walking direction
+          turnCursor(upward ? DIR_UP : DIR_DOWN);
+        for(const cTarget of [col, colLeft]){
+          if(bitIdx >= bitsSeq.length) break;
+          if(cTarget < 1) continue;
+          const targetCol = cTarget;
+          if(targetCol < 1 || targetCol > 25) continue;
+          const moved = moveCursor(row, targetCol);
+          if(!moved) continue;
+          if(targetCol === TIMING_COL) continue;
+          if(!window.isEmpty()) continue;
           const { bit, color } = bitsSeq[bitIdx];
-          setCell(row, c, bit, color || "black");
-          updateCursor(row, c, upward ? DIR_UP : DIR_DOWN);
+          setCell(cursorPos.row, cursorPos.col, bit, color || "black");
           bitIdx++;
           if(currentRun !== runId) break;
           if(stepEnabled){
@@ -435,7 +452,6 @@
               setRenderMode(RENDER_BUFFERED);
             }
           }
-          if(bitIdx >= bitsSeq.length) break;
         }
       }
       upward = !upward;
@@ -456,12 +472,13 @@
   };
   window.isTimingCell = () => {
     const { row, col } = cursorPos;
-    return row === TIMING_ROW || col === TIMING_COL;
+    return (row === TIMING_ROW || col === TIMING_COL) && cellStates.has(`${row}-${col}`);
   };
   window.isFunctionalCell = () => {
     const funcSet = buildFunctionSet();
     return funcSet.has(`${cursorPos.row}-${cursorPos.col}`);
   };
+  window.isMoveBlocked = () => lastMoveBlocked;
   window.up = DIR_UP;
   window.right = DIR_RIGHT;
   window.down = DIR_DOWN;
@@ -822,23 +839,38 @@
         return seq;
       })();
 
+      // Start from current cursor position, face north
+      turnCursor(CARD_NORTH);
       let bitIdx = 0;
-      let col = 25;
-      let upward = true;
+      let col = cursorPos.col;
+      let upward = cursorPos.dir !== DIR_DOWN;
+      let startRow = cursorPos.row;
       while(col > 0 && bitIdx < bitsSeq.length){
         if(currentRun !== runId){ aborted = true; break; }
-        if(col === 7){ col--; continue; } // skip timing column
+        if(col === TIMING_COL){ col--; continue; } // skip timing column
         const colLeft = col - 1;
         for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
           if(currentRun !== runId){ aborted = true; break; }
-          const row = upward ? (25 - i) : (1 + i);
-          for(const c of [col, colLeft]){
-            if(c < 1) continue;
-            if(c === 7) continue;
-            if(funcSet.has(`${row}-${c}`)) continue;
+          const row = (() => {
+            if(upward){
+              const r = startRow - i;
+              return r >= 1 ? r : 25 + r;
+            }else{
+              const r = startRow + i;
+              return r <= 25 ? r : r - 25;
+            }
+          })();
+          turnCursor(upward ? CARD_NORTH : CARD_SOUTH);
+          for(const cTarget of [col, colLeft]){
+            if(bitIdx >= bitsSeq.length) break;
+            if(cTarget < 1) continue;
+            if(cTarget === TIMING_COL) continue;
+            if(cTarget < 1 || cTarget > 25) continue;
+            const moved = moveCursor(row, cTarget);
+            if(!moved) continue;
+            if(!window.isEmpty()) continue;
             const { bit, color } = bitsSeq[bitIdx];
-            setCell(row, c, bit, color || "black");
-            updateCursor(row, c, upward ? DIR_UP : DIR_DOWN);
+            setCell(cursorPos.row, cursorPos.col, bit, color || "black");
             bitIdx++;
             if(currentRun !== runId){ aborted = true; break; }
             if(stepEnabled){
@@ -850,10 +882,10 @@
                 setRenderMode(RENDER_BUFFERED);
               }
             }
-            if(bitIdx >= bitsSeq.length) break;
           }
         }
         upward = !upward;
+        startRow = upward ? 25 : 1;
         col -= 2;
       }
       if(currentRun === runId && !stepEnabled){
