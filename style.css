@@ -414,12 +414,16 @@ details.pattern-panel:not([open]) .summary-title::before{
   padding-bottom: 0;
 }
 .bit-block.col-yellow .bit-cell{
-  border-color:#927600;
-  background:#fff7c8;
+    border-color:#927600;
+    background:#fff7c8;
 }
 .bit-block.col-yellow .bit-cell.bit-1{
-  background:#927600;
-  border-color:#927600;
+    background:#927600;
+    border-color:#927600;
+}
+.bit-block.col-yellow .bit-cell.placeholder{
+    background:transparent;
+    border:1px dashed #888;
 }
 .bit-block.col-purple .bit-cell{
   border-color:#5a2d80;
