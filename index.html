@@ -45,7 +45,20 @@
           <span class="summary-title"><span id="patternToggleText">コードパターンを表示</span></span>
           <a href="#" id="asciiLink" class="ascii-link">コードパターン対応表</a>
         </summary>
-        <div id="patternBox" class="pattern-box"></div>
+        <div id="patternBox" class="pattern-box">
+          <div class="pattern-section section-a">
+            <div class="pattern-title">A.QRコードの基本情報パターン （種別はバイトモード[4]固定）</div>
+            <div id="patternRowA" class="pattern-row"></div>
+          </div>
+          <div class="pattern-section section-b">
+            <div class="pattern-title">B.各文字に対応したパターン（1文字8桁・終端のみ4桁、32文字に満たない部分を固定パターンで埋める）</div>
+            <div id="patternRowB" class="pattern-row"></div>
+          </div>
+          <div class="pattern-section section-c">
+            <div class="pattern-title">C.読み取りミスを減らすためにAとBから規則的に計算されたパターン</div>
+            <div id="patternRowC" class="pattern-row"></div>
+          </div>
+        </div>
       </details>
     </div>
 

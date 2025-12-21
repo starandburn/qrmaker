@@ -1,5 +1,8 @@
 const txtInput = document.getElementById("txtInput");
 const patternBox = document.getElementById("patternBox");
+const patternRowA = document.getElementById("patternRowA");
+const patternRowB = document.getElementById("patternRowB");
+const patternRowC = document.getElementById("patternRowC");
 const btnClear = document.getElementById("btnClear");
 const inputGuide = document.getElementById("inputGuide");
 const toggleGuide = document.getElementById("toggleGuide");
@@ -74,21 +77,11 @@ function computeParity(dataCodewords, ecLen){
   return ec;
 }
 
-function createSection(titleText, groups, { small = false, breakAfterTerminator = false, sectionClass = "" } = {}){
+function renderRow(row, groups, { small = false, breakAfterTerminator = false } = {}){
+  if(!row) return;
   const gapLarge = 7;
   const gapSmall = 6.25;
-  const section = document.createElement("div");
-  section.className = "pattern-section";
-  if(sectionClass){
-    section.classList.add(sectionClass);
-  }
-  const title = document.createElement("div");
-  title.className = "pattern-title";
-  title.textContent = titleText;
-  section.appendChild(title);
-
-  const row = document.createElement("div");
-  row.className = "pattern-row";
+  row.innerHTML = "";
 
   const totalBits = groups.reduce((sum, g) => sum + g.bits.length + (g.terminator ? 4 : 0), 0);
   let bitIndex = 0;
@@ -157,8 +150,6 @@ function createSection(titleText, groups, { small = false, breakAfterTerminator 
       row.appendChild(brk);
     }
   }
-  section.appendChild(row);
-  return section;
 }
 
 function renderAsciiTable(){
@@ -197,7 +188,8 @@ function renderAsciiTable(){
 }
 
 function refreshPattern(){
-  if(!patternBox || !txtInput) return;
+  if(!txtInput) return;
+  if(!patternRowA || !patternRowB || !patternRowC) return;
   const input = txtInput.value;
 
   // QR v2-L constants
@@ -262,14 +254,9 @@ function refreshPattern(){
     bits: val.toString(2).padStart(8, "0"),
   }));
 
-  patternBox.innerHTML = "";
-  const sectionA = createSection("A.QRコードの基本情報パターン （種別はバイトモード[4]固定）", groupA, { sectionClass: "section-a" });
-  const sectionB = createSection("B.各文字に対応したパターン（1文字8桁・終端のみ4桁、32文字に満たない部分を固定パターンで埋める）", groupB, { breakAfterTerminator: false, sectionClass: "section-b" });
-  const sectionC = createSection("C.読み取りミスを減らすためにAとBから規則的に計算されたパターン", groupC, { sectionClass: "section-c" });
-
-  patternBox.appendChild(sectionA);
-  patternBox.appendChild(sectionB);
-  patternBox.appendChild(sectionC);
+  renderRow(patternRowA, groupA, { small: false });
+  renderRow(patternRowB, groupB, { breakAfterTerminator: false });
+  renderRow(patternRowC, groupC, { small: false });
   window.patternData = { A: groupA, B: groupB, C: groupC };
   refreshGuide();
 }
