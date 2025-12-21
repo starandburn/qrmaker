@@ -298,30 +298,17 @@
     let lastCol = 1;
     let lastDir = DIR_DOWN;
     const moveCursorPath = async (targetRow, targetCol) => {
-      let r = lastRow;
-      let c = lastCol;
-      while(r !== targetRow || c !== targetCol){
-        if(shouldAbort()) return false;
-        let nr = r;
-        let nc = c;
-        if(r !== targetRow){
-          nr += (targetRow > r) ? 1 : -1;
-        }else if(c !== targetCol){
-          nc += (targetCol > c) ? 1 : -1;
-        }
-        const dr = nr - r;
-        const dc = nc - c;
-        if(Math.abs(dr) > Math.abs(dc)){
-          lastDir = dr > 0 ? DIR_DOWN : dr < 0 ? DIR_UP : lastDir;
-        }else if(Math.abs(dc) > 0){
-          lastDir = dc > 0 ? DIR_RIGHT : DIR_LEFT;
-        }
-        updateCursor(nr, nc, lastDir);
-        r = lastRow = nr;
-        c = lastCol = nc;
-        const cont = await maybeStepDelay();
-        if(cont === false) return false;
+      if(shouldAbort()) return false;
+      const dr = targetRow - lastRow;
+      const dc = targetCol - lastCol;
+      if(Math.abs(dr) > Math.abs(dc)){
+        lastDir = dr > 0 ? DIR_DOWN : dr < 0 ? DIR_UP : lastDir;
+      }else if(Math.abs(dc) > 0){
+        lastDir = dc > 0 ? DIR_RIGHT : DIR_LEFT;
       }
+      lastRow = targetRow;
+      lastCol = targetCol;
+      updateCursor(targetRow, targetCol, lastDir);
       return !shouldAbort();
     };
     const stepCell = (row, col, value, cellColor) => {
