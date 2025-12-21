@@ -5,6 +5,7 @@
   const btnInit = document.getElementById("btnInit");
   const btnPatternFill = document.getElementById("btnPatternFill");
   const btnMask = document.getElementById("btnMask");
+  const stepMode = document.getElementById("stepMode");
   if(!btnGenerate || !btnInit) return;
 
   const DIR_UP = "up";
@@ -211,7 +212,7 @@
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
-  function drawBasePatterns(color = "red"){
+  function drawBasePatterns(color = "red", { deferFlush = false } = {}){
     setRenderMode(RENDER_BUFFERED);
     clearAllCells();
     drawTiming(color);
@@ -221,8 +222,10 @@
     drawAlignment(19, 19, color);
     drawDarkModule(color);
     drawFormat(0, color);
-    flushRender();
-    setRenderMode(RENDER_IMMEDIATE);
+    if(!deferFlush){
+      flushRender();
+      setRenderMode(RENDER_IMMEDIATE);
+    }
   }
 
   function buildFunctionSet(){
@@ -276,14 +279,16 @@
     updateCursor(cursorPos.row, cursorPos.col, cursorPos.dir);
   });
 
-  btnGenerate.addEventListener("click", async () => {
+    btnGenerate.addEventListener("click", async () => {
     if(isStepFillRunning) return;
     isStepFillRunning = true;
     btnGenerate.disabled = true;
     btnInit.disabled = true;
     try{
-      // 機能パターンを描画してから、データをジグザグ配置
-      drawBasePatterns("red");
+      const stepEnabled = !!(stepMode && stepMode.checked);
+      setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
+      // 機�Eパターンを描画してから、データをジグザグ配置
+      drawBasePatterns("red", { deferFlush: !stepEnabled });
       const funcSet = buildFunctionSet();
       const bitsSeq = (() => {
         const data = window.patternData;
@@ -307,7 +312,6 @@
       let bitIdx = 0;
       let col = 25;
       let upward = true;
-      setRenderMode(RENDER_IMMEDIATE);
       while(col > 0 && bitIdx < bitsSeq.length){
         if(col === 7){ col--; continue; } // skip timing column
         const colLeft = col - 1;
@@ -321,16 +325,23 @@
             setCell(row, c, bit, color || "black");
             updateCursor(row, c, upward ? DIR_UP : DIR_DOWN);
             bitIdx++;
+            if(stepEnabled){
+              await sleep(STEP_DELAY_MS);
+            }
             if(bitIdx >= bitsSeq.length) break;
           }
         }
         upward = !upward;
         col -= 2;
       }
+      if(!stepEnabled){
+        flushRender();
+      }
     }finally{
       btnGenerate.disabled = false;
       btnInit.disabled = false;
       isStepFillRunning = false;
+      setRenderMode(RENDER_IMMEDIATE);
     }
   });
 

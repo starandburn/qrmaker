@@ -14,7 +14,7 @@
       <img class="title-icon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAAZAQAAAADskrjOAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAACKSURBVHjaAH0Agv8AATRAfwB9Qt9/AEUUUX8ARYxRfwBFXdF/AH0+X38AAVVAfwD/EP//ANxLnf8Ac84ffwAAO0R/AINo+/8ATfMefwDHo95/AHmnmn8Ah/Ku/wBVKwL/AP8Kcv8AAT5SfwB9SXN/AEUxBn8ARYLz/wBFZWV/AH1wdv8AAWUWfwMAYckvc7Da2TIAAAAASUVORK5CYII=" alt="QRコードアイコン">
       <div class="title-text">
         <p class="subtitle">プログラミング体験学習</p>
-        <p class="title">QRコードを作成してみよう！</p>
+        <p class="title">QRコードを作成してみよう</p>
       </div>
     </div>
     <div class="school-block">
@@ -33,7 +33,7 @@
   <section class="left-col">
     <div class="panel pastel-1 input-panel">
       <div class="row">
-        <div class="label">QRコードにしたい文字（半角英数字で32文字まで）<span id="inputGuide" class="input-guide"></span></div>
+        <div class="label">QRコードにしたい文字（半角英数字で32文字まで）</div>
         <div class="input-row">
           <input id="txtInput" type="text" value="Hello, World!" maxlength="32" inputmode="latin" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false">
           <button id="btnClear" type="button">クリア</button>
@@ -43,7 +43,7 @@
       <details open class="pattern-panel" id="patternDetails">
         <summary class="pattern-summary">
           <span class="summary-title"><span id="patternToggleText">コードパターンを表示</span></span>
-          <a href="#" id="asciiLink" class="ascii-link">文字パターン対応表</a>
+          <a href="#" id="asciiLink" class="ascii-link">コードパターン対応表</a>
         </summary>
         <div id="patternBox" class="pattern-box"></div>
       </details>
@@ -78,6 +78,7 @@ mask
         <button id="btnGenerate" type="button">作成実行</button>
         <button id="btnMask" type="button">マスク適用(0)</button>
         <button id="btnPatternFill" type="button">パターン塗り</button>
+        <label class="step-mode"><input type="checkbox" id="stepMode"> ステップ実行</label>
         <span class="status-hint">プレビュー用ダミー操作</span>
       </div>
     </div>
@@ -88,7 +89,7 @@ mask
         <label><input type="checkbox" id="toggleGuide" checked> ガイド</label>
         <label><input type="checkbox" id="toggleGrid" checked> グリッド</label>
         <label><input type="checkbox" id="toggleEmpty" checked> 未配置セル</label>
-        <label><input type="checkbox" id="toggleColor" checked> 色分け</label>
+        <label><input type="checkbox" id="toggleColor" checked> 色指定</label>
       </div>
       <div class="view-area">
         <div class="qr-stage">
@@ -124,7 +125,7 @@ mask
 <div id="asciiModal" class="ascii-modal hidden" role="dialog" aria-modal="true">
   <div class="ascii-modal-content">
     <div class="ascii-modal-head">
-      <span>文字とビット列の対応表</span>
+      <span>コードとビットパターンの対応表</span>
       <button type="button" id="asciiClose" class="ascii-modal-close">閉じる</button>
     </div>
     <div class="ascii-modal-body">
@@ -135,7 +136,7 @@ mask
 
 <footer class="page-footer">
 <p>&copy; 2025 - <span id="currentYear">????</span> Japan International Institute of Cybernetics. All Rights Reserved.</p>
-  <p>QRコードは<a href="https://www.denso-wave.com/ja/system/qr/" target="_blank" rel="noopener noreferrer">株式会社デンソーウェーブ</a>の登録商標です</p>
+  <p>QRコードは<a href="https://www.denso-wave.com/ja/system/qr/" target="_blank" rel="noopener noreferrer">株式会社デンソーウェーブ</a>の登録商標です。</p>
 </footer>
 
 <script src="layout.js"></script>
