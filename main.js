@@ -10,12 +10,13 @@
   const footerCopy = document.querySelector(".page-footer p:first-child");
   const stepMode = document.getElementById("stepMode");
   const stepSpeed = document.getElementById("stepSpeed");
+  const stepSpeedLabel = document.querySelector(".step-speed");
   if(!btnGenerate || !btnInit) return;
 
-  const DIR_UP = "up";
-  const DIR_RIGHT = "right";
-  const DIR_DOWN = "down";
-  const DIR_LEFT = "left";
+  const DIR_UP = 0;
+  const DIR_RIGHT = 1;
+  const DIR_DOWN = 2;
+  const DIR_LEFT = 3;
   const RENDER_IMMEDIATE = "immediate";
   const RENDER_BUFFERED = "buffered";
   const STEP_DELAY_MS = 12;
@@ -54,6 +55,21 @@
     if(!Number.isInteger(row) || row < 1) return null;
     if(col < 1) return null;
     return { row, col };
+  }
+
+  function cellRefFromRowCol(row, col){
+    const r = Number(row);
+    const c = Number(col);
+    if(!Number.isInteger(r) || r < 1) return null;
+    if(!Number.isInteger(c) || c < 1) return null;
+    let n = c;
+    let letters = "";
+    while(n > 0){
+      const rem = (n - 1) % 26;
+      letters = String.fromCharCode(65 + rem) + letters;
+      n = Math.floor((n - 1) / 26);
+    }
+    return `${letters}${r}`;
   }
   const FORMAT_L = [
     0b111011111000100, // mask 0
@@ -128,16 +144,72 @@
   }
 
   function updateCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.dir){
-    const r = Math.min(25, Math.max(1, row));
-    const c = Math.min(25, Math.max(1, col));
+    if(row < 1 || row > 25 || col < 1 || col > 25) return false;
+    const r = row;
+    const c = col;
     cursorPos.row = r;
     cursorPos.col = c;
     cursorPos.dir = dir;
     if(renderMode === RENDER_BUFFERED){
       pendingCursor = { row: r, col: c, dir };
-      return;
+      return true;
     }
     applyCursor(r, c, dir);
+    return true;
+  }
+
+  function moveCursor(...args){
+    let targetRow = cursorPos.row;
+    let targetCol = cursorPos.col;
+    let targetDir = cursorPos.dir;
+
+    if(args.length === 0){
+      if(targetDir === DIR_UP){
+        targetRow -= 1;
+      }else if(targetDir === DIR_RIGHT){
+        targetCol += 1;
+      }else if(targetDir === DIR_DOWN){
+        targetRow += 1;
+      }else if(targetDir === DIR_LEFT){
+        targetCol -= 1;
+      }
+    }else if(args.length === 1){
+      const v = args[0];
+      if(typeof v === "string"){
+        const parsed = parseCellRef(v);
+        if(parsed){
+          targetRow = parsed.row;
+          targetCol = parsed.col;
+        }else{
+          return;
+        }
+      }else if(Number.isFinite(v)){
+        const dirAbs = v;
+        let dr = 0, dc = 0;
+        if(dirAbs === DIR_UP) dr = -1;
+        if(dirAbs === DIR_RIGHT) dc = 1;
+        if(dirAbs === DIR_DOWN) dr = 1;
+        if(dirAbs === DIR_LEFT) dc = -1;
+        targetRow += dr;
+        targetCol += dc;
+      }else{
+        return;
+      }
+    }else if(args.length >= 2){
+      const [r, c] = args;
+      if(Number.isFinite(r) && Number.isFinite(c)){
+        targetRow = r;
+        targetCol = c;
+      }else{
+        return;
+      }
+    }
+
+    // clamp and validate bounds before applying; if out of bounds, do nothing
+    if(targetRow < 1 || targetRow > 25 || targetCol < 1 || targetCol > 25){
+      return false;
+    }
+    return updateCursor(targetRow, targetCol, cursorPos.dir);
   }
 
   function applySetCell(row, col, value, color = "black"){
@@ -216,6 +288,9 @@
     if(!stepSpeed) return;
     const on = isStepModeOn();
     stepSpeed.disabled = !on;
+    if(stepSpeedLabel){
+      stepSpeedLabel.classList.toggle("disabled", stepSpeed.disabled);
+    }
   }
 
   function getStepDelay(){
@@ -256,6 +331,12 @@
   window.buildFunctionSet = buildFunctionSet;
   window.stopCurrentRun = stopCurrentRun;
   window.parseCellRef = parseCellRef;
+  window.cellRefFromRowCol = cellRefFromRowCol;
+  window.moveCursor = moveCursor;
+  window.up = DIR_UP;
+  window.right = DIR_RIGHT;
+  window.down = DIR_DOWN;
+  window.left = DIR_LEFT;
 
   const dirs = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
   const MASK_FUNCTIONS = {
@@ -654,11 +735,17 @@
       if(!maskFn) return;
       const funcSet = buildFunctionSet();
       setRenderMode(RENDER_BUFFERED);
-      for(const { row, col, value, color } of cellStates.values()){
-        if(value !== 0 && value !== 1) continue;
-        if(funcSet.has(`${row}-${col}`)) continue;
-        const masked = value ^ (maskFn(row - 1, col - 1) ? 1 : 0);
-        setCell(row, col, masked, color || "black");
+      for(let row = 1; row <= 25; row++){
+        for(let col = 1; col <= 25; col++){
+          if(funcSet.has(`${row}-${col}`)) continue;
+          const existing = cellStates.get(`${row}-${col}`);
+          const value = existing && (existing.value === 0 || existing.value === 1)
+            ? existing.value
+            : 0; // 未配置は白扱い
+          const color = existing && existing.color ? existing.color : "black";
+          const masked = value ^ (maskFn(row - 1, col - 1) ? 1 : 0);
+          setCell(row, col, masked, color);
+        }
       }
       flushRender();
       setRenderMode(RENDER_IMMEDIATE);
@@ -811,27 +898,52 @@
     debugLog.scrollTop = 0;
   }
 
-  function showDebugCellResult(){
+  function runDebugEval(){
     if(!debugCellInput) return;
-    const ref = debugCellInput.value.trim();
-    const parsed = parseCellRef(ref);
-    if(!parsed){
-      appendDebugLog("無効なアドレスです");
+    const code = debugCellInput.value.trim();
+    if(!code){
+      appendDebugLog("入力が空です");
       return;
     }
-    appendDebugLog(`row=${parsed.row}, col=${parsed.col}`);
+    let evalCode = code;
+    const mLog = code.match(/^log\s+(.+)/);
+    if(mLog){
+      evalCode = `log(${mLog[1]})`;
+    }
+    try{
+      const result = (0, eval)(evalCode); // global eval so window.* が使える
+      appendDebugLog(`OK: ${String(result)}`);
+      if(typeof window.log === "function"){
+        window.log(`eval result: ${String(result)}`);
+      }
+    }catch(err){
+      appendDebugLog(`ERR: ${err}`);
+      if(typeof window.log === "function"){
+        window.log(err);
+      }
+    }
   }
   if(debugCellButton){
-    debugCellButton.addEventListener("click", showDebugCellResult);
+    debugCellButton.addEventListener("click", runDebugEval);
   }
   if(debugCellInput){
     debugCellInput.addEventListener("keydown", (ev) => {
       if(ev.key === "Enter"){
         ev.preventDefault();
-        showDebugCellResult();
+        runDebugEval();
       }
     });
   }
+
+  // Expose simple logger for debugging
+  window.log = (msg) => {
+    appendDebugLog(String(msg));
+    try{
+      console.log(msg);
+    }catch(e){
+      // ignore console errors
+    }
+  };
 
   if(footerCopy && debugPanel){
     footerCopy.addEventListener("dblclick", () => {
