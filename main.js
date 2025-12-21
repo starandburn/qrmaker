@@ -17,8 +17,8 @@
   const STEP_DELAY_MS = 12;
 
   const cursorPos = {
-    row: 3,
-    col: 2,
+    row: 1,
+    col: 1,
     dir: DIR_DOWN,
   };
   const pendingCells = new Map();
@@ -234,6 +234,7 @@
   function drawBasePatterns(color = "red", { deferFlush = false } = {}){
     setRenderMode(RENDER_BUFFERED);
     clearAllCells();
+    updateCursor(1, 1, DIR_DOWN);
     drawTiming(TIMING_COLOR);
     drawFinder(1, 1, color);
     drawFinder(1, 19, color);
@@ -250,6 +251,7 @@
   async function drawBasePatternsStepped(color = "red"){
     clearAllCells();
     setRenderMode(RENDER_IMMEDIATE);
+    updateCursor(1, 1, DIR_DOWN);
     let stepEnabled = isStepModeOn();
     const stepActive = () => stepEnabled && isStepModeOn();
     const maybeStepDelay = async () => {
@@ -265,9 +267,14 @@
         setRenderMode(RENDER_BUFFERED);
       }
     };
-    let lastRow = cursorPos.row;
-    let lastCol = cursorPos.col;
-    let lastDir = cursorPos.dir;
+    let lastRow = 1;
+    let lastCol = 1;
+    let lastDir = DIR_DOWN;
+    const moveCursorPath = async (targetRow, targetCol) => {
+      lastRow = targetRow;
+      lastCol = targetCol;
+      updateCursor(targetRow, targetCol, lastDir);
+    };
     const stepCell = (row, col, value, cellColor) => {
       setCell(row, col, value, cellColor);
       const dr = row - lastRow;
@@ -301,12 +308,16 @@
       return coords;
     };
 
+    await moveCursorPath(1, 1);
+
     // timing (row 7, col 7)
+    await moveCursorPath(7, 1);
     for(let c = 1; c <= 25; c++){
       const bit = (c % 2 === 1) ? 1 : 0;
       stepCell(7, c, bit, TIMING_COLOR);
       await maybeStepDelay();
     }
+    await moveCursorPath(1, 7);
     for(let r = 1; r <= 25; r++){
       const bit = (r % 2 === 1) ? 1 : 0;
       stepCell(r, 7, bit, TIMING_COLOR);
@@ -349,10 +360,13 @@
       }
     };
     await drawFinderStep(1, 1);
+    await moveCursorPath(1, 19);
     await drawFinderStep(1, 19);
+    await moveCursorPath(19, 1);
     await drawFinderStep(19, 1);
 
     // alignment 5x5
+    await moveCursorPath(19, 19);
     const drawAlignmentStep = async (centerRow, centerCol) => {
       const pattern = [
         [1,1,1,1,1],
@@ -376,6 +390,7 @@
     await drawAlignmentStep(19, 19);
 
     // dark module
+    await moveCursorPath(18, 9);
     stepCell(18, 9, 1, color);
     await maybeStepDelay();
 
@@ -389,6 +404,7 @@
       [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
       [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
     ];
+    await moveCursorPath(coordsA[0][0] + 1, coordsA[0][1] + 1);
     const bits15 = FORMAT_L[0];
     const drawFormatSide = async (coords) => {
       for(let i = 0; i < 15; i++){
@@ -400,7 +416,10 @@
     };
     // 左上周りを先に、右下周りを後から描く
     await drawFormatSide(coordsA);
+    await moveCursorPath(coordsB[0][0] + 1, coordsB[0][1] + 1);
     await drawFormatSide(coordsB);
+
+    await moveCursorPath(25, 25);
 
     if(renderMode === RENDER_BUFFERED){
       flushRender();
@@ -456,7 +475,7 @@
   btnInit.addEventListener("click", () => {
     if(isStepFillRunning) return;
     clearAllCells();
-    updateCursor(cursorPos.row, cursorPos.col, cursorPos.dir);
+    updateCursor(1, 1, DIR_DOWN);
   });
 
   btnGenerate.addEventListener("click", async () => {
