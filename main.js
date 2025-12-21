@@ -265,20 +265,51 @@
         setRenderMode(RENDER_BUFFERED);
       }
     };
-    const stepCell = (row, col, value, cellColor, dir = DIR_RIGHT) => {
+    let lastRow = cursorPos.row;
+    let lastCol = cursorPos.col;
+    let lastDir = cursorPos.dir;
+    const stepCell = (row, col, value, cellColor) => {
       setCell(row, col, value, cellColor);
-      updateCursor(row, col, dir);
+      const dr = row - lastRow;
+      const dc = col - lastCol;
+      if(Math.abs(dr) > Math.abs(dc)){
+        lastDir = dr > 0 ? DIR_DOWN : dr < 0 ? DIR_UP : lastDir;
+      }else if(Math.abs(dc) > 0){
+        lastDir = dc > 0 ? DIR_RIGHT : DIR_LEFT;
+      }
+      updateCursor(row, col, lastDir);
+      lastRow = row;
+      lastCol = col;
+    };
+    const spiralOrder = size => {
+      const coords = [];
+      let top = 0, bottom = size - 1, left = 0, right = size - 1;
+      while(top <= bottom && left <= right){
+        for(let c = left; c <= right; c++) coords.push([top, c]);
+        top++;
+        for(let r = top; r <= bottom; r++) coords.push([r, right]);
+        right--;
+        if(top <= bottom){
+          for(let c = right; c >= left; c--) coords.push([bottom, c]);
+          bottom--;
+        }
+        if(left <= right){
+          for(let r = bottom; r >= top; r--) coords.push([r, left]);
+          left++;
+        }
+      }
+      return coords;
     };
 
     // timing (row 7, col 7)
     for(let c = 1; c <= 25; c++){
       const bit = (c % 2 === 1) ? 1 : 0;
-      stepCell(7, c, bit, TIMING_COLOR, DIR_RIGHT);
+      stepCell(7, c, bit, TIMING_COLOR);
       await maybeStepDelay();
     }
     for(let r = 1; r <= 25; r++){
       const bit = (r % 2 === 1) ? 1 : 0;
-      stepCell(r, 7, bit, TIMING_COLOR, DIR_DOWN);
+      stepCell(r, 7, bit, TIMING_COLOR);
       await maybeStepDelay();
     }
 
@@ -293,28 +324,28 @@
         [1,0,0,0,0,0,1],
         [1,1,1,1,1,1,1],
       ];
-      for(let r = 0; r < 7; r++){
-        for(let c = 0; c < 7; c++){
-          const row = topRow + r;
-          const col = leftCol + c;
-          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-          const bit = pattern[r][c];
-          stepCell(row, col, bit, color, DIR_RIGHT);
-          await maybeStepDelay();
-        }
+      const coreSpiral = spiralOrder(7);
+      for(const [r0, c0] of coreSpiral){
+        const row = topRow + r0;
+        const col = leftCol + c0;
+        if(row < 1 || row > 25 || col < 1 || col > 25) continue;
+        const bit = pattern[r0][c0];
+        stepCell(row, col, bit, color);
+        await maybeStepDelay();
       }
       const sRow = topRow - 1;
       const eRow = topRow + 7;
       const sCol = leftCol - 1;
       const eCol = leftCol + 7;
-      for(let r = sRow; r <= eRow; r++){
-        for(let c = sCol; c <= eCol; c++){
-          const insideCore = r >= topRow && r < topRow + 7 && c >= leftCol && c < leftCol + 7;
-          if(insideCore) continue;
-          if(r < 1 || r > 25 || c < 1 || c > 25) continue;
-          stepCell(r, c, 0, color, DIR_RIGHT);
-          await maybeStepDelay();
-        }
+      const ring = [];
+      for(let c = sCol; c <= eCol; c++) ring.push([sRow, c]);
+      for(let r = sRow + 1; r <= eRow; r++) ring.push([r, eCol]);
+      for(let c = eCol - 1; c >= sCol; c--) ring.push([eRow, c]);
+      for(let r = eRow - 1; r > sRow; r--) ring.push([r, sCol]);
+      for(const [r, c] of ring){
+        if(r < 1 || r > 25 || c < 1 || c > 25) continue;
+        stepCell(r, c, 0, color);
+        await maybeStepDelay();
       }
     };
     await drawFinderStep(1, 1);
@@ -332,21 +363,20 @@
       ];
       const topRow = centerRow - 2;
       const leftCol = centerCol - 2;
-      for(let r = 0; r < 5; r++){
-        for(let c = 0; c < 5; c++){
-          const row = topRow + r;
-          const col = leftCol + c;
-          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-          const bit = pattern[r][c];
-          stepCell(row, col, bit, color, DIR_RIGHT);
-          await maybeStepDelay();
-        }
+      const coreSpiral = spiralOrder(5);
+      for(const [r0, c0] of coreSpiral){
+        const row = topRow + r0;
+        const col = leftCol + c0;
+        if(row < 1 || row > 25 || col < 1 || col > 25) continue;
+        const bit = pattern[r0][c0];
+        stepCell(row, col, bit, color);
+        await maybeStepDelay();
       }
     };
     await drawAlignmentStep(19, 19);
 
     // dark module
-    stepCell(18, 9, 1, color, DIR_RIGHT);
+    stepCell(18, 9, 1, color);
     await maybeStepDelay();
 
     // format info (two copies)
@@ -360,15 +390,17 @@
       [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
     ];
     const bits15 = FORMAT_L[0];
-    for(let i = 0; i < 15; i++){
-      const bit = (bits15 >>> i) & 1;
-      const [r1, c1] = coordsA[i];
-      const [r2, c2] = coordsB[i];
-      stepCell(r1 + 1, c1 + 1, bit, FORMAT_COLOR, DIR_RIGHT);
-      await maybeStepDelay();
-      stepCell(r2 + 1, c2 + 1, bit, FORMAT_COLOR, DIR_DOWN);
-      await maybeStepDelay();
-    }
+    const drawFormatSide = async (coords) => {
+      for(let i = 0; i < 15; i++){
+        const bit = (bits15 >>> i) & 1;
+        const [r, c] = coords[i];
+        stepCell(r + 1, c + 1, bit, FORMAT_COLOR);
+        await maybeStepDelay();
+      }
+    };
+    // 左上周りを先に、右下周りを後から描く
+    await drawFormatSide(coordsA);
+    await drawFormatSide(coordsB);
 
     if(renderMode === RENDER_BUFFERED){
       flushRender();
