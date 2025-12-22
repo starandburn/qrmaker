@@ -1112,6 +1112,7 @@
   }
 
   function drawFinder(topRow, leftCol, color = "red"){
+    window.log && window.log(`drawFinder(${topRow}, ${leftCol})`);
     // 7x7 finder (black outer ring, white ring around as separator)
     const pattern = [
       [1,1,1,1,1,1,1],
@@ -1159,6 +1160,7 @@
   }
 
   function drawAlignment(centerRow, centerCol, color = "red"){
+    window.log && window.log(`drawAlignment(${centerRow}, ${centerCol})`);
     // 5x5 alignment pattern centered at (centerRow, centerCol)
     const pattern = [
       [1,1,1,1,1],
@@ -1187,6 +1189,7 @@
   }
 
   function drawTiming(color = "red"){
+    window.log && window.log("drawTiming()");
     if(!ENABLE_TIMING) return;
     // Horizontal and vertical timing (row 7, col 7) across full grid
     setRenderMode(RENDER_BUFFERED);
@@ -1223,6 +1226,7 @@
   }
 
   function drawDarkModule(color = "red"){
+    window.log && window.log("drawDarkModule()");
     // Dark module: row 18, col 9 (1-based) for version 2
     if(typeof window.updateCell === "function"){
       window.updateCell(18, 9, BIT_FUNC_DARK, 1);
@@ -1231,6 +1235,7 @@
   }
 
   function drawFormat(mask = 0, color = "red"){
+    window.log && window.log(`drawFormat(mask=${mask})`);
     const m = Math.min(7, Math.max(0, mask));
     const bits15 = FORMAT_L[m];
     setRenderMode(RENDER_BUFFERED);
