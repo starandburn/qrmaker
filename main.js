@@ -11,6 +11,7 @@
   const stepMode = document.getElementById("stepMode");
   const stepSpeed = document.getElementById("stepSpeed");
   const stepSpeedLabel = document.querySelector(".step-speed");
+  const toggleDebugValues = document.getElementById("toggleDebugValues");
   if(!btnGenerate || !btnInit) return;
 
   // Relative directions (turn relative to current)
@@ -430,7 +431,18 @@
   function syncDebugOverlay(){
     const cellsWrap = document.querySelector(".qr-cells");
     if(!cellsWrap) return;
-    cellsWrap.classList.toggle("show-debug-values", isDebugVisible());
+    const debugOn = isDebugVisible();
+    if(toggleDebugValues){
+      const label = toggleDebugValues.closest("label");
+      if(label){
+        label.style.display = debugOn ? "inline-flex" : "none";
+      }
+      if(!debugOn){
+        toggleDebugValues.checked = false;
+      }
+    }
+    const showValues = debugOn && toggleDebugValues && toggleDebugValues.checked;
+    cellsWrap.classList.toggle("show-debug-values", showValues);
   }
 
   // Export helpers to window
@@ -1241,6 +1253,9 @@
       isColorEnabled = !!colorToggleEl.checked;
       reapplyCellColors();
     });
+  }
+  if(toggleDebugValues){
+    toggleDebugValues.addEventListener("change", syncDebugOverlay);
   }
 
   const logBuffer = window._logBuffer || [];

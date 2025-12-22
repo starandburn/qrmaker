@@ -623,6 +623,9 @@ textarea{
   border-radius:6px;
   transition:background-color 0.15s ease;
 }
+.qr-controls .debug-only{
+  display:none;
+}
 .qr-controls label:hover,
 .step-controls label:hover{
   background:rgba(27,102,255,0.12);
