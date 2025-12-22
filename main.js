@@ -690,15 +690,15 @@
     };
   const stepCell = (row, col, value, cellColor) => {
     if(shouldAbort()) return false;
+    const kind = cellColor === TIMING_COLOR ? BIT_FUNC_TIMING
+      : cellColor === FORMAT_COLOR ? BIT_FUNC_FORMAT
+      : cellColor === color ? BIT_FUNC_FINDER
+      : BIT_UNKNOWN;
     if(typeof window.updateCell === "function"){
-      const kind = cellColor === TIMING_COLOR ? BIT_FUNC_TIMING
-        : cellColor === FORMAT_COLOR ? BIT_FUNC_FORMAT
-        : cellColor === color ? BIT_FUNC_FINDER
-        : BIT_UNKNOWN;
       const encoded = window.encodeBit(kind, value === 1);
       window.updateCell(row, col, encoded);
     }
-    setCell(row, col, value, cellColor, undefined);
+    setCell(row, col, value, cellColor, kind);
     const dr = row - lastRow;
     const dc = col - lastCol;
       if(Math.abs(dr) > Math.abs(dc)){
