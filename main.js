@@ -337,20 +337,26 @@
     }
   }
 
-  function setCell(row, col, value, color = "black", kind){
+  function setCell(row, col, value, color, kind){
     const resolvedKind = (typeof kind === "number")
       ? kind
       : (typeof window.BIT_UNKNOWN === "number" ? window.BIT_UNKNOWN : 99);
+    const colorEntry = colorsForKind(resolvedKind);
+    const finalColor = (color !== undefined && color !== null)
+      ? color
+      : (colorEntry && colorEntry.label)
+        ? colorEntry.label
+        : "black";
     const encoded = (typeof window.encodeBit === "function")
       ? window.encodeBit(resolvedKind, value === 1)
       : (value === 1 ? Math.abs(resolvedKind) : -Math.abs(resolvedKind));
     if(renderMode === RENDER_BUFFERED){
       const r = Math.min(25, Math.max(1, row));
       const c = Math.min(25, Math.max(1, col));
-      pendingCells.set(`${r}-${c}`, { row: r, col: c, value: encoded, color });
+      pendingCells.set(`${r}-${c}`, { row: r, col: c, value: encoded, color: finalColor });
       return;
     }
-    applySetCell(row, col, encoded, color);
+    applySetCell(row, col, encoded, finalColor);
   }
 
   function flushRender(){
@@ -394,6 +400,25 @@
     return Math.max(0, Math.min(120, val));
   }
 
+  function colorsForKind(kind){
+    const map = {
+      [BIT_FUNC_FINDER]:       { label: "red",    dark: "#8c0000", light: "#ffe8e8" },
+      [BIT_FUNC_TIMING]:       { label: "orange", dark: "#c65a00", light: "#fff3e0" },
+      [BIT_FUNC_ALIGNMENT]:    { label: "green",  dark: "#184c2d", light: "#e8fff0" },
+      [BIT_FUNC_DARK]:         { label: "black",  dark: "#000000", light: "#cccccc" },
+      [BIT_FUNC_FORMAT]:       { label: "blue",   dark: "#1f4a85", light: "#e8f0ff" },
+      [BIT_FUNC_VERSION]:      { label: "black",  dark: "#000000", light: "#cccccc" },
+      [BIT_INFO_MODE]:         { label: "blue",   dark: "#1f4a85", light: "#e8f0ff" },
+      [BIT_INFO_LENGTH]:       { label: "blue",   dark: "#1f4a85", light: "#e8f0ff" },
+      [BIT_INFO_CHAR]:         { label: "black",  dark: "#000000", light: "#e0e0e0" },
+      [BIT_INFO_TERMINATOR]:   { label: "yellow", dark: "#927600", light: "#fff7c8" },
+      [BIT_INFO_PADDING]:      { label: "purple", dark: "#5a2d80", light: "#f5e8ff" },
+      [BIT_INFO_PARITY]:       { label: "green",  dark: "#184c2d", light: "#e8fff0" },
+      [BIT_UNKNOWN]:           { label: "black",  dark: "#333333", light: "#dddddd" },
+    };
+    return map[kind] || { label: "black", dark: "#000000", light: "#ffffff" };
+  }
+
   function buildBitSequence(){
     if(!Array.isArray(window.patternBits) || window.patternBits.length === 0) return [];
     const seq = [];
@@ -418,7 +443,7 @@
             return "black";
         }
       })();
-      seq.push({ bit, color, kind });
+      seq.push({ bit, kind });
     }
     return seq;
   }
@@ -465,7 +490,17 @@
   // Update board matrix directly: row/col 1-based, encoded value (encodeBit)
   window.updateCell = (row, col, encodedValue) => {
     if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
-    boardMatrix[row - 1][col - 1] = encodedValue;
+    const r = row;
+    const c = col;
+    const kind = (typeof window.bitKind === "function") ? window.bitKind(encodedValue) : Math.abs(encodedValue);
+    const colorEntry = colorsForKind(kind);
+    const color = (colorEntry && colorEntry.label) ? colorEntry.label : "black";
+    if(renderMode === RENDER_BUFFERED){
+      pendingCells.set(`${r}-${c}`, { row: r, col: c, value: encodedValue, color });
+    }else{
+      applySetCell(r, c, encodedValue, color);
+    }
+    boardMatrix[r - 1][c - 1] = encodedValue;
     return true;
   };
   // Get raw encoded value from board matrix; returns null if out of range
@@ -537,8 +572,8 @@
             if(!moved) continue;
             if(ENABLE_TIMING && targetCol === timingColIndex) continue;
             if(!window.isEmpty()) continue;
-          const { bit, color, kind } = bitsSeq[bitIdx];
-            setCell(cursorPos.row, cursorPos.col, bit, color || "black", kind);
+          const { bit, kind } = bitsSeq[bitIdx];
+            setCell(cursorPos.row, cursorPos.col, bit, undefined, kind);
             bitIdx++;
             if(currentRun !== runId) break;
           if(stepEnabled){
@@ -1009,8 +1044,8 @@
             const moved = moveCursor(row, cTarget);
             if(!moved) continue;
             if(!window.isEmpty()) continue;
-            const { bit, color, kind } = bitsSeq[bitIdx];
-            setCell(cursorPos.row, cursorPos.col, bit, color || "black", kind);
+            const { bit, kind } = bitsSeq[bitIdx];
+            setCell(cursorPos.row, cursorPos.col, bit, undefined, kind);
             bitIdx++;
             if(currentRun !== runId){ aborted = true; break; }
             if(stepEnabled){
@@ -1090,7 +1125,7 @@
         if(typeof window.updateCell === "function"){
           window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
         }
-        setCell(row, col, bit, color, BIT_FUNC_FINDER);
+        setCell(row, col, bit, undefined, BIT_FUNC_FINDER);
       }
     }
     // white separator ring outside
@@ -1107,7 +1142,7 @@
           if(typeof window.updateCell === "function"){
             window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
           }
-          setCell(r, c, 0, color, BIT_FUNC_FINDER);
+          setCell(r, c, 0, undefined, BIT_FUNC_FINDER);
         }
       }
     }
@@ -1137,7 +1172,7 @@
         if(typeof window.updateCell === "function"){
           window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
         }
-        setCell(row, col, bit, color, BIT_FUNC_ALIGNMENT);
+        setCell(row, col, bit, undefined, BIT_FUNC_ALIGNMENT);
       }
     }
     flushRender();
@@ -1149,7 +1184,7 @@
     drawAlignment(19, 19, color);
   }
 
-  function drawAllFinders(color = "red"){
+  function drawAllFinders(color = "blue"){
     window.log && window.log(`drawAllFinders(color=${color})`);
     drawFinder(1, 1, color);
     drawFinder(1, 19, color);
@@ -1187,7 +1222,7 @@
         if(typeof window.updateCell === "function"){
           window.updateCell(pos, c, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
         }
-        setCell(pos, c, bit, color, BIT_FUNC_TIMING);
+        setCell(pos, c, bit, undefined, BIT_FUNC_TIMING);
       }
     }else{
       for(let r = 1; r <= 25; r++){
@@ -1202,7 +1237,7 @@
         if(typeof window.updateCell === "function"){
           window.updateCell(r, pos, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
         }
-        setCell(r, pos, bit, color, BIT_FUNC_TIMING);
+        setCell(r, pos, bit, undefined, BIT_FUNC_TIMING);
       }
     }
     flushRender();
@@ -1220,7 +1255,7 @@
     if(typeof window.updateCell === "function"){
       window.updateCell(row, col, window.encodeBit(BIT_FUNC_DARK, true));
     }
-    setCell(row, col, 1, color, BIT_FUNC_DARK);
+    setCell(row, col, 1, undefined, BIT_FUNC_DARK);
   }
 
   function drawFormat(bits15, coords, color = "red"){
@@ -1234,7 +1269,7 @@
         const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
         window.updateCell(r1 + 1, c1 + 1, enc);
       }
-      setCell(r1 + 1, c1 + 1, bit, color, BIT_FUNC_FORMAT);
+      setCell(r1 + 1, c1 + 1, bit, undefined, BIT_FUNC_FORMAT);
     }
     flushRender();
     setRenderMode(RENDER_IMMEDIATE);
