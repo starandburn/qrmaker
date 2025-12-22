@@ -415,7 +415,7 @@
             return "black";
         }
       })();
-      seq.push({ bit, color });
+      seq.push({ bit, color, kind });
     }
     return seq;
   }
@@ -519,8 +519,8 @@
             if(!moved) continue;
             if(ENABLE_TIMING && targetCol === TIMING_COL) continue;
             if(!window.isEmpty()) continue;
-            const { bit, color } = bitsSeq[bitIdx];
-            setCell(cursorPos.row, cursorPos.col, bit, color || "black");
+          const { bit, color, kind } = bitsSeq[bitIdx];
+            setCell(cursorPos.row, cursorPos.col, bit, color || "black", kind);
             bitIdx++;
             if(currentRun !== runId) break;
           if(stepEnabled){
@@ -1013,8 +1013,8 @@
             const moved = moveCursor(row, cTarget);
             if(!moved) continue;
             if(!window.isEmpty()) continue;
-            const { bit, color } = bitsSeq[bitIdx];
-            setCell(cursorPos.row, cursorPos.col, bit, color || "black");
+            const { bit, color, kind } = bitsSeq[bitIdx];
+            setCell(cursorPos.row, cursorPos.col, bit, color || "black", kind);
             bitIdx++;
             if(currentRun !== runId){ aborted = true; break; }
             if(stepEnabled){
