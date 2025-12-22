@@ -485,6 +485,7 @@
   window.drawFormat = drawFormat;
   window.drawAllFinders = drawAllFinders;
   window.drawAllAlignments = drawAllAlignments;
+  window.drawAllDarkModules = drawAllDarkModules;
   window.drawBasePatterns = drawBasePatterns;
   window.buildFunctionSet = buildFunctionSet;
   window.stopCurrentRun = stopCurrentRun;
@@ -650,7 +651,7 @@
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawAllAlignments(color);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawDarkModule(color);
+    drawAllDarkModules(color);
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawFormat(0, FORMAT_COLOR);
     if(!deferFlush){
@@ -1165,6 +1166,11 @@
     drawFinder(19, 1, color);
   }
 
+  function drawAllDarkModules(color = "red"){
+    // Version 2 dark module is at (18, 9)
+    drawDarkModule(18, 9, color);
+  }
+
   function drawTiming(color = "red"){
     window.log && window.log("drawTiming()");
     if(!ENABLE_TIMING) return;
@@ -1202,13 +1208,12 @@
     setRenderMode(RENDER_IMMEDIATE);
   }
 
-  function drawDarkModule(color = "red"){
-    window.log && window.log("drawDarkModule()");
-    // Dark module: row 18, col 9 (1-based) for version 2
+  function drawDarkModule(row = 18, col = 9, color = "red"){
+    window.log && window.log(`drawDarkModule(${row}, ${col})`);
     if(typeof window.updateCell === "function"){
-      window.updateCell(18, 9, window.encodeBit(BIT_FUNC_DARK, true));
+      window.updateCell(row, col, window.encodeBit(BIT_FUNC_DARK, true));
     }
-    setCell(18, 9, 1, color, BIT_FUNC_DARK);
+    setCell(row, col, 1, color, BIT_FUNC_DARK);
   }
 
   function drawFormat(mask = 0, color = "red"){
