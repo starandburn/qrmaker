@@ -922,7 +922,7 @@ textarea{
   font-size:9px;
   font-family:Consolas, "Courier New", monospace;
   color:var(--debug-color, #ff1493);
-  text-shadow:0 0 2px #fff, 0 0 4px #fff;
+  text-shadow:var(--debug-shadow, 0 0 2px #fff, 0 0 4px #fff);
   pointer-events:none;
   opacity:0.9;
 }

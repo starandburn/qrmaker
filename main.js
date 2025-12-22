@@ -297,8 +297,13 @@
     }
     cell.classList.add(`col-${finalColor}`);
     cell.dataset.debugVal = String(encodedValue);
-    const debugColor = encodedValue > 0 ? "#ffffff" : encodedValue < 0 ? "#000000" : "#ff1493";
+    const isPositive = encodedValue > 0;
+    const debugColor = isPositive ? "#ffffff" : encodedValue < 0 ? "#000000" : "#ff1493";
+    const debugShadow = isPositive
+      ? "0 0 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.8)"
+      : "0 0 2px #fff, 0 0 4px #fff";
     cell.style.setProperty("--debug-color", debugColor);
+    cell.style.setProperty("--debug-shadow", debugShadow);
     cellStates.set(`${r}-${c}`, { row: r, col: c, value: encodedValue, color });
     if(boardMatrix[r - 1] && boardMatrix[r - 1][c - 1] !== undefined){
       boardMatrix[r - 1][c - 1] = encodedValue;
@@ -319,6 +324,7 @@
       cell.className = "cell";
       delete cell.dataset.debugVal;
       cell.style.removeProperty("--debug-color");
+      cell.style.removeProperty("--debug-shadow");
     }
     cellStates.clear();
     for(let r = 0; r < BOARD_ROWS; r++){
