@@ -298,12 +298,10 @@
     cell.classList.add(`col-${finalColor}`);
     cell.dataset.debugVal = String(encodedValue);
     const isPositive = encodedValue > 0;
-    const debugColor = isPositive ? "#ffffff" : encodedValue < 0 ? "#000000" : "#666666";
+    const debugColor = isPositive ? "#ffffff" : "#000000";
     const debugShadow = isPositive
       ? "0 0 2px rgba(0,0,0,0.8), 0 0 4px rgba(0,0,0,0.8)"
-      : encodedValue < 0
-        ? "0 0 2px #fff, 0 0 4px #fff"
-        : "0 0 2px rgba(255,255,255,0.8), 0 0 2px rgba(0,0,0,0.8)";
+      : "0 0 2px #fff, 0 0 4px #fff";
     cell.style.setProperty("--debug-color", debugColor);
     cell.style.setProperty("--debug-shadow", debugShadow);
     cellStates.set(`${r}-${c}`, { row: r, col: c, value: encodedValue, color });
@@ -325,8 +323,8 @@
     for(const cell of cells){
       cell.className = "cell";
       cell.dataset.debugVal = "0";
-      cell.style.setProperty("--debug-color", "#666666");
-      cell.style.setProperty("--debug-shadow", "0 0 2px rgba(255,255,255,0.8), 0 0 2px rgba(0,0,0,0.8)");
+      cell.style.setProperty("--debug-color", "#000000");
+      cell.style.setProperty("--debug-shadow", "0 0 2px #fff, 0 0 4px #fff");
     }
     cellStates.clear();
     for(let r = 0; r < BOARD_ROWS; r++){
