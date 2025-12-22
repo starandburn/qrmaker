@@ -1076,13 +1076,7 @@
         flushRender();
       }
       if(currentRun === runId && Array.isArray(window.toggleInputs)){
-        for(const el of window.toggleInputs){
-          el.checked = false;
-          try{ el.dispatchEvent(new Event("change")); }catch(_e){}
-        }
-        if(typeof window.syncViewToggles === "function"){
-          window.syncViewToggles();
-        }
+        // do not auto-clear toggles; user can use 全解除 as needed
       }
     }finally{
       isStepFillRunning = false;
