@@ -1,4 +1,4 @@
-﻿
+
 (function(){
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");
@@ -733,8 +733,8 @@
         if((await maybeStepDelay()) === false) return;
       }
     };
-    // 蟾ｦ荳雁捉繧翫ｒ蜈医↓縲∝承荳句捉繧翫ｒ蠕後°繧画緒縺・    await drawFormatSide(coordsA);
-    if((await moveCursorPath(coordsB[0][0] + 1, coordsB[0][1] + 1)) === false) return;
+    // 左上周りを先に、右下周りを後から描く
+    await drawFormatSide(coordsA);
     await drawFormatSide(coordsB);
 
     await moveCursorPath(25, 25);
@@ -937,7 +937,7 @@
             : (existing ? Math.abs(existing.value) : (typeof window.BIT_UNKNOWN === "number" ? window.BIT_UNKNOWN : 99));
           const baseBit = existing
             ? ((typeof window.isBlackBit === "function") ? (window.isBlackBit(existing.value) ? 1 : 0) : (existing.value > 0 ? 1 : 0))
-            : 0; // 未配置は白扱い
+            : 0; // 譛ｪ驟咲ｽｮ縺ｯ逋ｽ謇ｱ縺・
           const masked = baseBit ^ (maskFn(row - 1, col - 1) ? 1 : 0);
           setCell(row, col, masked, color, kind);
         }
@@ -1118,7 +1118,7 @@
       evalCode = `log(${mLog[1]})`;
     }
     try{
-      const result = (0, eval)(evalCode); // global eval so window.* 縺御ｽｿ縺医ｋ
+      const result = (0, eval)(evalCode); // global eval so window.* が使える
       appendDebugLog(`OK: ${String(result)}`);
       window.log(`eval result: ${String(result)}`);
     }catch(err){
