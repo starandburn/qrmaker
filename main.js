@@ -483,6 +483,7 @@
   window.drawTiming = drawTiming;
   window.drawDarkModule = drawDarkModule;
   window.drawFormat = drawFormat;
+  window.drawAllFinders = drawAllFinders;
   window.drawBasePatterns = drawBasePatterns;
   window.buildFunctionSet = buildFunctionSet;
   window.stopCurrentRun = stopCurrentRun;
@@ -642,11 +643,7 @@
     clearAllCells();
     updateCursor(1, 1, DIR_DOWN);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawFinder(1, 1, color);
-    if(currentRun !== undefined && currentRun !== runId) return false;
-    drawFinder(1, 19, color);
-    if(currentRun !== undefined && currentRun !== runId) return false;
-    drawFinder(19, 1, color);
+    drawAllFinders(color);
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawTiming(TIMING_COLOR);
     if(currentRun !== undefined && currentRun !== runId) return false;
@@ -1155,6 +1152,12 @@
     }
     flushRender();
     setRenderMode(RENDER_IMMEDIATE);
+  }
+
+  function drawAllFinders(color = "red"){
+    drawFinder(1, 1, color);
+    drawFinder(1, 19, color);
+    drawFinder(19, 1, color);
   }
 
   function drawTiming(color = "red"){
