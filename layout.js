@@ -385,6 +385,22 @@ if(toggleCursor){
   toggleCursor.addEventListener("change", syncViewToggles);
 }
 syncViewToggles();
+if(btnSelectAllToggles){
+  btnSelectAllToggles.addEventListener("click", () => {
+    for(const el of toggleInputs){
+      el.checked = true;
+    }
+    syncViewToggles();
+  });
+}
+if(btnClearAllToggles){
+  btnClearAllToggles.addEventListener("click", () => {
+    for(const el of toggleInputs){
+      el.checked = false;
+    }
+    syncViewToggles();
+  });
+}
 
 function openAsciiModal(ev){
   if(ev){ ev.preventDefault(); }
