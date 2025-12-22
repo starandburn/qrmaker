@@ -487,6 +487,7 @@
   window.drawTiming = drawTiming;
   window.drawDarkModule = drawDarkModule;
   window.drawFormat = drawFormat;
+  window.drawAllFormats = drawAllFormats;
   window.drawAllFinders = drawAllFinders;
   window.drawAllAlignments = drawAllAlignments;
   window.drawAllDarkModules = drawAllDarkModules;
@@ -636,7 +637,7 @@
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawAllDarkModules(color);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawFormat(0, FORMAT_COLOR);
+    drawAllFormats(0, FORMAT_COLOR);
     if(!deferFlush){
       if(currentRun !== undefined && currentRun !== runId) return false;
       flushRender();
@@ -1218,12 +1219,26 @@
     setCell(row, col, 1, color, BIT_FUNC_DARK);
   }
 
-  function drawFormat(mask = 0, color = "red"){
-    window.log && window.log(`drawFormat(mask=${mask})`);
+  function drawFormat(bits15, coords, color = "red"){
+    window.log && window.log(`drawFormat(bits15=${bits15})`);
+    const coordsArr = Array.isArray(coords) ? coords : [];
+    setRenderMode(RENDER_BUFFERED);
+    for(let i = 0; i < coordsArr.length && i < 15; i++){
+      const bit = (bits15 >>> i) & 1; // LSB first
+      const [r1, c1] = coordsArr[i];
+      if(typeof window.updateCell === "function"){
+        const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
+        window.updateCell(r1 + 1, c1 + 1, enc);
+      }
+      setCell(r1 + 1, c1 + 1, bit, color, BIT_FUNC_FORMAT);
+    }
+    flushRender();
+    setRenderMode(RENDER_IMMEDIATE);
+  }
+
+  function drawAllFormats(mask = 0, color = FORMAT_COLOR){
     const m = Math.min(7, Math.max(0, mask));
     const bits15 = FORMAT_L[m];
-    setRenderMode(RENDER_BUFFERED);
-    // QR spec / old qrmaker placement (LSB-first)
     const coordsA = [
       [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],
       [8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8],
@@ -1233,20 +1248,8 @@
       [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
       [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
     ];
-    for(let i = 0; i < 15; i++){
-      const bit = (bits15 >>> i) & 1; // LSB first
-      const [r1, c1] = coordsA[i];
-      const [r2, c2] = coordsB[i];
-      if(typeof window.updateCell === "function"){
-        const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
-        window.updateCell(r1 + 1, c1 + 1, enc);
-        window.updateCell(r2 + 1, c2 + 1, enc);
-      }
-      setCell(r1 + 1, c1 + 1, bit, color, BIT_FUNC_FORMAT);
-      setCell(r2 + 1, c2 + 1, bit, color, BIT_FUNC_FORMAT);
-    }
-    flushRender();
-    setRenderMode(RENDER_IMMEDIATE);
+    drawFormat(bits15, coordsA, color);
+    drawFormat(bits15, coordsB, color);
   }
 
   if(stepMode){
