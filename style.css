@@ -657,6 +657,17 @@ textarea{
 .qr-controls button:hover{
   background:#e6eefb;
 }
+.qr-controls button{
+  padding:4px 10px;
+  font-size:12px;
+  border:1px solid #cfd6df;
+  border-radius:6px;
+  background:#f7f9fc;
+  cursor:pointer;
+}
+.qr-controls button:hover{
+  background:#e6eefb;
+}
 
 .view-panel{
   display:grid;

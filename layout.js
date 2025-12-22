@@ -23,6 +23,8 @@ const toggleGrid = document.getElementById("toggleGrid");
 const toggleEmpty = document.getElementById("toggleEmpty");
 const toggleCursor = document.getElementById("toggleCursor");
 const toggleColor = document.getElementById("toggleColor");
+const btnSelectAllToggles = document.getElementById("btnSelectAllToggles");
+const btnClearAllToggles = document.getElementById("btnClearAllToggles");
 const patternDetails = document.getElementById("patternDetails");
 const patternToggleText = document.getElementById("patternToggleText");
 const asciiLink = document.getElementById("asciiLink");
@@ -385,6 +387,22 @@ if(toggleCursor){
   toggleCursor.addEventListener("change", syncViewToggles);
 }
 syncViewToggles();
+if(btnSelectAllToggles){
+  btnSelectAllToggles.addEventListener("click", () => {
+    for(const el of toggleInputs){
+      el.checked = true;
+    }
+    syncViewToggles();
+  });
+}
+if(btnClearAllToggles){
+  btnClearAllToggles.addEventListener("click", () => {
+    for(const el of toggleInputs){
+      el.checked = false;
+    }
+    syncViewToggles();
+  });
+}
 if(btnSelectAllToggles){
   btnSelectAllToggles.addEventListener("click", () => {
     for(const el of toggleInputs){
