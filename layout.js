@@ -274,6 +274,15 @@ function refreshPattern(){
   renderRow(patternRowA, groupA, { small: false });
   renderRow(patternRowB, groupB, { breakAfterTerminator: false });
   renderRow(patternRowC, groupC, { small: false });
+  // Build flat pattern bits for drawing using parsePattern (qrcode.js)
+  try{
+    if(typeof window.parsePattern === "function"){
+      window.patternBits = window.parsePattern(input);
+    }
+  }catch(e){
+    window.log && window.log(e);
+  }
+  // Keep grouped data for pattern panel
   window.patternData = { A: groupA, B: groupB, C: groupC };
   refreshGuide();
 }
