@@ -113,7 +113,7 @@ function qrComputeParity(dataCodewords, ecLen){
  * Build QR (v2-L) pattern bits from input text.
  * - Generates A(mode/len), B(data+terminator+padding), C(parity)
  * - Each bit is encoded with sign (black/white) and kind (BIT_INFO_*)
- * - Stores detail to window.patterns and flattened bits to window.patternBits
+ * - Stores flattened bits to window.patternBits
  */
 function parsePattern(text){
   const input = typeof text === "string" ? text : "";
@@ -179,9 +179,7 @@ function parsePattern(text){
     pushBits(bits, BIT_INFO_PARITY);
   }
 
-  window.patterns = flat;
   window.patternBits = flat;
-  window.patternData = null;
   try{ console.log("patternBits", flat); }catch(_e){}
   return flat;
 }

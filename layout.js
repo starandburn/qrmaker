@@ -298,7 +298,6 @@ function refreshPattern(){
   renderRow(patternRowA, groupA, { small: false });
   renderRow(patternRowB, groupB, { breakAfterTerminator: false });
   renderRow(patternRowC, groupC, { small: false });
-  window.patternData = { A: groupA, B: groupB, C: groupC };
   refreshGuide();
 }
 function refreshGuide(){

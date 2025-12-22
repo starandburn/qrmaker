@@ -372,6 +372,35 @@
     return Math.max(0, Math.min(120, val));
   }
 
+  function buildBitSequence(){
+    if(!Array.isArray(window.patternBits) || window.patternBits.length === 0) return [];
+    const seq = [];
+    for(const v of window.patternBits){
+      const kind = (typeof window.bitKind === "function") ? window.bitKind(v) : Math.abs(v);
+      const isBlk = (typeof window.isBlackBit === "function") ? window.isBlackBit(v) : v > 0;
+      const bit = isBlk ? 1 : 0;
+      const color = (() => {
+        switch(kind){
+          case BIT_INFO_MODE:
+          case BIT_INFO_LENGTH:
+            return GROUP_COLORS.A || "blue";
+          case BIT_INFO_CHAR:
+            return GROUP_COLORS.B || "black";
+          case BIT_INFO_TERMINATOR:
+            return TERMINATOR_COLOR;
+          case BIT_INFO_PADDING:
+            return PADDING_COLOR;
+          case BIT_INFO_PARITY:
+            return GROUP_COLORS.C || "green";
+          default:
+            return "black";
+        }
+      })();
+      seq.push({ bit, color });
+    }
+    return seq;
+  }
+
   function reapplyCellColors(){
     if(cellStates.size === 0) return;
     for(const { row, col, value, color } of cellStates.values()){
@@ -442,53 +471,7 @@
     const currentRun = runId;
     let stepEnabled = isStepModeOn();
     setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
-    const bitsSeq = (() => {
-      // Prefer flat patternBits if available
-      if(Array.isArray(window.patternBits) && window.patternBits.length){
-        const seq = [];
-        for(const v of window.patternBits){
-          const kind = (typeof window.bitKind === "function") ? window.bitKind(v) : Math.abs(v);
-          const isBlk = (typeof window.isBlackBit === "function") ? window.isBlackBit(v) : v > 0;
-          const bit = isBlk ? 1 : 0;
-          const color = (() => {
-            switch(kind){
-              case BIT_INFO_MODE:
-              case BIT_INFO_LENGTH:
-                return GROUP_COLORS.A || "blue";
-              case BIT_INFO_CHAR:
-                return GROUP_COLORS.B || "black";
-              case BIT_INFO_TERMINATOR:
-                return TERMINATOR_COLOR;
-              case BIT_INFO_PADDING:
-                return PADDING_COLOR;
-              case BIT_INFO_PARITY:
-                return GROUP_COLORS.C || "green";
-              default:
-                return "black";
-            }
-          })();
-          seq.push({ bit, color });
-        }
-        return seq;
-      }
-      // Fallback to grouped data if available
-      const data = window.patternData;
-      if(!data) return [];
-      const ordered = ["A", "B", "C"];
-      const seq = [];
-      for(const key of ordered){
-        const groups = data[key] || [];
-        for(const g of groups){
-          const baseColor = g.color
-            || (g.terminator ? TERMINATOR_COLOR
-            : (GROUP_COLORS[key] || "black"));
-          for(const bit of g.bits){
-            seq.push({ bit: Number(bit), color: baseColor });
-          }
-        }
-      }
-      return seq;
-    })();
+    const bitsSeq = buildBitSequence();
 
     // Start at bottom-right, facing up
     turnCursor(CARD_NORTH);
@@ -974,53 +957,7 @@
       stepEnabled = isStepModeOn();
       setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
       const funcSet = buildFunctionSet();
-      const bitsSeq = (() => {
-        // Prefer flat patternBits if available
-        if(Array.isArray(window.patternBits) && window.patternBits.length){
-          const seq = [];
-          for(const v of window.patternBits){
-            const kind = (typeof window.bitKind === "function") ? window.bitKind(v) : Math.abs(v);
-            const isBlk = (typeof window.isBlackBit === "function") ? window.isBlackBit(v) : v > 0;
-            const bit = isBlk ? 1 : 0;
-            const color = (() => {
-              switch(kind){
-                case BIT_INFO_MODE:
-                case BIT_INFO_LENGTH:
-                  return GROUP_COLORS.A || "blue";
-                case BIT_INFO_CHAR:
-                  return GROUP_COLORS.B || "black";
-                case BIT_INFO_TERMINATOR:
-                  return TERMINATOR_COLOR;
-                case BIT_INFO_PADDING:
-                  return PADDING_COLOR;
-                case BIT_INFO_PARITY:
-                  return GROUP_COLORS.C || "green";
-                default:
-                  return "black";
-              }
-            })();
-            seq.push({ bit, color });
-          }
-          return seq;
-        }
-        // Fallback to grouped data
-        const data = window.patternData;
-        if(!data) return [];
-        const ordered = ["A", "B", "C"];
-        const seq = [];
-        for(const key of ordered){
-          const groups = data[key] || [];
-          for(const g of groups){
-            const baseColor = g.color
-              || (g.terminator ? TERMINATOR_COLOR
-              : (GROUP_COLORS[key] || "black"));
-            for(const bit of g.bits){
-              seq.push({ bit: Number(bit), color: baseColor });
-            }
-          }
-        }
-        return seq;
-      })();
+      const bitsSeq = buildBitSequence();
 
       // Start at bottom-right, facing up
       turnCursor(CARD_NORTH);
