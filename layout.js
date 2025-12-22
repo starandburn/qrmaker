@@ -393,6 +393,9 @@ if(btnSelectAllToggles){
       el.checked = true;
     }
     syncViewToggles();
+    for(const el of toggleInputs){
+      el.dispatchEvent(new Event("change"));
+    }
   });
 }
 if(btnClearAllToggles){
@@ -401,22 +404,9 @@ if(btnClearAllToggles){
       el.checked = false;
     }
     syncViewToggles();
-  });
-}
-if(btnSelectAllToggles){
-  btnSelectAllToggles.addEventListener("click", () => {
     for(const el of toggleInputs){
-      el.checked = true;
+      el.dispatchEvent(new Event("change"));
     }
-    syncViewToggles();
-  });
-}
-if(btnClearAllToggles){
-  btnClearAllToggles.addEventListener("click", () => {
-    for(const el of toggleInputs){
-      el.checked = false;
-    }
-    syncViewToggles();
   });
 }
 

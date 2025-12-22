@@ -936,6 +936,7 @@
     if(Array.isArray(window.toggleInputs)){
       for(const el of window.toggleInputs){
         el.checked = true;
+        try{ el.dispatchEvent(new Event("change")); }catch(_e){}
       }
       if(typeof window.syncViewToggles === "function"){
         window.syncViewToggles();
@@ -1077,6 +1078,7 @@
       if(currentRun === runId && Array.isArray(window.toggleInputs)){
         for(const el of window.toggleInputs){
           el.checked = false;
+          try{ el.dispatchEvent(new Event("change")); }catch(_e){}
         }
         if(typeof window.syncViewToggles === "function"){
           window.syncViewToggles();
