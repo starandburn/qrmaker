@@ -4,6 +4,9 @@ const CHAR_TERMINATE = "終端";
 const CHAR_COLON = "コロン(:)";
 const CHAR_PADDING = "固定";
 
+const TYPE_MODE = "種別";
+const TYPE_LENGTH = "文字数";
+
 const CAPTION_CODEPATTERN="コードパターンを";
 const CAPTION_SHOWCODEPATTERN = CAPTION_CODEPATTERN + "表示";
 const CAPTION_HIDECODEPATTERN = CAPTION_CODEPATTERN + "隠す";
@@ -239,8 +242,8 @@ function refreshPattern(){
   // A: mode + length
   const modeBits = "0100";
   const lenBits = input.length.toString(2).padStart(8, "0");
-  groupA.push({ label: "mode:4", bits: modeBits, color: "blue" });
-  groupA.push({ label: `len:${input.length}`, bits: lenBits, color: "blue" });
+  groupA.push({ label: `${TYPE_MODE}:4`, bits: modeBits, color: "blue" });
+  groupA.push({ label: `${TYPE_LENGTH}:${input.length}`, bits: lenBits, color: "blue" });
 
   // B: chars + terminator + zero-pad + pad codewords
   let bitStream = modeBits + lenBits;

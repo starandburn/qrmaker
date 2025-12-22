@@ -52,6 +52,10 @@
   const TIMING_ROW = 7;
   const TIMING_COL = 7;
   let lastMoveBlocked = false;
+  const BOARD_ROWS = 25;
+  const BOARD_COLS = 25;
+  const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+  const boardMatrix = Array.from({ length: BOARD_ROWS }, () => Array(BOARD_COLS).fill(UNPLACED_KIND));
 
   function isStepModeOn(){
     return !!(stepMode && stepMode.checked);
@@ -284,6 +288,9 @@
     }
     cell.classList.add(`col-${finalColor}`);
     cellStates.set(`${r}-${c}`, { row: r, col: c, value: encodedValue, color });
+    if(boardMatrix[r - 1] && boardMatrix[r - 1][c - 1] !== undefined){
+      boardMatrix[r - 1][c - 1] = encodedValue;
+    }
     const cursor = document.querySelector(".qr-cursor");
     if(cursor){
       cursor.classList.add("is-set");
@@ -300,6 +307,11 @@
       cell.className = "cell";
     }
     cellStates.clear();
+    for(let r = 0; r < BOARD_ROWS; r++){
+      for(let c = 0; c < BOARD_COLS; c++){
+        boardMatrix[r][c] = UNPLACED_KIND;
+      }
+    }
   }
 
   function setCell(row, col, value, color = "black", kind){
@@ -381,6 +393,30 @@
   window.setRenderMode = setRenderMode;
   window.reapplyCellColors = reapplyCellColors;
   window.clearAllCells = clearAllCells;
+  window.boardMatrix = boardMatrix;
+  // Update board matrix directly: row/col 1-based, kind (BIT_*), valueBit 0/1 for white/black
+  window.updateCell = (row, col, kind, valueBit) => {
+    if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
+    const k = kind;
+    const isBlack = valueBit === 1;
+    const enc = window.encodeBit(k, isBlack);
+    boardMatrix[row - 1][col - 1] = enc;
+    return true;
+  };
+  // Get raw encoded value from board matrix; returns null if out of range
+  window.getCell = (row, col) => {
+    let r = row;
+    let c = col;
+    if(typeof row === "string" && col === undefined){
+      const parsed = parseCellRef(row);
+      if(!parsed) return null;
+      r = parsed.row;
+      c = parsed.col;
+    }
+    if(!Number.isInteger(r) || !Number.isInteger(c)) return null;
+    if(r < 1 || r > BOARD_ROWS || c < 1 || c > BOARD_COLS) return null;
+    return boardMatrix[r - 1][c - 1];
+  };
   window.drawFinder = drawFinder;
   window.drawAlignment = drawAlignment;
   window.drawTiming = drawTiming;
@@ -501,14 +537,21 @@
     return currentRun === runId;
   };
   window.isEmpty = () => {
+    const r = cursorPos.row - 1;
+    const c = cursorPos.col - 1;
+    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
+    if(boardMatrix[r] && typeof boardMatrix[r][c] === "number"){
+      const val = boardMatrix[r][c];
+      if(typeof window.isUnplacedBit === "function"){
+        return window.isUnplacedBit(val);
+      }
+      const kind = (typeof window.bitKind === "function") ? window.bitKind(val) : Math.abs(val);
+      return kind === unplacedKind;
+    }
     const key = `${cursorPos.row}-${cursorPos.col}`;
     const entry = cellStates.get(key);
     if(!entry) return true;
-    if(typeof window.isUnplacedBit === "function"){
-      return window.isUnplacedBit(entry.value);
-    }
     const kind = (typeof window.bitKind === "function") ? window.bitKind(entry.value) : Math.abs(entry.value);
-    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
     return kind === unplacedKind;
   };
   window.isUsed = () => {
@@ -623,7 +666,14 @@
     };
     const stepCell = (row, col, value, cellColor) => {
       if(shouldAbort()) return false;
-      setCell(row, col, value, cellColor);
+      if(typeof window.updateCell === "function"){
+        const kind = cellColor === TIMING_COLOR ? BIT_FUNC_TIMING
+          : cellColor === FORMAT_COLOR ? BIT_FUNC_FORMAT
+          : cellColor === color ? BIT_FUNC_FINDER
+          : BIT_UNKNOWN;
+        window.updateCell(row, col, kind, value);
+      }
+      setCell(row, col, value, cellColor, undefined);
       const dr = row - lastRow;
       const dc = col - lastCol;
       if(Math.abs(dr) > Math.abs(dc)){
@@ -662,12 +712,18 @@
     if((await moveCursorPath(7, 1)) === false) return;
     for(let c = 1; c <= 25; c++){
       const bit = (c % 2 === 1) ? 1 : 0;
+      if(typeof window.updateCell === "function"){
+        window.updateCell(7, c, BIT_FUNC_TIMING, bit);
+      }
       stepCell(7, c, bit, TIMING_COLOR);
       if((await maybeStepDelay()) === false) return;
     }
     if((await moveCursorPath(1, 7)) === false) return;
     for(let r = 1; r <= 25; r++){
       const bit = (r % 2 === 1) ? 1 : 0;
+      if(typeof window.updateCell === "function"){
+        window.updateCell(r, 7, BIT_FUNC_TIMING, bit);
+      }
       stepCell(r, 7, bit, TIMING_COLOR);
       if((await maybeStepDelay()) === false) return;
     }
@@ -731,6 +787,12 @@
         const col = leftCol + c0;
         if(row < 1 || row > 25 || col < 1 || col > 25) continue;
         const bit = pattern[r0][c0];
+        if(typeof window.updateCell === "function"){
+          window.updateCell(row, col, BIT_FUNC_FINDER, bit);
+        }
+        if(typeof window.updateCell === "function"){
+          window.updateCell(row, col, BIT_FUNC_ALIGNMENT, bit);
+        }
         if(!stepCell(row, col, bit, color)) return;
         if((await maybeStepDelay()) === false) return;
       }
@@ -739,6 +801,9 @@
 
     // dark module
     if((await moveCursorPath(18, 9)) === false) return;
+    if(typeof window.updateCell === "function"){
+      window.updateCell(18, 9, BIT_FUNC_DARK, 1);
+    }
     if(!stepCell(18, 9, 1, color)) return;
     if((await maybeStepDelay()) === false) return;
 
@@ -758,6 +823,9 @@
       for(let i = 0; i < 15; i++){
         const bit = (bits15 >>> i) & 1;
         const [r, c] = coords[i];
+        if(typeof window.updateCell === "function"){
+          window.updateCell(r + 1, c + 1, BIT_FUNC_FORMAT, bit);
+        }
         if(!stepCell(r + 1, c + 1, bit, FORMAT_COLOR)) return;
         if((await maybeStepDelay()) === false) return;
       }
@@ -1024,7 +1092,10 @@
         const col = leftCol + c;
         if(row < 1 || row > 25 || col < 1 || col > 25) continue;
         const bit = pattern[r][c];
-        setCell(row, col, bit, color);
+        if(typeof window.updateCell === "function"){
+          window.updateCell(row, col, BIT_FUNC_FINDER, bit);
+        }
+        setCell(row, col, bit, color, BIT_FUNC_FINDER);
       }
     }
     // white separator ring outside
@@ -1038,7 +1109,10 @@
         if(insideCore) continue;
         if(r < 1 || r > 25 || c < 1 || c > 25) continue;
         if(r === sRow || r === eRow || c === sCol || c === eCol){
-          setCell(r, c, 0, "black");
+          if(typeof window.updateCell === "function"){
+            window.updateCell(r, c, BIT_FUNC_FINDER, 0);
+          }
+          setCell(r, c, 0, "black", BIT_FUNC_FINDER);
         }
       }
     }
@@ -1064,7 +1138,10 @@
         const col = startCol + c;
         if(row < 1 || row > 25 || col < 1 || col > 25) continue;
         const bit = pattern[r][c];
-        setCell(row, col, bit, color);
+        if(typeof window.updateCell === "function"){
+          window.updateCell(row, col, BIT_FUNC_ALIGNMENT, bit);
+        }
+        setCell(row, col, bit, color, BIT_FUNC_ALIGNMENT);
       }
     }
     flushRender();
@@ -1076,11 +1153,17 @@
     setRenderMode(RENDER_BUFFERED);
     for(let c = 1; c <= 25; c++){
       const bit = (c % 2 === 1) ? 1 : 0;
-      setCell(TIMING_ROW, c, bit, color);
+      if(typeof window.updateCell === "function"){
+        window.updateCell(TIMING_ROW, c, BIT_FUNC_TIMING, bit);
+      }
+      setCell(TIMING_ROW, c, bit, color, BIT_FUNC_TIMING);
     }
     for(let r = 1; r <= 25; r++){
       const bit = (r % 2 === 1) ? 1 : 0;
-      setCell(r, TIMING_COL, bit, color);
+      if(typeof window.updateCell === "function"){
+        window.updateCell(r, TIMING_COL, BIT_FUNC_TIMING, bit);
+      }
+      setCell(r, TIMING_COL, bit, color, BIT_FUNC_TIMING);
     }
     flushRender();
     setRenderMode(RENDER_IMMEDIATE);
@@ -1088,7 +1171,10 @@
 
   function drawDarkModule(color = "red"){
     // Dark module: row 18, col 9 (1-based) for version 2
-    setCell(18, 9, 1, color);
+    if(typeof window.updateCell === "function"){
+      window.updateCell(18, 9, BIT_FUNC_DARK, 1);
+    }
+    setCell(18, 9, 1, color, BIT_FUNC_DARK);
   }
 
   function drawFormat(mask = 0, color = "red"){
@@ -1109,8 +1195,12 @@
       const bit = (bits15 >>> i) & 1; // LSB first
       const [r1, c1] = coordsA[i];
       const [r2, c2] = coordsB[i];
-      setCell(r1 + 1, c1 + 1, bit, color);
-      setCell(r2 + 1, c2 + 1, bit, color);
+      if(typeof window.updateCell === "function"){
+        window.updateCell(r1 + 1, c1 + 1, BIT_FUNC_FORMAT, bit);
+        window.updateCell(r2 + 1, c2 + 1, BIT_FUNC_FORMAT, bit);
+      }
+      setCell(r1 + 1, c1 + 1, bit, color, BIT_FUNC_FORMAT);
+      setCell(r2 + 1, c2 + 1, bit, color, BIT_FUNC_FORMAT);
     }
     flushRender();
     setRenderMode(RENDER_IMMEDIATE);
