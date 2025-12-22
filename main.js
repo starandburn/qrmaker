@@ -583,30 +583,8 @@
   };
   window.isTimingCell = () => {
     const { row, col } = cursorPos;
-    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
-    const isPlaced = (val) => {
-      if(typeof window.isUnplacedBit === "function") return !window.isUnplacedBit(val);
-      const k = (typeof window.bitKind === "function") ? window.bitKind(val) : Math.abs(val);
-      return k !== unplacedKind;
-    };
-    const hasTimingInRow = (r) => {
-      const rr = r - 1;
-      if(rr < 0 || rr >= BOARD_ROWS) return false;
-      for(let c = 0; c < BOARD_COLS; c++){
-        if(isPlaced(boardMatrix[rr][c])) return true;
-      }
-      return false;
-    };
-    const hasTimingInCol = (c) => {
-      const cc = c - 1;
-      if(cc < 0 || cc >= BOARD_COLS) return false;
-      for(let r = 0; r < BOARD_ROWS; r++){
-        if(isPlaced(boardMatrix[r][cc])) return true;
-      }
-      return false;
-    };
-    if(timingRowIndex > 0 && row === timingRowIndex && hasTimingInRow(row)) return true;
-    if(timingColIndex > 0 && col === timingColIndex && hasTimingInCol(col)) return true;
+    if(timingRowIndex > 0 && row === timingRowIndex) return true;
+    if(timingColIndex > 0 && col === timingColIndex) return true;
     return false;
   };
   window.isFunctionalCell = () => {
