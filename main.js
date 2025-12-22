@@ -51,6 +51,7 @@
   const FORMAT_COLOR = GROUP_COLORS.A || "blue";
   const TIMING_ROW = 7;
   const TIMING_COL = 7;
+  const ENABLE_TIMING = true; // timing pattern enabled
   let lastMoveBlocked = false;
   const BOARD_ROWS = 25;
   const BOARD_COLS = 25;
@@ -497,7 +498,7 @@
       let upward = true;
       while(col > 0 && bitIdx < bitsSeq.length){
         if(currentRun !== runId) break;
-        if(col === TIMING_COL){ col--; continue; } // skip timing column
+        if(ENABLE_TIMING && col === TIMING_COL){ col--; continue; } // skip timing column when enabled
         const colLeft = col - 1;
         for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
           if(currentRun !== runId) break;
@@ -560,7 +561,31 @@
   };
   window.isTimingCell = () => {
     const { row, col } = cursorPos;
-    return (row === TIMING_ROW || col === TIMING_COL) && cellStates.has(`${row}-${col}`);
+    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
+    const isPlaced = (val) => {
+      if(typeof window.isUnplacedBit === "function") return !window.isUnplacedBit(val);
+      const k = (typeof window.bitKind === "function") ? window.bitKind(val) : Math.abs(val);
+      return k !== unplacedKind;
+    };
+    const hasTimingInRow = (r) => {
+      const rr = r - 1;
+      if(rr < 0 || rr >= BOARD_ROWS) return false;
+      for(let c = 0; c < BOARD_COLS; c++){
+        if(isPlaced(boardMatrix[rr][c])) return true;
+      }
+      return false;
+    };
+    const hasTimingInCol = (c) => {
+      const cc = c - 1;
+      if(cc < 0 || cc >= BOARD_COLS) return false;
+      for(let r = 0; r < BOARD_ROWS; r++){
+        if(isPlaced(boardMatrix[r][cc])) return true;
+      }
+      return false;
+    };
+    if(row === TIMING_ROW && hasTimingInRow(row)) return true;
+    if(col === TIMING_COL && hasTimingInCol(col)) return true;
+    return false;
   };
   window.isFunctionalCell = () => {
     const funcSet = buildFunctionSet();
@@ -750,32 +775,34 @@
     await drawFinderStep(19, 1);
 
     // timing (row 7, col 7) after finders
-    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
-    if((await moveCursorPath(7, 1)) === false) return;
-    for(let c = 1; c <= 25; c++){
-      const existing = boardMatrix[6][c - 1];
-      const kind = (typeof window.bitKind === "function") ? window.bitKind(existing) : Math.abs(existing);
-      const empty = (typeof window.isUnplacedBit === "function") ? window.isUnplacedBit(existing) : (kind === unplacedKind);
-      if(!empty) continue;
-      const bit = (c % 2 === 1) ? 1 : 0;
-      if(typeof window.updateCell === "function"){
-        window.updateCell(7, c, BIT_FUNC_TIMING, bit);
+    if(ENABLE_TIMING){
+      const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
+      if((await moveCursorPath(7, 1)) === false) return;
+      for(let c = 1; c <= 25; c++){
+        const existing = boardMatrix[6][c - 1];
+        const kind = (typeof window.bitKind === "function") ? window.bitKind(existing) : Math.abs(existing);
+        const empty = (typeof window.isUnplacedBit === "function") ? window.isUnplacedBit(existing) : (kind === unplacedKind);
+        if(!empty) continue;
+        const bit = (c % 2 === 1) ? 1 : 0;
+        if(typeof window.updateCell === "function"){
+          window.updateCell(7, c, BIT_FUNC_TIMING, bit);
+        }
+        stepCell(7, c, bit, TIMING_COLOR);
+        if((await maybeStepDelay()) === false) return;
       }
-      stepCell(7, c, bit, TIMING_COLOR);
-      if((await maybeStepDelay()) === false) return;
-    }
-    if((await moveCursorPath(1, 7)) === false) return;
-    for(let r = 1; r <= 25; r++){
-      const existing = boardMatrix[r - 1][6];
-      const kind = (typeof window.bitKind === "function") ? window.bitKind(existing) : Math.abs(existing);
-      const empty = (typeof window.isUnplacedBit === "function") ? window.isUnplacedBit(existing) : (kind === unplacedKind);
-      if(!empty) continue;
-      const bit = (r % 2 === 1) ? 1 : 0;
-      if(typeof window.updateCell === "function"){
-        window.updateCell(r, 7, BIT_FUNC_TIMING, bit);
+      if((await moveCursorPath(1, 7)) === false) return;
+      for(let r = 1; r <= 25; r++){
+        const existing = boardMatrix[r - 1][6];
+        const kind = (typeof window.bitKind === "function") ? window.bitKind(existing) : Math.abs(existing);
+        const empty = (typeof window.isUnplacedBit === "function") ? window.isUnplacedBit(existing) : (kind === unplacedKind);
+        if(!empty) continue;
+        const bit = (r % 2 === 1) ? 1 : 0;
+        if(typeof window.updateCell === "function"){
+          window.updateCell(r, 7, BIT_FUNC_TIMING, bit);
+        }
+        stepCell(r, 7, bit, TIMING_COLOR);
+        if((await maybeStepDelay()) === false) return;
       }
-      stepCell(r, 7, bit, TIMING_COLOR);
-      if((await maybeStepDelay()) === false) return;
     }
 
     // alignment 5x5
@@ -871,8 +898,10 @@
       }
     }
     // timing (row 7, col 7)
-    for(let c = 1; c <= 25; c++) add(7, c);
-    for(let r = 1; r <= 25; r++) add(r, 7);
+    if(ENABLE_TIMING){
+      for(let c = 1; c <= 25; c++) add(7, c);
+      for(let r = 1; r <= 25; r++) add(r, 7);
+    }
     // alignment 5x5 at (19,19)
     for(let dr = -2; dr <= 2; dr++){
       for(let dc = -2; dc <= 2; dc++){
@@ -997,7 +1026,7 @@
       let startRow = cursorPos.row;
       while(col > 0 && bitIdx < bitsSeq.length){
         if(currentRun !== runId){ aborted = true; break; }
-        if(col === TIMING_COL){ col--; continue; } // skip timing column
+        if(ENABLE_TIMING && col === TIMING_COL){ col--; continue; } // skip timing column when enabled
         const colLeft = col - 1;
         for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
           if(currentRun !== runId){ aborted = true; break; }
@@ -1014,7 +1043,7 @@
           for(const cTarget of [col, colLeft]){
             if(bitIdx >= bitsSeq.length) break;
             if(cTarget < 1) continue;
-            if(cTarget === TIMING_COL) continue;
+            if(ENABLE_TIMING && cTarget === TIMING_COL) continue;
             if(cTarget < 1 || cTarget > 25) continue;
             const moved = moveCursor(row, cTarget);
             if(!moved) continue;
@@ -1158,6 +1187,7 @@
   }
 
   function drawTiming(color = "red"){
+    if(!ENABLE_TIMING) return;
     // Horizontal and vertical timing (row 7, col 7) across full grid
     setRenderMode(RENDER_BUFFERED);
     for(let c = 1; c <= 25; c++){
