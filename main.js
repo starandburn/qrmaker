@@ -486,6 +486,7 @@
   window.drawAllFinders = drawAllFinders;
   window.drawAllAlignments = drawAllAlignments;
   window.drawAllDarkModules = drawAllDarkModules;
+  window.drawAllTimings = drawAllTimings;
   window.drawBasePatterns = drawBasePatterns;
   window.buildFunctionSet = buildFunctionSet;
   window.stopCurrentRun = stopCurrentRun;
@@ -647,7 +648,7 @@
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawAllFinders(color);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawTiming(TIMING_COLOR);
+    drawAllTimings(TIMING_COLOR);
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawAllAlignments(color);
     if(currentRun !== undefined && currentRun !== runId) return false;
@@ -1171,41 +1172,51 @@
     drawDarkModule(18, 9, color);
   }
 
-  function drawTiming(color = "red"){
-    window.log && window.log("drawTiming()");
+  function drawTiming(direction = "row", index = TIMING_ROW, color = TIMING_COLOR){
+    window.log && window.log(`drawTiming(dir=${direction}, idx=${index})`);
     if(!ENABLE_TIMING) return;
-    // Horizontal and vertical timing (row 7, col 7) across full grid
+    const dirStr = String(direction || "").toLowerCase();
+    const isRow = dirStr === "row" || dirStr === "horizontal" || dirStr === "h";
+    const pos = Math.min(25, Math.max(1, Number(index)));
     setRenderMode(RENDER_BUFFERED);
-    for(let c = 1; c <= 25; c++){
-      const bit = (c % 2 === 1) ? 1 : 0;
-      const existing = boardMatrix[TIMING_ROW - 1][c - 1];
-      const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
-      if(typeof window.isUnplacedBit === "function"){
-        if(!window.isUnplacedBit(existing)) continue;
-      }else{
-        if((typeof window.bitKind === "function" ? window.bitKind(existing) : Math.abs(existing)) !== unplacedKind) continue;
+    if(isRow){
+      for(let c = 1; c <= 25; c++){
+        const bit = (c % 2 === 1) ? 1 : 0;
+        const existing = boardMatrix[pos - 1][c - 1];
+        const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
+        if(typeof window.isUnplacedBit === "function"){
+          if(!window.isUnplacedBit(existing)) continue;
+        }else{
+          if((typeof window.bitKind === "function" ? window.bitKind(existing) : Math.abs(existing)) !== unplacedKind) continue;
+        }
+        if(typeof window.updateCell === "function"){
+          window.updateCell(pos, c, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
+        }
+        setCell(pos, c, bit, color, BIT_FUNC_TIMING);
       }
-      if(typeof window.updateCell === "function"){
-        window.updateCell(TIMING_ROW, c, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
+    }else{
+      for(let r = 1; r <= 25; r++){
+        const bit = (r % 2 === 1) ? 1 : 0;
+        const existing = boardMatrix[r - 1][pos - 1];
+        const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
+        if(typeof window.isUnplacedBit === "function"){
+          if(!window.isUnplacedBit(existing)) continue;
+        }else{
+          if((typeof window.bitKind === "function" ? window.bitKind(existing) : Math.abs(existing)) !== unplacedKind) continue;
+        }
+        if(typeof window.updateCell === "function"){
+          window.updateCell(r, pos, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
+        }
+        setCell(r, pos, bit, color, BIT_FUNC_TIMING);
       }
-      setCell(TIMING_ROW, c, bit, color, BIT_FUNC_TIMING);
-    }
-    for(let r = 1; r <= 25; r++){
-      const bit = (r % 2 === 1) ? 1 : 0;
-      const existing = boardMatrix[r - 1][TIMING_COL - 1];
-      const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
-      if(typeof window.isUnplacedBit === "function"){
-        if(!window.isUnplacedBit(existing)) continue;
-      }else{
-        if((typeof window.bitKind === "function" ? window.bitKind(existing) : Math.abs(existing)) !== unplacedKind) continue;
-      }
-      if(typeof window.updateCell === "function"){
-        window.updateCell(r, TIMING_COL, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
-      }
-      setCell(r, TIMING_COL, bit, color, BIT_FUNC_TIMING);
     }
     flushRender();
     setRenderMode(RENDER_IMMEDIATE);
+  }
+
+  function drawAllTimings(color = TIMING_COLOR){
+    drawTiming("row", TIMING_ROW, color);
+    drawTiming("col", TIMING_COL, color);
   }
 
   function drawDarkModule(row = 18, col = 9, color = "red"){
