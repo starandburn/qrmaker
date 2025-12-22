@@ -1,4 +1,4 @@
-
+﻿
 (function(){
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");
@@ -264,7 +264,7 @@
     return updateCursor(cursorPos.row, cursorPos.col, targetDir);
   }
 
-  function applySetCell(row, col, value, color = "black"){
+  function applySetCell(row, col, encodedValue, color = "black"){
     const cells = document.querySelectorAll(".qr-cells .cell");
     if(!cells || cells.length === 0) return;
     const r = Math.min(25, Math.max(1, row));
@@ -274,13 +274,16 @@
     if(!cell) return;
     const finalColor = isColorEnabled ? color : "black";
     cell.className = "cell";
-    if(value === 1){
-      cell.classList.add("state-1");
-    }else if(value === 0){
-      cell.classList.add("state-0");
+    const kind = (typeof window.bitKind === "function") ? window.bitKind(encodedValue) : Math.abs(encodedValue);
+    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+    if(kind !== unplacedKind){
+      const isBlack = (typeof window.isBlackBit === "function")
+        ? window.isBlackBit(encodedValue)
+        : encodedValue > 0;
+      cell.classList.add(isBlack ? "state-1" : "state-0");
     }
     cell.classList.add(`col-${finalColor}`);
-    cellStates.set(`${r}-${c}`, { row: r, col: c, value, color });
+    cellStates.set(`${r}-${c}`, { row: r, col: c, value: encodedValue, color });
     const cursor = document.querySelector(".qr-cursor");
     if(cursor){
       cursor.classList.add("is-set");
@@ -299,14 +302,20 @@
     cellStates.clear();
   }
 
-  function setCell(row, col, value, color = "black"){
+  function setCell(row, col, value, color = "black", kind){
+    const resolvedKind = (typeof kind === "number")
+      ? kind
+      : (typeof window.BIT_UNKNOWN === "number" ? window.BIT_UNKNOWN : 99);
+    const encoded = (typeof window.encodeBit === "function")
+      ? window.encodeBit(resolvedKind, value === 1)
+      : (value === 1 ? Math.abs(resolvedKind) : -Math.abs(resolvedKind));
     if(renderMode === RENDER_BUFFERED){
       const r = Math.min(25, Math.max(1, row));
       const c = Math.min(25, Math.max(1, col));
-      pendingCells.set(`${r}-${c}`, { row: r, col: c, value, color });
+      pendingCells.set(`${r}-${c}`, { row: r, col: c, value: encoded, color });
       return;
     }
-    applySetCell(row, col, value, color);
+    applySetCell(row, col, encoded, color);
   }
 
   function flushRender(){
@@ -464,7 +473,14 @@
   };
   window.isEmpty = () => {
     const key = `${cursorPos.row}-${cursorPos.col}`;
-    return !cellStates.has(key);
+    const entry = cellStates.get(key);
+    if(!entry) return true;
+    if(typeof window.isUnplacedBit === "function"){
+      return window.isUnplacedBit(entry.value);
+    }
+    const kind = (typeof window.bitKind === "function") ? window.bitKind(entry.value) : Math.abs(entry.value);
+    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+    return kind === unplacedKind;
   };
   window.isUsed = () => {
     const key = `${cursorPos.row}-${cursorPos.col}`;
@@ -717,8 +733,7 @@
         if((await maybeStepDelay()) === false) return;
       }
     };
-    // 左上周りを先に、右下周りを後から描く
-    await drawFormatSide(coordsA);
+    // 蟾ｦ荳雁捉繧翫ｒ蜈医↓縲∝承荳句捉繧翫ｒ蠕後°繧画緒縺・    await drawFormatSide(coordsA);
     if((await moveCursorPath(coordsB[0][0] + 1, coordsB[0][1] + 1)) === false) return;
     await drawFormatSide(coordsB);
 
@@ -916,12 +931,15 @@
         for(let col = 1; col <= 25; col++){
           if(funcSet.has(`${row}-${col}`)) continue;
           const existing = cellStates.get(`${row}-${col}`);
-          const value = existing && (existing.value === 0 || existing.value === 1)
-            ? existing.value
-            : 0; // 未配置は白扱い
           const color = existing && existing.color ? existing.color : "black";
-          const masked = value ^ (maskFn(row - 1, col - 1) ? 1 : 0);
-          setCell(row, col, masked, color);
+          const kind = existing && typeof window.bitKind === "function"
+            ? window.bitKind(existing.value)
+            : (existing ? Math.abs(existing.value) : (typeof window.BIT_UNKNOWN === "number" ? window.BIT_UNKNOWN : 99));
+          const baseBit = existing
+            ? ((typeof window.isBlackBit === "function") ? (window.isBlackBit(existing.value) ? 1 : 0) : (existing.value > 0 ? 1 : 0))
+            : 0; // 未配置は白扱い
+          const masked = baseBit ^ (maskFn(row - 1, col - 1) ? 1 : 0);
+          setCell(row, col, masked, color, kind);
         }
       }
       flushRender();
@@ -1100,7 +1118,7 @@
       evalCode = `log(${mLog[1]})`;
     }
     try{
-      const result = (0, eval)(evalCode); // global eval so window.* が使える
+      const result = (0, eval)(evalCode); // global eval so window.* 縺御ｽｿ縺医ｋ
       appendDebugLog(`OK: ${String(result)}`);
       window.log(`eval result: ${String(result)}`);
     }catch(err){
