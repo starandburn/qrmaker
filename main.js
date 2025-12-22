@@ -603,13 +603,13 @@
     clearAllCells();
     updateCursor(1, 1, DIR_DOWN);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawTiming(TIMING_COLOR);
-    if(currentRun !== undefined && currentRun !== runId) return false;
     drawFinder(1, 1, color);
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawFinder(1, 19, color);
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawFinder(19, 1, color);
+    if(currentRun !== undefined && currentRun !== runId) return false;
+    drawTiming(TIMING_COLOR);
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawAlignment(19, 19, color);
     if(currentRun !== undefined && currentRun !== runId) return false;
@@ -708,26 +708,6 @@
 
     if((await moveCursorPath(1, 1)) === false) return;
 
-    // timing (row 7, col 7)
-    if((await moveCursorPath(7, 1)) === false) return;
-    for(let c = 1; c <= 25; c++){
-      const bit = (c % 2 === 1) ? 1 : 0;
-      if(typeof window.updateCell === "function"){
-        window.updateCell(7, c, BIT_FUNC_TIMING, bit);
-      }
-      stepCell(7, c, bit, TIMING_COLOR);
-      if((await maybeStepDelay()) === false) return;
-    }
-    if((await moveCursorPath(1, 7)) === false) return;
-    for(let r = 1; r <= 25; r++){
-      const bit = (r % 2 === 1) ? 1 : 0;
-      if(typeof window.updateCell === "function"){
-        window.updateCell(r, 7, BIT_FUNC_TIMING, bit);
-      }
-      stepCell(r, 7, bit, TIMING_COLOR);
-      if((await maybeStepDelay()) === false) return;
-    }
-
     // finder 7x7 + separator
     const drawFinderStep = async (topRow, leftCol) => {
       const pattern = [
@@ -768,6 +748,35 @@
     await drawFinderStep(1, 19);
     if((await moveCursorPath(19, 1)) === false) return;
     await drawFinderStep(19, 1);
+
+    // timing (row 7, col 7) after finders
+    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
+    if((await moveCursorPath(7, 1)) === false) return;
+    for(let c = 1; c <= 25; c++){
+      const existing = boardMatrix[6][c - 1];
+      const kind = (typeof window.bitKind === "function") ? window.bitKind(existing) : Math.abs(existing);
+      const empty = (typeof window.isUnplacedBit === "function") ? window.isUnplacedBit(existing) : (kind === unplacedKind);
+      if(!empty) continue;
+      const bit = (c % 2 === 1) ? 1 : 0;
+      if(typeof window.updateCell === "function"){
+        window.updateCell(7, c, BIT_FUNC_TIMING, bit);
+      }
+      stepCell(7, c, bit, TIMING_COLOR);
+      if((await maybeStepDelay()) === false) return;
+    }
+    if((await moveCursorPath(1, 7)) === false) return;
+    for(let r = 1; r <= 25; r++){
+      const existing = boardMatrix[r - 1][6];
+      const kind = (typeof window.bitKind === "function") ? window.bitKind(existing) : Math.abs(existing);
+      const empty = (typeof window.isUnplacedBit === "function") ? window.isUnplacedBit(existing) : (kind === unplacedKind);
+      if(!empty) continue;
+      const bit = (r % 2 === 1) ? 1 : 0;
+      if(typeof window.updateCell === "function"){
+        window.updateCell(r, 7, BIT_FUNC_TIMING, bit);
+      }
+      stepCell(r, 7, bit, TIMING_COLOR);
+      if((await maybeStepDelay()) === false) return;
+    }
 
     // alignment 5x5
     if((await moveCursorPath(19, 19)) === false) return;
@@ -1153,6 +1162,13 @@
     setRenderMode(RENDER_BUFFERED);
     for(let c = 1; c <= 25; c++){
       const bit = (c % 2 === 1) ? 1 : 0;
+      const existing = boardMatrix[TIMING_ROW - 1][c - 1];
+      const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
+      if(typeof window.isUnplacedBit === "function"){
+        if(!window.isUnplacedBit(existing)) continue;
+      }else{
+        if((typeof window.bitKind === "function" ? window.bitKind(existing) : Math.abs(existing)) !== unplacedKind) continue;
+      }
       if(typeof window.updateCell === "function"){
         window.updateCell(TIMING_ROW, c, BIT_FUNC_TIMING, bit);
       }
@@ -1160,6 +1176,13 @@
     }
     for(let r = 1; r <= 25; r++){
       const bit = (r % 2 === 1) ? 1 : 0;
+      const existing = boardMatrix[r - 1][TIMING_COL - 1];
+      const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
+      if(typeof window.isUnplacedBit === "function"){
+        if(!window.isUnplacedBit(existing)) continue;
+      }else{
+        if((typeof window.bitKind === "function" ? window.bitKind(existing) : Math.abs(existing)) !== unplacedKind) continue;
+      }
       if(typeof window.updateCell === "function"){
         window.updateCell(r, TIMING_COL, BIT_FUNC_TIMING, bit);
       }
