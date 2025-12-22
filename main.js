@@ -1145,16 +1145,19 @@
   }
 
   function drawAllAlignments(color = "red"){
+    window.log && window.log(`drawAllAlignments(color=${color})`);
     drawAlignment(19, 19, color);
   }
 
   function drawAllFinders(color = "red"){
+    window.log && window.log(`drawAllFinders(color=${color})`);
     drawFinder(1, 1, color);
     drawFinder(1, 19, color);
     drawFinder(19, 1, color);
   }
 
   function drawAllDarkModules(color = "red"){
+    window.log && window.log(`drawAllDarkModules(color=${color})`);
     // Version 2 dark module is at (18, 9)
     drawDarkModule(18, 9, color);
   }
@@ -1207,6 +1210,7 @@
   }
 
   function drawAllTimings(color = TIMING_COLOR){
+    window.log && window.log(`drawAllTimings(color=${color})`);
     drawTiming("row", TIMING_ROW, color);
     drawTiming("col", TIMING_COL, color);
   }
@@ -1237,6 +1241,7 @@
   }
 
   function drawAllFormats(mask = 0, color = FORMAT_COLOR){
+    window.log && window.log(`drawAllFormats(mask=${mask}, color=${color})`);
     const m = Math.min(7, Math.max(0, mask));
     const bits15 = FORMAT_L[m];
     const coordsA = [
