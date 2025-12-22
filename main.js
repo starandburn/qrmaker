@@ -437,9 +437,6 @@
       if(label){
         label.style.display = debugOn ? "inline-flex" : "none";
       }
-      if(!debugOn){
-        toggleDebugValues.checked = false;
-      }
     }
     const showValues = debugOn && toggleDebugValues && toggleDebugValues.checked;
     cellsWrap.classList.toggle("show-debug-values", showValues);
@@ -1256,6 +1253,9 @@
   }
   if(toggleDebugValues){
     toggleDebugValues.addEventListener("change", syncDebugOverlay);
+  }
+  if(Array.isArray(window.toggleInputs) && toggleDebugValues && !window.toggleInputs.includes(toggleDebugValues)){
+    window.toggleInputs.push(toggleDebugValues);
   }
 
   const logBuffer = window._logBuffer || [];

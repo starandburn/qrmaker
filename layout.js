@@ -31,7 +31,8 @@ const asciiLink = document.getElementById("asciiLink");
 const asciiModal = document.getElementById("asciiModal");
 const asciiClose = document.getElementById("asciiClose");
 const asciiTable = document.getElementById("asciiTable");
-const toggleInputs = [toggleCursor, toggleGuide, toggleGrid, toggleEmpty, toggleColor].filter(Boolean);
+const toggleDebugValues = document.getElementById("toggleDebugValues");
+const toggleInputs = [toggleCursor, toggleGuide, toggleGrid, toggleEmpty, toggleColor, toggleDebugValues].filter(Boolean);
 window.toggleInputs = toggleInputs;
 
 // Minimal logger stub (overridden later in main.js) to buffer early logs
