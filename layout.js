@@ -1,3 +1,13 @@
+
+const CHAR_SPACE = "空白";
+const CHAR_TERMINATE = "終端";
+const CHAR_COLON = "コロン(:)";
+const CHAR_PADDING = "固定";
+
+const CAPTION_CODEPATTERN="コードパターンを";
+const CAPTION_SHOWCODEPATTERN = CAPTION_CODEPATTERN + "表示";
+const CAPTION_HIDECODEPATTERN = CAPTION_CODEPATTERN + "隠す";
+
 const txtInput = document.getElementById("txtInput");
 const patternBox = document.getElementById("patternBox");
 const patternRowA = document.getElementById("patternRowA");
@@ -160,7 +170,7 @@ function renderRow(row, groups, { small = false, breakAfterTerminator = false } 
     block.appendChild(strip);
     row.appendChild(block);
 
-    if(breakAfterTerminator && g.label && g.label.startsWith("終端")){
+    if(breakAfterTerminator && g.label && g.label.startsWith(CHAR_TERMINATE)){
       const brk = document.createElement("div");
       brk.className = "line-break";
       row.appendChild(brk);
@@ -179,7 +189,7 @@ function renderAsciiTable(){
 
     const charLabel = document.createElement("div");
     charLabel.className = "ascii-char";
-    const disp = code === 32 ? "空白" : String.fromCharCode(code);
+    const disp = code === 32 ? CHAR_SPACE : String.fromCharCode(code);
     charLabel.textContent = disp;
     entry.appendChild(charLabel);
 
@@ -209,43 +219,51 @@ function refreshPattern(){
   if(!patternRowA || !patternRowB || !patternRowC) return;
   const input = txtInput.value;
 
-  // QR v2-L constants
-  const DATA_CODEWORDS = 34; // data bytes
+  // Build flat pattern bits for drawing using parsePattern (qrcode.js)
+  try{
+    if(typeof window.parsePattern === "function"){
+      window.patternBits = window.parsePattern(input);
+    }
+  }catch(e){
+    window.log && window.log(e);
+  }
+
+  // Rebuild panel display groups (A/B/C) with labels
+  const DATA_CODEWORDS = 34; // v2-L data bytes
   const EC_CODEWORDS = 10;   // parity bytes
   const PAD_CODEWORDS = [0xec, 0x11];
 
   const groupA = [];
   const groupB = [];
 
-  // A: モード(0100) + 文字数(8bit)
+  // A: mode + length
   const modeBits = "0100";
   const lenBits = input.length.toString(2).padStart(8, "0");
-  groupA.push({ label: `種別:4`, bits: modeBits });
-  groupA.push({ label: `文字数:${input.length}`, bits: lenBits });
+  groupA.push({ label: "mode:4", bits: modeBits, color: "blue" });
+  groupA.push({ label: `len:${input.length}`, bits: lenBits, color: "blue" });
 
-  // B: データ(ASCII) + 終端 + 0詰め + パディング
+  // B: chars + terminator + zero-pad + pad codewords
   let bitStream = modeBits + lenBits;
   for(let i = 0; i < input.length; i++){
     const code = input.charCodeAt(i) & 0xff; // ASCII 8bit
     const bits = code.toString(2).padStart(8, "0");
-    const dispChar = input[i] === " " ? "空白"
-      : input[i] === ":" ? "コロン(:)"
+    const dispChar = input[i] === " " ? CHAR_SPACE 
+      : input[i] === ":" ? CHAR_COLON
       : input[i];
     const label = `${dispChar}:${code}`;
-    groupB.push({ label, bits });
+    groupB.push({ label, bits, color: "black" });
     bitStream += bits;
   }
-
   // Terminator (up to 4 bits)
   const terminatorBits = "0000";
-  groupB.push({ label: `終端:0`, bits: terminatorBits, terminator: true, color: "yellow" });
+  groupB.push({ label: `${CHAR_TERMINATE}:0`, bits: terminatorBits, terminator: true, color: "yellow" });
   bitStream += terminatorBits;
 
   // Align to byte boundary with zero padding if needed
   const mod8 = bitStream.length % 8;
   if(mod8 !== 0){
     const zeroPad = "0".repeat(8 - mod8);
-    groupB.push({ label: "0詰め", bits: zeroPad, padding: true });
+    groupB.push({ label: "zero-pad", bits: zeroPad, color: "purple", padding: true });
     bitStream += zeroPad;
   }
 
@@ -259,40 +277,30 @@ function refreshPattern(){
   while(dataCodewords.length < DATA_CODEWORDS){
     const padVal = PAD_CODEWORDS[padIdx % PAD_CODEWORDS.length];
     dataCodewords.push(padVal);
-    const label = `固定:${padVal}`;
+    const label = `${CHAR_PADDING}:${padVal}`;
     groupB.push({ label, bits: padVal.toString(2).padStart(8, "0"), color: "purple", padding: true });
     padIdx++;
   }
 
-  // C: パリティ（RS 10バイト）
+  // C: Reed-Solomon parity bytes
   const parity = computeParity(dataCodewords, EC_CODEWORDS);
   const groupC = parity.map(val => ({
     label: "",
     bits: val.toString(2).padStart(8, "0"),
+    color: "green",
   }));
 
   renderRow(patternRowA, groupA, { small: false });
   renderRow(patternRowB, groupB, { breakAfterTerminator: false });
   renderRow(patternRowC, groupC, { small: false });
-  // Build flat pattern bits for drawing using parsePattern (qrcode.js)
-  try{
-    if(typeof window.parsePattern === "function"){
-      window.patternBits = window.parsePattern(input);
-    }
-  }catch(e){
-    window.log && window.log(e);
-  }
-  // Keep grouped data for pattern panel
   window.patternData = { A: groupA, B: groupB, C: groupC };
   refreshGuide();
 }
-
 function refreshGuide(){
   if(!inputGuide || !txtInput) return;
   const remain = Math.max(0, 32 - txtInput.value.length);
-  inputGuide.textContent = `残り${remain}文字`;
+  inputGuide.textContent = `${remain}`;
 }
-
 if(txtInput){
   txtInput.addEventListener("input", () => {
     if(typeof window.stopCurrentRun === "function"){
@@ -412,10 +420,11 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
 function updatePatternToggleText(){
   if(patternToggleText && patternDetails){
-    patternToggleText.textContent = patternDetails.open ? "コードパターンを隠す" : "コードパターンを表示";
+    patternToggleText.textContent = patternDetails.open ? CAPTION_HIDECODEPATTERN : CAPTION_SHOWCODEPATTERN;
   }
 }
 if(patternDetails){
   patternDetails.addEventListener("toggle", updatePatternToggleText);
   updatePatternToggleText();
 }
+
