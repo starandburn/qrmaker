@@ -52,6 +52,8 @@
   const FORMAT_COLOR = GROUP_COLORS.A || "blue";
   const TIMING_ROW = 7;
   const TIMING_COL = 7;
+  let timingRowIndex = 0;
+  let timingColIndex = 0;
   const ENABLE_TIMING = true; // timing pattern enabled
   const isDebugVisible = () => {
     if(!debugPanel) return false;
@@ -426,6 +428,8 @@
     for(const { row, col, value, color } of cellStates.values()){
       applySetCell(row, col, value, color);
     }
+    timingRowIndex = 0;
+    timingColIndex = 0;
   }
 
   function syncDebugOverlay(){
@@ -516,7 +520,7 @@
       let upward = true;
       while(col > 0 && bitIdx < bitsSeq.length){
         if(currentRun !== runId) break;
-        if(ENABLE_TIMING && col === TIMING_COL){ col--; continue; } // skip timing column when enabled
+        if(ENABLE_TIMING && col === timingColIndex){ col--; continue; } // skip timing column when enabled
         const colLeft = col - 1;
         for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
           if(currentRun !== runId) break;
@@ -530,7 +534,7 @@
             if(targetCol < 1 || targetCol > 25) continue;
             const moved = moveCursor(row, targetCol);
             if(!moved) continue;
-            if(ENABLE_TIMING && targetCol === TIMING_COL) continue;
+            if(ENABLE_TIMING && targetCol === timingColIndex) continue;
             if(!window.isEmpty()) continue;
           const { bit, color, kind } = bitsSeq[bitIdx];
             setCell(cursorPos.row, cursorPos.col, bit, color || "black", kind);
@@ -601,8 +605,8 @@
       }
       return false;
     };
-    if(row === TIMING_ROW && hasTimingInRow(row)) return true;
-    if(col === TIMING_COL && hasTimingInCol(col)) return true;
+    if(timingRowIndex > 0 && row === timingRowIndex && hasTimingInRow(row)) return true;
+    if(timingColIndex > 0 && col === timingColIndex && hasTimingInCol(col)) return true;
     return false;
   };
   window.isFunctionalCell = () => {
@@ -794,31 +798,33 @@
 
     // timing (row 7, col 7) after finders
     if(ENABLE_TIMING){
+      timingRowIndex = TIMING_ROW;
+      timingColIndex = TIMING_COL;
       const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
-      if((await moveCursorPath(7, 1)) === false) return;
+      if((await moveCursorPath(timingRowIndex, 1)) === false) return;
       for(let c = 1; c <= 25; c++){
-        const existing = boardMatrix[6][c - 1];
+        const existing = boardMatrix[timingRowIndex - 1][c - 1];
         const kind = (typeof window.bitKind === "function") ? window.bitKind(existing) : Math.abs(existing);
         const empty = (typeof window.isUnplacedBit === "function") ? window.isUnplacedBit(existing) : (kind === unplacedKind);
         if(!empty) continue;
         const bit = (c % 2 === 1) ? 1 : 0;
         if(typeof window.updateCell === "function"){
-          window.updateCell(7, c, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
+          window.updateCell(timingRowIndex, c, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
         }
-        stepCell(7, c, bit, TIMING_COLOR);
+        stepCell(timingRowIndex, c, bit, TIMING_COLOR);
         if((await maybeStepDelay()) === false) return;
       }
-      if((await moveCursorPath(1, 7)) === false) return;
+      if((await moveCursorPath(1, timingColIndex)) === false) return;
       for(let r = 1; r <= 25; r++){
-        const existing = boardMatrix[r - 1][6];
+        const existing = boardMatrix[r - 1][timingColIndex - 1];
         const kind = (typeof window.bitKind === "function") ? window.bitKind(existing) : Math.abs(existing);
         const empty = (typeof window.isUnplacedBit === "function") ? window.isUnplacedBit(existing) : (kind === unplacedKind);
         if(!empty) continue;
         const bit = (r % 2 === 1) ? 1 : 0;
         if(typeof window.updateCell === "function"){
-          window.updateCell(r, 7, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
+          window.updateCell(r, timingColIndex, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
         }
-        stepCell(r, 7, bit, TIMING_COLOR);
+        stepCell(r, timingColIndex, bit, TIMING_COLOR);
         if((await maybeStepDelay()) === false) return;
       }
     }
@@ -916,9 +922,11 @@
       }
     }
     // timing (row 7, col 7)
-    if(ENABLE_TIMING){
-      for(let c = 1; c <= 25; c++) add(7, c);
-      for(let r = 1; r <= 25; r++) add(r, 7);
+    if(ENABLE_TIMING && timingRowIndex > 0){
+      for(let c = 1; c <= 25; c++) add(timingRowIndex, c);
+    }
+    if(ENABLE_TIMING && timingColIndex > 0){
+      for(let r = 1; r <= 25; r++) add(r, timingColIndex);
     }
     // alignment 5x5 at (19,19)
     for(let dr = -2; dr <= 2; dr++){
@@ -1000,7 +1008,7 @@
       let startRow = 25;
       while(col > 0 && bitIdx < bitsSeq.length){
         if(currentRun !== runId){ aborted = true; break; }
-        if(ENABLE_TIMING && col === TIMING_COL){ col--; continue; } // skip timing column when enabled
+        if(ENABLE_TIMING && col === timingColIndex){ col--; continue; } // skip timing column when enabled
         const colLeft = col - 1;
         for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
           if(currentRun !== runId){ aborted = true; break; }
@@ -1017,7 +1025,7 @@
           for(const cTarget of [col, colLeft]){
             if(bitIdx >= bitsSeq.length) break;
             if(cTarget < 1) continue;
-            if(ENABLE_TIMING && cTarget === TIMING_COL) continue;
+            if(ENABLE_TIMING && cTarget === timingColIndex) continue;
             if(cTarget < 1 || cTarget > 25) continue;
             const moved = moveCursor(row, cTarget);
             if(!moved) continue;
@@ -1178,6 +1186,11 @@
     const dirStr = String(direction || "").toLowerCase();
     const isRow = dirStr === "row" || dirStr === "horizontal" || dirStr === "h";
     const pos = Math.min(25, Math.max(1, Number(index)));
+    if(isRow){
+      timingRowIndex = pos;
+    }else{
+      timingColIndex = pos;
+    }
     setRenderMode(RENDER_BUFFERED);
     if(isRow){
       for(let c = 1; c <= 25; c++){
