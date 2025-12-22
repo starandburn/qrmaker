@@ -35,6 +35,27 @@ const toggleDebugValues = document.getElementById("toggleDebugValues");
 const toggleInputs = [toggleCursor, toggleGuide, toggleGrid, toggleEmpty, toggleColor, toggleDebugValues].filter(Boolean);
 window.toggleInputs = toggleInputs;
 
+function getKindColor(kind){
+  if(typeof window.colorsForKind === "function"){
+    const entry = window.colorsForKind(kind);
+    if(entry && entry.label) return entry.label;
+  }
+  const fallback = {
+    [BIT_INFO_MODE]: "blue",
+    [BIT_INFO_LENGTH]: "blue",
+    [BIT_INFO_CHAR]: "black",
+    [BIT_INFO_TERMINATOR]: "yellow",
+    [BIT_INFO_PADDING]: "purple",
+    [BIT_INFO_PARITY]: "green",
+    [BIT_FUNC_FINDER]: "red",
+    [BIT_FUNC_TIMING]: "orange",
+    [BIT_FUNC_ALIGNMENT]: "green",
+    [BIT_FUNC_DARK]: "black",
+    [BIT_FUNC_FORMAT]: "blue",
+  };
+  return fallback[kind] || "black";
+}
+
 // Minimal logger stub (overridden later in main.js) to buffer early logs
 window._logBuffer = window._logBuffer || [];
 if(typeof window.log !== "function"){
@@ -245,8 +266,8 @@ function refreshPattern(){
   // A: mode + length
   const modeBits = "0100";
   const lenBits = input.length.toString(2).padStart(8, "0");
-  groupA.push({ label: `${TYPE_MODE}:4`, bits: modeBits, color: "blue" });
-  groupA.push({ label: `${TYPE_LENGTH}:${input.length}`, bits: lenBits, color: "blue" });
+  groupA.push({ label: `${TYPE_MODE}:4`, bits: modeBits, color: getKindColor(BIT_INFO_MODE) });
+  groupA.push({ label: `${TYPE_LENGTH}:${input.length}`, bits: lenBits, color: getKindColor(BIT_INFO_LENGTH) });
 
   // B: chars + terminator + zero-pad + pad codewords
   let bitStream = modeBits + lenBits;
@@ -257,19 +278,19 @@ function refreshPattern(){
       : input[i] === ":" ? CHAR_COLON
       : input[i];
     const label = `${dispChar}:${code}`;
-    groupB.push({ label, bits, color: "black" });
+    groupB.push({ label, bits, color: getKindColor(BIT_INFO_CHAR) });
     bitStream += bits;
   }
   // Terminator (up to 4 bits)
   const terminatorBits = "0000";
-  groupB.push({ label: `${CHAR_TERMINATE}:0`, bits: terminatorBits, terminator: true, color: "yellow" });
+  groupB.push({ label: `${CHAR_TERMINATE}:0`, bits: terminatorBits, terminator: true, color: getKindColor(BIT_INFO_TERMINATOR) });
   bitStream += terminatorBits;
 
   // Align to byte boundary with zero padding if needed
   const mod8 = bitStream.length % 8;
   if(mod8 !== 0){
     const zeroPad = "0".repeat(8 - mod8);
-    groupB.push({ label: "zero-pad", bits: zeroPad, color: "purple", padding: true });
+    groupB.push({ label: "zero-pad", bits: zeroPad, color: getKindColor(BIT_INFO_PADDING), padding: true });
     bitStream += zeroPad;
   }
 
@@ -284,7 +305,7 @@ function refreshPattern(){
     const padVal = PAD_CODEWORDS[padIdx % PAD_CODEWORDS.length];
     dataCodewords.push(padVal);
     const label = `${CHAR_PADDING}:${padVal}`;
-    groupB.push({ label, bits: padVal.toString(2).padStart(8, "0"), color: "purple", padding: true });
+    groupB.push({ label, bits: padVal.toString(2).padStart(8, "0"), color: getKindColor(BIT_INFO_PADDING), padding: true });
     padIdx++;
   }
 
@@ -293,7 +314,7 @@ function refreshPattern(){
   const groupC = parity.map(val => ({
     label: "",
     bits: val.toString(2).padStart(8, "0"),
-    color: "green",
+    color: getKindColor(BIT_INFO_PARITY),
   }));
 
   renderRow(patternRowA, groupA, { small: false });
