@@ -52,6 +52,14 @@
   const TIMING_ROW = 7;
   const TIMING_COL = 7;
   const ENABLE_TIMING = true; // timing pattern enabled
+  const isDebugVisible = () => {
+    if(!debugPanel) return false;
+    const styleDisp = debugPanel.style.display;
+    if(styleDisp){
+      return styleDisp !== "none";
+    }
+    return getComputedStyle(debugPanel).display !== "none";
+  };
   let lastMoveBlocked = false;
   const BOARD_ROWS = 25;
   const BOARD_COLS = 25;
@@ -288,6 +296,9 @@
       cell.classList.add(isBlack ? "state-1" : "state-0");
     }
     cell.classList.add(`col-${finalColor}`);
+    cell.dataset.debugVal = String(encodedValue);
+    const debugColor = encodedValue > 0 ? "#ffffff" : encodedValue < 0 ? "#000000" : "#ff1493";
+    cell.style.setProperty("--debug-color", debugColor);
     cellStates.set(`${r}-${c}`, { row: r, col: c, value: encodedValue, color });
     if(boardMatrix[r - 1] && boardMatrix[r - 1][c - 1] !== undefined){
       boardMatrix[r - 1][c - 1] = encodedValue;
@@ -306,6 +317,8 @@
     if(!cells || cells.length === 0) return;
     for(const cell of cells){
       cell.className = "cell";
+      delete cell.dataset.debugVal;
+      cell.style.removeProperty("--debug-color");
     }
     cellStates.clear();
     for(let r = 0; r < BOARD_ROWS; r++){
@@ -406,6 +419,12 @@
     for(const { row, col, value, color } of cellStates.values()){
       applySetCell(row, col, value, color);
     }
+  }
+
+  function syncDebugOverlay(){
+    const cellsWrap = document.querySelector(".qr-cells");
+    if(!cellsWrap) return;
+    cellsWrap.classList.toggle("show-debug-values", isDebugVisible());
   }
 
   // Export helpers to window
@@ -1208,6 +1227,7 @@
   ensureCells();
   clearAllCells();
   updateCursor(cursorPos.row, cursorPos.col, cursorPos.dir);
+  syncDebugOverlay();
 
   const colorToggleEl = document.getElementById("toggleColor");
   if(colorToggleEl){
@@ -1300,6 +1320,7 @@
     footerCopy.addEventListener("dblclick", () => {
       const isHidden = debugPanel.style.display === "none" || getComputedStyle(debugPanel).display === "none";
       debugPanel.style.display = isHidden ? "block" : "none";
+      syncDebugOverlay();
       if(typeof window.fitSquare === "function"){
         requestAnimationFrame(window.fitSquare);
       }
