@@ -484,6 +484,7 @@
   window.drawDarkModule = drawDarkModule;
   window.drawFormat = drawFormat;
   window.drawAllFinders = drawAllFinders;
+  window.drawAllAlignments = drawAllAlignments;
   window.drawBasePatterns = drawBasePatterns;
   window.buildFunctionSet = buildFunctionSet;
   window.stopCurrentRun = stopCurrentRun;
@@ -647,7 +648,7 @@
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawTiming(TIMING_COLOR);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAlignment(19, 19, color);
+    drawAllAlignments(color);
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawDarkModule(color);
     if(currentRun !== undefined && currentRun !== runId) return false;
@@ -1152,6 +1153,10 @@
     }
     flushRender();
     setRenderMode(RENDER_IMMEDIATE);
+  }
+
+  function drawAllAlignments(color = "red"){
+    drawAlignment(19, 19, color);
   }
 
   function drawAllFinders(color = "red"){
