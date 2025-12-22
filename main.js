@@ -337,28 +337,6 @@
     }
   }
 
-  function setCell(row, col, value, color, kind){
-    const resolvedKind = (typeof kind === "number")
-      ? kind
-      : (typeof window.BIT_UNKNOWN === "number" ? window.BIT_UNKNOWN : 99);
-    const colorEntry = colorsForKind(resolvedKind);
-    const finalColor = (color !== undefined && color !== null)
-      ? color
-      : (colorEntry && colorEntry.label)
-        ? colorEntry.label
-        : "black";
-    const encoded = (typeof window.encodeBit === "function")
-      ? window.encodeBit(resolvedKind, value === 1)
-      : (value === 1 ? Math.abs(resolvedKind) : -Math.abs(resolvedKind));
-    if(renderMode === RENDER_BUFFERED){
-      const r = Math.min(25, Math.max(1, row));
-      const c = Math.min(25, Math.max(1, col));
-      pendingCells.set(`${r}-${c}`, { row: r, col: c, value: encoded, color: finalColor });
-      return;
-    }
-    applySetCell(row, col, encoded, finalColor);
-  }
-
   function flushRender(){
     if(renderMode !== RENDER_BUFFERED) return;
     if(pendingCells.size > 0){
@@ -480,7 +458,6 @@
   window.RENDER_BUFFERED = RENDER_BUFFERED;
   window.cursorPos = cursorPos;
   window.updateCursor = updateCursor;
-  window.setCell = setCell;
   window.ensureCells = ensureCells;
   window.flushRender = flushRender;
   window.setRenderMode = setRenderMode;
@@ -572,8 +549,9 @@
             if(!moved) continue;
             if(ENABLE_TIMING && targetCol === timingColIndex) continue;
             if(!window.isEmpty()) continue;
-          const { bit, kind } = bitsSeq[bitIdx];
-            setCell(cursorPos.row, cursorPos.col, bit, undefined, kind);
+            const { bit, kind } = bitsSeq[bitIdx];
+            const encoded = window.encodeBit(kind, bit === 1);
+            window.updateCell(cursorPos.row, cursorPos.col, encoded);
             bitIdx++;
             if(currentRun !== runId) break;
           if(stepEnabled){
@@ -727,11 +705,8 @@
       : cellColor === FORMAT_COLOR ? BIT_FUNC_FORMAT
       : cellColor === color ? BIT_FUNC_FINDER
       : BIT_UNKNOWN;
-    if(typeof window.updateCell === "function"){
-      const encoded = window.encodeBit(kind, value === 1);
-      window.updateCell(row, col, encoded);
-    }
-    setCell(row, col, value, cellColor, kind);
+    const encoded = window.encodeBit(kind, value === 1);
+    window.updateCell(row, col, encoded);
     const dr = row - lastRow;
     const dc = col - lastCol;
       if(Math.abs(dr) > Math.abs(dc)){
@@ -1045,7 +1020,8 @@
             if(!moved) continue;
             if(!window.isEmpty()) continue;
             const { bit, kind } = bitsSeq[bitIdx];
-            setCell(cursorPos.row, cursorPos.col, bit, undefined, kind);
+            const encoded = window.encodeBit(kind, bit === 1);
+            window.updateCell(cursorPos.row, cursorPos.col, encoded);
             bitIdx++;
             if(currentRun !== runId){ aborted = true; break; }
             if(stepEnabled){
@@ -1094,7 +1070,8 @@
             ? ((typeof window.isBlackBit === "function") ? (window.isBlackBit(existing.value) ? 1 : 0) : (existing.value > 0 ? 1 : 0))
             : 0; // 譛ｪ驟咲ｽｮ縺ｯ逋ｽ謇ｱ縺・
           const masked = baseBit ^ (maskFn(row - 1, col - 1) ? 1 : 0);
-          setCell(row, col, masked, color, kind);
+          const encoded = window.encodeBit(kind, masked === 1);
+          window.updateCell(row, col, encoded);
         }
       }
       flushRender();
@@ -1125,7 +1102,7 @@
         if(typeof window.updateCell === "function"){
           window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
         }
-        setCell(row, col, bit, undefined, BIT_FUNC_FINDER);
+        window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
       }
     }
     // white separator ring outside
@@ -1142,7 +1119,7 @@
           if(typeof window.updateCell === "function"){
             window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
           }
-          setCell(r, c, 0, undefined, BIT_FUNC_FINDER);
+          window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
         }
       }
     }
@@ -1169,10 +1146,7 @@
         const col = startCol + c;
         if(row < 1 || row > 25 || col < 1 || col > 25) continue;
         const bit = pattern[r][c];
-        if(typeof window.updateCell === "function"){
-          window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
-        }
-        setCell(row, col, bit, undefined, BIT_FUNC_ALIGNMENT);
+        window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
       }
     }
     flushRender();
@@ -1222,7 +1196,6 @@
         if(typeof window.updateCell === "function"){
           window.updateCell(pos, c, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
         }
-        setCell(pos, c, bit, undefined, BIT_FUNC_TIMING);
       }
     }else{
       for(let r = 1; r <= 25; r++){
@@ -1237,7 +1210,6 @@
         if(typeof window.updateCell === "function"){
           window.updateCell(r, pos, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
         }
-        setCell(r, pos, bit, undefined, BIT_FUNC_TIMING);
       }
     }
     flushRender();
@@ -1255,7 +1227,6 @@
     if(typeof window.updateCell === "function"){
       window.updateCell(row, col, window.encodeBit(BIT_FUNC_DARK, true));
     }
-    setCell(row, col, 1, undefined, BIT_FUNC_DARK);
   }
 
   function drawFormat(bits15, coords, color = "red"){
@@ -1269,7 +1240,6 @@
         const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
         window.updateCell(r1 + 1, c1 + 1, enc);
       }
-      setCell(r1 + 1, c1 + 1, bit, undefined, BIT_FUNC_FORMAT);
     }
     flushRender();
     setRenderMode(RENDER_IMMEDIATE);
