@@ -505,19 +505,19 @@
           const row = upward ? (25 - i) : (1 + i);
           // Face the walking direction
           turnCursor(upward ? DIR_UP : DIR_DOWN);
-        for(const cTarget of [col, colLeft]){
-          if(bitIdx >= bitsSeq.length) break;
-          if(cTarget < 1) continue;
-          const targetCol = cTarget;
-          if(targetCol < 1 || targetCol > 25) continue;
-          const moved = moveCursor(row, targetCol);
-          if(!moved) continue;
-          if(targetCol === TIMING_COL) continue;
-          if(!window.isEmpty()) continue;
-          const { bit, color } = bitsSeq[bitIdx];
-          setCell(cursorPos.row, cursorPos.col, bit, color || "black");
-          bitIdx++;
-          if(currentRun !== runId) break;
+          for(const cTarget of [col, colLeft]){
+            if(bitIdx >= bitsSeq.length) break;
+            if(cTarget < 1) continue;
+            const targetCol = cTarget;
+            if(targetCol < 1 || targetCol > 25) continue;
+            const moved = moveCursor(row, targetCol);
+            if(!moved) continue;
+            if(ENABLE_TIMING && targetCol === TIMING_COL) continue;
+            if(!window.isEmpty()) continue;
+            const { bit, color } = bitsSeq[bitIdx];
+            setCell(cursorPos.row, cursorPos.col, bit, color || "black");
+            bitIdx++;
+            if(currentRun !== runId) break;
           if(stepEnabled){
             const delay = getStepDelay();
             await sleep(Math.max(0, delay));
@@ -735,12 +735,12 @@
 
     // finder 7x7 + separator
     const drawFinderStep = async (topRow, leftCol) => {
-      const pattern = [
-        [1,1,1,1,1,1,1],
-        [1,0,0,0,0,0,1],
-        [1,0,1,1,1,0,1],
-        [1,0,1,1,1,0,1],
-        [1,0,1,1,1,0,1],
+        const pattern = [
+          [1,1,1,1,1,1,1],
+          [1,0,0,0,0,0,1],
+          [1,0,1,1,1,0,1],
+          [1,0,1,1,1,0,1],
+          [1,0,1,1,1,0,1],
         [1,0,0,0,0,0,1],
         [1,1,1,1,1,1,1],
       ];
@@ -764,6 +764,9 @@
       for(let r = eRow - 1; r > sRow; r--) ring.push([r, sCol]);
       for(const [r, c] of ring){
         if(r < 1 || r > 25 || c < 1 || c > 25) continue;
+        if(typeof window.updateCell === "function"){
+          window.updateCell(r, c, BIT_FUNC_FINDER, 0);
+        }
         if(!stepCell(r, c, 0, color)) return;
         if((await maybeStepDelay()) === false) return;
       }
@@ -1018,12 +1021,13 @@
         return seq;
       })();
 
-      // Start from current cursor position, face north
+      // Start at bottom-right, facing up
       turnCursor(CARD_NORTH);
+      updateCursor(25, 25, DIR_UP);
       let bitIdx = 0;
-      let col = cursorPos.col;
-      let upward = cursorPos.dir !== DIR_DOWN;
-      let startRow = cursorPos.row;
+      let col = 25;
+      let upward = true;
+      let startRow = 25;
       while(col > 0 && bitIdx < bitsSeq.length){
         if(currentRun !== runId){ aborted = true; break; }
         if(ENABLE_TIMING && col === TIMING_COL){ col--; continue; } // skip timing column when enabled
@@ -1151,7 +1155,7 @@
           if(typeof window.updateCell === "function"){
             window.updateCell(r, c, BIT_FUNC_FINDER, 0);
           }
-          setCell(r, c, 0, "black", BIT_FUNC_FINDER);
+          setCell(r, c, 0, color, BIT_FUNC_FINDER);
         }
       }
     }
