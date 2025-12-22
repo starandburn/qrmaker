@@ -380,21 +380,21 @@
 
   function colorsForKind(kind){
     const map = {
-      [BIT_FUNC_FINDER]:       { label: "red",    dark: "#8c0000", light: "#ffe8e8" },
-      [BIT_FUNC_TIMING]:       { label: "orange", dark: "#c65a00", light: "#fff3e0" },
-      [BIT_FUNC_ALIGNMENT]:    { label: "green",  dark: "#184c2d", light: "#e8fff0" },
-      [BIT_FUNC_DARK]:         { label: "black",  dark: "#000000", light: "#cccccc" },
-      [BIT_FUNC_FORMAT]:       { label: "blue",   dark: "#1f4a85", light: "#e8f0ff" },
-      [BIT_FUNC_VERSION]:      { label: "black",  dark: "#000000", light: "#cccccc" },
-      [BIT_INFO_MODE]:         { label: "blue",   dark: "#1f4a85", light: "#e8f0ff" },
-      [BIT_INFO_LENGTH]:       { label: "blue",   dark: "#1f4a85", light: "#e8f0ff" },
-      [BIT_INFO_CHAR]:         { label: "black",  dark: "#000000", light: "#e0e0e0" },
-      [BIT_INFO_TERMINATOR]:   { label: "yellow", dark: "#927600", light: "#fff7c8" },
-      [BIT_INFO_PADDING]:      { label: "purple", dark: "#5a2d80", light: "#f5e8ff" },
-      [BIT_INFO_PARITY]:       { label: "green",  dark: "#184c2d", light: "#e8fff0" },
-      [BIT_UNKNOWN]:           { label: "black",  dark: "#333333", light: "#dddddd" },
+      [BIT_FUNC_FINDER]:     "red",
+      [BIT_FUNC_TIMING]:     "orange",
+      [BIT_FUNC_ALIGNMENT]:  "red",
+      [BIT_FUNC_DARK]:       "red",
+      [BIT_FUNC_FORMAT]:     "blue",
+      [BIT_FUNC_VERSION]:    "blue",
+      [BIT_INFO_MODE]:       "blue",
+      [BIT_INFO_LENGTH]:     "blue",
+      [BIT_INFO_CHAR]:       "black",
+      [BIT_INFO_TERMINATOR]: "yellow",
+      [BIT_INFO_PADDING]:    "purple",
+      [BIT_INFO_PARITY]:     "green",
+      [BIT_UNKNOWN]:         "gray",
     };
-    return map[kind] || { label: "black", dark: "#000000", light: "#ffffff" };
+    return map[kind] || "black";
   }
 
   function buildBitSequence(){
@@ -471,7 +471,7 @@
     const c = col;
     const kind = (typeof window.bitKind === "function") ? window.bitKind(encodedValue) : Math.abs(encodedValue);
     const colorEntry = colorsForKind(kind);
-    const color = (colorEntry && colorEntry.label) ? colorEntry.label : "black";
+    const color = colorEntry || "black";
     if(renderMode === RENDER_BUFFERED){
       pendingCells.set(`${r}-${c}`, { row: r, col: c, value: encodedValue, color });
     }else{

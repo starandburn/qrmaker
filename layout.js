@@ -38,6 +38,7 @@ window.toggleInputs = toggleInputs;
 function getKindColor(kind){
   if(typeof window.colorsForKind === "function"){
     const entry = window.colorsForKind(kind);
+    if(typeof entry === "string") return entry;
     if(entry && entry.label) return entry.label;
   }
   const fallback = {

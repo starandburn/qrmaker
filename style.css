@@ -7,6 +7,23 @@
   --panel-gap: 10px;
   --shadow: 0 3px 8px rgba(0,0,0,0.06);
   --panel-radius: 8px;
+  /* color palette (dark/light) */
+  --col-red-dark: #8c0000;
+  --col-red-light: #ffe8e8;
+  --col-blue-dark: #1f4a85;
+  --col-blue-light: #e8f0ff;
+  --col-green-dark: #184c2d;
+  --col-green-light: #e8fff0;
+  --col-yellow-dark: #927600;
+  --col-yellow-light: #fff7c8;
+  --col-purple-dark: #5a2d80;
+  --col-purple-light: #f5e8ff;
+  --col-orange-dark: #c65a00;
+  --col-orange-light: #fff3e0;
+  --col-black-dark: #000000;
+  --col-black-light: #ffffff;
+  --col-gray-dark: #333333;
+  --col-gray-light: #dddddd;
 }
 
 html, body{
@@ -485,25 +502,77 @@ details.pattern-panel:not([open]) .summary-title::before{
   line-height: 0;    
   padding-bottom: 0;
 }
+.bit-block.col-red .bit-cell{
+  border-color:var(--col-red-dark);
+  background:var(--col-red-light);
+}
+.bit-block.col-red .bit-cell.bit-1{
+  background:var(--col-red-dark);
+  border-color:var(--col-red-dark);
+}
+.bit-block.col-blue .bit-cell{
+  border-color:var(--col-blue-dark);
+  background:var(--col-blue-light);
+}
+.bit-block.col-blue .bit-cell.bit-1{
+  background:var(--col-blue-dark);
+  border-color:var(--col-blue-dark);
+}
+.bit-block.col-green .bit-cell{
+  border-color:var(--col-green-dark);
+  background:var(--col-green-light);
+}
+.bit-block.col-green .bit-cell.bit-1{
+  background:var(--col-green-dark);
+  border-color:var(--col-green-dark);
+}
 .bit-block.col-yellow .bit-cell{
-    border-color:#927600;
-    background:#fff7c8;
+  border-color:var(--col-yellow-dark);
+  background:var(--col-yellow-light);
 }
 .bit-block.col-yellow .bit-cell.bit-1{
-    background:#927600;
-    border-color:#927600;
+  background:var(--col-yellow-dark);
+  border-color:var(--col-yellow-dark);
 }
 .bit-block.col-yellow .bit-cell.placeholder{
-    background:transparent;
-    border:1px dashed #888;
+  background:transparent;
+  border:1px dashed #888;
 }
 .bit-block.col-purple .bit-cell{
-  border-color:#5a2d80;
-  background:#faf5ff;
+  border-color:var(--col-purple-dark);
+  background:var(--col-purple-light);
 }
 .bit-block.col-purple .bit-cell.bit-1{
-  background:#5a2d80;
-  border-color:#5a2d80;
+  background:var(--col-purple-dark);
+  border-color:var(--col-purple-dark);
+}
+.bit-block.col-purple .bit-cell.placeholder{
+  background:transparent;
+  border:1px dashed #888;
+}
+.bit-block.col-orange .bit-cell{
+  border-color:var(--col-orange-dark);
+  background:var(--col-orange-light);
+}
+.bit-block.col-orange .bit-cell.bit-1{
+  background:var(--col-orange-dark);
+  border-color:var(--col-orange-dark);
+}
+.bit-block.col-black .bit-cell{
+  border-color:var(--col-black-dark);
+  background:var(--col-black-light);
+}
+.bit-block.col-black .bit-cell.bit-1{
+  background:var(--col-black-dark);
+  border-color:var(--col-black-dark);
+}
+.bit-block.col-gray .bit-cell{
+  border-color:var(--col-gray-dark);
+  background:var(--col-gray-light);
+}
+.bit-block.col-gray .bit-cell.bit-1{
+  background:var(--col-gray-dark);
+  border-color:var(--col-gray-dark);
 }
 .bit-block .bit-label:empty{
   display:none;
@@ -903,18 +972,22 @@ textarea{
 
 .qr-cells .cell.state-0{ background:#fff; }
 .qr-cells .cell.state-1{ background:#000; }
-.qr-cells .cell.col-red.state-0{ background:#ffe8e8; }
-.qr-cells .cell.col-red.state-1{ background:#8c0000; }
-.qr-cells .cell.col-blue.state-0{ background:#e8f0ff; }
-.qr-cells .cell.col-blue.state-1{ background:#1f4a85; }
-.qr-cells .cell.col-green.state-0{ background:#e8fff0; }
-.qr-cells .cell.col-green.state-1{ background:#184c2d; }
-.qr-cells .cell.col-yellow.state-0{ background:#fff7c8; }
-.qr-cells .cell.col-yellow.state-1{ background:#927600; }
-.qr-cells .cell.col-purple.state-0{ background:#f5e8ff; }
-.qr-cells .cell.col-purple.state-1{ background:#5a2d80; }
-.qr-cells .cell.col-orange.state-0{ background:#fff3e0; }
-.qr-cells .cell.col-orange.state-1{ background:#c65a00; }
+.qr-cells .cell.col-red.state-0{ background:var(--col-red-light); }
+.qr-cells .cell.col-red.state-1{ background:var(--col-red-dark); }
+.qr-cells .cell.col-blue.state-0{ background:var(--col-blue-light); }
+.qr-cells .cell.col-blue.state-1{ background:var(--col-blue-dark); }
+.qr-cells .cell.col-green.state-0{ background:var(--col-green-light); }
+.qr-cells .cell.col-green.state-1{ background:var(--col-green-dark); }
+.qr-cells .cell.col-yellow.state-0{ background:var(--col-yellow-light); }
+.qr-cells .cell.col-yellow.state-1{ background:var(--col-yellow-dark); }
+.qr-cells .cell.col-purple.state-0{ background:var(--col-purple-light); }
+.qr-cells .cell.col-purple.state-1{ background:var(--col-purple-dark); }
+.qr-cells .cell.col-orange.state-0{ background:var(--col-orange-light); }
+.qr-cells .cell.col-orange.state-1{ background:var(--col-orange-dark); }
+.qr-cells .cell.col-black.state-0{ background:var(--col-black-light); }
+.qr-cells .cell.col-black.state-1{ background:var(--col-black-dark); }
+.qr-cells .cell.col-gray.state-0{ background:var(--col-gray-light); }
+.qr-cells .cell.col-gray.state-1{ background:var(--col-gray-dark); }
 .qr-cells.show-debug-values .cell::after{
   content: attr(data-debug-val);
   position:absolute;
