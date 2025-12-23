@@ -42,7 +42,7 @@ body{
   user-select:none;
 }
 
-input, textarea, button, select, option, .debug-log{
+input, textarea, select, option, .debug-log{
   user-select:text;
 }
 
@@ -300,6 +300,11 @@ button{
   cursor:pointer;
   box-shadow:0 2px 6px rgba(0,0,0,0.08);
   transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.08s ease, border-color 0.15s ease;
+  user-select:none;
+  -webkit-user-select:none;
+  -ms-user-select:none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 button:hover{

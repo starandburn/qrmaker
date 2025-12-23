@@ -16,6 +16,19 @@
   const toggleDebugValues = document.getElementById("toggleDebugValues");
   if(!btnGenerate || !btnInit) return;
 
+  // Prevent accidental text selection or drag on buttons
+  const allButtons = document.querySelectorAll("button");
+  for(const btn of allButtons){
+    btn.setAttribute("draggable", "false");
+    btn.addEventListener("dragstart", (ev) => ev.preventDefault());
+    btn.addEventListener("selectstart", (ev) => ev.preventDefault());
+    btn.addEventListener("mousedown", (ev) => {
+      if(ev.detail > 1){
+        ev.preventDefault();
+      }
+    });
+  }
+
   // Relative directions (turn relative to current)
   const DIR_UP = 0;
   const DIR_RIGHT = 1;
