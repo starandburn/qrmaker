@@ -599,6 +599,8 @@
   }
 
   async function runStudentCodeWithStep(){
+    const currentRun = ++runId;
+    isStepFillRunning = true;
     const prevRender = renderMode;
     const stepOn = isStepModeOn();
     setRenderMode(stepOn ? RENDER_IMMEDIATE : RENDER_BUFFERED);
@@ -607,6 +609,7 @@
       if(!ok) return false;
       return true;
     }finally{
+      isStepFillRunning = false;
       if(!stepOn){
         flushRender();
       }
@@ -841,7 +844,7 @@
     clearAllCells();
     updateCursor(1, 1, DIR_DOWN);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAllFinders({ stepEnabled: false });
+    drawAllFinders({ stepEnabled: false, currentRun });
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawAllTimings();
     if(currentRun !== undefined && currentRun !== runId) return false;
@@ -1402,9 +1405,11 @@
     drawAlignment(19, 19);
   }
 
-  async function drawFinder(topRow, leftCol, { stepEnabled } = {}){
-    const step = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
-    window.log && window.log(`drawFinder(${topRow}, ${leftCol}, step=${step})`);
+  async function drawFinder(topRow, leftCol, { stepEnabled, currentRun } = {}){
+    const runToken = (typeof currentRun === "number") ? currentRun : runId;
+    const shouldAbort = () => runToken !== runId;
+    const stepInitial = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
+    window.log && window.log(`drawFinder(${topRow}, ${leftCol}, step=${stepInitial}, run=${runToken})`);
     const pattern = [
       [1,1,1,1,1,1,1],
       [1,0,0,0,0,0,1],
@@ -1414,6 +1419,13 @@
       [1,0,0,0,0,0,1],
       [1,1,1,1,1,1,1],
     ];
+    const prevRender = renderMode;
+    const updateCursorSafe = (row, col, dir = DIR_RIGHT) => {
+      if(runToken !== runId) return false;
+      return updateCursor(row, col, dir);
+    };
+    let lastCursorRow = null;
+    let lastCursorCol = null;
     const drawSync = () => {
       for(let r = 0; r < 7; r++){
         for(let c = 0; c < 7; c++){
@@ -1422,6 +1434,8 @@
           if(row < 1 || row > 25 || col < 1 || col > 25) continue;
           const bit = pattern[r][c];
           window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
+          lastCursorRow = row;
+          lastCursorCol = col;
         }
       }
       const sRow = topRow - 1;
@@ -1435,10 +1449,26 @@
           if(r < 1 || r > 25 || c < 1 || c > 25) continue;
           if(r === sRow || r === eRow || c === sCol || c === eCol){
             window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
+            lastCursorRow = r;
+            lastCursorCol = c;
           }
         }
       }
     };
+    const finishSync = () => {
+      setRenderMode(RENDER_BUFFERED);
+      drawSync();
+      flushRender();
+      setRenderMode(prevRender);
+      if(lastCursorRow !== null && lastCursorCol !== null){
+        updateCursorSafe(lastCursorRow, lastCursorCol, DIR_RIGHT);
+      }
+      return true;
+    };
+    if(!stepInitial){
+      return finishSync();
+    }
+    const stepActive = () => shouldStepFunctions();
     const delay = async () => {
       const d = getStepDelay();
       if(d > 0){
@@ -1450,12 +1480,16 @@
     const drawStep = async () => {
       for(let r = 0; r < 7; r++){
         for(let c = 0; c < 7; c++){
+          if(shouldAbort()) return false;
+          if(!stepActive()) return finishSync();
           const row = topRow + r;
           const col = leftCol + c;
           if(row < 1 || row > 25 || col < 1 || col > 25) continue;
           const bit = pattern[r][c];
           window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
-          updateCursor(row, col, DIR_RIGHT);
+          updateCursorSafe(row, col, DIR_RIGHT);
+          lastCursorRow = row;
+          lastCursorCol = col;
           await delay();
         }
       }
@@ -1465,33 +1499,36 @@
       const eCol = leftCol + 7;
       for(let r = sRow; r <= eRow; r++){
         for(let c = sCol; c <= eCol; c++){
+          if(shouldAbort()) return false;
+          if(!stepActive()) return finishSync();
           const insideCore = r >= topRow && r < topRow + 7 && c >= leftCol && c < leftCol + 7;
           if(insideCore) continue;
           if(r < 1 || r > 25 || c < 1 || c > 25) continue;
           if(r === sRow || r === eRow || c === sCol || c === eCol){
             window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
-            updateCursor(r, c, DIR_RIGHT);
+            updateCursorSafe(r, c, DIR_RIGHT);
+            lastCursorRow = r;
+            lastCursorCol = c;
             await delay();
           }
         }
       }
+      return true;
     };
-    const prevRender = renderMode;
-    setRenderMode(step ? RENDER_IMMEDIATE : RENDER_BUFFERED);
-    if(step){
-      await drawStep();
-    }else{
-      drawSync();
-      flushRender();
-    }
+    setRenderMode(RENDER_IMMEDIATE);
+    const res = await drawStep();
     setRenderMode(prevRender);
-    return true;
+    if(lastCursorRow !== null && lastCursorCol !== null){
+      updateCursorSafe(lastCursorRow, lastCursorCol, DIR_RIGHT);
+    }
+    return !!res;
   }
 
-  async function drawAllFinders(){
-    await drawFinder(1, 1);
-    await drawFinder(1, 19);
-    await drawFinder(19, 1);
+  async function drawAllFinders(options = {}){
+    const opts = { ...options, currentRun: (typeof options.currentRun === "number" ? options.currentRun : runId) };
+    await drawFinder(1, 1, opts);
+    await drawFinder(1, 19, opts);
+    await drawFinder(19, 1, opts);
     return true;
   }
 
