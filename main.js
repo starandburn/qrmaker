@@ -120,6 +120,7 @@
   let renderMode = RENDER_IMMEDIATE;
   let isStepFillRunning = false;
   let runId = 0;
+  let maskRunId = 0;
   function stopCurrentRun({ resetCursor = false, clear = false } = {}){
     runId++;
     isStepFillRunning = false;
@@ -542,7 +543,9 @@
     return encoded;
   }
 
-  function applyMask(maskIndex = 0){
+  async function applyMask(maskIndex = 0){
+    const baseRun = runId;
+    const currentMaskRun = ++maskRunId;
     let idx = (maskIndex === undefined) ? 0 : Number(maskIndex);
     if(!Number.isFinite(idx)){
       idx = 0;
@@ -552,24 +555,53 @@
     }
     const maskFn = MASK_FUNCTIONS[idx];
     if(!maskFn) return false;
-    setRenderMode(RENDER_BUFFERED);
+    const stepMask = isStepModeOn() && !(stepSkipFunctions && stepSkipFunctions.checked);
+    const prevRender = renderMode;
+    const shouldAbort = () => (baseRun !== runId) || (currentMaskRun !== maskRunId);
+    const prevCursor = { row: cursorPos.row, col: cursorPos.col, dir: cursorPos.dir };
+    const maskCursorDir = stepMask ? DIR_RIGHT : prevCursor.dir;
+    setRenderMode(stepMask ? RENDER_IMMEDIATE : RENDER_BUFFERED);
+    const maybeDelay = async () => {
+      if(!stepMask) return true;
+      if(shouldAbort()) return false;
+      const delay = getStepDelay();
+      if(delay > 0){
+        await sleep(delay);
+      }else{
+        await new Promise(requestAnimationFrame);
+      }
+      return !shouldAbort();
+    };
     for(let row = 1; row <= 25; row++){
       for(let col = 1; col <= 25; col++){
+        if(shouldAbort()) break;
         const encoded = window.getCell(row, col);
         if(typeof encoded !== "number") continue;
         const kind = (typeof window.bitKind === "function") ? window.bitKind(encoded) : Math.abs(encoded);
         if(isFunctionalKind(kind)) continue;
         if(!maskFn(row - 1, col - 1)) continue;
+        if(stepMask){
+          updateCursor(row, col, maskCursorDir);
+        }
         // Apply mask by toggling the bit; invertCell handles unplaced/mask kinds.
         invertCell(row, col);
+        const ok = await maybeDelay();
+        if(!ok) break;
       }
+      if(shouldAbort()) break;
     }
-    if(hasFormatPattern){
+    const completed = !shouldAbort();
+    if(completed && hasFormatPattern){
       drawAllFormats(idx, FORMAT_COLOR);
     }
-    flushRender();
-    setRenderMode(RENDER_IMMEDIATE);
-    return true;
+    if(renderMode === RENDER_BUFFERED){
+      flushRender();
+    }
+    setRenderMode(prevRender);
+    if(stepMask){
+      updateCursor(prevCursor.row, prevCursor.col, maskCursorDir);
+    }
+    return completed;
   }
 
   window.invertCell = invertCell;
@@ -1199,10 +1231,15 @@
   });
 
   if(btnMask){
-    btnMask.addEventListener('click', () => {
+    btnMask.addEventListener('click', async () => {
       if(isStepFillRunning) return;
       const maskIdx = (typeof btnMask.dataset.mask === "string") ? Number(btnMask.dataset.mask) : 0;
-      applyMask(maskIdx);
+      btnMask.disabled = true;
+      try{
+        await applyMask(maskIdx);
+      }finally{
+        btnMask.disabled = false;
+      }
     });
   }
 
