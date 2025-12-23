@@ -651,6 +651,34 @@ details.pattern-panel:not([open]) .summary-title::before{
   flex:1 1 auto;
 }
 
+.code-split{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  min-height:0;
+}
+
+.code-panel.debug-mode .code-split{
+  flex-direction:row;
+}
+
+.code-panel.debug-mode .code-split textarea{
+  width:50%;
+}
+
+.parsed-code{
+  display:none;
+  background:#0a0f1a;
+  color:#e4ecff;
+  border:1px solid #cfd6df;
+  resize:none;
+  border-radius:0;
+}
+
+.code-panel.debug-mode .parsed-code{
+  display:block;
+}
+
 textarea{
   width:100%;
   min-height:0;

@@ -5,6 +5,9 @@
   const btnMask = document.getElementById("btnMask");
   const debugLog = document.getElementById("debugLog");
   const debugPanel = document.getElementById("debugPanel");
+  const patternDetails = document.getElementById("patternDetails");
+  const codePanel = document.querySelector(".code-panel");
+  const studentCodeParsed = document.getElementById("studentCodeParsed");
   const footerCopy = document.querySelector(".page-footer p:first-child");
   const studentCodeInput = document.getElementById("studentCode");
   const stepMode = document.getElementById("stepMode");
@@ -230,6 +233,7 @@
     lastMoveBlocked = false;
     let targetRow = cursorPos.row;
     let targetCol = cursorPos.col;
+    let finalDir = cursorPos.dir;
     const stepOnce = (dirVal) => {
       const norm = normalizeDir(dirVal);
       if(!norm) return false;
@@ -272,10 +276,28 @@
         stepOnce(dirAbs);
       }
     }else if(args.length >= 2){
-      const [r, c] = args;
-      if(Number.isFinite(r) && Number.isFinite(c)){
-        targetRow = r;
-        targetCol = c;
+      const [first, second, third] = args;
+      const maybeDir = (val) => {
+        const d = normalizeDir(val);
+        if(d) finalDir = d;
+      };
+      // pattern: cellRef, dir?
+      if(typeof first === "string"){
+        const parsed = parseCellRef(first);
+        if(!parsed) return;
+        targetRow = parsed.row;
+        targetCol = parsed.col;
+        if(third !== undefined){
+          maybeDir(third);
+        }else if(typeof second === "string"){
+          maybeDir(second);
+        }
+      }else if(Number.isFinite(first) && Number.isFinite(second)){
+        targetRow = first;
+        targetCol = second;
+        if(third !== undefined){
+          maybeDir(third);
+        }
       }else{
         return;
       }
@@ -286,7 +308,7 @@
       lastMoveBlocked = true;
       return false;
     }
-    const ok = updateCursor(targetRow, targetCol, cursorPos.dir);
+    const ok = updateCursor(targetRow, targetCol, finalDir);
     if(!ok){
       lastMoveBlocked = true;
       return false;
@@ -486,6 +508,28 @@
     return seq;
   }
 
+  let dataSeq = [];
+  let dataSeqIndex = 0;
+  function resetDataSequence(){
+    dataSeq = buildBitSequence();
+    dataSeqIndex = 0;
+  }
+  function encodeBitPair(kind, bit){
+    if(typeof window.encodeBit === "function"){
+      return window.encodeBit(kind, bit === 1);
+    }
+    return bit === 1 ? Math.abs(kind) : -Math.abs(kind || 0);
+  }
+  function getNextData(){
+    if(!Array.isArray(dataSeq) || dataSeq.length === 0 || dataSeqIndex >= dataSeq.length){
+      resetDataSequence();
+    }
+    if(!dataSeq.length) return null;
+    const entry = dataSeq[dataSeqIndex++];
+    if(!entry || typeof entry.kind !== "number" || typeof entry.bit !== "number") return null;
+    return encodeBitPair(entry.kind, entry.bit);
+  }
+
   function reapplyCellColors(){
     if(cellStates.size === 0) return;
     for(const { row, col, value, color } of cellStates.values()){
@@ -509,6 +553,54 @@
     cellsWrap.classList.toggle("show-debug-values", showValues);
   }
 
+  function syncDebugPanelLayout(){
+    if(!debugLog) return;
+    const baseMin = "120px";
+    const baseMax = "160px";
+    let minH = baseMin;
+    let maxH = baseMax;
+    if(isDebugVisible() && patternDetails && patternDetails.open){
+      minH = "110px";
+      maxH = "120px";
+    }
+    debugLog.style.minHeight = minH;
+    debugLog.style.maxHeight = maxH;
+  }
+
+  function buildStudentScript(rawText){
+    const codeRaw = rawText || "";
+    if(!codeRaw.trim()) return "";
+    const lines = codeRaw.split(/\r?\n/);
+    const combined = [];
+    for(const raw of lines){
+      const trimmed = typeof raw === "string" ? raw.trim() : "";
+      if(!trimmed) continue;
+      const isBlocky = /^(for|while|if|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(trimmed)
+        || /[{;}]$/.test(trimmed);
+      if(isBlocky){
+        combined.push(trimmed);
+        continue;
+      }
+      const formatted = formatStudentCodeLine(trimmed);
+      if(formatted){
+        combined.push(formatted.endsWith(";") ? formatted : `${formatted};`);
+      }
+    }
+    return combined.join("\n");
+  }
+
+  function syncParsedCode(){
+    if(!studentCodeParsed || !codePanel) return;
+    const debugOn = isDebugVisible();
+    codePanel.classList.toggle("debug-mode", debugOn);
+    if(!debugOn){
+      studentCodeParsed.value = "";
+      return;
+    }
+    const script = buildStudentScript(studentCodeInput ? studentCodeInput.value : "");
+    studentCodeParsed.value = script;
+  }
+
   // Export helpers to window
   window.DIR_UP = DIR_UP;
   window.DIR_RIGHT = DIR_RIGHT;
@@ -526,6 +618,8 @@
   window.reapplyCellColors = reapplyCellColors;
   window.clearAllCells = clearAllCells;
   window.boardMatrix = boardMatrix;
+  window.getNextData = getNextData;
+  window.resetDataSequence = resetDataSequence;
   // Update board matrix directly: row/col 1-based, encoded value (encodeBit)
   window.updateCell = (row, col, encodedValue) => {
     if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
@@ -544,8 +638,12 @@
   };
   // Set value at current cursor position using updateCell
   window.putCell = (encodedValue) => {
-    if(!Number.isFinite(encodedValue)) return false;
-    return window.updateCell(cursorPos.row, cursorPos.col, encodedValue);
+    let val = encodedValue;
+    if(val === undefined){
+      val = getNextData();
+    }
+    if(!Number.isFinite(val)) return false;
+    return window.updateCell(cursorPos.row, cursorPos.col, val);
   };
   // Get raw encoded value from board matrix; returns null if out of range
   window.getCell = (row, col) => {
@@ -629,18 +727,12 @@
 
   async function runStudentCode(){
     if(!studentCodeInput) return true;
-    const codeRaw = studentCodeInput.value;
-    if(!codeRaw || !codeRaw.trim()) return true;
-    const lines = codeRaw
-      .split(/\r?\n/)
-      .map((ln) => formatStudentCodeLine(ln))
-      .filter((ln) => ln.trim().length > 0);
+    const script = buildStudentScript(studentCodeInput.value || "");
+    if(!script.trim()) return true;
     try{
-      for(const line of lines){
-        const res = (0, eval)(line);
-        if(res && typeof res.then === "function"){
-          await res;
-        }
+      const res = (0, eval)(script);
+      if(res && typeof res.then === "function"){
+        await res;
       }
       return true;
     }catch(err){
@@ -1845,7 +1937,21 @@
   if(Array.isArray(window.toggleInputs) && toggleDebugValues && !window.toggleInputs.includes(toggleDebugValues)){
     window.toggleInputs.push(toggleDebugValues);
   }
+  syncDebugPanelLayout();
+  syncParsedCode();
+  if(patternDetails){
+    patternDetails.addEventListener("toggle", () => {
+      syncDebugPanelLayout();
+      syncParsedCode();
+      if(typeof window.fitSquare === "function"){
+        requestAnimationFrame(window.fitSquare);
+      }
+    });
+  }
   if(studentCodeInput){
+    studentCodeInput.addEventListener("input", () => {
+      syncParsedCode();
+    });
     studentCodeInput.addEventListener("keydown", async (ev) => {
       if(ev.key === "Enter" && ev.shiftKey){
         ev.preventDefault();
@@ -1935,6 +2041,8 @@
       const isHidden = debugPanel.style.display === "none" || getComputedStyle(debugPanel).display === "none";
       debugPanel.style.display = isHidden ? "block" : "none";
       syncDebugOverlay();
+      syncDebugPanelLayout();
+      syncParsedCode();
       if(typeof window.fitSquare === "function"){
         requestAnimationFrame(window.fitSquare);
       }
