@@ -540,7 +540,30 @@
     return encoded;
   }
 
+  function applyMask(maskIndex = 0){
+    const idx = Math.max(0, Math.min(7, Number(maskIndex) || 0));
+    const maskFn = MASK_FUNCTIONS[idx];
+    if(!maskFn) return false;
+    setRenderMode(RENDER_BUFFERED);
+    for(let row = 1; row <= 25; row++){
+      for(let col = 1; col <= 25; col++){
+        const encoded = window.getCell(row, col);
+        if(typeof encoded !== "number") continue;
+        const kind = (typeof window.bitKind === "function") ? window.bitKind(encoded) : Math.abs(encoded);
+        if(isFunctionalKind(kind)) continue;
+        if(!maskFn(row - 1, col - 1)) continue;
+        // Apply mask by toggling the bit; invertCell handles unplaced/mask kinds.
+        invertCell(row, col);
+      }
+    }
+    drawAllFormats(idx, FORMAT_COLOR);
+    flushRender();
+    setRenderMode(RENDER_IMMEDIATE);
+    return true;
+  }
+
   window.invertCell = invertCell;
+  window.applyMask = applyMask;
   window.drawFinder = drawFinder;
   window.drawAlignment = drawAlignment;
   window.drawTiming = drawTiming;
@@ -675,8 +698,24 @@
   window.w = w;
 
   const dirs = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
+  const FUNCTION_KINDS = [
+    (typeof window !== "undefined" && typeof window.BIT_FUNC_FINDER === "number") ? window.BIT_FUNC_FINDER : null,
+    (typeof window !== "undefined" && typeof window.BIT_FUNC_ALIGNMENT === "number") ? window.BIT_FUNC_ALIGNMENT : null,
+    (typeof window !== "undefined" && typeof window.BIT_FUNC_TIMING === "number") ? window.BIT_FUNC_TIMING : null,
+    (typeof window !== "undefined" && typeof window.BIT_FUNC_DARK === "number") ? window.BIT_FUNC_DARK : null,
+    (typeof window !== "undefined" && typeof window.BIT_FUNC_FORMAT === "number") ? window.BIT_FUNC_FORMAT : null,
+    (typeof window !== "undefined" && typeof window.BIT_FUNC_VERSION === "number") ? window.BIT_FUNC_VERSION : null,
+  ].filter((v) => typeof v === "number");
+  const isFunctionalKind = (kind) => FUNCTION_KINDS.includes(kind);
   const MASK_FUNCTIONS = {
     0: (r, c) => ((r + c) % 2) === 0, // r,c are 0-based
+    1: (r) => (r % 2) === 0,
+    2: (_r, c) => (c % 3) === 0,
+    3: (r, c) => ((r + c) % 3) === 0,
+    4: (r, c) => ((Math.floor(r / 2) + Math.floor(c / 3)) % 2) === 0,
+    5: (r, c) => (((r * c) % 2) + ((r * c) % 3)) === 0,
+    6: (r, c) => ((((r * c) % 2) + ((r * c) % 3)) % 2) === 0,
+    7: (r, c) => ((((r + c) % 2) + ((r * c) % 3)) % 2) === 0,
   };
 
   function randomInt(min, max){
@@ -1152,20 +1191,8 @@
   if(btnMask){
     btnMask.addEventListener('click', () => {
       if(isStepFillRunning) return;
-      const maskFn = MASK_FUNCTIONS[0];
-      if(!maskFn) return;
-      const funcSet = buildFunctionSet();
-      setRenderMode(RENDER_BUFFERED);
-      for(let row = 1; row <= 25; row++){
-        for(let col = 1; col <= 25; col++){
-          if(funcSet.has(row + "-" + col)) continue;
-          if(!maskFn(row - 1, col - 1)) continue;
-          // Apply mask by inverting the cell (handles unplaced <-> mask)
-          invertCell(row, col);
-        }
-      }
-      flushRender();
-      setRenderMode(RENDER_IMMEDIATE);
+      const maskIdx = (typeof btnMask.dataset.mask === "string") ? Number(btnMask.dataset.mask) : 0;
+      applyMask(maskIdx);
     });
   }
 
