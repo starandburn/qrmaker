@@ -2,7 +2,6 @@
 (function(){
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");
-  const btnMask = document.getElementById("btnMask");
   const debugLog = document.getElementById("debugLog");
   const debugPanel = document.getElementById("debugPanel");
   const patternDetails = document.getElementById("patternDetails");
@@ -1497,19 +1496,6 @@
       if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter"){
         ev.preventDefault();
         btnGenerate.click();
-      }
-    });
-  }
-
-  if(btnMask){
-    btnMask.addEventListener('click', async () => {
-      if(isStepFillRunning) return;
-      const maskIdx = (typeof btnMask.dataset.mask === "string") ? Number(btnMask.dataset.mask) : 0;
-      btnMask.disabled = true;
-      try{
-        await applyMask(maskIdx);
-      }finally{
-        btnMask.disabled = false;
       }
     });
   }
