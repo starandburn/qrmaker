@@ -494,6 +494,11 @@
     boardMatrix[r - 1][c - 1] = encodedValue;
     return true;
   };
+  // Set value at current cursor position using updateCell
+  window.putCell = (encodedValue) => {
+    if(!Number.isFinite(encodedValue)) return false;
+    return window.updateCell(cursorPos.row, cursorPos.col, encodedValue);
+  };
   // Get raw encoded value from board matrix; returns null if out of range
   window.getCell = (row, col) => {
     let r = row;
@@ -545,6 +550,10 @@
     return encoded;
   }
 
+  function shouldStepFunctions(){
+    return isStepModeOn() && !(stepSkipFunctions && stepSkipFunctions.checked);
+  }
+
   function formatStudentCodeLine(line){
     const trimmed = typeof line === "string" ? line.trim() : "";
     if(!trimmed) return "";
@@ -568,15 +577,16 @@
     if(!studentCodeInput) return true;
     const codeRaw = studentCodeInput.value;
     if(!codeRaw || !codeRaw.trim()) return true;
-    const formatted = codeRaw
+    const lines = codeRaw
       .split(/\r?\n/)
       .map((ln) => formatStudentCodeLine(ln))
-      .filter((ln) => ln.trim().length > 0)
-      .join("\n");
+      .filter((ln) => ln.trim().length > 0);
     try{
-      const res = (0, eval)(formatted);
-      if(res && typeof res.then === "function"){
-        await res;
+      for(const line of lines){
+        const res = (0, eval)(line);
+        if(res && typeof res.then === "function"){
+          await res;
+        }
       }
       return true;
     }catch(err){
@@ -585,6 +595,22 @@
         window.log(`studentCode error: ${msg}`);
       }
       return false;
+    }
+  }
+
+  async function runStudentCodeWithStep(){
+    const prevRender = renderMode;
+    const stepOn = isStepModeOn();
+    setRenderMode(stepOn ? RENDER_IMMEDIATE : RENDER_BUFFERED);
+    try{
+      const ok = await runStudentCode();
+      if(!ok) return false;
+      return true;
+    }finally{
+      if(!stepOn){
+        flushRender();
+      }
+      setRenderMode(prevRender);
     }
   }
 
@@ -815,7 +841,7 @@
     clearAllCells();
     updateCursor(1, 1, DIR_DOWN);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAllFinders();
+    drawAllFinders({ stepEnabled: false });
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawAllTimings();
     if(currentRun !== undefined && currentRun !== runId) return false;
@@ -1273,8 +1299,16 @@
   }
 
   btnGenerate.addEventListener("click", async () => {
-    await runStudentCode();
+    await runStudentCodeWithStep();
   });
+  if(btnGenerate){
+    window.addEventListener("keydown", (ev) => {
+      if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter"){
+        ev.preventDefault();
+        btnGenerate.click();
+      }
+    });
+  }
 
   if(btnMask){
     btnMask.addEventListener('click', async () => {
@@ -1368,11 +1402,97 @@
     drawAlignment(19, 19);
   }
 
-  function drawAllFinders(){
-    window.log && window.log("drawAllFinders()");
-    drawFinder(1, 1);
-    drawFinder(1, 19);
-    drawFinder(19, 1);
+  async function drawFinder(topRow, leftCol, { stepEnabled } = {}){
+    const step = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
+    window.log && window.log(`drawFinder(${topRow}, ${leftCol}, step=${step})`);
+    const pattern = [
+      [1,1,1,1,1,1,1],
+      [1,0,0,0,0,0,1],
+      [1,0,1,1,1,0,1],
+      [1,0,1,1,1,0,1],
+      [1,0,1,1,1,0,1],
+      [1,0,0,0,0,0,1],
+      [1,1,1,1,1,1,1],
+    ];
+    const drawSync = () => {
+      for(let r = 0; r < 7; r++){
+        for(let c = 0; c < 7; c++){
+          const row = topRow + r;
+          const col = leftCol + c;
+          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
+          const bit = pattern[r][c];
+          window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
+        }
+      }
+      const sRow = topRow - 1;
+      const eRow = topRow + 7;
+      const sCol = leftCol - 1;
+      const eCol = leftCol + 7;
+      for(let r = sRow; r <= eRow; r++){
+        for(let c = sCol; c <= eCol; c++){
+          const insideCore = r >= topRow && r < topRow + 7 && c >= leftCol && c < leftCol + 7;
+          if(insideCore) continue;
+          if(r < 1 || r > 25 || c < 1 || c > 25) continue;
+          if(r === sRow || r === eRow || c === sCol || c === eCol){
+            window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
+          }
+        }
+      }
+    };
+    const delay = async () => {
+      const d = getStepDelay();
+      if(d > 0){
+        await sleep(d);
+      }else{
+        await new Promise(requestAnimationFrame);
+      }
+    };
+    const drawStep = async () => {
+      for(let r = 0; r < 7; r++){
+        for(let c = 0; c < 7; c++){
+          const row = topRow + r;
+          const col = leftCol + c;
+          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
+          const bit = pattern[r][c];
+          window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
+          updateCursor(row, col, DIR_RIGHT);
+          await delay();
+        }
+      }
+      const sRow = topRow - 1;
+      const eRow = topRow + 7;
+      const sCol = leftCol - 1;
+      const eCol = leftCol + 7;
+      for(let r = sRow; r <= eRow; r++){
+        for(let c = sCol; c <= eCol; c++){
+          const insideCore = r >= topRow && r < topRow + 7 && c >= leftCol && c < leftCol + 7;
+          if(insideCore) continue;
+          if(r < 1 || r > 25 || c < 1 || c > 25) continue;
+          if(r === sRow || r === eRow || c === sCol || c === eCol){
+            window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
+            updateCursor(r, c, DIR_RIGHT);
+            await delay();
+          }
+        }
+      }
+    };
+    const prevRender = renderMode;
+    setRenderMode(step ? RENDER_IMMEDIATE : RENDER_BUFFERED);
+    if(step){
+      await drawStep();
+    }else{
+      drawSync();
+      flushRender();
+    }
+    setRenderMode(prevRender);
+    return true;
+  }
+
+  async function drawAllFinders(){
+    await drawFinder(1, 1);
+    await drawFinder(1, 19);
+    await drawFinder(19, 1);
+    return true;
   }
 
   function drawAllDarkModules(){
