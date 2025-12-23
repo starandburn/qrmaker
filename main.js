@@ -691,6 +691,7 @@
   window.invertCell = invertCell;
   window.applyMask = applyMask;
   window.drawFinder = drawFinder;
+  window.drawAllFunctionals = drawAllFunctionals;
   window.drawAlignment = drawAlignment;
   window.drawTiming = drawTiming;
   window.drawDarkModule = drawDarkModule;
@@ -798,8 +799,12 @@
     return false;
   };
   window.isFunctionalCell = () => {
-    const funcSet = buildFunctionSet();
-    return funcSet.has(`${cursorPos.row}-${cursorPos.col}`);
+    const { row, col } = cursorPos;
+    if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
+    const val = boardMatrix[row - 1][col - 1];
+    if(typeof val !== "number") return false;
+    const kind = (typeof window.bitKind === "function") ? window.bitKind(val) : Math.abs(val);
+    return isFunctionalKind(kind);
   };
   window.isMoveBlocked = () => lastMoveBlocked;
   window.up = DIR_UP;
@@ -1770,6 +1775,15 @@
     await drawFormat(bits15, coordsA, { ...options, currentRun: runToken });
     await drawFormat(bits15, coordsB, { ...options, currentRun: runToken });
     hasFormatPattern = true;
+    return true;
+  }
+
+  async function drawAllFunctionals(){
+    await drawAllFinders();
+    await drawAllTimings();
+    await drawAllAlignments();
+    await drawAllDarkModules();
+    await drawAllFormats(0);
     return true;
   }
 
