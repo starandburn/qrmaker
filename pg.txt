@@ -1,0 +1,24 @@
+clearAllCells
+drawAllFunctionals
+moveCursor y25 up
+resetData
+for (i = 0; i < 625 && !isDataEnd(); i++){
+	if (isEmpty()){
+		putCell
+	}
+	moveCursor left
+	if (isEmpty()){
+ 		putCell
+	}
+	moveCursor
+	if (isMoveBlocked()){
+  		turnCursor
+  		moveCursor left
+	if (isTimingCell()){
+		moveCursor left
+	}
+	} else {
+		moveCursor right
+	}
+}
+applyMask

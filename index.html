@@ -66,6 +66,30 @@
       <div class="panel-title">QRコードを描く処理を記述する</div>
       <div class="code-split">
         <textarea id="userCode" spellcheck="false" autocorrect="off" autocomplete="off" autocapitalize="off">
+clearAllCells
+drawAllFunctionals
+moveCursor y25 up
+resetData
+for (i = 0; i < 625 && !isDataEnd(); i++){
+	if (isEmpty()){
+		putCell
+	}
+	moveCursor left
+	if (isEmpty()){
+ 		putCell
+	}
+	moveCursor
+	if (isMoveBlocked()){
+  		turnCursor
+  		moveCursor left
+	if (isTimingCell()){
+		moveCursor left
+	}
+	} else {
+		moveCursor right
+	}
+}
+applyMask
 </textarea>
         <textarea id="userCodeParsed" class="parsed-code" spellcheck="false" readonly></textarea>
       </div>

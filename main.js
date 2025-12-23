@@ -404,6 +404,8 @@
         boardMatrix[r][c] = UNPLACED_KIND;
       }
     }
+    timingRowIndex = 0;
+    timingColIndex = 0;
     hasFormatPattern = false;
   }
 
@@ -534,7 +536,7 @@
 
   let dataSeq = [];
   let dataSeqIndex = 0;
-  function resetDataSequence(){
+  function resetData(){
     dataSeq = buildBitSequence();
     dataSeqIndex = 0;
   }
@@ -544,11 +546,13 @@
     }
     return bit === 1 ? Math.abs(kind) : -Math.abs(kind || 0);
   }
+  function isDataEnd(){
+    return !Array.isArray(dataSeq) || dataSeqIndex >= dataSeq.length;
+  }
   function getNextData(){
-    if(!Array.isArray(dataSeq) || dataSeq.length === 0 || dataSeqIndex >= dataSeq.length){
-      resetDataSequence();
+    if(isDataEnd()){
+      return null;
     }
-    if(!dataSeq.length) return null;
     const entry = dataSeq[dataSeqIndex++];
     if(!entry || typeof entry.kind !== "number" || typeof entry.bit !== "number") return null;
     return encodeBitPair(entry.kind, entry.bit);
@@ -591,7 +595,7 @@
     debugLog.style.maxHeight = maxH;
   }
 
-  function buildUserScript(rawText, { awaitCalls = false } = {}){
+  function buildUserScript(rawText, { awaitCalls = true } = {}){
     const codeRaw = rawText || "";
     if(!codeRaw.trim()) return "";
     const lines = codeRaw.split(/\r?\n/);
@@ -622,7 +626,7 @@
       userCodeParsed.value = "";
       return;
     }
-    const script = buildUserScript(userCodeInput ? userCodeInput.value : "", { awaitCalls: isStepModeOn() });
+    const script = buildUserScript(userCodeInput ? userCodeInput.value : "", { awaitCalls: true });
     userCodeParsed.value = script;
   }
 
@@ -644,7 +648,8 @@
   window.clearAllCells = clearAllCells;
   window.boardMatrix = boardMatrix;
   window.getNextData = getNextData;
-  window.resetDataSequence = resetDataSequence;
+  window.resetData = resetData;
+  window.isDataEnd = isDataEnd;
   // Update board matrix directly: row/col 1-based, encoded value (encodeBit)
   window.updateCell = (row, col, encodedValue) => {
     if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
@@ -664,11 +669,27 @@
   // Set value at current cursor position using updateCell
   window.putCell = (encodedValue) => {
     let val = encodedValue;
+    let usedAuto = false;
     if(val === undefined){
       val = getNextData();
+      usedAuto = true;
+    }
+    // Do not write into functional or timing cells
+    if(window.isFunctionalCell && window.isFunctionalCell()){
+      if(usedAuto && dataSeqIndex > 0) dataSeqIndex = Math.max(0, dataSeqIndex - 1);
+      return false;
+    }
+    if(window.isTimingCell && window.isTimingCell()){
+      if(usedAuto && dataSeqIndex > 0) dataSeqIndex = Math.max(0, dataSeqIndex - 1);
+      return false;
     }
     if(!Number.isFinite(val)) return false;
-    return window.updateCell(cursorPos.row, cursorPos.col, val);
+    const ok = window.updateCell(cursorPos.row, cursorPos.col, val);
+    if(!ok && usedAuto && dataSeqIndex > 0){
+      // rollback auto-advanced data cursor on failure
+      dataSeqIndex = Math.max(0, dataSeqIndex - 1);
+    }
+    return ok;
   };
   // Get raw encoded value from board matrix; returns null if out of range
   window.getCell = (row, col) => {
@@ -752,7 +773,7 @@
 
   async function runUserCode(){
     if(!userCodeInput) return true;
-    const script = buildUserScript(userCodeInput.value || "", { awaitCalls: isStepModeOn() });
+    const script = buildUserScript(userCodeInput.value || "", { awaitCalls: true });
     if(!script.trim()) return true;
     try{
       const runner = `(async () => {\n${script}\n})();`;
@@ -775,16 +796,14 @@
     isStepFillRunning = true;
     const prevRender = renderMode;
     const stepOn = isStepModeOn();
-    setRenderMode(stepOn ? RENDER_IMMEDIATE : RENDER_BUFFERED);
+    setRenderMode(RENDER_IMMEDIATE);
     try{
       const ok = await runUserCode();
       if(!ok) return false;
       return true;
     }finally{
       isStepFillRunning = false;
-      if(!stepOn){
-        flushRender();
-      }
+      flushRender();
       setRenderMode(prevRender);
     }
   }
