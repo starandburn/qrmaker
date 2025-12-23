@@ -53,10 +53,11 @@
   const FORMAT_COLOR = GROUP_COLORS.A || "blue";
   const TIMING_ROW = 7;
   const TIMING_COL = 7;
+  const TIMING_HORIZONTAL = 0;
+  const TIMING_VERTICAL = 1;
   let timingRowIndex = 0;
   let timingColIndex = 0;
   let hasFormatPattern = false;
-  const ENABLE_TIMING = true; // timing pattern enabled
   const isDebugVisible = () => {
     if(!debugPanel) return false;
     const styleDisp = debugPanel.style.display;
@@ -645,7 +646,7 @@
       let upward = true;
       while(col > 0 && bitIdx < bitsSeq.length){
         if(currentRun !== runId) break;
-        if(ENABLE_TIMING && col === timingColIndex){ col--; continue; } // skip timing column when enabled
+        if(timingColIndex > 0 && col === timingColIndex){ col--; continue; } // skip timing column
         const colLeft = col - 1;
         for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
           if(currentRun !== runId) break;
@@ -659,7 +660,7 @@
             if(targetCol < 1 || targetCol > 25) continue;
             const moved = moveCursor(row, targetCol);
             if(!moved) continue;
-            if(ENABLE_TIMING && targetCol === timingColIndex) continue;
+            if(timingColIndex > 0 && targetCol === timingColIndex) continue;
             if(!window.isEmpty()) continue;
             const { bit, kind } = bitsSeq[bitIdx];
             const encoded = window.encodeBit(kind, bit === 1);
@@ -948,7 +949,7 @@
     await drawFinderStep(19, 1);
 
     // timing (row 7, col 7) after finders
-    if(ENABLE_TIMING){
+    {
       timingRowIndex = TIMING_ROW;
       timingColIndex = TIMING_COL;
       const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
@@ -1078,10 +1079,10 @@
       }
     }
     // timing (row 7, col 7)
-    if(ENABLE_TIMING && timingRowIndex > 0){
+    if(timingRowIndex > 0){
       for(let c = 1; c <= 25; c++) add(timingRowIndex, c);
     }
-    if(ENABLE_TIMING && timingColIndex > 0){
+    if(timingColIndex > 0){
       for(let r = 1; r <= 25; r++) add(r, timingColIndex);
     }
     // alignment 5x5 at (19,19)
@@ -1171,7 +1172,7 @@
       let startRow = 25;
       while(col > 0 && bitIdx < bitsSeq.length){
         if(currentRun !== runId){ aborted = true; break; }
-        if(ENABLE_TIMING && col === timingColIndex){ col--; continue; } // skip timing column when enabled
+        if(timingColIndex > 0 && col === timingColIndex){ col--; continue; } // skip timing column
         const colLeft = col - 1;
         for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
           if(currentRun !== runId){ aborted = true; break; }
@@ -1188,7 +1189,7 @@
           for(const cTarget of [col, colLeft]){
             if(bitIdx >= bitsSeq.length) break;
             if(cTarget < 1) continue;
-            if(ENABLE_TIMING && cTarget === timingColIndex) continue;
+            if(timingColIndex > 0 && cTarget === timingColIndex) continue;
             if(cTarget < 1 || cTarget > 25) continue;
             const moved = moveCursor(row, cTarget);
             if(!moved) continue;
@@ -1330,19 +1331,20 @@
     drawDarkModule(18, 9);
   }
 
-  function drawTiming(direction = "row", index = TIMING_ROW){
+  function drawTiming(direction = TIMING_HORIZONTAL, index = TIMING_ROW){
     window.log && window.log(`drawTiming(dir=${direction}, idx=${index})`);
-    if(!ENABLE_TIMING) return;
-    const dirStr = String(direction || "").toLowerCase();
-    const isRow = dirStr === "row" || dirStr === "horizontal" || dirStr === "h";
-    const pos = Math.min(25, Math.max(1, Number(index)));
-    if(isRow){
+    const dirVal = Number(direction);
+    if(!Number.isFinite(dirVal)) return false;
+    if(dirVal !== TIMING_HORIZONTAL && dirVal !== TIMING_VERTICAL) return false;
+    const pos = Number(index);
+    if(!Number.isFinite(pos) || !Number.isInteger(pos) || pos < 1 || pos > 25) return false;
+    if(dirVal === TIMING_HORIZONTAL){
       timingRowIndex = pos;
     }else{
       timingColIndex = pos;
     }
     setRenderMode(RENDER_BUFFERED);
-    if(isRow){
+    if(dirVal === TIMING_HORIZONTAL){
       for(let c = 1; c <= 25; c++){
         const bit = (c % 2 === 1) ? 1 : 0;
         const existing = boardMatrix[pos - 1][c - 1];
@@ -1373,12 +1375,13 @@
     }
     flushRender();
     setRenderMode(RENDER_IMMEDIATE);
+    return true;
   }
 
   function drawAllTimings(){
     window.log && window.log("drawAllTimings()");
-    drawTiming("row", TIMING_ROW);
-    drawTiming("col", TIMING_COL);
+    drawTiming(TIMING_HORIZONTAL, TIMING_ROW);
+    drawTiming(TIMING_VERTICAL, TIMING_COL);
   }
 
   function drawDarkModule(row = 18, col = 9){
