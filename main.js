@@ -7,9 +7,9 @@
   const debugPanel = document.getElementById("debugPanel");
   const patternDetails = document.getElementById("patternDetails");
   const codePanel = document.querySelector(".code-panel");
-  const studentCodeParsed = document.getElementById("studentCodeParsed");
+  const userCodeParsed = document.getElementById("userCodeParsed");
   const footerCopy = document.querySelector(".page-footer p:first-child");
-  const studentCodeInput = document.getElementById("studentCode");
+  const userCodeInput = document.getElementById("userCode");
   const stepMode = document.getElementById("stepMode");
   const stepSkipFunctions = document.getElementById("stepSkipFunctions");
   const stepSpeed = document.getElementById("stepSpeed");
@@ -591,7 +591,7 @@
     debugLog.style.maxHeight = maxH;
   }
 
-  function buildStudentScript(rawText, { awaitCalls = false } = {}){
+  function buildUserScript(rawText, { awaitCalls = false } = {}){
     const codeRaw = rawText || "";
     if(!codeRaw.trim()) return "";
     const lines = codeRaw.split(/\r?\n/);
@@ -615,15 +615,15 @@
   }
 
   function syncParsedCode(){
-    if(!studentCodeParsed || !codePanel) return;
+    if(!userCodeParsed || !codePanel) return;
     const debugOn = isDebugVisible();
     codePanel.classList.toggle("debug-mode", debugOn);
     if(!debugOn){
-      studentCodeParsed.value = "";
+      userCodeParsed.value = "";
       return;
     }
-    const script = buildStudentScript(studentCodeInput ? studentCodeInput.value : "", { awaitCalls: isStepModeOn() });
-    studentCodeParsed.value = script;
+    const script = buildUserScript(userCodeInput ? userCodeInput.value : "", { awaitCalls: isStepModeOn() });
+    userCodeParsed.value = script;
   }
 
   // Export helpers to window
@@ -750,9 +750,9 @@
     return `${fn}(${args.join(", ")})`;
   }
 
-  async function runStudentCode(){
-    if(!studentCodeInput) return true;
-    const script = buildStudentScript(studentCodeInput.value || "", { awaitCalls: isStepModeOn() });
+  async function runUserCode(){
+    if(!userCodeInput) return true;
+    const script = buildUserScript(userCodeInput.value || "", { awaitCalls: isStepModeOn() });
     if(!script.trim()) return true;
     try{
       const runner = `(async () => {\n${script}\n})();`;
@@ -764,20 +764,20 @@
     }catch(err){
       const msg = err && err.message ? err.message : String(err);
       if(typeof window.log === "function"){
-        window.log(`studentCode error: ${msg}`);
+        window.log(`userCode error: ${msg}`);
       }
       return false;
     }
   }
 
-  async function runStudentCodeWithStep(){
+  async function runUserCodeWithStep(){
     const currentRun = ++runId;
     isStepFillRunning = true;
     const prevRender = renderMode;
     const stepOn = isStepModeOn();
     setRenderMode(stepOn ? RENDER_IMMEDIATE : RENDER_BUFFERED);
     try{
-      const ok = await runStudentCode();
+      const ok = await runUserCode();
       if(!ok) return false;
       return true;
     }finally{
@@ -1384,8 +1384,8 @@
     const currentRun = runId = requestedRun;
     let aborted = false;
     try{
-      const studentOk = await runStudentCode();
-      if(!studentOk){ aborted = true; return; }
+      const userOk = await runUserCode();
+      if(!userOk){ aborted = true; return; }
       let stepEnabled = isStepModeOn();
       const skipFunctions = stepEnabled && stepSkipFunctions && stepSkipFunctions.checked;
       setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
@@ -1471,7 +1471,7 @@
   }
 
   btnGenerate.addEventListener("click", async () => {
-    await runStudentCodeWithStep();
+    await runUserCodeWithStep();
   });
   if(btnGenerate){
     window.addEventListener("keydown", (ev) => {
@@ -1974,16 +1974,16 @@
       }
     });
   }
-  if(studentCodeInput){
-    studentCodeInput.addEventListener("input", () => {
+  if(userCodeInput){
+    userCodeInput.addEventListener("input", () => {
       syncParsedCode();
     });
-    studentCodeInput.addEventListener("keydown", async (ev) => {
+    userCodeInput.addEventListener("keydown", async (ev) => {
       if(ev.key === "Enter" && ev.shiftKey){
         ev.preventDefault();
-        let text = studentCodeInput.value || "";
-        const pos = (typeof studentCodeInput.selectionStart === "number")
-          ? studentCodeInput.selectionStart
+        let text = userCodeInput.value || "";
+        const pos = (typeof userCodeInput.selectionStart === "number")
+          ? userCodeInput.selectionStart
           : text.length;
         const startIdxRaw = text.lastIndexOf("\n", Math.max(0, pos - 1));
         const startIdx = startIdxRaw === -1 ? 0 : startIdxRaw + 1;
@@ -2007,10 +2007,10 @@
         }
         if(endIdxRaw === -1){
           const newPos = endIdx;
-          studentCodeInput.setSelectionRange(newPos, newPos);
+          userCodeInput.setSelectionRange(newPos, newPos);
         }else{
-          const newPos = Math.min(studentCodeInput.value.length, endIdx + 1);
-          studentCodeInput.setSelectionRange(newPos, newPos);
+          const newPos = Math.min(userCodeInput.value.length, endIdx + 1);
+          userCodeInput.setSelectionRange(newPos, newPos);
         }
       }
     });

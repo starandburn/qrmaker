@@ -349,9 +349,9 @@ if(btnClear){
   });
 }
 
-const studentCode = document.getElementById("studentCode");
-if(studentCode){
-  studentCode.addEventListener("input", () => {
+const userCode = document.getElementById("userCode");
+if(userCode){
+  userCode.addEventListener("input", () => {
     if(typeof window.stopCurrentRun === "function"){
       window.stopCurrentRun({ resetCursor: false, clear: false });
     }
