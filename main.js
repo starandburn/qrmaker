@@ -32,19 +32,8 @@
   const DIR_RIGHT = "right";
   const DIR_DOWN = "down";
   const DIR_LEFT = "left";
-  // Absolute cardinal directions
-  const CARD_NORTH = "north";
-  const CARD_EAST = "east";
-  const CARD_SOUTH = "south";
-  const CARD_WEST = "west";
-  const north = CARD_NORTH;
-  const east = CARD_EAST;
-  const south = CARD_SOUTH;
-  const west = CARD_WEST;
-  const n = CARD_NORTH;
-  const e = CARD_EAST;
-  const s = CARD_SOUTH;
-  const w = CARD_WEST;
+  const DIR_FRONT = "front";
+  const DIR_BACK = "back";
   const RENDER_IMMEDIATE = "immediate";
   const RENDER_BUFFERED = "buffered";
   const STEP_DELAY_MS = 12;
@@ -54,17 +43,9 @@
   const normalizeDir = (val) => {
     if(val === undefined || val === null) return null;
     if(DIR_TO_INDEX.has(val)) return val;
-    if(val === CARD_NORTH || val === north) return DIR_UP;
-    if(val === CARD_EAST || val === east) return DIR_RIGHT;
-    if(val === CARD_SOUTH || val === south) return DIR_DOWN;
-    if(val === CARD_WEST || val === west) return DIR_LEFT;
     if(typeof val === "string"){
       const lower = val.toLowerCase();
       if(DIR_TO_INDEX.has(lower)) return lower;
-      if(lower === "north") return DIR_UP;
-      if(lower === "east") return DIR_RIGHT;
-      if(lower === "south") return DIR_DOWN;
-      if(lower === "west") return DIR_LEFT;
     }
     if(typeof val === "number" && Number.isFinite(val)){
       const idx = ((val % 4) + 4) % 4;
@@ -249,18 +230,23 @@
     lastMoveBlocked = false;
     let targetRow = cursorPos.row;
     let targetCol = cursorPos.col;
-    let targetDir = cursorPos.dir;
-
-    if(args.length === 0){
-      if(targetDir === DIR_UP){
+    const stepOnce = (dirVal) => {
+      const norm = normalizeDir(dirVal);
+      if(!norm) return false;
+      if(norm === DIR_UP){
         targetRow -= 1;
-      }else if(targetDir === DIR_RIGHT){
+      }else if(norm === DIR_RIGHT){
         targetCol += 1;
-      }else if(targetDir === DIR_DOWN){
+      }else if(norm === DIR_DOWN){
         targetRow += 1;
-      }else if(targetDir === DIR_LEFT){
+      }else if(norm === DIR_LEFT){
         targetCol -= 1;
       }
+      return true;
+    };
+
+    if(args.length === 0){
+      stepOnce(cursorPos.dir);
     }else if(args.length === 1){
       const v = args[0];
       if(typeof v === "string"){
@@ -269,26 +255,21 @@
           targetRow = parsed.row;
           targetCol = parsed.col;
         }else{
-          const dirAbs = normalizeDir(v);
-          if(!dirAbs) return;
-          let dr = 0, dc = 0;
-          if(dirAbs === DIR_UP) dr = -1;
-          if(dirAbs === DIR_RIGHT) dc = 1;
-          if(dirAbs === DIR_DOWN) dr = 1;
-          if(dirAbs === DIR_LEFT) dc = -1;
-          targetRow += dr;
-          targetCol += dc;
+          const lower = v.toLowerCase();
+          if(lower === DIR_FRONT){
+            stepOnce(cursorPos.dir);
+          }else if(lower === DIR_BACK){
+            stepOnce(rotateDir(cursorPos.dir, 2));
+          }else{
+            const dirAbs = normalizeDir(v);
+            if(!dirAbs) return;
+            stepOnce(dirAbs);
+          }
         }
       }else{
         const dirAbs = normalizeDir(v);
         if(!dirAbs) return;
-        let dr = 0, dc = 0;
-        if(dirAbs === DIR_UP) dr = -1;
-        if(dirAbs === DIR_RIGHT) dc = 1;
-        if(dirAbs === DIR_DOWN) dr = 1;
-        if(dirAbs === DIR_LEFT) dc = -1;
-        targetRow += dr;
-        targetCol += dc;
+        stepOnce(dirAbs);
       }
     }else if(args.length >= 2){
       const [r, c] = args;
@@ -317,34 +298,28 @@
   function turnCursor(dirArg){
     let targetDir = cursorPos.dir;
     if(dirArg === undefined){
-      const rotated = rotateDir(cursorPos.dir, 2);
-      if(!rotated) return false;
-      targetDir = rotated;
-      return updateCursor(cursorPos.row, cursorPos.col, targetDir);
+      targetDir = rotateDir(cursorPos.dir, 2);
+      return targetDir ? updateCursor(cursorPos.row, cursorPos.col, targetDir) : false;
     }
     if(typeof dirArg === "string"){
       const lower = dirArg.toLowerCase();
-      // absolute compass
-      if(lower === "north") targetDir = DIR_UP;
-      else if(lower === "east") targetDir = DIR_RIGHT;
-      else if(lower === "south") targetDir = DIR_DOWN;
-      else if(lower === "west") targetDir = DIR_LEFT;
-      // relative turns (case-insensitive)
-      else if(lower === "right") targetDir = rotateDir(cursorPos.dir, 1);
-      else if(lower === "down") targetDir = rotateDir(cursorPos.dir, 2);
-      else if(lower === "left") targetDir = rotateDir(cursorPos.dir, 3);
-      else if(lower === "up") targetDir = cursorPos.dir;
-      else{
-        const norm = normalizeDir(dirArg);
-        if(!norm) return false;
-        targetDir = norm;
+      if(lower === "right"){
+        targetDir = rotateDir(cursorPos.dir, 1);
+      }else if(lower === "left"){
+        targetDir = rotateDir(cursorPos.dir, -1);
+      }else if(lower === "down"){
+        targetDir = rotateDir(cursorPos.dir, 2);
+      }else if(lower === "up" || lower === DIR_FRONT){
+        targetDir = cursorPos.dir;
+      }else if(lower === DIR_BACK){
+        targetDir = rotateDir(cursorPos.dir, 2);
+      }else{
+        return false; // unsupported string for relative turn
       }
     }else if(typeof dirArg === "number"){
       targetDir = rotateDir(cursorPos.dir, dirArg);
     }else{
-      const norm = normalizeDir(dirArg);
-      if(!norm) return false;
-      targetDir = norm;
+      return false;
     }
     if(!targetDir) return false;
     return updateCursor(cursorPos.row, cursorPos.col, targetDir);
@@ -539,6 +514,8 @@
   window.DIR_RIGHT = DIR_RIGHT;
   window.DIR_DOWN = DIR_DOWN;
   window.DIR_LEFT = DIR_LEFT;
+  window.DIR_FRONT = DIR_FRONT;
+  window.DIR_BACK = DIR_BACK;
   window.RENDER_IMMEDIATE = RENDER_IMMEDIATE;
   window.RENDER_BUFFERED = RENDER_BUFFERED;
   window.cursorPos = cursorPos;
@@ -636,7 +613,13 @@
     const parts = trimmed.split(/[\s,]+/).filter(Boolean);
     if(parts.length === 0) return "";
     const fn = parts.shift();
-    const args = parts;
+    const args = parts.map((arg) => {
+      const t = arg.trim();
+      if(!t) return "";
+      if(/^[-+]?\d+(?:\.\d+)?$/.test(t)) return t; // keep numeric
+      if(/^["'].+["']$/.test(t)) return t; // already quoted
+      return `"${t.replace(/"/g, '\\"')}"`;
+    }).filter(Boolean);
     if(args.length === 0){
       return `${fn}()`;
     }
@@ -778,7 +761,7 @@
     const current = ++runId;
     await drawBasePatterns({ deferFlush: false, currentRun: current });
     if(current !== runId) return false;
-    turnCursor(DIR_UP);
+    updateCursor(cursorPos.row, cursorPos.col, DIR_UP);
     return true;
   };
   window.buildQRCode = async () => {
@@ -788,7 +771,7 @@
     const bitsSeq = buildBitSequence();
 
     // Start at bottom-right, facing up
-    turnCursor(CARD_NORTH);
+    updateCursor(cursorPos.row, cursorPos.col, DIR_UP);
 
       let bitIdx = 0;
       let col = 25;
@@ -801,7 +784,7 @@
           if(currentRun !== runId) break;
           const row = upward ? (25 - i) : (1 + i);
           // Face the walking direction
-          turnCursor(upward ? DIR_UP : DIR_DOWN);
+          updateCursor(cursorPos.row, cursorPos.col, upward ? DIR_UP : DIR_DOWN);
           for(const cTarget of [col, colLeft]){
             if(bitIdx >= bitsSeq.length) break;
             if(cTarget < 1) continue;
@@ -880,18 +863,6 @@
   window.r = DIR_RIGHT;
   window.d = DIR_DOWN;
   window.l = DIR_LEFT;
-  window.CARD_NORTH = CARD_NORTH;
-  window.CARD_EAST = CARD_EAST;
-  window.CARD_SOUTH = CARD_SOUTH;
-  window.CARD_WEST = CARD_WEST;
-  window.north = north;
-  window.east = east;
-  window.south = south;
-  window.west = west;
-  window.n = n;
-  window.e = e;
-  window.s = s;
-  window.w = w;
 
   const dirs = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
   const FUNCTION_KINDS = [
@@ -1320,7 +1291,6 @@
       const bitsSeq = buildBitSequence();
 
       // Start at bottom-right, facing up
-      turnCursor(CARD_NORTH);
       updateCursor(25, 25, DIR_UP);
       let bitIdx = 0;
       let col = 25;
@@ -1341,7 +1311,7 @@
               return r <= 25 ? r : r - 25;
             }
           })();
-          turnCursor(upward ? CARD_NORTH : CARD_SOUTH);
+          updateCursor(cursorPos.row, cursorPos.col, upward ? DIR_UP : DIR_DOWN);
           for(const cTarget of [col, colLeft]){
             if(bitIdx >= bitsSeq.length) break;
             if(cTarget < 1) continue;
@@ -1904,11 +1874,7 @@
           }
         }
         if(endIdxRaw === -1){
-          if(!text.endsWith("\n")){
-            text += "\n";
-            studentCodeInput.value = text;
-          }
-          const newPos = studentCodeInput.value.length;
+          const newPos = endIdx;
           studentCodeInput.setSelectionRange(newPos, newPos);
         }else{
           const newPos = Math.min(studentCodeInput.value.length, endIdx + 1);
