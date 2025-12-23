@@ -3,8 +3,6 @@
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");
   const btnMask = document.getElementById("btnMask");
-  const debugCellInput = document.getElementById("debugCellInput");
-  const debugCellButton = document.getElementById("debugCellButton");
   const debugLog = document.getElementById("debugLog");
   const debugPanel = document.getElementById("debugPanel");
   const footerCopy = document.querySelector(".page-footer p:first-child");
@@ -1823,6 +1821,48 @@
   if(Array.isArray(window.toggleInputs) && toggleDebugValues && !window.toggleInputs.includes(toggleDebugValues)){
     window.toggleInputs.push(toggleDebugValues);
   }
+  if(studentCodeInput){
+    studentCodeInput.addEventListener("keydown", async (ev) => {
+      if(ev.key === "Enter" && ev.shiftKey){
+        ev.preventDefault();
+        let text = studentCodeInput.value || "";
+        const pos = (typeof studentCodeInput.selectionStart === "number")
+          ? studentCodeInput.selectionStart
+          : text.length;
+        const startIdxRaw = text.lastIndexOf("\n", Math.max(0, pos - 1));
+        const startIdx = startIdxRaw === -1 ? 0 : startIdxRaw + 1;
+        const endIdxRaw = text.indexOf("\n", pos);
+        const endIdx = endIdxRaw === -1 ? text.length : endIdxRaw;
+        const rawLine = text.slice(startIdx, endIdx);
+        const line = formatStudentCodeLine(rawLine);
+        const shouldRun = !!line.trim();
+        if(shouldRun){
+          try{
+            const res = (0, eval)(line);
+            if(res && typeof res.then === "function"){
+              await res;
+            }
+          }catch(err){
+            const msg = err && err.message ? err.message : String(err);
+            if(typeof window.log === "function"){
+              window.log(`line error: ${msg}`);
+            }
+          }
+        }
+        if(endIdxRaw === -1){
+          if(!text.endsWith("\n")){
+            text += "\n";
+            studentCodeInput.value = text;
+          }
+          const newPos = studentCodeInput.value.length;
+          studentCodeInput.setSelectionRange(newPos, newPos);
+        }else{
+          const newPos = Math.min(studentCodeInput.value.length, endIdx + 1);
+          studentCodeInput.setSelectionRange(newPos, newPos);
+        }
+      }
+    });
+  }
 
   const logBuffer = window._logBuffer || [];
 
@@ -1852,39 +1892,6 @@
     debugLog.insertBefore(line, first || null);
     debugLog.scrollTop = 0;
     lastLogBody = body;
-  }
-
-  function runDebugEval(){
-    if(!debugCellInput) return;
-    const code = debugCellInput.value.trim();
-    if(!code){
-      appendDebugLog("入力が空です");
-      return;
-    }
-    let evalCode = code;
-    const mLog = code.match(/^log\s+(.+)/);
-    if(mLog){
-      evalCode = `log(${mLog[1]})`;
-    }
-    try{
-      const result = (0, eval)(evalCode); // global eval so window.* が使える
-      appendDebugLog(`OK: ${String(result)}`);
-      window.log(`eval result: ${String(result)}`);
-    }catch(err){
-      appendDebugLog(`ERR: ${err}`);
-      window.log(err);
-    }
-  }
-  if(debugCellButton){
-    debugCellButton.addEventListener("click", runDebugEval);
-  }
-  if(debugCellInput){
-    debugCellInput.addEventListener("keydown", (ev) => {
-      if(ev.key === "Enter"){
-        ev.preventDefault();
-        runDebugEval();
-      }
-    });
   }
 
   // Expose simple logger for debugging
