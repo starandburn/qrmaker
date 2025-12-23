@@ -55,6 +55,7 @@
   const TIMING_COL = 7;
   let timingRowIndex = 0;
   let timingColIndex = 0;
+  let hasFormatPattern = false;
   const ENABLE_TIMING = true; // timing pattern enabled
   const isDebugVisible = () => {
     if(!debugPanel) return false;
@@ -336,6 +337,7 @@
         boardMatrix[r][c] = UNPLACED_KIND;
       }
     }
+    hasFormatPattern = false;
   }
 
   function flushRender(){
@@ -541,7 +543,13 @@
   }
 
   function applyMask(maskIndex = 0){
-    const idx = Math.max(0, Math.min(7, Number(maskIndex) || 0));
+    let idx = (maskIndex === undefined) ? 0 : Number(maskIndex);
+    if(!Number.isFinite(idx)){
+      idx = 0;
+    }
+    if(idx < 0 || idx > 7){
+      return false; // out of range: do nothing
+    }
     const maskFn = MASK_FUNCTIONS[idx];
     if(!maskFn) return false;
     setRenderMode(RENDER_BUFFERED);
@@ -556,7 +564,9 @@
         invertCell(row, col);
       }
     }
-    drawAllFormats(idx, FORMAT_COLOR);
+    if(hasFormatPattern){
+      drawAllFormats(idx, FORMAT_COLOR);
+    }
     flushRender();
     setRenderMode(RENDER_IMMEDIATE);
     return true;
@@ -1358,6 +1368,7 @@
         window.updateCell(r1 + 1, c1 + 1, enc);
       }
     }
+    hasFormatPattern = true;
     flushRender();
     setRenderMode(RENDER_IMMEDIATE);
   }
@@ -1377,6 +1388,7 @@
     ];
     drawFormat(bits15, coordsA, color);
     drawFormat(bits15, coordsB, color);
+    hasFormatPattern = true;
   }
 
   if(stepMode){
