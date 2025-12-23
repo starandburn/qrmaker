@@ -314,7 +314,7 @@
       return false;
     }
     lastMoveBlocked = false;
-    return true;
+    return makeStepThenable(true);
   }
 
   function turnCursor(dirArg){
@@ -344,7 +344,9 @@
       return false;
     }
     if(!targetDir) return false;
-    return updateCursor(cursorPos.row, cursorPos.col, targetDir);
+    const ok = updateCursor(cursorPos.row, cursorPos.col, targetDir);
+    if(!ok) return false;
+    return makeStepThenable(true);
   }
 
   function applySetCell(row, col, encodedValue, color = "black"){
@@ -459,6 +461,28 @@
     return Math.max(0, Math.min(120, val));
   }
 
+  function makeStepThenable(ok){
+    if(!ok) return false;
+    if(!isStepModeOn()){
+      return true;
+    }
+    const delay = getStepDelay();
+    const wait = () => new Promise((resolve) => {
+      const done = () => resolve(true);
+      if(delay > 0){
+        setTimeout(() => requestAnimationFrame(done), delay);
+      }else{
+        requestAnimationFrame(done);
+      }
+    });
+    const p = wait();
+    return {
+      then: (...args) => p.then(...args),
+      valueOf: () => true,
+      toString: () => "true",
+    };
+  }
+
   function colorsForKind(kind){
     const map = {
       [BIT_FUNC_FINDER]:     "red",
@@ -567,7 +591,7 @@
     debugLog.style.maxHeight = maxH;
   }
 
-  function buildStudentScript(rawText){
+  function buildStudentScript(rawText, { awaitCalls = false } = {}){
     const codeRaw = rawText || "";
     if(!codeRaw.trim()) return "";
     const lines = codeRaw.split(/\r?\n/);
@@ -583,7 +607,8 @@
       }
       const formatted = formatStudentCodeLine(trimmed);
       if(formatted){
-        combined.push(formatted.endsWith(";") ? formatted : `${formatted};`);
+        const stmt = formatted.endsWith(";") ? formatted : `${formatted};`;
+        combined.push(awaitCalls ? `await ${stmt}` : stmt);
       }
     }
     return combined.join("\n");
@@ -597,7 +622,7 @@
       studentCodeParsed.value = "";
       return;
     }
-    const script = buildStudentScript(studentCodeInput ? studentCodeInput.value : "");
+    const script = buildStudentScript(studentCodeInput ? studentCodeInput.value : "", { awaitCalls: isStepModeOn() });
     studentCodeParsed.value = script;
   }
 
@@ -727,10 +752,11 @@
 
   async function runStudentCode(){
     if(!studentCodeInput) return true;
-    const script = buildStudentScript(studentCodeInput.value || "");
+    const script = buildStudentScript(studentCodeInput.value || "", { awaitCalls: isStepModeOn() });
     if(!script.trim()) return true;
     try{
-      const res = (0, eval)(script);
+      const runner = `(async () => {\n${script}\n})();`;
+      const res = (0, eval)(runner);
       if(res && typeof res.then === "function"){
         await res;
       }
