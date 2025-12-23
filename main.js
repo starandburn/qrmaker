@@ -592,7 +592,7 @@
     }
     const completed = !shouldAbort();
     if(completed && hasFormatPattern){
-      drawAllFormats(idx, FORMAT_COLOR);
+      drawAllFormats(idx);
     }
     if(renderMode === RENDER_BUFFERED){
       flushRender();
@@ -623,10 +623,10 @@
   window.cellRefFromRowCol = cellRefFromRowCol;
   window.moveCursor = moveCursor;
   window.turnCursor = turnCursor;
-  window.drawFunctionalPatterns = () => drawBasePatterns("red", { deferFlush: false, currentRun: runId });
+  window.drawFunctionalPatterns = () => drawBasePatterns({ deferFlush: false, currentRun: runId });
   window.initializeQRCode = async () => {
     const current = ++runId;
-    await drawBasePatterns("red", { deferFlush: false, currentRun: current });
+    await drawBasePatterns({ deferFlush: false, currentRun: current });
     if(current !== runId) return false;
     turnCursor(DIR_UP);
     return true;
@@ -764,21 +764,21 @@
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
-  function drawBasePatterns(color = "red", { deferFlush = false, currentRun } = {}){
+  function drawBasePatterns({ deferFlush = false, currentRun } = {}){
     if(currentRun !== undefined && currentRun !== runId) return false;
     setRenderMode(RENDER_BUFFERED);
     clearAllCells();
     updateCursor(1, 1, DIR_DOWN);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAllFinders(color);
+    drawAllFinders();
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAllTimings(TIMING_COLOR);
+    drawAllTimings();
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAllAlignments(color);
+    drawAllAlignments();
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAllDarkModules(color);
+    drawAllDarkModules();
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAllFormats(0, FORMAT_COLOR);
+    drawAllFormats(0);
     if(!deferFlush){
       if(currentRun !== undefined && currentRun !== runId) return false;
       flushRender();
@@ -787,7 +787,7 @@
     return true;
   }
 
-  async function drawBasePatternsStepped(color = "red", { currentRun } = {}){
+  async function drawBasePatternsStepped({ currentRun } = {}){
     clearAllCells();
     setRenderMode(RENDER_IMMEDIATE);
     updateCursor(1, 1, DIR_DOWN);
@@ -859,12 +859,9 @@
       if(!(await maybeCursorJumpDelay())) return false;
       return !shouldAbort();
     };
-  const stepCell = (row, col, value, cellColor) => {
+  const stepCell = (row, col, value, cellKind) => {
     if(shouldAbort()) return false;
-    const kind = cellColor === TIMING_COLOR ? BIT_FUNC_TIMING
-      : cellColor === FORMAT_COLOR ? BIT_FUNC_FORMAT
-      : cellColor === color ? BIT_FUNC_FINDER
-      : BIT_UNKNOWN;
+    const kind = typeof cellKind === "number" ? cellKind : BIT_UNKNOWN;
     const encoded = window.encodeBit(kind, value === 1);
     window.updateCell(row, col, encoded);
     const dr = row - lastRow;
@@ -918,7 +915,7 @@
         const col = leftCol + c0;
         if(row < 1 || row > 25 || col < 1 || col > 25) continue;
         const bit = pattern[r0][c0];
-        if(!stepCell(row, col, bit, color)) return;
+        if(!stepCell(row, col, bit, BIT_FUNC_FINDER)) return;
         const md = await maybeStepDelay();
         if(md === false) return;
       }
@@ -939,7 +936,7 @@
         if(typeof window.updateCell === "function"){
           window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
         }
-        if(!stepCell(r, c, 0, color)) return;
+        if(!stepCell(r, c, 0, BIT_FUNC_FINDER)) return;
         const md = await maybeStepDelay();
         if(md === false) return;
       }
@@ -965,7 +962,7 @@
         if(typeof window.updateCell === "function"){
           window.updateCell(timingRowIndex, c, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
         }
-        stepCell(timingRowIndex, c, bit, TIMING_COLOR);
+        stepCell(timingRowIndex, c, bit, BIT_FUNC_TIMING);
         const md = await maybeStepDelay();
         if(md === false) return { ok: false, fastForwarded };
       }
@@ -979,7 +976,7 @@
         if(typeof window.updateCell === "function"){
           window.updateCell(r, timingColIndex, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
         }
-        stepCell(r, timingColIndex, bit, TIMING_COLOR);
+        stepCell(r, timingColIndex, bit, BIT_FUNC_TIMING);
         const md = await maybeStepDelay();
         if(md === false) return { ok: false, fastForwarded };
       }
@@ -1004,12 +1001,10 @@
         if(row < 1 || row > 25 || col < 1 || col > 25) continue;
         const bit = pattern[r0][c0];
         if(typeof window.updateCell === "function"){
-          const encFinder = window.encodeBit(BIT_FUNC_FINDER, bit === 1);
-          const encAlign = window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1);
-          window.updateCell(row, col, encFinder);
-          window.updateCell(row, col, encAlign);
-        }
-        if(!stepCell(row, col, bit, color)) return;
+        const encAlign = window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1);
+        window.updateCell(row, col, encAlign);
+      }
+        if(!stepCell(row, col, bit, BIT_FUNC_ALIGNMENT)) return;
         const md = await maybeStepDelay();
         if(md === false) return;
       }
@@ -1021,7 +1016,7 @@
     if(typeof window.updateCell === "function"){
       window.updateCell(18, 9, window.encodeBit(BIT_FUNC_DARK, true));
     }
-    if(!stepCell(18, 9, 1, color)) return { ok: false, fastForwarded };
+    if(!stepCell(18, 9, 1, BIT_FUNC_DARK)) return { ok: false, fastForwarded };
     const mdDark = await maybeStepDelay();
     if(mdDark === false) return { ok: false, fastForwarded };
 
@@ -1044,7 +1039,7 @@
         if(typeof window.updateCell === "function"){
           window.updateCell(r + 1, c + 1, window.encodeBit(BIT_FUNC_FORMAT, bit === 1));
         }
-        if(!stepCell(r + 1, c + 1, bit, FORMAT_COLOR)) return;
+        if(!stepCell(r + 1, c + 1, bit, BIT_FUNC_FORMAT)) return;
         const md = await maybeStepDelay();
         if(md === false) return;
       }
@@ -1149,16 +1144,16 @@
       const skipFunctions = stepEnabled && stepSkipFunctions && stepSkipFunctions.checked;
       setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
       if(stepEnabled && skipFunctions){
-        const ok = drawBasePatterns("red", { deferFlush: false, currentRun });
+        const ok = drawBasePatterns({ deferFlush: false, currentRun });
         if(currentRun !== runId || !ok){ aborted = true; return; }
         setRenderMode(RENDER_IMMEDIATE);
       }else if(stepEnabled){
-        const res = await drawBasePatternsStepped("red", { currentRun });
+        const res = await drawBasePatternsStepped({ currentRun });
         if(res && res.fastForwarded){
           // already finished function patterns quickly
         }else if(currentRun !== runId || (res && res.ok === false)){ aborted = true; return; }
       }else{
-        const ok = drawBasePatterns("red", { deferFlush: false, currentRun });
+        const ok = drawBasePatterns({ deferFlush: false, currentRun });
         if(currentRun !== runId || !ok){ aborted = true; return; }
       }
       // re-evaluate in case step mode changed during base patterns
@@ -1243,7 +1238,7 @@
     });
   }
 
-  function drawFinder(topRow, leftCol, color = "red"){
+  function drawFinder(topRow, leftCol){
     window.log && window.log(`drawFinder(${topRow}, ${leftCol})`);
     // 7x7 finder (black outer ring, white ring around as separator)
     const pattern = [
@@ -1291,7 +1286,7 @@
     setRenderMode(RENDER_IMMEDIATE);
   }
 
-  function drawAlignment(centerRow, centerCol, color = "red"){
+  function drawAlignment(centerRow, centerCol){
     window.log && window.log(`drawAlignment(${centerRow}, ${centerCol})`);
     // 5x5 alignment pattern centered at (centerRow, centerCol)
     const pattern = [
@@ -1317,25 +1312,25 @@
     setRenderMode(RENDER_IMMEDIATE);
   }
 
-  function drawAllAlignments(color = "red"){
-    window.log && window.log(`drawAllAlignments(color=${color})`);
-    drawAlignment(19, 19, color);
+  function drawAllAlignments(){
+    window.log && window.log("drawAllAlignments()");
+    drawAlignment(19, 19);
   }
 
-  function drawAllFinders(color = "blue"){
-    window.log && window.log(`drawAllFinders(color=${color})`);
-    drawFinder(1, 1, color);
-    drawFinder(1, 19, color);
-    drawFinder(19, 1, color);
+  function drawAllFinders(){
+    window.log && window.log("drawAllFinders()");
+    drawFinder(1, 1);
+    drawFinder(1, 19);
+    drawFinder(19, 1);
   }
 
-  function drawAllDarkModules(color = "red"){
-    window.log && window.log(`drawAllDarkModules(color=${color})`);
+  function drawAllDarkModules(){
+    window.log && window.log("drawAllDarkModules()");
     // Version 2 dark module is at (18, 9)
-    drawDarkModule(18, 9, color);
+    drawDarkModule(18, 9);
   }
 
-  function drawTiming(direction = "row", index = TIMING_ROW, color = TIMING_COLOR){
+  function drawTiming(direction = "row", index = TIMING_ROW){
     window.log && window.log(`drawTiming(dir=${direction}, idx=${index})`);
     if(!ENABLE_TIMING) return;
     const dirStr = String(direction || "").toLowerCase();
@@ -1380,20 +1375,20 @@
     setRenderMode(RENDER_IMMEDIATE);
   }
 
-  function drawAllTimings(color = TIMING_COLOR){
-    window.log && window.log(`drawAllTimings(color=${color})`);
-    drawTiming("row", TIMING_ROW, color);
-    drawTiming("col", TIMING_COL, color);
+  function drawAllTimings(){
+    window.log && window.log("drawAllTimings()");
+    drawTiming("row", TIMING_ROW);
+    drawTiming("col", TIMING_COL);
   }
 
-  function drawDarkModule(row = 18, col = 9, color = "red"){
+  function drawDarkModule(row = 18, col = 9){
     window.log && window.log(`drawDarkModule(${row}, ${col})`);
     if(typeof window.updateCell === "function"){
       window.updateCell(row, col, window.encodeBit(BIT_FUNC_DARK, true));
     }
   }
 
-  function drawFormat(bits15, coords, color = "red"){
+  function drawFormat(bits15, coords){
     window.log && window.log(`drawFormat(bits15=${bits15})`);
     const coordsArr = Array.isArray(coords) ? coords : [];
     setRenderMode(RENDER_BUFFERED);
@@ -1410,8 +1405,8 @@
     setRenderMode(RENDER_IMMEDIATE);
   }
 
-  function drawAllFormats(mask = 0, color = FORMAT_COLOR){
-    window.log && window.log(`drawAllFormats(mask=${mask}, color=${color})`);
+  function drawAllFormats(mask = 0){
+    window.log && window.log(`drawAllFormats(mask=${mask})`);
     const m = Math.min(7, Math.max(0, mask));
     const bits15 = FORMAT_L[m];
     const coordsA = [
@@ -1423,8 +1418,8 @@
       [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
       [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
     ];
-    drawFormat(bits15, coordsA, color);
-    drawFormat(bits15, coordsB, color);
+    drawFormat(bits15, coordsA);
+    drawFormat(bits15, coordsB);
     hasFormatPattern = true;
   }
 
