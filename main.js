@@ -185,14 +185,19 @@
     cellsInitialized = true;
   }
 
+  function setCursorColor(color){
+    const cursor = document.querySelector(".qr-cursor");
+    if(!cursor) return;
+    cursor.style.setProperty("--cursor-color", color);
+    cursor.style.borderColor = color;
+  }
+
   function applyCursor(row, col, dir){
     const gridArea = document.querySelector(".grid-area");
     const cursor = gridArea?.querySelector(".qr-cursor");
     if(!gridArea || !cursor) return;
 
     cursor.classList.remove("is-set");
-    cursor.style.setProperty("--cursor-color", "#e60000");
-    cursor.style.borderColor = "#e60000";
 
     const r = Math.min(25, Math.max(1, row));
     const c = Math.min(25, Math.max(1, col));
@@ -382,8 +387,7 @@
     const cursor = document.querySelector(".qr-cursor");
     if(cursor){
       cursor.classList.add("is-set");
-      cursor.style.setProperty("--cursor-color", "#1b66ff");
-      cursor.style.borderColor = "#1b66ff";
+      setCursorColor("#e60000");
     }
   }
 
