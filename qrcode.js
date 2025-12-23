@@ -11,6 +11,7 @@ const BIT_INFO_CHAR = 22;
 const BIT_INFO_TERMINATOR = 23;
 const BIT_INFO_PADDING = 24;
 const BIT_INFO_PARITY = 25;
+const BIT_MASK = 30;
 const BIT_UNKNOWN = 99;
 
 /**
@@ -198,6 +199,7 @@ window.BIT_INFO_CHAR = BIT_INFO_CHAR;
 window.BIT_INFO_TERMINATOR = BIT_INFO_TERMINATOR;
 window.BIT_INFO_PADDING = BIT_INFO_PADDING;
 window.BIT_INFO_PARITY = BIT_INFO_PARITY;
+window.BIT_MASK = BIT_MASK;
 window.BIT_UNKNOWN = BIT_UNKNOWN;
 window.encodeBit = encodeBit;
 window.bitKind = bitKind;

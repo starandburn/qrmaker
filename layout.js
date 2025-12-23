@@ -53,6 +53,7 @@ function getKindColor(kind){
     [BIT_FUNC_ALIGNMENT]: "green",
     [BIT_FUNC_DARK]: "black",
     [BIT_FUNC_FORMAT]: "blue",
+    [typeof BIT_MASK !== "undefined" ? BIT_MASK : -1]: "gray",
   };
   return fallback[kind] || "black";
 }

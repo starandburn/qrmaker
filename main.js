@@ -400,6 +400,7 @@
       [BIT_INFO_TERMINATOR]: "yellow",
       [BIT_INFO_PADDING]:    "purple",
       [BIT_INFO_PARITY]:     "green",
+      [BIT_MASK]:            "gray",
       [BIT_UNKNOWN]:         "gray",
     };
     return map[kind] || "black";
@@ -502,6 +503,44 @@
     if(r < 1 || r > BOARD_ROWS || c < 1 || c > BOARD_COLS) return null;
     return boardMatrix[r - 1][c - 1];
   };
+
+  function invertCell(rowOrRef, colMaybe){
+    let r = rowOrRef;
+    let c = colMaybe;
+    if(typeof rowOrRef === "string" && colMaybe === undefined){
+      const parsed = parseCellRef(rowOrRef);
+      if(!parsed) return false;
+      r = parsed.row;
+      c = parsed.col;
+    }
+    const rNum = Number(r);
+    const cNum = Number(c);
+    if(!Number.isInteger(rNum) || !Number.isInteger(cNum)) return false;
+    if(rNum < 1 || rNum > BOARD_ROWS || cNum < 1 || cNum > BOARD_COLS) return false;
+    const current = window.getCell(rNum, cNum);
+    if(typeof current !== "number") return false;
+    const rawKind = (typeof window.bitKind === "function") ? window.bitKind(current) : Math.abs(current);
+    const maskKind = (typeof window.BIT_MASK === "number" ? window.BIT_MASK : 30);
+    const isUnplaced = rawKind === UNPLACED_KIND;
+    const kind = isUnplaced ? maskKind : rawKind;
+    const isBlack = isUnplaced
+      ? false // treat unplaced as white (-kind) before inverting
+      : ((typeof window.isBlackBit === "function") ? window.isBlackBit(current) : current > 0);
+
+    // If currently mask black, revert to unplaced
+    if(kind === maskKind && isBlack){
+      window.updateCell(rNum, cNum, UNPLACED_KIND);
+      return UNPLACED_KIND;
+    }
+
+    const encoded = (typeof window.encodeBit === "function")
+      ? window.encodeBit(kind, !isBlack)
+      : (!isBlack ? kind : -kind);
+    window.updateCell(rNum, cNum, encoded);
+    return encoded;
+  }
+
+  window.invertCell = invertCell;
   window.drawFinder = drawFinder;
   window.drawAlignment = drawAlignment;
   window.drawTiming = drawTiming;
@@ -1111,7 +1150,7 @@
   });
 
   if(btnMask){
-    btnMask.addEventListener("click", () => {
+    btnMask.addEventListener('click', () => {
       if(isStepFillRunning) return;
       const maskFn = MASK_FUNCTIONS[0];
       if(!maskFn) return;
@@ -1119,18 +1158,10 @@
       setRenderMode(RENDER_BUFFERED);
       for(let row = 1; row <= 25; row++){
         for(let col = 1; col <= 25; col++){
-          if(funcSet.has(`${row}-${col}`)) continue;
-          const existing = cellStates.get(`${row}-${col}`);
-          const color = existing && existing.color ? existing.color : "black";
-          const kind = existing && typeof window.bitKind === "function"
-            ? window.bitKind(existing.value)
-            : (existing ? Math.abs(existing.value) : (typeof window.BIT_UNKNOWN === "number" ? window.BIT_UNKNOWN : 99));
-          const baseBit = existing
-            ? ((typeof window.isBlackBit === "function") ? (window.isBlackBit(existing.value) ? 1 : 0) : (existing.value > 0 ? 1 : 0))
-            : 0; // 譛ｪ驟咲ｽｮ縺ｯ逋ｽ謇ｱ縺・
-          const masked = baseBit ^ (maskFn(row - 1, col - 1) ? 1 : 0);
-          const encoded = window.encodeBit(kind, masked === 1);
-          window.updateCell(row, col, encoded);
+          if(funcSet.has(row + "-" + col)) continue;
+          if(!maskFn(row - 1, col - 1)) continue;
+          // Apply mask by inverting the cell (handles unplaced <-> mask)
+          invertCell(row, col);
         }
       }
       flushRender();
