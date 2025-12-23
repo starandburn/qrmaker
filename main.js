@@ -8,6 +8,7 @@
   const debugLog = document.getElementById("debugLog");
   const debugPanel = document.getElementById("debugPanel");
   const footerCopy = document.querySelector(".page-footer p:first-child");
+  const studentCodeInput = document.getElementById("studentCode");
   const stepMode = document.getElementById("stepMode");
   const stepSkipFunctions = document.getElementById("stepSkipFunctions");
   const stepSpeed = document.getElementById("stepSpeed");
@@ -542,6 +543,49 @@
       : (!isBlack ? kind : -kind);
     window.updateCell(rNum, cNum, encoded);
     return encoded;
+  }
+
+  function formatStudentCodeLine(line){
+    const trimmed = typeof line === "string" ? line.trim() : "";
+    if(!trimmed) return "";
+    // If already has parentheses, keep structure but normalize commas to spaces for parsing intent
+    if(trimmed.includes("(") && trimmed.includes(")")){
+      return trimmed.replace(/,/g, " ");
+    }
+    // Split by whitespace or comma; comma treated as whitespace
+    const parts = trimmed.split(/[\s,]+/).filter(Boolean);
+    if(parts.length === 0) return "";
+    const fn = parts.shift();
+    const args = parts;
+    if(args.length === 0){
+      return `${fn}()`;
+    }
+    // Join args with comma for valid JS call; inputs can be space-separated
+    return `${fn}(${args.join(", ")})`;
+  }
+
+  async function runStudentCode(){
+    if(!studentCodeInput) return true;
+    const codeRaw = studentCodeInput.value;
+    if(!codeRaw || !codeRaw.trim()) return true;
+    const formatted = codeRaw
+      .split(/\r?\n/)
+      .map((ln) => formatStudentCodeLine(ln))
+      .filter((ln) => ln.trim().length > 0)
+      .join("\n");
+    try{
+      const res = (0, eval)(formatted);
+      if(res && typeof res.then === "function"){
+        await res;
+      }
+      return true;
+    }catch(err){
+      const msg = err && err.message ? err.message : String(err);
+      if(typeof window.log === "function"){
+        window.log(`studentCode error: ${msg}`);
+      }
+      return false;
+    }
   }
 
   async function applyMask(maskIndex = 0){
@@ -1127,7 +1171,7 @@
     setRenderMode(RENDER_IMMEDIATE);
   });
 
-  btnGenerate.addEventListener("click", async () => {
+  async function runGenerateLegacy(){
     // Advance runId to signal any in-flight render to cancel
     const requestedRun = ++runId;
     // If a run is active, wait briefly for it to stop
@@ -1141,6 +1185,8 @@
     const currentRun = runId = requestedRun;
     let aborted = false;
     try{
+      const studentOk = await runStudentCode();
+      if(!studentOk){ aborted = true; return; }
       let stepEnabled = isStepModeOn();
       const skipFunctions = stepEnabled && stepSkipFunctions && stepSkipFunctions.checked;
       setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
@@ -1224,6 +1270,10 @@
       isStepFillRunning = false;
       setRenderMode(RENDER_IMMEDIATE);
     }
+  }
+
+  btnGenerate.addEventListener("click", async () => {
+    await runStudentCode();
   });
 
   if(btnMask){
