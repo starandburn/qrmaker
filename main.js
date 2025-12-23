@@ -28,15 +28,15 @@
   }
 
   // Relative directions (turn relative to current)
-  const DIR_UP = 0;
-  const DIR_RIGHT = 1;
-  const DIR_DOWN = 2;
-  const DIR_LEFT = 3;
+  const DIR_UP = "up";
+  const DIR_RIGHT = "right";
+  const DIR_DOWN = "down";
+  const DIR_LEFT = "left";
   // Absolute cardinal directions
-  const CARD_NORTH = 4;
-  const CARD_EAST = 5;
-  const CARD_SOUTH = 6;
-  const CARD_WEST = 7;
+  const CARD_NORTH = "north";
+  const CARD_EAST = "east";
+  const CARD_SOUTH = "south";
+  const CARD_WEST = "west";
   const north = CARD_NORTH;
   const east = CARD_EAST;
   const south = CARD_SOUTH;
@@ -48,6 +48,37 @@
   const RENDER_IMMEDIATE = "immediate";
   const RENDER_BUFFERED = "buffered";
   const STEP_DELAY_MS = 12;
+
+  const DIR_ORDER = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
+  const DIR_TO_INDEX = new Map(DIR_ORDER.map((d, i) => [d, i]));
+  const normalizeDir = (val) => {
+    if(val === undefined || val === null) return null;
+    if(DIR_TO_INDEX.has(val)) return val;
+    if(val === CARD_NORTH || val === north) return DIR_UP;
+    if(val === CARD_EAST || val === east) return DIR_RIGHT;
+    if(val === CARD_SOUTH || val === south) return DIR_DOWN;
+    if(val === CARD_WEST || val === west) return DIR_LEFT;
+    if(typeof val === "string"){
+      const lower = val.toLowerCase();
+      if(DIR_TO_INDEX.has(lower)) return lower;
+      if(lower === "north") return DIR_UP;
+      if(lower === "east") return DIR_RIGHT;
+      if(lower === "south") return DIR_DOWN;
+      if(lower === "west") return DIR_LEFT;
+    }
+    if(typeof val === "number" && Number.isFinite(val)){
+      const idx = ((val % 4) + 4) % 4;
+      return DIR_ORDER[idx];
+    }
+    return null;
+  };
+  const rotateDir = (baseDir, delta) => {
+    const norm = normalizeDir(baseDir);
+    if(!norm) return null;
+    const idx = DIR_TO_INDEX.get(norm);
+    const next = DIR_ORDER[((idx + delta) % 4 + 4) % 4];
+    return next;
+  };
 
   const cursorPos = {
     row: 1,
@@ -238,10 +269,19 @@
           targetRow = parsed.row;
           targetCol = parsed.col;
         }else{
-          return;
+          const dirAbs = normalizeDir(v);
+          if(!dirAbs) return;
+          let dr = 0, dc = 0;
+          if(dirAbs === DIR_UP) dr = -1;
+          if(dirAbs === DIR_RIGHT) dc = 1;
+          if(dirAbs === DIR_DOWN) dr = 1;
+          if(dirAbs === DIR_LEFT) dc = -1;
+          targetRow += dr;
+          targetCol += dc;
         }
-      }else if(Number.isFinite(v)){
-        const dirAbs = v;
+      }else{
+        const dirAbs = normalizeDir(v);
+        if(!dirAbs) return;
         let dr = 0, dc = 0;
         if(dirAbs === DIR_UP) dr = -1;
         if(dirAbs === DIR_RIGHT) dc = 1;
@@ -249,8 +289,6 @@
         if(dirAbs === DIR_LEFT) dc = -1;
         targetRow += dr;
         targetCol += dc;
-      }else{
-        return;
       }
     }else if(args.length >= 2){
       const [r, c] = args;
@@ -279,20 +317,36 @@
   function turnCursor(dirArg){
     let targetDir = cursorPos.dir;
     if(dirArg === undefined){
-      targetDir = (cursorPos.dir + 2) % 4;
+      const rotated = rotateDir(cursorPos.dir, 2);
+      if(!rotated) return false;
+      targetDir = rotated;
       return updateCursor(cursorPos.row, cursorPos.col, targetDir);
     }
-    switch(dirArg){
-      case CARD_NORTH: targetDir = DIR_UP; break;
-      case CARD_EAST:  targetDir = DIR_RIGHT; break;
-      case CARD_SOUTH: targetDir = DIR_DOWN; break;
-      case CARD_WEST:  targetDir = DIR_LEFT; break;
-      case DIR_UP:     targetDir = cursorPos.dir; break;
-      case DIR_RIGHT:  targetDir = (cursorPos.dir + 1) % 4; break;
-      case DIR_DOWN:   targetDir = (cursorPos.dir + 2) % 4; break;
-      case DIR_LEFT:   targetDir = (cursorPos.dir + 3) % 4; break;
-      default: return false;
+    if(typeof dirArg === "string"){
+      const lower = dirArg.toLowerCase();
+      // absolute compass
+      if(lower === "north") targetDir = DIR_UP;
+      else if(lower === "east") targetDir = DIR_RIGHT;
+      else if(lower === "south") targetDir = DIR_DOWN;
+      else if(lower === "west") targetDir = DIR_LEFT;
+      // relative turns (case-insensitive)
+      else if(lower === "right") targetDir = rotateDir(cursorPos.dir, 1);
+      else if(lower === "down") targetDir = rotateDir(cursorPos.dir, 2);
+      else if(lower === "left") targetDir = rotateDir(cursorPos.dir, 3);
+      else if(lower === "up") targetDir = cursorPos.dir;
+      else{
+        const norm = normalizeDir(dirArg);
+        if(!norm) return false;
+        targetDir = norm;
+      }
+    }else if(typeof dirArg === "number"){
+      targetDir = rotateDir(cursorPos.dir, dirArg);
+    }else{
+      const norm = normalizeDir(dirArg);
+      if(!norm) return false;
+      targetDir = norm;
     }
+    if(!targetDir) return false;
     return updateCursor(cursorPos.row, cursorPos.col, targetDir);
   }
 
