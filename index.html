@@ -99,8 +99,11 @@ mask
         <button id="btnGenerate" type="button">作成実行</button>
         <button id="btnMask" type="button">マスク適用(0)</button>
         <div class="step-controls">
+        <div class="step-toggle-row">
           <label class="step-mode"><input type="checkbox" id="stepMode"> ステップ実行</label>
-          <label class="step-speed"><span>速</span><input type="range" id="stepSpeed" min="0" max="120" value="60" disabled><span>遅</span></label>
+          <label class="step-skip"><input type="checkbox" id="stepSkipFunctions" checked> データ部のみ</label>
+        </div>
+        <label class="step-speed"><span>速</span><input type="range" id="stepSpeed" min="0" max="120" value="60" disabled><span>遅</span></label>
         </div>
       </div>
     </div>
