@@ -153,7 +153,7 @@
     runId++;
     isStepFillRunning = false;
     if(clear){
-      clearAllCells();
+      resetQRCode();
     }
     if(resetCursor){
       updateCursor(1, 1, DIR_DOWN);
@@ -392,8 +392,15 @@
     }
   }
 
-  function clearAllCells(){
-    window.log("clearAllCells()");
+  function resetQRCode(options = {}){
+    const { abortRun = true } = options;
+    window.log("resetQRCode()");
+    if(abortRun){
+      runId++;
+      maskRunId++;
+      isStepFillRunning = false;
+      setRenderMode(RENDER_IMMEDIATE);
+    }
     const cells = document.querySelectorAll(".qr-cells .cell");
     if(!cells || cells.length === 0) return;
     for(const cell of cells){
@@ -411,6 +418,9 @@
     timingRowIndex = 0;
     timingColIndex = 0;
     hasFormatPattern = false;
+    if(typeof resetData === "function"){
+      resetData();
+    }
   }
 
   // Guarded cursor update for async flows: only applies if runToken matches current runId
@@ -668,7 +678,8 @@
   window.flushRender = flushRender;
   window.setRenderMode = setRenderMode;
   window.reapplyCellColors = reapplyCellColors;
-  window.clearAllCells = clearAllCells;
+  window.resetQRCode = resetQRCode;
+  window.clearAllCells = resetQRCode; // backward compat
   window.boardMatrix = boardMatrix;
   window.getNextData = getNextData;
   window.resetData = resetData;
@@ -1060,7 +1071,7 @@
   function drawBasePatterns({ deferFlush = false, currentRun } = {}){
     if(currentRun !== undefined && currentRun !== runId) return false;
     setRenderMode(RENDER_BUFFERED);
-    clearAllCells();
+    resetQRCode({ abortRun: false });
     updateCursor(1, 1, DIR_DOWN);
     if(currentRun !== undefined && currentRun !== runId) return false;
     drawAllFinders({ stepEnabled: false, currentRun });
@@ -1082,7 +1093,7 @@
 
   async function drawBasePatternsStepped({ currentRun } = {}){
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
-    clearAllCells();
+    resetQRCode({ abortRun: false });
     setRenderMode(RENDER_IMMEDIATE);
     updateCursorIfRun(runToken, 1, 1, DIR_DOWN);
     let stepEnabled = isStepModeOn();
@@ -1404,7 +1415,7 @@
   btnInit.addEventListener("click", () => {
     runId++;
     isStepFillRunning = false;
-    clearAllCells();
+    resetQRCode({ abortRun: false });
     updateCursor(1, 1, DIR_DOWN);
     if(Array.isArray(window.toggleInputs)){
       for(const el of window.toggleInputs){
@@ -1964,7 +1975,7 @@
   syncStepControls();
 
   ensureCells();
-  clearAllCells();
+  resetQRCode({ abortRun: false });
   updateCursor(cursorPos.row, cursorPos.col, cursorPos.dir);
   syncDebugOverlay();
 

@@ -1,4 +1,4 @@
-clearAllCells
+resetQRCode
 drawAllFunctionals
 moveCursor y25 up
 resetData
