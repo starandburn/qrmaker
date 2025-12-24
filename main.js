@@ -637,6 +637,13 @@
   }
 
   function buildUserScript(rawText, { awaitCalls = true } = {}){
+    let autoLoopCounter = 0;
+    const formatSimpleFor = (countVal) => {
+      const n = Number(countVal);
+      if(!Number.isFinite(n)) return null;
+      const loopVar = `i${autoLoopCounter++}`;
+      return `for (let ${loopVar} = 0; ${loopVar} < ${n}; ${loopVar}++){`;
+    };
     const codeRaw = rawText || "";
     if(!codeRaw.trim()) return "";
     const lines = codeRaw.split(/\r?\n/);
@@ -644,6 +651,18 @@
     for(const raw of lines){
       const trimmed = typeof raw === "string" ? raw.trim() : "";
       if(!trimmed) continue;
+      if(/^end(\s*for)?$/i.test(trimmed)){
+        combined.push("}");
+        continue;
+      }
+      const simpleFor = trimmed.match(/^for\s+(\d+)\s*$/i);
+      if(simpleFor){
+        const formattedFor = formatSimpleFor(simpleFor[1]);
+        if(formattedFor){
+          combined.push(formattedFor);
+          continue;
+        }
+      }
       const isBlocky = /^(for|while|if|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(trimmed)
         || /[{;}]$/.test(trimmed);
       if(isBlocky){
