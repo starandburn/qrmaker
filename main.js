@@ -39,6 +39,7 @@
   const RENDER_IMMEDIATE = "immediate";
   const RENDER_BUFFERED = "buffered";
   const STEP_DELAY_MS = 12;
+  const ABORT_ERR = Symbol("run-aborted");
 
   const DIR_ORDER = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
   const DIR_TO_INDEX = new Map(DIR_ORDER.map((d, i) => [d, i]));
@@ -466,11 +467,24 @@
     return Math.max(0, Math.min(120, val));
   }
 
+  function stepDelayAbort(runToken){
+    const token = (typeof runToken === "number") ? runToken : runId;
+    const d = getStepDelay();
+    const wait = d > 0 ? sleep(d) : new Promise(requestAnimationFrame);
+    return wait.then(() => {
+      if(token !== runId){
+        throw ABORT_ERR;
+      }
+      return true;
+    });
+  }
+
   function makeStepThenable(ok){
     if(!ok) return false;
     if(!isStepModeOn()){
       return true;
     }
+    const stepRunToken = runId;
     const delay = getStepDelay();
     const wait = () => new Promise((resolve) => {
       const done = () => resolve(true);
@@ -480,9 +494,15 @@
         requestAnimationFrame(done);
       }
     });
-    const p = wait();
+    const p = wait().then(() => {
+      if(stepRunToken !== runId){
+        throw ABORT_ERR;
+      }
+      return true;
+    });
     return {
       then: (...args) => p.then(...args),
+      catch: (...args) => p.catch(...args),
       valueOf: () => true,
       toString: () => "true",
     };
@@ -786,6 +806,9 @@
       }
       return true;
     }catch(err){
+      if(err === ABORT_ERR){
+        return false;
+      }
       const msg = err && err.message ? err.message : String(err);
       if(typeof window.log === "function"){
         window.log(`userCode error: ${msg}`);
@@ -804,6 +827,11 @@
       const ok = await runUserCode();
       if(!ok) return false;
       return true;
+    }catch(err){
+      if(err === ABORT_ERR){
+        return false;
+      }
+      throw err;
     }finally{
       isStepFillRunning = false;
       flushRender();
@@ -1486,6 +1514,12 @@
       if(currentRun === runId && Array.isArray(window.toggleInputs)){
         // do not auto-clear toggles; user can use 全解除 as needed
       }
+    }catch(err){
+      if(err === ABORT_ERR){
+        aborted = true;
+        return;
+      }
+      throw err;
     }finally{
       isStepFillRunning = false;
       setRenderMode(RENDER_IMMEDIATE);
@@ -1583,12 +1617,7 @@
     }
     const stepActive = () => shouldStepFunctions() && runToken === runId;
     const delay = async () => {
-      const d = getStepDelay();
-      if(d > 0){
-        await sleep(d);
-      }else{
-        await new Promise(requestAnimationFrame);
-      }
+      await stepDelayAbort(runToken);
     };
     return (async () => {
       const prevRender = renderMode;
@@ -1685,12 +1714,7 @@
     }
     const stepActive = () => shouldStepFunctions();
     const delay = async () => {
-      const d = getStepDelay();
-      if(d > 0){
-        await sleep(d);
-      }else{
-        await new Promise(requestAnimationFrame);
-      }
+      await stepDelayAbort(runToken);
     };
     const drawStep = async () => {
       for(let r = 0; r < 7; r++){
@@ -1767,12 +1791,7 @@
       return true;
     }
     const delay = async () => {
-      const d = getStepDelay();
-      if(d > 0){
-        await sleep(d);
-      }else{
-        await new Promise(requestAnimationFrame);
-      }
+      await stepDelayAbort(runToken);
     };
     if(runToken !== runId) return false;
     setRenderMode(RENDER_IMMEDIATE);
@@ -1829,12 +1848,7 @@
       return true;
     }
     const delay = async () => {
-      const d = getStepDelay();
-      if(d > 0){
-        await sleep(d);
-      }else{
-        await new Promise(requestAnimationFrame);
-      }
+      await stepDelayAbort(runToken);
     };
     return (async () => {
       const prevRender = renderMode;
@@ -1894,12 +1908,7 @@
       return true;
     }
     const delay = async () => {
-      const d = getStepDelay();
-      if(d > 0){
-        await sleep(d);
-      }else{
-        await new Promise(requestAnimationFrame);
-      }
+      await stepDelayAbort(runToken);
     };
     const prevRender = renderMode;
     setRenderMode(RENDER_IMMEDIATE);
