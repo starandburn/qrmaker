@@ -439,6 +439,12 @@ details.pattern-panel:not([open]) .summary-title::before{
   margin-bottom:6px;
   font-size:14px;
 }
+.pattern-title-main{
+  font-size:inherit;
+}
+.pattern-title-note{
+  font-size:0.9em;
+}
 
 .pattern-row{
   display:flex;
@@ -1233,7 +1239,10 @@ textarea{
     font-size:11px;
   }
   .pattern-title{
-    font-size:12px;
+    font-size:14px;
+  }
+  .pattern-title-note{
+    display:none;
   }
 }
 
