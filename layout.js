@@ -36,6 +36,7 @@ const asciiTable = document.getElementById("asciiTable");
 const toggleDebugValues = document.getElementById("toggleDebugValues");
 const toggleInputs = [toggleCursor, toggleGuide, toggleGrid, toggleEmpty, toggleColor, toggleDebugValues].filter(Boolean);
 window.toggleInputs = toggleInputs;
+const userCodeTextarea = document.getElementById("userCode");
 
 function getKindColor(kind){
   if(typeof window.colorsForKind === "function"){
@@ -337,6 +338,55 @@ if(txtInput){
       window.stopCurrentRun({ resetCursor: false, clear: false });
     }
     refreshPattern();
+  });
+}
+// Enhanced typing helpers for the script textarea
+if(userCodeTextarea){
+  const insertText = (text) => {
+    const start = userCodeTextarea.selectionStart ?? 0;
+    const end = userCodeTextarea.selectionEnd ?? start;
+    const val = userCodeTextarea.value ?? "";
+    userCodeTextarea.value = val.slice(0, start) + text + val.slice(end);
+    const pos = start + text.length;
+    userCodeTextarea.selectionStart = userCodeTextarea.selectionEnd = pos;
+  };
+  userCodeTextarea.addEventListener("keydown", (e) => {
+    if(e.ctrlKey && !e.shiftKey && !e.altKey && e.key === "Enter"){
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    if(e.key === "Tab"){
+      e.preventDefault();
+      // Shift+Tab: outdent current line if possible
+      if(e.shiftKey){
+        const start = userCodeTextarea.selectionStart ?? 0;
+        const end = userCodeTextarea.selectionEnd ?? start;
+        const val = userCodeTextarea.value ?? "";
+        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+        const line = val.slice(lineStart, end);
+        const match = line.match(/^(\t| {1,4})/);
+        if(match){
+          const removeLen = match[0].length;
+          userCodeTextarea.value = val.slice(0, lineStart) + line.slice(removeLen) + val.slice(end);
+          const delta = removeLen;
+          const newPos = Math.max(lineStart, start - delta);
+          const newEnd = Math.max(lineStart, end - delta);
+          userCodeTextarea.selectionStart = newPos;
+          userCodeTextarea.selectionEnd = newEnd;
+        }
+      }else{
+        insertText("\t");
+      }
+    }else if(e.key === "Enter"){
+      const start = userCodeTextarea.selectionStart ?? 0;
+      const val = userCodeTextarea.value ?? "";
+      const lineStart = val.lastIndexOf("\n", start - 1) + 1;
+      const currentLine = val.slice(lineStart, start);
+      const indent = (currentLine.match(/^[\t ]*/) || [""])[0];
+      e.preventDefault();
+      insertText("\n" + indent);
+    }
   });
 }
 

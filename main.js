@@ -1549,6 +1549,10 @@
   });
   if(btnGenerate){
     window.addEventListener("keydown", (ev) => {
+      const active = document.activeElement;
+      if(active && active.id === "userCode"){
+        return; // let textarea handler manage shortcuts
+      }
       if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter"){
         ev.preventDefault();
         btnGenerate.click();
@@ -2015,6 +2019,14 @@
       syncParsedCode();
     });
     userCodeInput.addEventListener("keydown", async (ev) => {
+      if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter"){
+        ev.preventDefault();
+        ev.stopPropagation();
+        if(btnGenerate && !btnGenerate.disabled){
+          btnGenerate.click();
+        }
+        return;
+      }
       if(ev.key === "Enter" && ev.shiftKey){
         ev.preventDefault();
         let text = userCodeInput.value || "";
