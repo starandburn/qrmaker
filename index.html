@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -79,23 +79,17 @@ resetQRCode
 drawAllFunctionals
 moveCursor y25 up
 repeat
-	if (isEmpty()){
-		putCell
-	}
+	if isEmpty putCell
 	moveCursor left
-	if (isEmpty()){
- 		putCell
-	}
+	if isEmpty putCell
 	moveCursor
-	if (isMoveBlocked()){
+	if isMoveBlocked
   		turnCursor
   		moveCursor left
-	if (isTimingCell()){
-		moveCursor left
-	}
-	} else {
+  		if isTimingCell	moveCursor left
+	else
 		moveCursor right
-	}
+	endif
 endrepeat
 applyMask
 </textarea>

@@ -755,6 +755,7 @@
       };
     };
     const guardWhileWithParen = (line) => {
+      if(line.toLowerCase().includes("cancontinueloop")) return null;
       const info = extractParenInfo(line);
       if(!info) return null;
       const closing = line.slice(info.closeIdx);
@@ -767,6 +768,7 @@
       if(!cond) return null;
       return `while (!(${cond}) && canContinueLoop())${info.remainder}`;
     };
+    const stopCommandPattern = /^stop(?:\s+(?:for|while|repeat))?$/i;
     const buildSimpleLoopLine = (keyword, conditionRaw) => {
       const condFormatted = formatStudentCodeLine(conditionRaw);
       if(!condFormatted) return null;
@@ -781,6 +783,16 @@
       const loopVar = `i${autoLoopCounter++}`;
       return `for (let ${loopVar} = 0; ${loopVar} < ${n}; ${loopVar}++){`;
     };
+    const buildConditionalLine = (prefix, conditionRaw) => {
+      const condition = typeof conditionRaw === "string" ? conditionRaw.trim() : "";
+      if(!condition) return null;
+      if(condition.startsWith("(") && condition.endsWith(")")){
+        return `${prefix} ${condition} {`;
+      }
+      const formatted = formatStudentCodeLine(condition);
+      if(!formatted) return null;
+      return `${prefix} (${formatted}) {`;
+    };
     const codeRaw = rawText || "";
     if(!codeRaw.trim()) return "";
     const lines = codeRaw.split(/\r?\n/);
@@ -788,8 +800,18 @@
     for(const raw of lines){
       const trimmed = typeof raw === "string" ? raw.trim() : "";
       if(!trimmed) continue;
-      if(/^(?:end|endfor|endwhile|enduntil|endrepeat|end\s*for|end\s*while|end\s*until|end\s*repeat)$/i.test(trimmed)){
+      const trimmedLower = trimmed.toLowerCase();
+      if(/^(?:end|endfor|endwhile|enduntil|endrepeat|endif|end\s*for|end\s*while|end\s*until|end\s*repeat|end\s*if)$/i.test(trimmed)){
         combined.push("}");
+        continue;
+      }
+      if(stopCommandPattern.test(trimmed)){
+        combined.push("throw ABORT_ERR;");
+        continue;
+      }
+      const exitMatch = trimmed.match(/^exit(?:\s+(for|while|repeat))?$/i);
+      if(exitMatch){
+        combined.push("break;");
         continue;
       }
       const simpleFor = trimmed.match(/^for\s+(\d+)\s*$/i);
@@ -800,8 +822,61 @@
           continue;
         }
       }
+      const ifMatch = trimmed.match(/^if\b(.*)$/i);
+      if(ifMatch){
+        const conditionRaw = (ifMatch[1] || "").trim();
+        const singleLine = (() => {
+          if(!conditionRaw) return null;
+          const firstSpaceIdx = conditionRaw.search(/\s/);
+          if(firstSpaceIdx === -1) return null;
+          const conditionToken = conditionRaw.slice(0, firstSpaceIdx).trim();
+          const rest = conditionRaw.slice(firstSpaceIdx).trim();
+          if(!conditionToken || !rest) return null;
+          const condFormatted = formatStudentCodeLine(conditionToken);
+          if(!condFormatted) return null;
+          const exitMatch = rest.match(/^exit(?:\s+(?:for|while|repeat))?$/i);
+          if(exitMatch){
+            return `if (${condFormatted}) break;`;
+          }
+          if(stopCommandPattern.test(rest)){
+            return `if (${condFormatted}) throw ABORT_ERR;`;
+          }
+          const bodyFormatted = formatStudentCodeLine(rest);
+          if(!bodyFormatted) return null;
+          const bodyStmt = bodyFormatted.endsWith(";") ? bodyFormatted : `${bodyFormatted};`;
+          const awaitedBody = awaitCalls ? `await ${bodyStmt}` : bodyStmt;
+          return `if (${condFormatted}) ${awaitedBody}`;
+        })();
+        if(singleLine){
+          combined.push(singleLine);
+          continue;
+        }
+        if(!trimmed.includes("{")){
+          if(conditionRaw){
+            const line = buildConditionalLine("if", conditionRaw);
+            if(line){
+              combined.push(line);
+              continue;
+            }
+          }
+        }
+      }
+      const elseMatch = trimmed.match(/^else\b(.*)$/i);
+      if(elseMatch && !trimmed.includes("{")){
+        const rest = (elseMatch[1] || "").trim();
+        const restIfMatch = rest.match(/^if\b(.*)$/i);
+        if(restIfMatch){
+          const nestedLine = buildConditionalLine("} else if", restIfMatch[1]);
+          if(nestedLine){
+            combined.push(nestedLine);
+            continue;
+          }
+        }
+        combined.push("} else {");
+        continue;
+      }
       const whileMatch = trimmed.match(/^while\b(.*)$/i);
-      if(whileMatch && !trimmed.includes("canContinueLoop")){
+      if(whileMatch && !trimmedLower.includes("cancontinueloop")){
         const conditionRaw = (whileMatch[1] || "").trim();
         if(conditionRaw.startsWith("(")){
           const guarded = guardWhileWithParen(trimmed);
@@ -818,7 +893,7 @@
         }
       }
       const untilMatch = trimmed.match(/^until\b(.*)$/i);
-      if(untilMatch && !trimmed.includes("canContinueLoop")){
+      if(untilMatch && !trimmedLower.includes("cancontinueloop")){
         const conditionRaw = (untilMatch[1] || "").trim();
         if(conditionRaw.startsWith("(")){
           const rewritten = rewriteUntilWithParen(trimmed);
