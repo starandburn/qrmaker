@@ -90,6 +90,19 @@
   const RENDER_BUFFERED = "buffered";
   const STEP_DELAY_MS = 12;
   const ABORT_ERR = Symbol("run-aborted");
+  const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const ALIAS_MAP = {
+    move: "moveCursor",
+    turn: "turnCursor",
+  };
+  const ALIAS_PATTERN = new RegExp(
+    `\\b(${Object.keys(ALIAS_MAP).map(escapeRegExp).join("|")})\\b`,
+    "gi",
+  );
+  const applyAliasTransforms = (text) => {
+    if(typeof text !== "string" || !text) return "";
+    return text.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
+  };
 
   const DIR_ORDER = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
   const DIR_TO_INDEX = new Map(DIR_ORDER.map((d, i) => [d, i]));
@@ -795,7 +808,7 @@
       if(!formatted) return null;
       return `${prefix} (${formatted}) {`;
     };
-    const codeRaw = rawText || "";
+    const codeRaw = applyAliasTransforms(rawText || "");
     if(!codeRaw.trim()) return "";
     const lines = codeRaw.split(/\r?\n/);
     const combined = [];
