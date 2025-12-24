@@ -38,7 +38,8 @@ body{
   display:flex;
   flex-direction:column;
   color:#1f2f4a;
-  overflow:hidden;
+  overflow-y:auto;
+  overflow-x:hidden;
   user-select:none;
   transition: opacity 0.15s ease;
 }
@@ -59,11 +60,10 @@ body.app-loading .page-footer{
   margin:-10px -10px 6px;
   padding:16px 20px 10px;
   border-bottom:2px solid #c9d8ed;
-  display:flex;
-  align-items:center;
-  min-height:96px;
+  display:block;
+  min-height:auto;
   position:relative;
-  overflow:hidden;
+  overflow:visible;
   box-shadow:0 10px 30px rgba(0,0,0,0.08) inset;
 }
 
@@ -193,7 +193,7 @@ main.layout{
   align-items:stretch;
   min-width:0;
   min-height:0;
-  overflow:auto;
+  overflow:visible;
 }
 
 .left-col,
@@ -1118,6 +1118,96 @@ textarea{
 @media (max-width: 960px){
   main.layout{
     grid-template-columns:1fr;
+  }
+}
+@media (orientation: portrait){
+  main.layout{
+    grid-template-columns:1fr;
+  }
+}
+@media (max-width: 1100px), (orientation: portrait){
+  main.layout{
+    display:flex;
+    flex-direction:column;
+    flex:0 0 auto;
+  }
+  .view-area{
+    justify-content:center;
+    align-items:flex-start;
+    padding:12px 10px 18px 10px;
+    width:100%;
+    max-width:100%;
+    box-sizing:border-box;
+  }
+  .square{
+    width:100%;
+    max-width:calc(100% - 8px);
+    max-height:none;
+    margin:0 auto;
+    aspect-ratio:1 / 1;
+  }
+  .view-panel{
+    grid-template-rows:auto auto;
+    width:100%;
+    flex:0 0 auto;
+  }
+  .left-col,
+  .right-col{
+    flex:0 0 auto;
+  }
+  .code-panel{
+    display:block;
+    width:100%;
+  }
+  .code-panel .code-split{
+    display:block;
+    min-height:0;
+  }
+  .code-panel textarea{
+    height:7.5em; /* about 5 lines with padding */
+    min-height:7em;
+    max-height:9em;
+    overflow-y:auto;
+  }
+  .qr-controls{
+    padding:0 6px;
+    gap:6px;
+  }
+  .qr-controls label{
+    padding:2px 4px;
+  }
+  .qr-controls button{
+    padding:3px 8px;
+  }
+  .page-head{
+    padding:12px 14px 8px;
+    margin-bottom:4px;
+  }
+  .title-icon{
+    width:48px;
+    height:48px;
+    border-radius:12px;
+    padding:4px;
+  }
+  .subtitle{
+    font-size:14px;
+  }
+  .title{
+    font-size:26px;
+  }
+  .school-block{
+    padding:8px 10px;
+    border-radius:12px;
+    gap:8px;
+  }
+  .school-logo{
+    height:40px;
+  }
+  .school-ja{
+    font-size:18px;
+  }
+  .school-en{
+    font-size:11px;
   }
 }
 

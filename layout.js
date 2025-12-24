@@ -372,7 +372,14 @@ function fitSquare(){
 
   const w = Math.max(0, area.clientWidth - padX);
   const h = Math.max(0, area.clientHeight - padY);
-  const size = Math.max(60, Math.floor(Math.min(w, h)));
+  const isSingleColumn = (
+    (window.matchMedia && window.matchMedia("(orientation: portrait)").matches) ||
+    (window.innerHeight > window.innerWidth) ||
+    window.innerWidth <= 1100
+  );
+  const size = isSingleColumn
+    ? Math.max(60, Math.floor(w)) // single-column/tall: base strictly on available width
+    : Math.max(60, Math.floor(Math.min(w, h))); // two-column: fit both axes
 
   // Hide guide text if the available width is too narrow
   const guideCompact = w < 420 || h < 420 || size < 280;
