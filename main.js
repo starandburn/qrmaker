@@ -651,6 +651,12 @@
 
   function buildUserScript(rawText, { awaitCalls = true } = {}){
     let autoLoopCounter = 0;
+    const repeatDefaultConditionName = () => {
+      if(typeof window !== "undefined" && typeof window.hasMoreMove === "function"){
+        return "hasMoreMove";
+      }
+      return "hasMoreData";
+    };
     const extractParenInfo = (line) => {
       const openIdx = line.indexOf("(");
       if(openIdx === -1) return null;
@@ -732,7 +738,7 @@
     for(const raw of lines){
       const trimmed = typeof raw === "string" ? raw.trim() : "";
       if(!trimmed) continue;
-      if(/^(?:end|endfor|endwhile|enduntil|end\s*for|end\s*while|end\s*until)$/i.test(trimmed)){
+      if(/^(?:end|endfor|endwhile|enduntil|endrepeat|end\s*for|end\s*while|end\s*until|end\s*repeat)$/i.test(trimmed)){
         combined.push("}");
         continue;
       }
@@ -776,6 +782,22 @@
             combined.push(loopLine);
             continue;
           }
+        }
+      }
+      const repeatMatch = trimmed.match(/^repeat(?:\s+(\d+))?$/i);
+      if(repeatMatch){
+        const count = repeatMatch[1];
+        if(count){
+          const formattedFor = formatSimpleFor(count);
+          if(formattedFor){
+            combined.push(formattedFor);
+            continue;
+          }
+        }else{
+          const repeatCondition = repeatDefaultConditionName();
+          const guardCondition = formatStudentCodeLine(repeatCondition);
+          combined.push(`while (${guardCondition} && canContinueLoop()) {`);
+          continue;
         }
       }
       const isBlocky = /^(for|while|if|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(trimmed)
