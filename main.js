@@ -901,9 +901,32 @@
       combined.push(line);
       blockDepth = Math.max(0, blockDepth + countBraceDelta(line));
     };
+    let pendingInlineIf = null;
     for(const raw of lines){
       const trimmed = typeof raw === "string" ? raw.trim() : "";
-      if(!trimmed) continue;
+      if(!trimmed){
+        if(pendingInlineIf) continue;
+        continue;
+      }
+      const inlineElseMatch = trimmed.match(/^else\b(.*)$/i);
+      if(pendingInlineIf && inlineElseMatch){
+        if(pendingInlineIf.condFormatted && pendingInlineIf.awaitedBody){
+          const elseRest = (inlineElseMatch[1] || "").trim();
+          const elseFormatted = elseRest ? formatStudentCodeLine(elseRest) : "";
+          const elseStmt = elseFormatted ? (elseFormatted.endsWith(";") ? elseFormatted : `${elseFormatted};`) : "";
+          const elseAwaited = elseStmt ? (awaitCalls ? `await ${elseStmt}` : elseStmt) : "";
+          const combinedLine = `if (${pendingInlineIf.condFormatted}) { ${pendingInlineIf.awaitedBody} } else { ${elseAwaited} }`;
+          addLine(combinedLine);
+          pendingInlineIf = null;
+          continue;
+        }
+        addLine(pendingInlineIf.singleLine);
+        pendingInlineIf = null;
+      }
+      if(pendingInlineIf){
+        addLine(pendingInlineIf.singleLine);
+        pendingInlineIf = null;
+      }
       const trimmedLower = trimmed.toLowerCase();
       if(/^(?:end|endfor|endwhile|enduntil|endrepeat|endif|end\s*for|end\s*while|end\s*until|end\s*repeat|end\s*if)$/i.test(trimmed)){
         addLine("}");
@@ -929,7 +952,7 @@
       const ifMatch = trimmed.match(/^if\b(.*)$/i);
       if(ifMatch){
         const conditionRaw = (ifMatch[1] || "").trim();
-        const singleLine = (() => {
+        const singleLineInfo = (() => {
           if(!conditionRaw) return null;
           const firstSpaceIdx = conditionRaw.search(/\s/);
           if(firstSpaceIdx === -1) return null;
@@ -940,19 +963,23 @@
           if(!condFormatted) return null;
           const exitMatch = rest.match(/^exit(?:\s+(?:for|while|repeat))?$/i);
           if(exitMatch){
-            return `if (${condFormatted}) break;`;
+            return { singleLine: `if (${condFormatted}) break;` };
           }
           if(stopCommandPattern.test(rest)){
-            return `if (${condFormatted}) throw ABORT_ERR;`;
+            return { singleLine: `if (${condFormatted}) throw ABORT_ERR;` };
           }
           const bodyFormatted = formatStudentCodeLine(rest);
           if(!bodyFormatted) return null;
           const bodyStmt = bodyFormatted.endsWith(";") ? bodyFormatted : `${bodyFormatted};`;
           const awaitedBody = awaitCalls ? `await ${bodyStmt}` : bodyStmt;
-          return `if (${condFormatted}) ${awaitedBody}`;
+          return {
+            singleLine: `if (${condFormatted}) ${awaitedBody}`,
+            condFormatted,
+            awaitedBody,
+          };
         })();
-        if(singleLine){
-          addLine(singleLine);
+        if(singleLineInfo){
+          pendingInlineIf = singleLineInfo;
           continue;
         }
         if(!trimmed.includes("{")){
@@ -1055,6 +1082,10 @@
         const stmt = formatted.endsWith(";") ? formatted : `${formatted};`;
         addLine(awaitCalls ? `await ${stmt}` : stmt);
       }
+    }
+    if(pendingInlineIf){
+      addLine(pendingInlineIf.singleLine);
+      pendingInlineIf = null;
     }
     while(blockDepth > 0){
       addLine("}");
