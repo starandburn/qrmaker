@@ -2052,6 +2052,12 @@
     });
   }
 
+  if(document && document.body){
+    requestAnimationFrame(() => {
+      document.body.classList.remove("app-loading");
+    });
+  }
+
   const logBuffer = window._logBuffer || [];
 
   let lastLogBody = null;

@@ -40,10 +40,18 @@ body{
   color:#1f2f4a;
   overflow:hidden;
   user-select:none;
+  transition: opacity 0.15s ease;
 }
 
 input, textarea, select, option, .debug-log{
   user-select:text;
+}
+
+body.app-loading .page-head,
+body.app-loading main.layout,
+body.app-loading .page-footer{
+  opacity:0;
+  pointer-events:none;
 }
 
 .page-head{
