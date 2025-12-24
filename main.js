@@ -123,39 +123,6 @@
     if(typeof text !== "string" || !text) return "";
     return text.replace(DIRECTION_SUFFIX_PATTERN, "$1 $2");
   };
-  const QBLOCK_MARKER = "__QB__";
-  const applySymbolAliases = (text) => {
-    if(typeof text !== "string" || !text) return "";
-    const lines = text.split(/\r?\n/);
-    const converted = [];
-    let allowSymbol = false;
-    for(const line of lines){
-      let currentLine = line;
-      if(currentLine.includes(QBLOCK_MARKER)){
-        allowSymbol = true;
-        currentLine = currentLine.replace(QBLOCK_MARKER, "").trimEnd();
-      }
-      const trimmed = currentLine.trim();
-      if(allowSymbol){
-        if(trimmed === ":"){
-          const leading = currentLine.match(/^\s*/)[0];
-          converted.push(`${leading}else`);
-          continue;
-        }
-        if(trimmed === "/"){
-          const leading = currentLine.match(/^\s*/)[0];
-          converted.push(`${leading}endif`);
-          allowSymbol = false;
-          continue;
-        }
-        if(trimmed === "endif"){
-          allowSymbol = false;
-        }
-      }
-      converted.push(currentLine);
-    }
-    return converted.join("\n");
-  };
   const CONDITIONAL_KEYWORDS = ["clash", "empty", "used", "timing"];
   const CONDITIONAL_PATTERN = new RegExp(
     `\\b(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(\\S.*)`,
@@ -165,19 +132,10 @@
     `^\\s*(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*$`,
     "gim",
   );
-  const INLINE_TERNARY_PATTERN = new RegExp(
-    `\\b(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*([^:]+?)\\s*:\\s*(.+)`,
-    "gim",
-  );
   const applyConditionalAliases = (text) => {
     if(typeof text !== "string" || !text) return "";
-    if(INLINE_TERNARY_PATTERN.test(text)){
-      text = text.replace(INLINE_TERNARY_PATTERN, (_match, keyword, trueExpr, falseExpr) => {
-        return `if ${keyword} ${trueExpr.trim()}\nelse ${falseExpr.trim()}`;
-      });
-    }
     if(CONDITIONAL_LINE_PATTERN.test(text)){
-      text = text.replace(CONDITIONAL_LINE_PATTERN, (_match, keyword) => `if ${keyword} ${QBLOCK_MARKER}`);
+      text = text.replace(CONDITIONAL_LINE_PATTERN, (_match, keyword) => `if ${keyword}`);
     }
     return text.replace(CONDITIONAL_PATTERN, (_match, keyword, rest) => `if ${keyword} ${rest}`);
   };
@@ -896,8 +854,7 @@
       const spacedText = applyKeywordSpacing(rawText || "");
       const directionSpaced = applyCompoundDirectionSpacing(spacedText);
       const conditionalText = applyConditionalAliases(directionSpaced);
-      const symbolText = applySymbolAliases(conditionalText);
-      const codeRaw = applyAliasTransforms(symbolText);
+      const codeRaw = applyAliasTransforms(conditionalText);
     if(!codeRaw.trim()) return "";
     const lines = codeRaw.split(/\r?\n/);
     const combined = [];
@@ -947,44 +904,48 @@
     let pendingInlineIf = null;
     for(const raw of lines){
       const trimmed = typeof raw === "string" ? raw.trim() : "";
-      if(!trimmed){
+      const indent = typeof raw === "string" ? raw.match(/^\s*/)[0] : "";
+      const line = trimmed;
+      if(!line){
         if(pendingInlineIf) continue;
         continue;
       }
-      const inlineElseMatch = trimmed.match(/^else\b(.*)$/i);
-      if(pendingInlineIf && inlineElseMatch){
-        if(pendingInlineIf.condFormatted && pendingInlineIf.awaitedBody){
-          const elseRest = (inlineElseMatch[1] || "").trim();
-          const elseFormatted = elseRest ? formatStudentCodeLine(elseRest) : "";
+      const elseMatch = line.match(/^else\b(.*)$/i);
+      const elseRest = elseMatch ? (elseMatch[1] || "").trim() : "";
+      let handledInlineElse = false;
+      if(pendingInlineIf && elseMatch && elseRest){
+        if(pendingInlineIf.condFormatted && pendingInlineIf.awaitedBody && pendingInlineIf.indent === indent){
+          const elseFormatted = formatStudentCodeLine(elseRest);
           const elseStmt = elseFormatted ? (elseFormatted.endsWith(";") ? elseFormatted : `${elseFormatted};`) : "";
           const elseAwaited = elseStmt ? (awaitCalls ? `await ${elseStmt}` : elseStmt) : "";
           const combinedLine = `if (${pendingInlineIf.condFormatted}) { ${pendingInlineIf.awaitedBody} } else { ${elseAwaited} }`;
           addLine(combinedLine);
           pendingInlineIf = null;
-          continue;
+          handledInlineElse = true;
         }
-        addLine(pendingInlineIf.singleLine);
-        pendingInlineIf = null;
+      }
+      if(handledInlineElse){
+        continue;
       }
       if(pendingInlineIf){
         addLine(pendingInlineIf.singleLine);
         pendingInlineIf = null;
       }
-      const trimmedLower = trimmed.toLowerCase();
-      if(/^(?:end|endfor|endwhile|enduntil|endrepeat|endif|end\s*for|end\s*while|end\s*until|end\s*repeat|end\s*if)$/i.test(trimmed)){
+      const lineLower = line.toLowerCase();
+      if(/^(?:end|endfor|endwhile|enduntil|endrepeat|endif|end\s*for|end\s*while|end\s*until|end\s*repeat|end\s*if)$/i.test(line)){
         addLine("}");
         continue;
       }
-      if(stopCommandPattern.test(trimmed)){
+      if(stopCommandPattern.test(line)){
         addLine("throw ABORT_ERR;");
         continue;
       }
-      const exitMatch = trimmed.match(/^exit(?:\s+(for|while|repeat))?$/i);
+      const exitMatch = line.match(/^exit(?:\s+(for|while|repeat))?$/i);
       if(exitMatch){
         addLine("break;");
         continue;
       }
-      const simpleFor = trimmed.match(/^for(?:\s+(\d+))?\s*$/i);
+      const simpleFor = line.match(/^for(?:\s+(\d+))?\s*$/i);
       if(simpleFor){
         const formattedFor = formatSimpleFor(simpleFor[1] || "1");
         if(formattedFor){
@@ -992,7 +953,7 @@
           continue;
         }
       }
-      const ifMatch = trimmed.match(/^if\b(.*)$/i);
+      const ifMatch = line.match(/^if\b(.*)$/i);
       if(ifMatch){
         const conditionRaw = (ifMatch[1] || "").trim();
         const singleLineInfo = (() => {
@@ -1006,10 +967,10 @@
           if(!condFormatted) return null;
           const exitMatch = rest.match(/^exit(?:\s+(?:for|while|repeat))?$/i);
           if(exitMatch){
-            return { singleLine: `if (${condFormatted}) break;` };
+            return { singleLine: `if (${condFormatted}) break;`, indent: typeof raw === "string" ? raw.match(/^\s*/)[0] : "" };
           }
           if(stopCommandPattern.test(rest)){
-            return { singleLine: `if (${condFormatted}) throw ABORT_ERR;` };
+            return { singleLine: `if (${condFormatted}) throw ABORT_ERR;`, indent: typeof raw === "string" ? raw.match(/^\s*/)[0] : "" };
           }
           const bodyFormatted = formatStudentCodeLine(rest);
           if(!bodyFormatted) return null;
@@ -1019,26 +980,25 @@
             singleLine: `if (${condFormatted}) ${awaitedBody}`,
             condFormatted,
             awaitedBody,
+            indent: typeof raw === "string" ? raw.match(/^\s*/)[0] : "",
           };
         })();
         if(singleLineInfo){
           pendingInlineIf = singleLineInfo;
           continue;
         }
-        if(!trimmed.includes("{")){
+        if(!line.includes("{")){
           if(conditionRaw){
-            const line = buildConditionalLine("if", conditionRaw);
-            if(line){
-              addLine(line);
+            const buildLine = buildConditionalLine("if", conditionRaw);
+            if(buildLine){
+              addLine(buildLine);
               continue;
             }
           }
         }
       }
-      const elseMatch = trimmed.match(/^else\b(.*)$/i);
-      if(elseMatch && !trimmed.includes("{")){
-        const rest = (elseMatch[1] || "").trim();
-        const restIfMatch = rest.match(/^if\b(.*)$/i);
+      if(elseMatch && !line.includes("{")){
+        const restIfMatch = elseRest.match(/^if\b(.*)$/i);
         if(restIfMatch){
           const nestedLine = buildConditionalLine("} else if", restIfMatch[1]);
           if(nestedLine){
@@ -1049,13 +1009,13 @@
         addLine("} else {");
         continue;
       }
-      const whileMatch = trimmed.match(/^while\b(.*)$/i);
-      if(whileMatch && !trimmedLower.includes("cancontinueloop")){
+      const whileMatch = line.match(/^while\b(.*)$/i);
+      if(whileMatch && !lineLower.includes("cancontinueloop")){
         const conditionRaw = (whileMatch[1] || "").trim();
         const hasCondition = Boolean(conditionRaw);
         const actualCondition = hasCondition ? conditionRaw : DEFAULT_WHILE_CONDITION;
         if(conditionRaw.startsWith("(")){
-          const guarded = guardWhileWithParen(trimmed);
+          const guarded = guardWhileWithParen(line);
           if(guarded){
             addLine(guarded);
             continue;
@@ -1074,12 +1034,12 @@
           }
         }
       }
-      const untilMatch = trimmed.match(/^until\b(.*)$/i);
-      if(untilMatch && !trimmedLower.includes("cancontinueloop")){
+      const untilMatch = line.match(/^until\b(.*)$/i);
+      if(untilMatch && !lineLower.includes("cancontinueloop")){
         const conditionRaw = (untilMatch[1] || "").trim();
         const actualCondition = conditionRaw || DEFAULT_UNTIL_CONDITION;
         if(conditionRaw.startsWith("(")){
-          const rewritten = rewriteUntilWithParen(trimmed);
+          const rewritten = rewriteUntilWithParen(line);
           if(rewritten){
             addLine(rewritten);
             continue;
@@ -1098,7 +1058,7 @@
           }
         }
       }
-      const repeatMatch = trimmed.match(/^repeat(?:\s+(\d+))?$/i);
+      const repeatMatch = line.match(/^repeat(?:\s+(\d+))?$/i);
       if(repeatMatch){
         const count = repeatMatch[1];
         if(count){
@@ -1114,13 +1074,13 @@
           continue;
         }
       }
-      const isBlocky = /^(for|while|if|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(trimmed)
-        || /[{;}]$/.test(trimmed);
+      const isBlocky = /^(for|while|if|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(line)
+        || /[{;}]$/.test(line);
       if(isBlocky){
-        addLine(trimmed);
+        addLine(line);
         continue;
       }
-      const formatted = formatStudentCodeLine(trimmed);
+      const formatted = formatStudentCodeLine(line);
       if(formatted){
         const stmt = formatted.endsWith(";") ? formatted : `${formatted};`;
         addLine(awaitCalls ? `await ${stmt}` : stmt);
