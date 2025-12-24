@@ -112,7 +112,7 @@
     if(typeof text !== "string" || !text) return "";
     return text.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
   };
-  const KEYWORD_NUMBER_PATTERN = /\b(repeat|for)(\d+)\b/gi;
+  const KEYWORD_NUMBER_PATTERN = /\b(repeat|for|mask)(\d+)\b/gi;
   const applyKeywordSpacing = (text) => {
     if(typeof text !== "string" || !text) return "";
     return text.replace(KEYWORD_NUMBER_PATTERN, "$1 $2");
