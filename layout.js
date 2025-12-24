@@ -374,6 +374,10 @@ function fitSquare(){
   const h = Math.max(0, area.clientHeight - padY);
   const size = Math.max(60, Math.floor(Math.min(w, h)));
 
+  // Hide guide text if the available width is too narrow
+  const guideCompact = w < 420 || h < 420 || size < 280;
+  area.classList.toggle("guide-compact", guideCompact);
+
   sq.style.width = size + "px";
   sq.style.height = size + "px";
   if(typeof window.updateCursor === "function"){

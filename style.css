@@ -915,7 +915,7 @@ textarea{
   align-items:center;
   justify-content:center;
   font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size:12px;
+  font-size:clamp(10px, 1.1vw, 12px);
   color:#8b919a;
   border-left:1px solid #cfd3da;
 }
@@ -937,7 +937,7 @@ textarea{
   align-items:center;
   justify-content:center;
   font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size:12px;
+  font-size:clamp(10px, 1.1vw, 12px);
   color:#8b919a;
   border-top:1px solid #cfd3da;
 }
@@ -1094,6 +1094,17 @@ textarea{
   background:transparent;
   background-image:none;
 }
+.view-area.guide-compact .qr-cells .cell:not(.state-0):not(.state-1){
+  background:#e2e4e8;
+  background-image: radial-gradient(#ffffff 1.1px, transparent 1.1px);
+}
+
+.view-area.guide-compact .guide-col span,
+.view-area.guide-compact .guide-row span,
+.view-area.guide-compact .guide-corner{
+  font-size:0 !important;
+  color:transparent;
+}
 
 .page-footer{
   text-align:center;
@@ -1107,6 +1118,16 @@ textarea{
 @media (max-width: 960px){
   main.layout{
     grid-template-columns:1fr;
+  }
+}
+
+/* Narrow view: keep guide frames but drop text when it would overflow */
+@media (max-width: 780px){
+  .view-area .guide-col span,
+  .view-area .guide-row span,
+  .view-area .guide-corner{
+    font-size:0;
+    color:transparent;
   }
 }
 
