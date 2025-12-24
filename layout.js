@@ -378,7 +378,7 @@ if(userCodeTextarea){
       }else{
         insertText("\t");
       }
-    }else if(e.key === "Enter"){
+    }else if(e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey){
       const start = userCodeTextarea.selectionStart ?? 0;
       const val = userCodeTextarea.value ?? "";
       const lineStart = val.lastIndexOf("\n", start - 1) + 1;
