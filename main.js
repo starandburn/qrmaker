@@ -165,8 +165,17 @@
     `^\\s*(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*$`,
     "gim",
   );
+  const INLINE_TERNARY_PATTERN = new RegExp(
+    `\\b(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*([^:]+?)\\s*:\\s*(.+)`,
+    "gim",
+  );
   const applyConditionalAliases = (text) => {
     if(typeof text !== "string" || !text) return "";
+    if(INLINE_TERNARY_PATTERN.test(text)){
+      text = text.replace(INLINE_TERNARY_PATTERN, (_match, keyword, trueExpr, falseExpr) => {
+        return `if ${keyword} ${trueExpr.trim()}\nelse ${falseExpr.trim()}`;
+      });
+    }
     if(CONDITIONAL_LINE_PATTERN.test(text)){
       text = text.replace(CONDITIONAL_LINE_PATTERN, (_match, keyword) => `if ${keyword} ${QBLOCK_MARKER}`);
     }
