@@ -117,6 +117,11 @@
     if(typeof text !== "string" || !text) return "";
     return text.replace(KEYWORD_NUMBER_PATTERN, "$1 $2");
   };
+  const DIRECTION_SUFFIX_PATTERN = /\b(move|turn)(up|down|left|right|front|back)\b/gi;
+  const applyCompoundDirectionSpacing = (text) => {
+    if(typeof text !== "string" || !text) return "";
+    return text.replace(DIRECTION_SUFFIX_PATTERN, "$1 $2");
+  };
 
   const DIR_ORDER = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
   const DIR_TO_INDEX = new Map(DIR_ORDER.map((d, i) => [d, i]));
@@ -823,7 +828,8 @@
       return `${prefix} (${formatted}) {`;
     };
     const spacedText = applyKeywordSpacing(rawText || "");
-    const codeRaw = applyAliasTransforms(spacedText);
+    const directionSpaced = applyCompoundDirectionSpacing(spacedText);
+    const codeRaw = applyAliasTransforms(directionSpaced);
     if(!codeRaw.trim()) return "";
     const lines = codeRaw.split(/\r?\n/);
     const combined = [];
