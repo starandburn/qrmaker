@@ -1126,10 +1126,30 @@ textarea{
   }
 }
 @media (max-width: 1100px), (orientation: portrait){
+  body{
+    margin:0;
+  }
   main.layout{
     display:flex;
     flex-direction:column;
     flex:0 0 auto;
+    padding:0;
+  }
+  .panel{
+    width:100%;
+    max-width:none;
+    margin:0;
+    padding:8px 10px;
+    border:none;
+    box-shadow:none;
+    border-radius:0;
+  }
+  .left-col,
+  .right-col{
+    gap:0;
+  }
+  .panel + .panel{
+    margin-top:0;
   }
   .view-area{
     justify-content:center;
@@ -1158,6 +1178,7 @@ textarea{
   .code-panel{
     display:block;
     width:100%;
+    padding:0;
   }
   .code-panel .code-split{
     display:block;
@@ -1181,7 +1202,7 @@ textarea{
   }
   .page-head{
     padding:12px 14px 8px;
-    margin-bottom:4px;
+    margin:0;
   }
   .title-icon{
     width:48px;
@@ -1208,6 +1229,9 @@ textarea{
   }
   .school-en{
     font-size:11px;
+  }
+  .pattern-title{
+    font-size:12px;
   }
 }
 
