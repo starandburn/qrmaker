@@ -99,6 +99,16 @@
   const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
   const boardMatrix = Array.from({ length: BOARD_ROWS }, () => Array(BOARD_COLS).fill(UNPLACED_KIND));
 
+  const LOOP_ITER_LIMIT = BOARD_ROWS * BOARD_COLS;
+  let loopGuardCounter = 0;
+  function resetLoopGuard(){
+    loopGuardCounter = 0;
+  }
+  function canContinueLoop(){
+    loopGuardCounter++;
+    return loopGuardCounter <= LOOP_ITER_LIMIT;
+  }
+
   function isStepModeOn(){
     return !!(stepMode && stepMode.checked);
   }
@@ -590,6 +600,9 @@
   function isDataEnd(){
     return !Array.isArray(dataSeq) || dataSeqIndex >= dataSeq.length;
   }
+  function hasMoreData(){
+    return Array.isArray(dataSeq) && dataSeqIndex < dataSeq.length;
+  }
   function getNextData(){
     if(isDataEnd()){
       return null;
@@ -638,6 +651,74 @@
 
   function buildUserScript(rawText, { awaitCalls = true } = {}){
     let autoLoopCounter = 0;
+    const extractParenInfo = (line) => {
+      const openIdx = line.indexOf("(");
+      if(openIdx === -1) return null;
+      let depth = 0;
+      let closeIdx = -1;
+      let inSingle = false;
+      let inDouble = false;
+      let escapeChar = false;
+      for(let i = openIdx; i < line.length; i++){
+        const ch = line[i];
+        if(escapeChar){
+          escapeChar = false;
+          continue;
+        }
+        if(ch === "\\" && (inSingle || inDouble)){
+          escapeChar = true;
+          continue;
+        }
+        if(ch === "'" && !inDouble){
+          inSingle = !inSingle;
+          continue;
+        }
+        if(ch === '"' && !inSingle){
+          inDouble = !inDouble;
+          continue;
+        }
+        if(inSingle || inDouble){
+          continue;
+        }
+        if(ch === "("){
+          depth++;
+        }else if(ch === ")"){
+          depth--;
+          if(depth === 0){
+            closeIdx = i;
+            break;
+          }
+        }
+      }
+      if(closeIdx === -1) return null;
+      return {
+        closeIdx,
+        condition: line.slice(openIdx + 1, closeIdx),
+        remainder: line.slice(closeIdx + 1),
+        prefix: line.slice(0, closeIdx),
+      };
+    };
+    const guardWhileWithParen = (line) => {
+      const info = extractParenInfo(line);
+      if(!info) return null;
+      const closing = line.slice(info.closeIdx);
+      return `${info.prefix} && canContinueLoop()${closing}`;
+    };
+    const rewriteUntilWithParen = (line) => {
+      const info = extractParenInfo(line);
+      if(!info) return null;
+      const cond = info.condition.trim();
+      if(!cond) return null;
+      return `while (!(${cond}) && canContinueLoop())${info.remainder}`;
+    };
+    const buildSimpleLoopLine = (keyword, conditionRaw) => {
+      const condFormatted = formatStudentCodeLine(conditionRaw);
+      if(!condFormatted) return null;
+      if(keyword === "while"){
+        return `while (${condFormatted} && canContinueLoop()) {`;
+      }
+      return `while (!(${condFormatted}) && canContinueLoop()) {`;
+    };
     const formatSimpleFor = (countVal) => {
       const n = Number(countVal);
       if(!Number.isFinite(n)) return null;
@@ -651,7 +732,7 @@
     for(const raw of lines){
       const trimmed = typeof raw === "string" ? raw.trim() : "";
       if(!trimmed) continue;
-      if(/^end(\s*for)?$/i.test(trimmed)){
+      if(/^(?:end|endfor|endwhile|enduntil|end\s*for|end\s*while|end\s*until)$/i.test(trimmed)){
         combined.push("}");
         continue;
       }
@@ -661,6 +742,40 @@
         if(formattedFor){
           combined.push(formattedFor);
           continue;
+        }
+      }
+      const whileMatch = trimmed.match(/^while\b(.*)$/i);
+      if(whileMatch && !trimmed.includes("canContinueLoop")){
+        const conditionRaw = (whileMatch[1] || "").trim();
+        if(conditionRaw.startsWith("(")){
+          const guarded = guardWhileWithParen(trimmed);
+          if(guarded){
+            combined.push(guarded);
+            continue;
+          }
+        }else if(conditionRaw){
+          const loopLine = buildSimpleLoopLine("while", conditionRaw);
+          if(loopLine){
+            combined.push(loopLine);
+            continue;
+          }
+        }
+      }
+      const untilMatch = trimmed.match(/^until\b(.*)$/i);
+      if(untilMatch && !trimmed.includes("canContinueLoop")){
+        const conditionRaw = (untilMatch[1] || "").trim();
+        if(conditionRaw.startsWith("(")){
+          const rewritten = rewriteUntilWithParen(trimmed);
+          if(rewritten){
+            combined.push(rewritten);
+            continue;
+          }
+        }else if(conditionRaw){
+          const loopLine = buildSimpleLoopLine("until", conditionRaw);
+          if(loopLine){
+            combined.push(loopLine);
+            continue;
+          }
         }
       }
       const isBlocky = /^(for|while|if|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(trimmed)
@@ -711,6 +826,9 @@
   window.getNextData = getNextData;
   window.resetData = resetData;
   window.isDataEnd = isDataEnd;
+  window.resetLoopGuard = resetLoopGuard;
+  window.canContinueLoop = canContinueLoop;
+  window.hasMoreData = hasMoreData;
   // Update board matrix directly: row/col 1-based, encoded value (encodeBit)
   window.updateCell = (row, col, encodedValue) => {
     if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
@@ -834,6 +952,7 @@
 
   async function runUserCode(){
     if(!userCodeInput) return true;
+    resetLoopGuard();
     const script = buildUserScript(userCodeInput.value || "", { awaitCalls: true });
     if(!script.trim()) return true;
     try{

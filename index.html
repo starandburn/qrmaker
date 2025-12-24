@@ -78,8 +78,7 @@
 resetQRCode
 drawAllFunctionals
 moveCursor y25 up
-resetData
-for (i = 0; i < 625 && !isDataEnd(); i++){
+while hasMoreData
 	if (isEmpty()){
 		putCell
 	}
@@ -97,7 +96,7 @@ for (i = 0; i < 625 && !isDataEnd(); i++){
 	} else {
 		moveCursor right
 	}
-}
+endwhile
 applyMask
 </textarea>
         <textarea id="userCodeParsed" class="parsed-code" spellcheck="false" readonly></textarea>
