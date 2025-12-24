@@ -256,8 +256,8 @@ main.layout{
 .debug-log{
   margin-top:8px;
   width:100%;
-  min-height:120px;
-  max-height:160px;
+  min-height:calc(1.05em * 5);
+  max-height:calc(1.05em * 5);
   padding:4px 6px;
   border:1px solid #cfd3da;
   border-radius:0;
