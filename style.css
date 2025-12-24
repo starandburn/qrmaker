@@ -874,6 +874,8 @@ textarea{
   width:100%;
   height:100%;
   padding:10px;
+  margin-left: calc(-1 * var(--guide) * 0.65);
+  margin-top: calc(-1 * var(--guide) / 2);
   box-sizing:border-box;
   display:grid;
   grid-template-columns: var(--guide) repeat(25, 1fr);
