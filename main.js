@@ -103,6 +103,7 @@
     put: "putCell",
     timing: "isTimingCell",
     next: "getNextData",
+    pause: "pauseRunning",
   };
   const ALIAS_PATTERN = new RegExp(
     `\\b(${Object.keys(ALIAS_MAP).map(escapeRegExp).join("|")})\\b`,
@@ -112,7 +113,7 @@
     if(typeof text !== "string" || !text) return "";
     return text.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
   };
-  const KEYWORD_NUMBER_PATTERN = /\b(repeat|for|mask)(\d+)\b/gi;
+  const KEYWORD_NUMBER_PATTERN = /\b(repeat|for|mask|pause)(\d+)\b/gi;
   const applyKeywordSpacing = (text) => {
     if(typeof text !== "string" || !text) return "";
     return text.replace(KEYWORD_NUMBER_PATTERN, "$1 $2");
@@ -548,6 +549,13 @@
     if(renderMode === RENDER_IMMEDIATE){
       flushRender();
     }
+  }
+
+  async function pauseRunning({ delayMs = 60 } = {}){
+    flushRender();
+    const wait = Number(delayMs);
+    if(!Number.isFinite(wait) || wait <= 0) return;
+    await sleep(wait);
   }
 
   function sleep(ms){
@@ -1073,6 +1081,8 @@
   window.resetLoopGuard = resetLoopGuard;
   window.canContinueLoop = canContinueLoop;
   window.hasMoreData = hasMoreData;
+  window.renderFrameAndWait = pauseRunning;
+  window.pauseRunning = pauseRunning;
   // Update board matrix directly: row/col 1-based, encoded value (encodeBit)
   window.updateCell = (row, col, encodedValue) => {
     if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
