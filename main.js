@@ -393,12 +393,20 @@
   }
 
   function resetQRCode(options = {}){
-    const { abortRun = true } = options;
+    const {
+      abortRun = true,
+      forceImmediate = abortRun,
+      stopStep = abortRun,
+    } = options;
     window.log("resetQRCode()");
     if(abortRun){
       runId++;
       maskRunId++;
+    }
+    if(stopStep){
       isStepFillRunning = false;
+    }
+    if(forceImmediate){
       setRenderMode(RENDER_IMMEDIATE);
     }
     const cells = document.querySelectorAll(".qr-cells .cell");
@@ -1414,8 +1422,7 @@
 
   btnInit.addEventListener("click", () => {
     runId++;
-    isStepFillRunning = false;
-    resetQRCode({ abortRun: false });
+    resetQRCode({ abortRun: false, forceImmediate: true, stopStep: true });
     updateCursor(1, 1, DIR_DOWN);
     if(Array.isArray(window.toggleInputs)){
       for(const el of window.toggleInputs){
