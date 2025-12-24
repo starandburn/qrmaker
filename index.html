@@ -75,23 +75,23 @@
       <div class="panel-title">コード作成のスクリプト</div>
       <div class="code-split">
         <textarea id="userCode" spellcheck="false" autocorrect="off" autocomplete="off" autocapitalize="off">
-resetQRCode
-drawAllFunctionals
-moveCursor y25 up
+reset
+func
+move y25 up
 repeat
-	if isEmpty putCell
-	moveCursor left
-	if isEmpty putCell
-	moveCursor
-	if isMoveBlocked
-  		turnCursor
-  		moveCursor left
-  		if isTimingCell	moveCursor left
+	if empty put
+	move left
+	if empty put
+	move
+	if clash
+  		turn
+  		move left
+  		if timing move left
 	else
-		moveCursor right
+		move right
 	endif
 endrepeat
-applyMask
+mask
 </textarea>
         <textarea id="userCodeParsed" class="parsed-code" spellcheck="false" readonly></textarea>
       </div>
