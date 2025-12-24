@@ -123,6 +123,22 @@
     if(typeof text !== "string" || !text) return "";
     return text.replace(DIRECTION_SUFFIX_PATTERN, "$1 $2");
   };
+  const CONDITIONAL_KEYWORDS = ["clash", "empty", "used", "timing"];
+  const CONDITIONAL_PATTERN = new RegExp(
+    `\\b(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(\\S.*)`,
+    "gi",
+  );
+  const CONDITIONAL_LINE_PATTERN = new RegExp(
+    `^\\s*(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*$`,
+    "gim",
+  );
+  const applyConditionalAliases = (text) => {
+    if(typeof text !== "string" || !text) return "";
+    if(CONDITIONAL_LINE_PATTERN.test(text)){
+      text = text.replace(CONDITIONAL_LINE_PATTERN, "if $1");
+    }
+    return text.replace(CONDITIONAL_PATTERN, (_match, keyword, rest) => `if ${keyword} ${rest}`);
+  };
 
   const DIR_ORDER = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
   const DIR_TO_INDEX = new Map(DIR_ORDER.map((d, i) => [d, i]));
@@ -835,9 +851,10 @@
       if(!formatted) return null;
       return `${prefix} (${formatted}) {`;
     };
-    const spacedText = applyKeywordSpacing(rawText || "");
-    const directionSpaced = applyCompoundDirectionSpacing(spacedText);
-    const codeRaw = applyAliasTransforms(directionSpaced);
+      const spacedText = applyKeywordSpacing(rawText || "");
+      const directionSpaced = applyCompoundDirectionSpacing(spacedText);
+      const conditionalText = applyConditionalAliases(directionSpaced);
+      const codeRaw = applyAliasTransforms(conditionalText);
     if(!codeRaw.trim()) return "";
     const lines = codeRaw.split(/\r?\n/);
     const combined = [];
