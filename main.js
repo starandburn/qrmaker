@@ -123,6 +123,39 @@
     if(typeof text !== "string" || !text) return "";
     return text.replace(DIRECTION_SUFFIX_PATTERN, "$1 $2");
   };
+  const QBLOCK_MARKER = "__QB__";
+  const applySymbolAliases = (text) => {
+    if(typeof text !== "string" || !text) return "";
+    const lines = text.split(/\r?\n/);
+    const converted = [];
+    let allowSymbol = false;
+    for(const line of lines){
+      let currentLine = line;
+      if(currentLine.includes(QBLOCK_MARKER)){
+        allowSymbol = true;
+        currentLine = currentLine.replace(QBLOCK_MARKER, "").trimEnd();
+      }
+      const trimmed = currentLine.trim();
+      if(allowSymbol){
+        if(trimmed === ":"){
+          const leading = currentLine.match(/^\s*/)[0];
+          converted.push(`${leading}else`);
+          continue;
+        }
+        if(trimmed === "/"){
+          const leading = currentLine.match(/^\s*/)[0];
+          converted.push(`${leading}endif`);
+          allowSymbol = false;
+          continue;
+        }
+        if(trimmed === "endif"){
+          allowSymbol = false;
+        }
+      }
+      converted.push(currentLine);
+    }
+    return converted.join("\n");
+  };
   const CONDITIONAL_KEYWORDS = ["clash", "empty", "used", "timing"];
   const CONDITIONAL_PATTERN = new RegExp(
     `\\b(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(\\S.*)`,
@@ -135,7 +168,7 @@
   const applyConditionalAliases = (text) => {
     if(typeof text !== "string" || !text) return "";
     if(CONDITIONAL_LINE_PATTERN.test(text)){
-      text = text.replace(CONDITIONAL_LINE_PATTERN, "if $1");
+      text = text.replace(CONDITIONAL_LINE_PATTERN, (_match, keyword) => `if ${keyword} ${QBLOCK_MARKER}`);
     }
     return text.replace(CONDITIONAL_PATTERN, (_match, keyword, rest) => `if ${keyword} ${rest}`);
   };
@@ -854,7 +887,8 @@
       const spacedText = applyKeywordSpacing(rawText || "");
       const directionSpaced = applyCompoundDirectionSpacing(spacedText);
       const conditionalText = applyConditionalAliases(directionSpaced);
-      const codeRaw = applyAliasTransforms(conditionalText);
+      const symbolText = applySymbolAliases(conditionalText);
+      const codeRaw = applyAliasTransforms(symbolText);
     if(!codeRaw.trim()) return "";
     const lines = codeRaw.split(/\r?\n/);
     const combined = [];
