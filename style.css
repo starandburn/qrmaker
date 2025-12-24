@@ -97,7 +97,7 @@ input, textarea, select, option, .debug-log{
 }
 
 .subtitle{
-  font-size:14px;
+  font-size:16px;
   font-weight:700;
   letter-spacing:0.08em;
   color:#ffffff;
@@ -107,7 +107,7 @@ input, textarea, select, option, .debug-log{
 }
 
 .title{
-  font-size:28px;
+  font-size:32px;
   font-weight:900;
   margin:0;
   color:#1f2f4a;
