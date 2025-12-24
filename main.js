@@ -1138,6 +1138,10 @@
   function formatStudentCodeLine(line){
     const trimmed = typeof line === "string" ? line.trim() : "";
     if(!trimmed) return "";
+    const globalEnv = typeof window !== "undefined"
+      ? window
+      : (typeof globalThis !== "undefined" ? globalThis : null);
+    const identifierPattern = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
     // If already has parentheses, keep structure but normalize commas to spaces for parsing intent
     if(trimmed.includes("(") && trimmed.includes(")")){
       return trimmed.replace(/,/g, " ");
@@ -1151,6 +1155,12 @@
       if(!t) return "";
       if(/^[-+]?\d+(?:\.\d+)?$/.test(t)) return t; // keep numeric
       if(/^["'].+["']$/.test(t)) return t; // already quoted
+      if(identifierPattern.test(t) && globalEnv){
+        const value = globalEnv[t];
+        if(typeof value === "function"){
+          return `${t}()`;
+        }
+      }
       return `"${t.replace(/"/g, '\\"')}"`;
     }).filter(Boolean);
     if(args.length === 0){
