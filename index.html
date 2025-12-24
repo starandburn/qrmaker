@@ -31,16 +31,16 @@
 
 <main class="layout">
   <section class="left-col">
-    <div class="panel pastel-1 input-panel">
-      <div class="row">
-        <div class="label">QRコードにしたい文字（半角英数字で32文字まで）</div>
+    <div class="panel pastel-1" id="dataPanel">
+      <div class="row" id="dataInputArea">
+        <div class="label">QRコードにしたいデータ（半角英数字で32文字まで）</div>
         <div class="input-row">
           <input id="txtInput" type="text" value="Hello, World!" maxlength="32" inputmode="latin" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false">
           <button id="btnClear" type="button">クリア</button>
         </div>
       </div>
 
-      <details open class="pattern-panel" id="patternDetails">
+      <details open class="pattern-panel" id="dataPatternPanel">
         <summary class="pattern-summary">
           <span class="summary-title"><span id="patternToggleText">コードパターンを表示</span></span>
           <a href="#" id="asciiLink" class="ascii-link">文字とパターンの対応表</a>

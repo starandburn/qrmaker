@@ -25,7 +25,9 @@ const toggleCursor = document.getElementById("toggleCursor");
 const toggleColor = document.getElementById("toggleColor");
 const btnSelectAllToggles = document.getElementById("btnSelectAllToggles");
 const btnClearAllToggles = document.getElementById("btnClearAllToggles");
-const patternDetails = document.getElementById("patternDetails");
+const dataPanel = document.getElementById("dataPanel");
+const dataInputArea = document.getElementById("dataInputArea");
+const dataPatternPanel = document.getElementById("dataPatternPanel") || document.getElementById("patternDetails");
 const patternToggleText = document.getElementById("patternToggleText");
 const asciiLink = document.getElementById("asciiLink");
 const asciiModal = document.getElementById("asciiModal");
@@ -480,12 +482,12 @@ document.addEventListener("DOMContentLoaded", ()=>{
 });
 
 function updatePatternToggleText(){
-  if(patternToggleText && patternDetails){
-    patternToggleText.textContent = patternDetails.open ? CAPTION_HIDECODEPATTERN : CAPTION_SHOWCODEPATTERN;
+  if(patternToggleText && dataPatternPanel){
+    patternToggleText.textContent = dataPatternPanel.open ? CAPTION_HIDECODEPATTERN : CAPTION_SHOWCODEPATTERN;
   }
 }
-if(patternDetails){
-  patternDetails.addEventListener("toggle", updatePatternToggleText);
+if(dataPatternPanel){
+  dataPatternPanel.addEventListener("toggle", updatePatternToggleText);
   updatePatternToggleText();
 }
 

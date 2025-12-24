@@ -4,7 +4,7 @@
   const btnInit = document.getElementById("btnInit");
   const debugLog = document.getElementById("debugLog");
   const debugPanel = document.getElementById("debugPanel");
-  const patternDetails = document.getElementById("patternDetails");
+  const dataPatternPanel = document.getElementById("dataPatternPanel") || document.getElementById("patternDetails");
   const codePanel = document.querySelector(".code-panel");
   const userCodeParsed = document.getElementById("userCodeParsed");
   const footerCopy = document.querySelector(".page-footer p:first-child");
@@ -628,7 +628,7 @@
     const baseMax = "160px";
     let minH = baseMin;
     let maxH = baseMax;
-    if(isDebugVisible() && patternDetails && patternDetails.open){
+    if(isDebugVisible() && dataPatternPanel && dataPatternPanel.open){
       minH = "110px";
       maxH = "120px";
     }
@@ -2001,8 +2001,8 @@
   }
   syncDebugPanelLayout();
   syncParsedCode();
-  if(patternDetails){
-    patternDetails.addEventListener("toggle", () => {
+  if(dataPatternPanel){
+    dataPatternPanel.addEventListener("toggle", () => {
       syncDebugPanelLayout();
       syncParsedCode();
       if(typeof window.fitSquare === "function"){
