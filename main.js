@@ -14,6 +14,56 @@
   const stepSpeed = document.getElementById("stepSpeed");
   const stepSpeedLabel = document.querySelector(".step-speed");
   const toggleDebugValues = document.getElementById("toggleDebugValues");
+  const debugRow = document.querySelector(".debug-row");
+  const debugOnlyControls = Array.from(document.querySelectorAll(".debug-only"));
+  const urlParams = new URLSearchParams(window.location.search || "");
+  const lookupParam = (primary, alias) => {
+    if(alias && urlParams.has(alias)) return urlParams.get(alias);
+    if(primary && urlParams.has(primary)) return urlParams.get(primary);
+    return null;
+  };
+  const stringifyBool = (value) => {
+    if(value === null) return null;
+    if(typeof value !== "string") return null;
+    const trimmed = value.trim();
+    if(!trimmed) return true;
+    if(/^(?:1|true|yes|on|open|show)$/i.test(trimmed)) return true;
+    if(/^(?:0|false|no|off|close|closed|hide)$/i.test(trimmed)) return false;
+    return null;
+  };
+  const applyDebugVisibility = (visible) => {
+    if(!debugPanel) return;
+    debugPanel.style.display = visible ? "block" : "none";
+    if(debugRow){
+      debugRow.style.display = visible ? "flex" : "none";
+    }
+    for(const control of debugOnlyControls){
+      control.style.display = visible ? "inline-flex" : "none";
+    }
+  };
+  const setPatternOpenFromParam = () => {
+    if(!dataPatternPanel) return;
+    const spec = lookupParam("patternPanel", "p");
+    if(spec === null) return;
+    const parsed = stringifyBool(spec);
+    if(parsed === null) return;
+    dataPatternPanel.open = parsed;
+    try{
+      dataPatternPanel.dispatchEvent(new Event("toggle"));
+    }catch(err){
+      // ignore if toggle event cannot fire
+    }
+  };
+  const setDebugFromParam = () => {
+    if(!debugPanel) return;
+    const spec = lookupParam("debug", "d");
+    if(spec === null) return;
+    const parsed = stringifyBool(spec);
+    if(parsed === null) return;
+    applyDebugVisibility(parsed);
+  };
+  setPatternOpenFromParam();
+  setDebugFromParam();
   if(!btnGenerate || !btnInit) return;
 
   // Prevent accidental text selection or drag on buttons
@@ -2278,8 +2328,8 @@
 
   if(footerCopy && debugPanel){
     footerCopy.addEventListener("dblclick", () => {
-      const isHidden = debugPanel.style.display === "none" || getComputedStyle(debugPanel).display === "none";
-      debugPanel.style.display = isHidden ? "block" : "none";
+      const nextVisible = !isDebugVisible();
+      applyDebugVisibility(nextVisible);
       syncDebugOverlay();
       syncDebugPanelLayout();
       syncParsedCode();
