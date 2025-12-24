@@ -47,13 +47,16 @@ input, textarea, select, option, .debug-log{
 }
 
 .page-head{
-  background:linear-gradient(135deg, #00a0e9 0%, #00a0e9 20%, #ffffff 50%, #ffffff 100%);
+  background:linear-gradient(120deg, #0b63d1 0%, #0ad0ff 40%, #e8f6ff 100%);
   margin:-10px -10px 6px;
   padding:16px 20px 10px;
   border-bottom:2px solid #c9d8ed;
   display:flex;
   align-items:center;
   min-height:96px;
+  position:relative;
+  overflow:hidden;
+  box-shadow:0 10px 30px rgba(0,0,0,0.08) inset;
 }
 
 .page-head .school-link{
@@ -64,6 +67,17 @@ input, textarea, select, option, .debug-log{
   color:#231815;
 }
 
+.page-head::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(140% 80% at 20% 30%, rgba(255,255,255,0.32), transparent 50%),
+    linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 40%);
+  pointer-events:none;
+  mix-blend-mode: screen;
+}
+
 .head-flex{
   display:flex;
   justify-content:space-between;
@@ -72,6 +86,8 @@ input, textarea, select, option, .debug-log{
   row-gap:10px;
   flex-wrap:wrap;
   width:100%;
+  position:relative;
+  z-index:1;
 }
 
 .title-row{
@@ -81,12 +97,16 @@ input, textarea, select, option, .debug-log{
 }
 
 .title-icon{
-  width:58px;
-  height:58px;
+  width:60px;
+  height:60px;
   object-fit:contain;
   image-rendering:pixelated;
   flex-shrink:0;
   align-self:center;
+  background:rgba(255,255,255,0.82);
+  border-radius:14px;
+  padding:6px;
+  box-shadow:0 6px 16px rgba(0,0,0,0.12);
 }
 
 .title-text{
@@ -100,9 +120,9 @@ input, textarea, select, option, .debug-log{
   font-size:16px;
   font-weight:700;
   letter-spacing:0.08em;
-  color:#ffffff;
+  color:#e7f6ff;
   margin:0;
-  text-shadow:2px 2px 0 #000000;
+  text-shadow:1px 1px 0 rgba(0,0,0,0.45);
   line-height:1.25;
 }
 
@@ -110,8 +130,8 @@ input, textarea, select, option, .debug-log{
   font-size:32px;
   font-weight:900;
   margin:0;
-  color:#1f2f4a;
-  text-shadow:1px 1px 0 #ffffff;
+  color:#0f213f;
+  text-shadow:2px 2px 0 rgba(255,255,255,0.9), 4px 4px 12px rgba(0,0,0,0.18);
   line-height:1.2;
 }
 
@@ -121,10 +141,14 @@ input, textarea, select, option, .debug-log{
   flex-wrap:wrap;
   gap:10px;
   row-gap:6px;
+  background:rgba(255,255,255,0.9);
+  padding:10px 12px;
+  border-radius:14px;
+  box-shadow:0 6px 14px rgba(0,0,0,0.08);
 }
 
 .school-logo{
-  height:42px;
+  height:48px;
   width:auto;
   object-fit:contain;
 }
