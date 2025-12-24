@@ -707,6 +707,8 @@
       }
       return "hasMoreData";
     };
+    const DEFAULT_WHILE_CONDITION = "hasMoreData";
+    const DEFAULT_UNTIL_CONDITION = "isDataEnd";
     const extractParenInfo = (line) => {
       const openIdx = line.indexOf("(");
       if(openIdx === -1) return null;
@@ -797,28 +799,71 @@
     if(!codeRaw.trim()) return "";
     const lines = codeRaw.split(/\r?\n/);
     const combined = [];
+    let blockDepth = 0;
+    const countBraceDelta = (line) => {
+      let depth = 0;
+      let inSingle = false;
+      let inDouble = false;
+      let inBacktick = false;
+      let escapeChar = false;
+      for(const ch of line){
+        if(escapeChar){
+          escapeChar = false;
+          continue;
+        }
+        if(ch === "\\" && (inSingle || inDouble || inBacktick)){
+          escapeChar = true;
+          continue;
+        }
+        if(ch === "'" && !inDouble && !inBacktick){
+          inSingle = !inSingle;
+          continue;
+        }
+        if(ch === '"' && !inSingle && !inBacktick){
+          inDouble = !inDouble;
+          continue;
+        }
+        if(ch === "`" && !inSingle && !inDouble){
+          inBacktick = !inBacktick;
+          continue;
+        }
+        if(inSingle || inDouble || inBacktick){
+          continue;
+        }
+        if(ch === "{"){
+          depth += 1;
+        }else if(ch === "}"){
+          depth -= 1;
+        }
+      }
+      return depth;
+    };
+    const addLine = (line) => {
+      combined.push(line);
+      blockDepth = Math.max(0, blockDepth + countBraceDelta(line));
+    };
     for(const raw of lines){
       const trimmed = typeof raw === "string" ? raw.trim() : "";
       if(!trimmed) continue;
       const trimmedLower = trimmed.toLowerCase();
       if(/^(?:end|endfor|endwhile|enduntil|endrepeat|endif|end\s*for|end\s*while|end\s*until|end\s*repeat|end\s*if)$/i.test(trimmed)){
-        combined.push("}");
+        addLine("}");
         continue;
       }
       if(stopCommandPattern.test(trimmed)){
-        combined.push("throw ABORT_ERR;");
+        addLine("throw ABORT_ERR;");
         continue;
       }
       const exitMatch = trimmed.match(/^exit(?:\s+(for|while|repeat))?$/i);
       if(exitMatch){
-        combined.push("break;");
+        addLine("break;");
         continue;
       }
-      const simpleFor = trimmed.match(/^for\s+(\d+)\s*$/i);
+      const simpleFor = trimmed.match(/^for(?:\s+(\d+))?\s*$/i);
       if(simpleFor){
-        const formattedFor = formatSimpleFor(simpleFor[1]);
+        const formattedFor = formatSimpleFor(simpleFor[1] || "1");
         if(formattedFor){
-          combined.push(formattedFor);
+          addLine(formattedFor);
           continue;
         }
       }
@@ -848,14 +893,14 @@
           return `if (${condFormatted}) ${awaitedBody}`;
         })();
         if(singleLine){
-          combined.push(singleLine);
+          addLine(singleLine);
           continue;
         }
         if(!trimmed.includes("{")){
           if(conditionRaw){
             const line = buildConditionalLine("if", conditionRaw);
             if(line){
-              combined.push(line);
+              addLine(line);
               continue;
             }
           }
@@ -868,26 +913,34 @@
         if(restIfMatch){
           const nestedLine = buildConditionalLine("} else if", restIfMatch[1]);
           if(nestedLine){
-            combined.push(nestedLine);
+            addLine(nestedLine);
             continue;
           }
         }
-        combined.push("} else {");
+        addLine("} else {");
         continue;
       }
       const whileMatch = trimmed.match(/^while\b(.*)$/i);
       if(whileMatch && !trimmedLower.includes("cancontinueloop")){
         const conditionRaw = (whileMatch[1] || "").trim();
+        const hasCondition = Boolean(conditionRaw);
+        const actualCondition = hasCondition ? conditionRaw : DEFAULT_WHILE_CONDITION;
         if(conditionRaw.startsWith("(")){
           const guarded = guardWhileWithParen(trimmed);
           if(guarded){
-            combined.push(guarded);
+            addLine(guarded);
             continue;
           }
         }else if(conditionRaw){
           const loopLine = buildSimpleLoopLine("while", conditionRaw);
           if(loopLine){
-            combined.push(loopLine);
+            addLine(loopLine);
+            continue;
+          }
+        }else if(actualCondition){
+          const loopLine = buildSimpleLoopLine("while", actualCondition);
+          if(loopLine){
+            addLine(loopLine);
             continue;
           }
         }
@@ -895,16 +948,23 @@
       const untilMatch = trimmed.match(/^until\b(.*)$/i);
       if(untilMatch && !trimmedLower.includes("cancontinueloop")){
         const conditionRaw = (untilMatch[1] || "").trim();
+        const actualCondition = conditionRaw || DEFAULT_UNTIL_CONDITION;
         if(conditionRaw.startsWith("(")){
           const rewritten = rewriteUntilWithParen(trimmed);
           if(rewritten){
-            combined.push(rewritten);
+            addLine(rewritten);
             continue;
           }
         }else if(conditionRaw){
           const loopLine = buildSimpleLoopLine("until", conditionRaw);
           if(loopLine){
-            combined.push(loopLine);
+            addLine(loopLine);
+            continue;
+          }
+        }else if(actualCondition){
+          const loopLine = buildSimpleLoopLine("until", actualCondition);
+          if(loopLine){
+            addLine(loopLine);
             continue;
           }
         }
@@ -915,27 +975,30 @@
         if(count){
           const formattedFor = formatSimpleFor(count);
           if(formattedFor){
-            combined.push(formattedFor);
+            addLine(formattedFor);
             continue;
           }
         }else{
           const repeatCondition = repeatDefaultConditionName();
           const guardCondition = formatStudentCodeLine(repeatCondition);
-          combined.push(`while (${guardCondition} && canContinueLoop()) {`);
+          addLine(`while (${guardCondition} && canContinueLoop()) {`);
           continue;
         }
       }
       const isBlocky = /^(for|while|if|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(trimmed)
         || /[{;}]$/.test(trimmed);
       if(isBlocky){
-        combined.push(trimmed);
+        addLine(trimmed);
         continue;
       }
       const formatted = formatStudentCodeLine(trimmed);
       if(formatted){
         const stmt = formatted.endsWith(";") ? formatted : `${formatted};`;
-        combined.push(awaitCalls ? `await ${stmt}` : stmt);
+        addLine(awaitCalls ? `await ${stmt}` : stmt);
       }
+    }
+    while(blockDepth > 0){
+      addLine("}");
     }
     return combined.join("\n");
   }
