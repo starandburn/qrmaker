@@ -49,8 +49,11 @@ input, textarea, select, option, .debug-log{
 .page-head{
   background:linear-gradient(135deg, #00a0e9 0%, #00a0e9 20%, #ffffff 50%, #ffffff 100%);
   margin:-10px -10px 6px;
-  padding:6px 14px 4px;
+  padding:16px 20px 10px;
   border-bottom:2px solid #c9d8ed;
+  display:flex;
+  align-items:center;
+  min-height:96px;
 }
 
 .page-head .school-link{
@@ -66,7 +69,9 @@ input, textarea, select, option, .debug-log{
   justify-content:space-between;
   align-items:center;
   gap:14px;
+  row-gap:10px;
   flex-wrap:wrap;
+  width:100%;
 }
 
 .title-row{
@@ -76,8 +81,8 @@ input, textarea, select, option, .debug-log{
 }
 
 .title-icon{
-  width:50px;
-  height:50px;
+  width:58px;
+  height:58px;
   object-fit:contain;
   image-rendering:pixelated;
   flex-shrink:0;
@@ -98,7 +103,7 @@ input, textarea, select, option, .debug-log{
   color:#ffffff;
   margin:0;
   text-shadow:2px 2px 0 #000000;
-  line-height:1.05;
+  line-height:1.25;
 }
 
 .title{
@@ -107,13 +112,15 @@ input, textarea, select, option, .debug-log{
   margin:0;
   color:#1f2f4a;
   text-shadow:1px 1px 0 #ffffff;
-  line-height:1.1;
+  line-height:1.2;
 }
 
 .school-block{
   display:flex;
   align-items:center;
+  flex-wrap:wrap;
   gap:10px;
+  row-gap:6px;
 }
 
 .school-logo{
