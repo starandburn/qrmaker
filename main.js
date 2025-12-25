@@ -2534,6 +2534,27 @@
         userCodeInput.setSelectionRange(start + indentLen, end + indentLen * lines.length);
         return;
       }
+      if(ev.key === "Enter" && ev.shiftKey && !ev.ctrlKey && !ev.altKey){
+        ev.preventDefault();
+        const value = userCodeInput.value;
+        const caret = Math.max(
+          typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : 0,
+          typeof userCodeInput.selectionStart === "number" ? userCodeInput.selectionStart : 0,
+        );
+        const lineStart = value.lastIndexOf("\n", caret - 1);
+        const column = caret - ((lineStart === -1) ? 0 : lineStart + 1);
+        const newlineIdx = value.indexOf("\n", caret);
+        if(newlineIdx === -1) return;
+        const nextLineStart = newlineIdx + 1;
+        const nextLineEnd = value.indexOf("\n", nextLineStart);
+        const nextLineLen = nextLineEnd === -1 ? value.length - nextLineStart : nextLineEnd - nextLineStart;
+        const nextLine = value.slice(nextLineStart, nextLineEnd === -1 ? value.length : nextLineEnd);
+        const indentMatch = nextLine.match(/^[\t ]*/);
+        const indentLen = indentMatch ? indentMatch[0].length : 0;
+        const targetPos = nextLineStart + indentLen;
+        userCodeInput.setSelectionRange(targetPos, targetPos);
+        return;
+      }
     });
   }
 
