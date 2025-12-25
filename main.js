@@ -65,6 +65,21 @@
   setPatternOpenFromParam();
   setDebugFromParam();
   if(!btnGenerate || !btnInit) return;
+  const executionStatusEl = document.getElementById("executionStatus");
+  const executionStatusLabels = {
+    stopped: "停止中",
+    running: "実行中",
+    finished: "実行終了",
+    error: "入力したスクリプトにエラーがあるので実行できません",
+  };
+  let lastExecutionError = null;
+  const setExecutionStatus = (state) => {
+    if(!executionStatusEl) return;
+    const label = executionStatusLabels[state] || "";
+    executionStatusEl.textContent = label;
+    executionStatusEl.className = `execution-status status-${state}`;
+  };
+  setExecutionStatus("stopped");
 
   // Prevent accidental text selection or drag on buttons
   const allButtons = document.querySelectorAll("button");
@@ -1265,23 +1280,46 @@
     return `${fn}(${args.join(", ")})`;
   }
 
+  function validateRunnerSyntax(runner){
+    try{
+      new Function(runner);
+      return null;
+    }catch(err){
+      if(err instanceof SyntaxError){
+        lastExecutionError = err.message;
+        return err;
+      }
+      throw err;
+    }
+  }
+
   async function runUserCode(){
     if(!userCodeInput) return true;
+    lastExecutionError = null;
     resetLoopGuard();
     const script = buildUserScript(userCodeInput.value || "", { awaitCalls: true });
     if(!script.trim()) return true;
     try{
       const runner = `(async () => {\n${script}\n})();`;
+      const syntaxError = validateRunnerSyntax(runner);
+      if(syntaxError){
+        if(typeof window.log === "function"){
+          window.log(`syntax error: ${syntaxError.message}`);
+        }
+        return false;
+      }
       const res = (0, eval)(runner);
       if(res && typeof res.then === "function"){
         await res;
       }
+      lastExecutionError = null;
       return true;
     }catch(err){
       if(err === ABORT_ERR){
         return false;
       }
       const msg = err && err.message ? err.message : String(err);
+      lastExecutionError = msg;
       if(typeof window.log === "function"){
         window.log(`userCode error: ${msg}`);
       }
@@ -1889,6 +1927,8 @@
     btnGenerate.disabled = false;
     btnInit.disabled = false;
     setRenderMode(RENDER_IMMEDIATE);
+    lastExecutionError = null;
+    setExecutionStatus("stopped");
   });
 
   async function runGenerateLegacy(){
@@ -1998,7 +2038,15 @@
   }
 
   btnGenerate.addEventListener("click", async () => {
-    await runUserCodeWithStep();
+    setExecutionStatus("running");
+    const ok = await runUserCodeWithStep();
+    if(ok){
+      setExecutionStatus("finished");
+    }else if(lastExecutionError){
+      setExecutionStatus("error");
+    }else{
+      setExecutionStatus("stopped");
+    }
   });
   if(btnGenerate){
     window.addEventListener("keydown", (ev) => {
