@@ -2483,37 +2483,41 @@
       if(ev.key === "Tab"){
         ev.preventDefault();
         const indent = "\t";
-        let value = userCodeInput.value;
-        let start = typeof userCodeInput.selectionStart === "number" ? userCodeInput.selectionStart : 0;
-        let end = typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : start;
+        const value = userCodeInput.value;
+        const start = typeof userCodeInput.selectionStart === "number" ? userCodeInput.selectionStart : 0;
+        const end = typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : start;
 
         const startLineBreak = value.lastIndexOf("\n", start - 1);
-        let endLinePos = Math.max(0, end - 1);
-        if(end > 0 && value[end - 1] === "\n"){
-          endLinePos = Math.max(0, endLinePos - 1);
-        }
-        const endLineBreak = value.lastIndexOf("\n", endLinePos);
-        if(startLineBreak === endLineBreak){
+        const lineStart = startLineBreak + 1;
+        const computeLastLineStart = () => {
+          if(start === end){
+            return lineStart;
+          }
+          let idx = end - 1;
+          if(idx >= 0 && value[idx] === "\n"){
+            idx = Math.max(0, idx - 1);
+          }
+          return value.lastIndexOf("\n", idx) + 1;
+        };
+        const lastLineStart = Math.max(lineStart, computeLastLineStart());
+
+        if(lineStart === lastLineStart){
           if(ev.shiftKey){
-            const lineStart = startLineBreak + 1;
-            if(start === end){
-              if(start > lineStart && value[start - 1] === "\t"){
-                userCodeInput.setRangeText("", start - 1, start, "end");
-                userCodeInput.setSelectionRange(start - 1, start - 1);
-              }
-            }else if(value[lineStart] === "\t"){
+            if(value.startsWith(indent, lineStart)){
               userCodeInput.setRangeText("", lineStart, lineStart + 1, "end");
-              userCodeInput.setSelectionRange(Math.max(lineStart, start - 1), Math.max(lineStart, end - 1));
+              const delta = 1;
+              const newStart = Math.max(lineStart, start - delta);
+              const newEnd = Math.max(lineStart, end - delta);
+              userCodeInput.setSelectionRange(newStart, newEnd);
             }
             return;
           }
-
-          userCodeInput.setRangeText(indent, start, end, "end");
+          userCodeInput.setRangeText(indent, lineStart, lineStart, "end");
+          const delta = 1;
+          userCodeInput.setSelectionRange(start + delta, end + delta);
           return;
         }
 
-        const lineStart = startLineBreak + 1;
-        const lastLineStart = endLineBreak + 1;
         const lineEnd = value.indexOf("\n", lastLineStart);
         const blockEnd = lineEnd === -1 ? value.length : lineEnd;
         const block = value.slice(lineStart, blockEnd);
