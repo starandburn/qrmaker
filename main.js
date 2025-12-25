@@ -2480,40 +2480,6 @@
         }
         return;
       }
-      if(ev.key === "Enter" && ev.shiftKey){
-        ev.preventDefault();
-        let text = userCodeInput.value || "";
-        const pos = (typeof userCodeInput.selectionStart === "number")
-          ? userCodeInput.selectionStart
-          : text.length;
-        const startIdxRaw = text.lastIndexOf("\n", Math.max(0, pos - 1));
-        const startIdx = startIdxRaw === -1 ? 0 : startIdxRaw + 1;
-        const endIdxRaw = text.indexOf("\n", pos);
-        const endIdx = endIdxRaw === -1 ? text.length : endIdxRaw;
-        const rawLine = text.slice(startIdx, endIdx);
-        const line = formatStudentCodeLine(rawLine);
-        const shouldRun = !!line.trim();
-        if(shouldRun){
-          try{
-            const res = (0, eval)(line);
-            if(res && typeof res.then === "function"){
-              await res;
-            }
-          }catch(err){
-            const msg = err && err.message ? err.message : String(err);
-            if(typeof window.log === "function"){
-              window.log(`line error: ${msg}`);
-            }
-          }
-        }
-        if(endIdxRaw === -1){
-          const newPos = endIdx;
-          userCodeInput.setSelectionRange(newPos, newPos);
-        }else{
-          const newPos = Math.min(userCodeInput.value.length, endIdx + 1);
-          userCodeInput.setSelectionRange(newPos, newPos);
-        }
-      }
     });
   }
 
