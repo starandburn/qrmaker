@@ -2480,6 +2480,60 @@
         }
         return;
       }
+      if(ev.key === "Tab"){
+        ev.preventDefault();
+        const indent = "\t";
+        let value = userCodeInput.value;
+        let start = typeof userCodeInput.selectionStart === "number" ? userCodeInput.selectionStart : 0;
+        let end = typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : start;
+
+        const startLineBreak = value.lastIndexOf("\n", start - 1);
+        let endLinePos = Math.max(0, end - 1);
+        if(end > 0 && value[end - 1] === "\n"){
+          endLinePos = Math.max(0, endLinePos - 1);
+        }
+        const endLineBreak = value.lastIndexOf("\n", endLinePos);
+        if(startLineBreak === endLineBreak){
+          if(ev.shiftKey){
+            const lineStart = startLineBreak + 1;
+            if(start === end){
+              if(start > lineStart && value[start - 1] === "\t"){
+                userCodeInput.setRangeText("", start - 1, start, "end");
+                userCodeInput.setSelectionRange(start - 1, start - 1);
+              }
+            }else if(value[lineStart] === "\t"){
+              userCodeInput.setRangeText("", lineStart, lineStart + 1, "end");
+              userCodeInput.setSelectionRange(Math.max(lineStart, start - 1), Math.max(lineStart, end - 1));
+            }
+            return;
+          }
+
+          userCodeInput.setRangeText(indent, start, end, "end");
+          return;
+        }
+
+        const lineStart = startLineBreak + 1;
+        const lastLineStart = endLineBreak + 1;
+        const lineEnd = value.indexOf("\n", lastLineStart);
+        const blockEnd = lineEnd === -1 ? value.length : lineEnd;
+        const block = value.slice(lineStart, blockEnd);
+        const lines = block.split("\n");
+
+        if(ev.shiftKey){
+          const unindented = lines.map((line) => line.startsWith(indent) ? line.slice(1) : line).join("\n");
+          const removedLines = lines.reduce((count, line) => count + (line.startsWith(indent) ? 1 : 0), 0);
+          userCodeInput.setRangeText(unindented, lineStart, blockEnd, "end");
+          const startShift = value.slice(lineStart, start).startsWith(indent) ? 1 : 0;
+          userCodeInput.setSelectionRange(start - startShift, end - removedLines);
+          return;
+        }
+
+        const indented = lines.map((line) => indent + line).join("\n");
+        userCodeInput.setRangeText(indented, lineStart, blockEnd, "end");
+        const indentLen = indent.length;
+        userCodeInput.setSelectionRange(start + indentLen, end + indentLen * lines.length);
+        return;
+      }
     });
   }
 

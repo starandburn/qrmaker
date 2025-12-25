@@ -356,29 +356,7 @@ if(userCodeTextarea){
       e.stopPropagation();
       return;
     }
-    if(e.key === "Tab"){
-      e.preventDefault();
-      // Shift+Tab: outdent current line if possible
-      if(e.shiftKey){
-        const start = userCodeTextarea.selectionStart ?? 0;
-        const end = userCodeTextarea.selectionEnd ?? start;
-        const val = userCodeTextarea.value ?? "";
-        const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-        const line = val.slice(lineStart, end);
-        const match = line.match(/^(\t| {1,4})/);
-        if(match){
-          const removeLen = match[0].length;
-          userCodeTextarea.value = val.slice(0, lineStart) + line.slice(removeLen) + val.slice(end);
-          const delta = removeLen;
-          const newPos = Math.max(lineStart, start - delta);
-          const newEnd = Math.max(lineStart, end - delta);
-          userCodeTextarea.selectionStart = newPos;
-          userCodeTextarea.selectionEnd = newEnd;
-        }
-      }else{
-        insertText("\t");
-      }
-    }else if(e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey){
+    if(e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey){
       const start = userCodeTextarea.selectionStart ?? 0;
       const val = userCodeTextarea.value ?? "";
       const lineStart = val.lastIndexOf("\n", start - 1) + 1;
