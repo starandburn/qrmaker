@@ -697,6 +697,28 @@ details.pattern-panel:not([open]) .summary-title::before{
   min-height:0;
   flex:1 1 auto;
 }
+.code-panel .panel-title-row{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:8px;
+}
+.code-panel .panel-title-row .panel-title{
+  margin:0;
+}
+.code-clear-btn{
+  padding:3px 12px;
+  border-radius:4px;
+  border:1px solid #cfd6df;
+  background:#fff;
+  font-size:0.85rem;
+  cursor:pointer;
+  transition:background 0.2s, border-color 0.2s;
+}
+.code-clear-btn:hover{
+  background:#f6f6f6;
+  border-color:#b0b9c6;
+}
 
 .code-split{
   display:flex;

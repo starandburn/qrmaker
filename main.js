@@ -2,6 +2,7 @@
 (function(){
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");
+  const btnClearCode = document.getElementById("btnClearCode");
   const debugLog = document.getElementById("debugLog");
   const debugPanel = document.getElementById("debugPanel");
   const dataPatternPanel = document.getElementById("dataPatternPanel") || document.getElementById("patternDetails");
@@ -2141,6 +2142,7 @@
   }
 
   btnInit.addEventListener("click", () => {
+    window.log("btnInit clicked");
     runId++;
     resetQRCode({ abortRun: false, forceImmediate: true, stopStep: true });
     resetCursor();
@@ -2267,6 +2269,7 @@
   }
 
   btnGenerate.addEventListener("click", async () => {
+    window.log("btnGenerate clicked");
     setExecutionStatus("running");
     const ok = await runUserCodeWithStep();
     if(ok){
@@ -2361,6 +2364,19 @@
     updateCursor(19, 19, DIR_RIGHT);
     await putAlignmentCells(overwrite, opts);
     return true;
+  }
+
+  if(btnClearCode){
+    btnClearCode.addEventListener("click", () => {
+      window.log("code cleared");
+      if(userCodeInput){
+        userCodeInput.value = "";
+        userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      if(userCodeParsed){
+        userCodeParsed.value = "";
+      }
+    });
   }
 
   async function putFinderCells(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
@@ -2904,6 +2920,7 @@
       // ignore console errors
     }
   };
+  window.log("window initialized");
 
   if(footerCopy && debugPanel){
     footerCopy.addEventListener("dblclick", () => {
