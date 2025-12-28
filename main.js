@@ -1449,11 +1449,11 @@
 
   window.invertCell = invertCell;
   window.applyMask = applyMask;
-  window.drawFinder = drawFinder;
-  window.drawAlignment = drawAlignment;
-  window.drawTiming = drawTiming;
-  window.drawDarkModule = drawDarkModule;
-  window.drawFormat = drawFormat;
+  window.putFinderCells = putFinderCells;
+  window.putAlignmentCells = putAlignmentCells;
+  window.putTimingCells = putTimingCells;
+  window.putDarkModuleCells = putDarkModuleCells;
+  window.putFormatCells = putFormatCells;
   window.drawFormatPatterns = drawFormatPatterns;
   window.drawFinderPatterns = drawFinderPatterns;
   window.drawAlignmentPatterns = drawAlignmentPatterns;
@@ -2093,58 +2093,10 @@
     });
   }
 
-  function drawFinder(topRow, leftCol){
-    window.log && window.log(`drawFinder(${topRow}, ${leftCol})`);
-    // 7x7 finder (black outer ring, white ring around as separator)
-    const pattern = [
-      [1,1,1,1,1,1,1],
-      [1,0,0,0,0,0,1],
-      [1,0,1,1,1,0,1],
-      [1,0,1,1,1,0,1],
-      [1,0,1,1,1,0,1],
-      [1,0,0,0,0,0,1],
-      [1,1,1,1,1,1,1],
-    ];
-    setRenderMode(RENDER_BUFFERED);
-    // core 7x7
-    for(let r = 0; r < 7; r++){
-      for(let c = 0; c < 7; c++){
-        const row = topRow + r;
-        const col = leftCol + c;
-        if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-        const bit = pattern[r][c];
-        if(typeof window.updateCell === "function"){
-          window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
-        }
-        window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
-      }
-    }
-    // white separator ring outside
-    const sRow = topRow - 1;
-    const eRow = topRow + 7;
-    const sCol = leftCol - 1;
-    const eCol = leftCol + 7;
-    for(let r = sRow; r <= eRow; r++){
-      for(let c = sCol; c <= eCol; c++){
-        const insideCore = r >= topRow && r < topRow + 7 && c >= leftCol && c < leftCol + 7;
-        if(insideCore) continue;
-        if(r < 1 || r > 25 || c < 1 || c > 25) continue;
-        if(r === sRow || r === eRow || c === sCol || c === eCol){
-          if(typeof window.updateCell === "function"){
-            window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
-          }
-          window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
-        }
-      }
-    }
-    flushRender();
-    setRenderMode(RENDER_IMMEDIATE);
-  }
-
-  function drawAlignment(centerRow, centerCol, { stepEnabled, currentRun } = {}){
+  function putAlignmentCells(centerRow, centerCol, { stepEnabled, currentRun } = {}){
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     const step = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
-    window.log && window.log(`drawAlignment(${centerRow}, ${centerCol}, step=${step}, run=${runToken})`);
+    window.log && window.log(`putAlignmentCells(${centerRow}, ${centerCol}, step=${step}, run=${runToken})`);
     const pattern = [
       [1,1,1,1,1],
       [1,0,0,0,1],
@@ -2182,7 +2134,7 @@
           if(runToken !== runId) return false;
           if(!stepActive()){
             setRenderMode(prevRender);
-            return drawAlignment(centerRow, centerCol, { stepEnabled: false, currentRun: runToken });
+            return putAlignmentCells(centerRow, centerCol, { stepEnabled: false, currentRun: runToken });
           }
           const row = startRow + r;
           const col = startCol + c;
@@ -2200,15 +2152,15 @@
 
   async function drawAlignmentPatterns(options = {}){
     const opts = { ...options, currentRun: (typeof options.currentRun === "number" ? options.currentRun : runId) };
-    await drawAlignment(19, 19, opts);
+    await putAlignmentCells(19, 19, opts);
     return true;
   }
 
-  async function drawFinder(topRow, leftCol, { stepEnabled, currentRun } = {}){
+  async function putFinderCells(topRow, leftCol, { stepEnabled, currentRun } = {}){
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     const shouldAbort = () => runToken !== runId;
     const stepInitial = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
-    window.log && window.log(`drawFinder(${topRow}, ${leftCol}, step=${stepInitial}, run=${runToken})`);
+    window.log && window.log(`putFinderCells(${topRow}, ${leftCol}, step=${stepInitial}, run=${runToken})`);
     const pattern = [
       [1,1,1,1,1,1,1],
       [1,0,0,0,0,0,1],
@@ -2320,23 +2272,23 @@
 
   async function drawFinderPatterns(options = {}){
     const opts = { ...options, currentRun: (typeof options.currentRun === "number" ? options.currentRun : runId) };
-    await drawFinder(1, 1, opts);
-    await drawFinder(1, 19, opts);
-    await drawFinder(19, 1, opts);
+    await putFinderCells(1, 1, opts);
+    await putFinderCells(1, 19, opts);
+    await putFinderCells(19, 1, opts);
     return true;
   }
 
   async function drawDarkModulePatterns(options = {}){
     window.log && window.log("drawDarkModulePatterns()");
     const opts = { ...options, currentRun: (typeof options.currentRun === "number" ? options.currentRun : runId) };
-    await drawDarkModule(18, 9, opts);
+    await putDarkModuleCells(18, 9, opts);
     return true;
   }
 
-  async function drawDarkModule(row = 18, col = 9, { stepEnabled, currentRun } = {}){
+  async function putDarkModuleCells(row = 18, col = 9, { stepEnabled, currentRun } = {}){
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     const step = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
-    window.log && window.log(`drawDarkModule(${row}, ${col}, step=${step}, run=${runToken})`);
+    window.log && window.log(`putDarkModuleCells(${row}, ${col}, step=${step}, run=${runToken})`);
     if(!Number.isFinite(row) || !Number.isFinite(col)) return false;
     if(row < 1 || row > 25 || col < 1 || col > 25) return false;
     if(!step){
@@ -2358,9 +2310,9 @@
     return true;
   }
 
-  function drawTiming(direction = TIMING_HORIZONTAL, index = TIMING_ROW, { stepEnabled, currentRun } = {}){
+  function putTimingCells(direction = TIMING_HORIZONTAL, index = TIMING_ROW, { stepEnabled, currentRun } = {}){
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
-    window.log && window.log(`drawTiming(dir=${direction}, idx=${index}, run=${runToken})`);
+    window.log && window.log(`putTimingCells(dir=${direction}, idx=${index}, run=${runToken})`);
     const dirVal = Number(direction);
     if(!Number.isFinite(dirVal)) return false;
     if(dirVal !== TIMING_HORIZONTAL && dirVal !== TIMING_VERTICAL) return false;
@@ -2411,7 +2363,7 @@
       if(dirVal === TIMING_HORIZONTAL){
         for(let c = 1; c <= 25; c++){
           if(runToken !== runId) return false;
-          if(!shouldStepFunctions()) return drawTiming(direction, index, { stepEnabled: false, currentRun: runToken });
+        if(!shouldStepFunctions()) return putTimingCells(direction, index, { stepEnabled: false, currentRun: runToken });
           const bit = (c % 2 === 1) ? 1 : 0;
           if(!writeIfEmpty(pos, c)) continue;
           window.updateCell(pos, c, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
@@ -2421,7 +2373,7 @@
       }else{
         for(let r = 1; r <= 25; r++){
           if(runToken !== runId) return false;
-          if(!shouldStepFunctions()) return drawTiming(direction, index, { stepEnabled: false, currentRun: runToken });
+        if(!shouldStepFunctions()) return putTimingCells(direction, index, { stepEnabled: false, currentRun: runToken });
           const bit = (r % 2 === 1) ? 1 : 0;
           if(!writeIfEmpty(r, pos)) continue;
           window.updateCell(r, pos, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
@@ -2437,15 +2389,15 @@
   async function drawTimingPatterns(options = {}){
     window.log && window.log("drawTimingPatterns()");
     const opts = { ...options, currentRun: (typeof options.currentRun === "number" ? options.currentRun : runId) };
-    await drawTiming(TIMING_HORIZONTAL, TIMING_ROW, opts);
-    await drawTiming(TIMING_VERTICAL, TIMING_COL, opts);
+    await putTimingCells(TIMING_HORIZONTAL, TIMING_ROW, opts);
+    await putTimingCells(TIMING_VERTICAL, TIMING_COL, opts);
     return true;
   }
 
-  async function drawFormat(bits15, coords, { stepEnabled, currentRun } = {}){
+  async function putFormatCells(bits15, coords, { stepEnabled, currentRun } = {}){
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     const step = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
-    window.log && window.log(`drawFormat(bits15=${bits15}, step=${step}, run=${runToken})`);
+    window.log && window.log(`putFormatCells(bits15=${bits15}, step=${step}, run=${runToken})`);
     const coordsArr = Array.isArray(coords) ? coords : [];
     if(!step){
       setRenderMode(RENDER_BUFFERED);
@@ -2469,7 +2421,7 @@
     setRenderMode(RENDER_IMMEDIATE);
     for(let i = 0; i < coordsArr.length && i < 15; i++){
       if(runToken !== runId) return false;
-      if(!shouldStepFunctions()) return drawFormat(bits15, coords, { stepEnabled: false, currentRun: runToken });
+      if(!shouldStepFunctions()) return putFormatCells(bits15, coords, { stepEnabled: false, currentRun: runToken });
       const bit = (bits15 >>> i) & 1; // LSB first
       const [r1, c1] = coordsArr[i];
       if(typeof window.updateCell === "function"){
@@ -2498,8 +2450,8 @@
       [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
       [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
     ];
-    await drawFormat(bits15, coordsA, { ...options, currentRun: runToken });
-    await drawFormat(bits15, coordsB, { ...options, currentRun: runToken });
+    await putFormatCells(bits15, coordsA, { ...options, currentRun: runToken });
+    await putFormatCells(bits15, coordsB, { ...options, currentRun: runToken });
     hasFormatPattern = true;
     return true;
   }
