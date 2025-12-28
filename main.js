@@ -110,7 +110,7 @@
     move: "moveCursor",
     turn: "turnCursor",
     reset: "resetQRCode",
-    func: "drawAllFunctionals",
+    base: "drawAllFunctionals",
     mask: "applyMask",
     empty: "isEmpty",
     used: "isUsed",
