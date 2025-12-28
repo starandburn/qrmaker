@@ -398,14 +398,14 @@ details.pattern-panel:not([open]) .summary-title::before{
 }
 .ascii-link{
   font-size:12px;
-  font-weight:600;
+  font-weight:500;
   color:#1b66ff;
   text-decoration:none;
-  padding:2px 8px;
-  border:1px solid #cfd6df;
-  border-radius:12px;
-  background: linear-gradient(180deg, #ffffff, #f3f6fb);
-  box-shadow:0 1px 3px rgba(0,0,0,0.08);
+  padding:0;
+  margin-left:8px;
+  border:none;
+  background:transparent;
+  box-shadow:none;
 }
 .ascii-link:hover{
   text-decoration:underline;
