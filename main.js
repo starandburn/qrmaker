@@ -1711,6 +1711,7 @@
       flushRender();
       setRenderMode(RENDER_IMMEDIATE);
     }
+    resetCursor();
     return true;
   }
 
