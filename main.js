@@ -131,11 +131,12 @@
   const RENDER_BUFFERED = "buffered";
   const STEP_DELAY_MS = 12;
   const ABORT_ERR = Symbol("run-aborted");
+  const RESET_DELAY_MS = 10;
   const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const ALIAS_MAP = {
     move: "moveCursor",
     turn: "turnCursor",
-    reset: "resetQRCode",
+    reset: "resetCommand",
     base: "drawBasePatterns",
     mask: "applyMask",
     data: "drawDataPatterns",
@@ -684,6 +685,11 @@
     }
     resetCursor();
     pendingCursor = null;
+  }
+
+  async function resetCommand(){
+    resetQRCode();
+    await sleep(RESET_DELAY_MS);
   }
 
   // Guarded cursor update for async flows: only applies if runToken matches current runId
@@ -1270,6 +1276,7 @@
   window.setRenderMode = setRenderMode;
   window.reapplyCellColors = reapplyCellColors;
   window.resetQRCode = resetQRCode;
+  window.resetCommand = resetCommand;
   window.clearAllCells = resetQRCode; // backward compat
   window.boardMatrix = boardMatrix;
   window.getNextData = getNextData;
@@ -1749,7 +1756,7 @@
       maskIndex = arg;
     }
     const currentRun = ++runId;
-    const baseOk = await drawBasePatterns({ deferFlush: false, currentRun });
+    const baseOk = await drawBasePatterns({ deferFlush: false, currentRun, resetDelay: true });
     if(currentRun !== runId || !baseOk) return false;
     const dataOk = await drawDataPatterns({ currentRun });
     if(currentRun !== runId || !dataOk) return false;
@@ -1798,7 +1805,7 @@
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
-  async function drawBasePatterns({ deferFlush = false, currentRun } = {}){
+  async function drawBasePatterns({ deferFlush = false, currentRun, resetDelay = false } = {}){
     if(currentRun !== undefined && currentRun !== runId) return false;
     if(isStepModeOn() && shouldStepFunctions()){
       const stepped = await drawBasePatternsStepped({ currentRun });
@@ -1807,6 +1814,9 @@
     setRenderMode(RENDER_BUFFERED);
     resetQRCode({ abortRun: false });
     resetCursor();
+    if(resetDelay){
+      await sleep(RESET_DELAY_MS);
+    }
     if(currentRun !== undefined && currentRun !== runId) return false;
     const funcOpts = { stepEnabled: false, currentRun, overwrite: false };
     await drawFinderPatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
