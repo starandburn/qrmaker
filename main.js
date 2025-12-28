@@ -147,11 +147,17 @@
     timing: "putTimingCells",
     skip: "isSkipZone",
     finder: "putFinderCells",
+    finders: "drawFinderPatterns",
     alignment: "putAlignmentCells",
+    alignments: "drawAlignmentPatterns",
     dark: "putDarkModuleCells",
+    darkmodules: "drawDarkModulePatterns",
     format: "putFormatCells",
+    formats: "drawFormatPatterns",
+    timings: "drawTimingPatterns",
     next: "getNextData",
     pause: "pauseRunning",
+    advance: "putNextCell",
   };
   const ALIAS_PATTERN = new RegExp(
     `\\b(${Object.keys(ALIAS_MAP).map(escapeRegExp).join("|")})\\b`,
@@ -171,7 +177,7 @@
     if(typeof text !== "string" || !text) return "";
     return text.replace(DIRECTION_SUFFIX_PATTERN, "$1 $2");
   };
-  const CONDITIONAL_KEYWORDS = ["clash", "empty", "used", "timing"];
+  const CONDITIONAL_KEYWORDS = ["clash", "empty", "used", "timing", "skip"];
   const CONDITIONAL_PATTERN = new RegExp(
     `\\b(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(\\S.*)`,
     "gi",
@@ -182,10 +188,10 @@
   );
   const applyConditionalAliases = (text) => {
     if(typeof text !== "string" || !text) return "";
-    const resolveConditionalKeyword = (keyword) => {
+      const resolveConditionalKeyword = (keyword) => {
       if(typeof keyword !== "string") return keyword;
       const lower = keyword.toLowerCase();
-      if(lower === "timing") return "isSkip";
+      if(lower === "timing" || lower === "skip") return "isSkipZone";
       return keyword;
     };
     if(CONDITIONAL_LINE_PATTERN.test(text)){
@@ -677,6 +683,7 @@
       resetData();
     }
     resetCursor();
+    pendingCursor = null;
   }
 
   // Guarded cursor update for async flows: only applies if runToken matches current runId
@@ -1525,7 +1532,7 @@
     }
     const completed = !shouldAbort();
     if(completed && hasFormatPattern){
-      drawFormatPatterns(idx, true);
+      await drawFormatPatterns(idx, true);
     }
     if(renderMode === RENDER_BUFFERED){
       flushRender();
@@ -2867,6 +2874,37 @@
         requestAnimationFrame(ensureUserCodeCaretVisible);
       }
     });
+  }
+  const sampleButtons = document.querySelectorAll(".code-debug-btn");
+  sampleButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const sampleId = btn.dataset.sample;
+      const template = sampleId ? document.getElementById(sampleId) : null;
+      if(!template) return;
+      const raw = template.textContent || "";
+      const lines = raw.replace(/\r/g, "").split("\n");
+      while(lines.length && lines[0].trim() === ""){
+        lines.shift();
+      }
+      while(lines.length && lines[lines.length - 1].trim() === ""){
+        lines.pop();
+      }
+      const normalized = lines.join("\n");
+      if(userCodeInput){
+        userCodeInput.value = normalized;
+        userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
+        userCodeInput.scrollTop = 0;
+        userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+    });
+  });
+  if(codePanel){
+    const codeTitle = codePanel.querySelector(".panel-title");
+    if(codeTitle){
+      codeTitle.addEventListener("dblclick", () => {
+        codePanel.classList.toggle("show-samples");
+      });
+    }
   }
 
   if(document && document.body){

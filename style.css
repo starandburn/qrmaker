@@ -719,6 +719,22 @@ details.pattern-panel:not([open]) .summary-title::before{
   background:#f6f6f6;
   border-color:#b0b9c6;
 }
+.code-debug-toolbar{
+  display:none;
+  gap:4px;
+}
+.code-debug-btn{
+  padding:3px 10px;
+  border-radius:4px;
+  border:1px solid #cfd6df;
+  background:#f7f7f7;
+  font-size:0.85rem;
+  cursor:pointer;
+}
+.code-panel.show-samples .code-debug-toolbar,
+.code-panel.debug-mode .code-debug-toolbar{
+  display:flex;
+}
 
 .code-split{
   display:flex;
