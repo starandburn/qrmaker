@@ -1534,7 +1534,7 @@
     }
     const completed = !shouldAbort();
     if(completed && hasFormatPattern){
-      drawFormatPatterns(idx);
+      drawFormatPatterns(idx, true);
     }
     if(renderMode === RENDER_BUFFERED){
       flushRender();
@@ -1543,6 +1543,7 @@
     if(stepMask){
       updateCursorSafe(prevCursor.row, prevCursor.col, maskCursorDir);
     }
+    resetCursor();
     return completed;
   }
 
@@ -1687,27 +1688,24 @@
     if(overwrite) return true;
     return isBoardCellUnplaced(row, col);
   }
-  function normalizeFunctionalOptions(overwriteOrOpts = true, fallback = {}){
-    const base = {
-      overwrite: true,
-      stepEnabled: fallback.stepEnabled,
-      currentRun: fallback.currentRun,
-    };
-    if(typeof overwriteOrOpts === "object" && overwriteOrOpts !== null && !Array.isArray(overwriteOrOpts)){
-      const { overwrite, stepEnabled, currentRun } = overwriteOrOpts;
-      return {
-        overwrite: overwrite !== undefined ? overwrite : base.overwrite,
-        stepEnabled: stepEnabled !== undefined ? stepEnabled : base.stepEnabled,
-        currentRun: currentRun !== undefined ? currentRun : base.currentRun,
-      };
+    function resolveFunctionalOptions(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+      if(typeof overwriteOrOpts === "object" && overwriteOrOpts !== null && !Array.isArray(overwriteOrOpts)){
+        const { overwrite = false, currentRun, stepEnabled: stepFromOpts } = overwriteOrOpts;
+        const resolvedRun = (typeof currentRun === "number") ? currentRun : runId;
+        const resolvedStep = (typeof stepFromOpts === "boolean") ? stepFromOpts : shouldStepFunctions();
+        return { overwrite, currentRun: resolvedRun, stepEnabled: resolvedStep };
+      }
+      const overwriteValue = (overwriteOrOpts === undefined) ? true : overwriteOrOpts;
+      if(typeof currentRunOrOpts === "object" && currentRunOrOpts !== null && !Array.isArray(currentRunOrOpts)){
+        const { currentRun, stepEnabled: stepFromOpts } = currentRunOrOpts;
+        const resolvedRun = (typeof currentRun === "number") ? currentRun : runId;
+        const resolvedStep = (typeof stepFromOpts === "boolean") ? stepFromOpts : shouldStepFunctions();
+        return { overwrite: overwriteValue, currentRun: resolvedRun, stepEnabled: resolvedStep };
+      }
+      const resolvedRun = (typeof currentRunOrOpts === "number") ? currentRunOrOpts : runId;
+      const resolvedStep = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
+      return { overwrite: overwriteValue, currentRun: resolvedRun, stepEnabled: resolvedStep };
     }
-    const overwriteValue = (overwriteOrOpts === undefined) ? base.overwrite : overwriteOrOpts;
-    return {
-      overwrite: overwriteValue,
-      stepEnabled: base.stepEnabled,
-      currentRun: base.currentRun,
-    };
-  }
   window.isMoveBlocked = () => lastMoveBlocked;
   async function putNextCell(){
     if(window.isEmpty && window.isEmpty()){
@@ -1813,15 +1811,15 @@
     resetCursor();
     if(currentRun !== undefined && currentRun !== runId) return false;
     const funcOpts = { stepEnabled: false, currentRun, overwrite: false };
-    await drawFinderPatterns(funcOpts);
+    await drawFinderPatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    await drawTimingPatterns(funcOpts);
+    await drawTimingPatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    await drawAlignmentPatterns(funcOpts);
+    await drawAlignmentPatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    await drawDarkModulePatterns(funcOpts);
+    await drawDarkModulePatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    await drawFormatPatterns(undefined, funcOpts);
+    await drawFormatPatterns(undefined, funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
     if(!deferFlush){
       if(currentRun !== undefined && currentRun !== runId) return false;
       flushRender();
@@ -2302,12 +2300,14 @@
     });
   }
 
-  function putAlignmentCells(centerRow, centerCol, overwriteOrOpts = true, fallbackOpts = {}){
-    const { overwrite, stepEnabled, currentRun } = normalizeFunctionalOptions(overwriteOrOpts, fallbackOpts);
+  function putAlignmentCells(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+    const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
-    const step = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
-    window.log && window.log(`putAlignmentCells(${centerRow}, ${centerCol}, step=${step}, run=${runToken})`);
-    const { row: resolvedRow, col: resolvedCol } = resolveRowCol(centerRow, centerCol, cursorPos.row, cursorPos.col);
+    const step = !!resolvedStep;
+    const baseRow = cursorPos.row;
+    const baseCol = cursorPos.col;
+    window.log && window.log(`putAlignmentCells(${baseRow}, ${baseCol}, step=${step}, run=${runToken})`);
+    updateCursor(baseRow, baseCol, DIR_RIGHT);
     const pattern = [
       [1,1,1,1,1],
       [1,0,0,0,1],
@@ -2315,8 +2315,8 @@
       [1,0,0,0,1],
       [1,1,1,1,1],
     ];
-    const startRow = resolvedRow - 2;
-    const startCol = resolvedCol - 2;
+    const startRow = baseRow - 2;
+    const startCol = baseCol - 2;
     const allowOverwrite = overwrite !== false;
     const shouldDrawCell = (row, col) => shouldPlaceCell(row, col, allowOverwrite);
     if(!step){
@@ -2348,7 +2348,7 @@
           if(runToken !== runId) return false;
           if(!stepActive()){
             setRenderMode(prevRender);
-            return putAlignmentCells(centerRow, centerCol, overwrite, { stepEnabled: false, currentRun: runToken });
+            return putAlignmentCells(overwrite, { stepEnabled: false, currentRun: runToken });
           }
           const row = startRow + r;
           const col = startCol + c;
@@ -2365,20 +2365,24 @@
     })();
   }
 
-  async function drawAlignmentPatterns({ overwrite = true, currentRun, stepEnabled } = {}){
+  async function drawAlignmentPatterns(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+    const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runVal = (typeof currentRun === "number") ? currentRun : runId;
-    const opts = { stepEnabled, currentRun: runVal };
-    await putAlignmentCells(19, 19, overwrite, opts);
+    const opts = { stepEnabled: resolvedStep, currentRun: runVal };
+    updateCursor(19, 19, DIR_RIGHT);
+    await putAlignmentCells(overwrite, opts);
     return true;
   }
 
-  async function putFinderCells(topRow, leftCol, overwriteOrOpts = true, fallbackOpts = {}){
-    const { overwrite, stepEnabled, currentRun } = normalizeFunctionalOptions(overwriteOrOpts, fallbackOpts);
+  async function putFinderCells(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+    const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     const shouldAbort = () => runToken !== runId;
-    const stepInitial = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
-    const { row: resolvedTop, col: resolvedLeft } = resolveRowCol(topRow, leftCol, cursorPos.row, cursorPos.col);
-    window.log && window.log(`putFinderCells(${resolvedTop}, ${resolvedLeft}, step=${stepInitial}, run=${runToken})`);
+    const stepInitial = !!resolvedStep;
+    const baseRow = cursorPos.row;
+    const baseCol = cursorPos.col;
+    updateCursor(baseRow, baseCol, DIR_RIGHT);
+    window.log && window.log(`putFinderCells(${baseRow}, ${baseCol}, step=${stepInitial}, run=${runToken})`);
     const pattern = [
       [1,1,1,1,1,1,1],
       [1,0,0,0,0,0,1],
@@ -2400,8 +2404,8 @@
     const drawSync = () => {
       for(let r = 0; r < 7; r++){
         for(let c = 0; c < 7; c++){
-          const row = resolvedTop + r;
-          const col = resolvedLeft + c;
+          const row = baseRow + r;
+          const col = baseCol + c;
           if(row < 1 || row > 25 || col < 1 || col > 25) continue;
           const bit = pattern[r][c];
           if(!shouldDrawCell(row, col)) continue;
@@ -2410,13 +2414,13 @@
           lastCursorCol = col;
         }
       }
-      const sRow = resolvedTop - 1;
-      const eRow = resolvedTop + 7;
-      const sCol = resolvedLeft - 1;
-      const eCol = resolvedLeft + 7;
+      const sRow = baseRow - 1;
+      const eRow = baseRow + 7;
+      const sCol = baseCol - 1;
+      const eCol = baseCol + 7;
       for(let r = sRow; r <= eRow; r++){
         for(let c = sCol; c <= eCol; c++){
-          const insideCore = r >= resolvedTop && r < resolvedTop + 7 && c >= resolvedLeft && c < resolvedLeft + 7;
+          const insideCore = r >= baseRow && r < baseRow + 7 && c >= baseCol && c < baseCol + 7;
           if(insideCore) continue;
           if(r < 1 || r > 25 || c < 1 || c > 25) continue;
           if(r === sRow || r === eRow || c === sCol || c === eCol){
@@ -2450,8 +2454,8 @@
         for(let c = 0; c < 7; c++){
           if(shouldAbort()) return false;
           if(!stepActive()) return finishSync();
-          const row = resolvedTop + r;
-          const col = resolvedLeft + c;
+          const row = baseRow + r;
+          const col = baseCol + c;
           if(row < 1 || row > 25 || col < 1 || col > 25) continue;
           const bit = pattern[r][c];
           if(!shouldDrawCell(row, col)) continue;
@@ -2462,15 +2466,15 @@
           await delay();
         }
       }
-      const sRow = resolvedTop - 1;
-      const eRow = resolvedTop + 7;
-      const sCol = resolvedLeft - 1;
-      const eCol = resolvedLeft + 7;
+      const sRow = baseRow - 1;
+      const eRow = baseRow + 7;
+      const sCol = baseCol - 1;
+      const eCol = baseCol + 7;
       for(let r = sRow; r <= eRow; r++){
         for(let c = sCol; c <= eCol; c++){
           if(shouldAbort()) return false;
           if(!stepActive()) return finishSync();
-          const insideCore = r >= resolvedTop && r < resolvedTop + 7 && c >= resolvedLeft && c < resolvedLeft + 7;
+          const insideCore = r >= baseRow && r < baseRow + 7 && c >= baseCol && c < baseCol + 7;
           if(insideCore) continue;
           if(r < 1 || r > 25 || c < 1 || c > 25) continue;
           if(r === sRow || r === eRow || c === sCol || c === eCol){
@@ -2494,36 +2498,41 @@
     return !!res;
   }
 
-  async function drawFinderPatterns({ overwrite = true, currentRun, stepEnabled } = {}){
+  async function drawFinderPatterns(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+    const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runVal = (typeof currentRun === "number") ? currentRun : runId;
-    const opts = { stepEnabled, currentRun: runVal };
-    await putFinderCells(1, 1, overwrite, opts);
-    await putFinderCells(1, 19, overwrite, opts);
-    await putFinderCells(19, 1, overwrite, opts);
+    const opts = { stepEnabled: resolvedStep, currentRun: runVal };
+    const moveAndDraw = async (row, col) => {
+      updateCursor(row, col, DIR_RIGHT);
+      return putFinderCells(overwrite, opts);
+    };
+    await moveAndDraw(1, 1);
+    await moveAndDraw(1, 19);
+    await moveAndDraw(19, 1);
     return true;
   }
 
-  async function drawDarkModulePatterns({ overwrite = true, currentRun, stepEnabled } = {}){
+  async function drawDarkModulePatterns(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     window.log && window.log("drawDarkModulePatterns()");
+    const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runVal = (typeof currentRun === "number") ? currentRun : runId;
-    const opts = { stepEnabled, currentRun: runVal };
-    await putDarkModuleCells(18, 9, overwrite, opts);
+    const opts = { stepEnabled: resolvedStep, currentRun: runVal };
+    updateCursor(18, 9, DIR_RIGHT);
+    await putDarkModuleCells(overwrite, opts);
     return true;
   }
 
-  async function putDarkModuleCells(row = 18, col = 9, overwriteOrOpts = true, fallbackOpts = {}){
-    const { overwrite, stepEnabled, currentRun } = normalizeFunctionalOptions(overwriteOrOpts, fallbackOpts);
+  async function putDarkModuleCells(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+    const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
-    const step = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
-    window.log && window.log(`putDarkModuleCells(${row}, ${col}, step=${step}, run=${runToken})`);
-    if(!Number.isFinite(row) || !Number.isFinite(col)) return false;
-    if(row < 1 || row > 25 || col < 1 || col > 25) return false;
-    const { row: resolvedRow, col: resolvedCol } = resolveRowCol(row, col, cursorPos.row, cursorPos.col);
-    const allowOverwrite = overwrite !== false;
-    if(!shouldPlaceCell(resolvedRow, resolvedCol, allowOverwrite)) return true;
+    const step = !!resolvedStep;
+    const baseRow = cursorPos.row;
+    const baseCol = cursorPos.col;
+    window.log && window.log(`putDarkModuleCells(${baseRow}, ${baseCol}, step=${step}, run=${runToken})`);
+    if(!shouldPlaceCell(baseRow, baseCol, overwrite !== false)) return true;
     if(!step){
       if(typeof window.updateCell === "function"){
-        window.updateCell(resolvedRow, resolvedCol, window.encodeBit(BIT_FUNC_DARK, true));
+        window.updateCell(baseRow, baseCol, window.encodeBit(BIT_FUNC_DARK, true));
       }
       return true;
     }
@@ -2533,15 +2542,15 @@
     if(runToken !== runId) return false;
     setRenderMode(RENDER_IMMEDIATE);
     if(typeof window.updateCell === "function"){
-      window.updateCell(resolvedRow, resolvedCol, window.encodeBit(BIT_FUNC_DARK, true));
+      window.updateCell(baseRow, baseCol, window.encodeBit(BIT_FUNC_DARK, true));
     }
-    updateCursorIfRun(runToken, row, col, DIR_RIGHT);
+    updateCursorIfRun(runToken, baseRow, baseCol, DIR_RIGHT);
     await delay();
     return true;
   }
 
-  function putTimingCells(direction = TIMING_HORIZONTAL, index = TIMING_ROW, overwriteOrOpts = true, fallbackOpts = {}){
-    const { overwrite, stepEnabled, currentRun } = normalizeFunctionalOptions(overwriteOrOpts, fallbackOpts);
+  function putTimingCells(direction = TIMING_HORIZONTAL, index = TIMING_ROW, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+    const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     window.log && window.log(`putTimingCells(dir=${direction}, idx=${index}, run=${runToken})`);
     const dirVal = Number(direction);
@@ -2557,7 +2566,7 @@
     }else{
       timingColIndex = pos;
     }
-    const step = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
+      const step = !!resolvedStep;
     const allowOverwrite = overwrite !== false;
     const canWriteTimingCell = (r, c) => shouldPlaceCell(r, c, allowOverwrite);
     if(!step){
@@ -2612,19 +2621,19 @@
     })();
   }
 
-  async function drawTimingPatterns({ overwrite = true, currentRun, stepEnabled } = {}){
+  async function drawTimingPatterns(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+    const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
+    const opts = { stepEnabled: resolvedStep, currentRun };
     window.log && window.log("drawTimingPatterns()");
-    const runVal = (typeof currentRun === "number") ? currentRun : runId;
-    const opts = { stepEnabled, currentRun: runVal };
     await putTimingCells(TIMING_HORIZONTAL, TIMING_ROW, overwrite, opts);
     await putTimingCells(TIMING_VERTICAL, TIMING_COL, overwrite, opts);
     return true;
   }
 
-  async function putFormatCells(bits15, coords, overwriteOrOpts = true, fallbackOpts = {}){
-    const { overwrite, stepEnabled, currentRun } = normalizeFunctionalOptions(overwriteOrOpts, fallbackOpts);
+  async function putFormatCells(bits15, coords, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+    const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
-    const step = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
+    const step = !!resolvedStep;
     window.log && window.log(`putFormatCells(bits15=${bits15}, step=${step}, run=${runToken})`);
     const coordsArr = Array.isArray(coords) ? coords : [];
     const allowOverwrite = overwrite !== false;
@@ -2672,7 +2681,8 @@
     return true;
   }
 
-  async function drawFormatPatterns(mask, { overwrite = true, stepEnabled, currentRun } = {}){
+  async function drawFormatPatterns(mask, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+    const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     const maskIsSpecified = mask !== undefined;
     let idx = 0;
@@ -2694,7 +2704,7 @@
       [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
       [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
     ];
-    const opts = { stepEnabled, currentRun: runToken };
+    const opts = { stepEnabled: resolvedStep, currentRun: runToken };
     await putFormatCells(bits15, coordsA, overwrite, opts);
     await putFormatCells(bits15, coordsB, overwrite, opts);
     hasFormatPattern = true;
