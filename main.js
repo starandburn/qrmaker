@@ -15,6 +15,13 @@
   const stepSpeed = document.getElementById("stepSpeed");
   const stepSpeedLabel = document.querySelector(".step-speed");
   const toggleDebugValues = document.getElementById("toggleDebugValues");
+  const titleIcon = document.querySelector(".title-icon");
+  const toggleCursor = document.getElementById("toggleCursor");
+  const toggleGuide = document.getElementById("toggleGuide");
+  const toggleGrid = document.getElementById("toggleGrid");
+  const toggleEmpty = document.getElementById("toggleEmpty");
+  const toggleColor = document.getElementById("toggleColor");
+  const txtInput = document.getElementById("txtInput");
   const debugRow = document.querySelector(".debug-row");
   const debugOnlyControls = Array.from(document.querySelectorAll(".debug-only"));
   const urlParams = new URLSearchParams(window.location.search || "");
@@ -32,6 +39,19 @@
     if(/^(?:0|false|no|off|close|closed|hide)$/i.test(trimmed)) return false;
     return null;
   };
+  const CODE_PARAM_KEY = "code";
+  const CODE_EMPTY_TOKEN = "__EMPTY__"; // set code=__EMPTY__ to start with an empty textarea
+  const FLAG_PARAM_KEY = "flags";
+  const TOGGLE_FLAG_ORDER = [
+    toggleCursor,
+    toggleGuide,
+    toggleGrid,
+    toggleEmpty,
+    toggleColor,
+    toggleDebugValues,
+    stepMode,
+    stepSkipFunctions,
+  ];
   const ensureUserCodeCaretVisible = () => {
     if(!userCodeInput) return;
     const pos = typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : 0;
@@ -2749,6 +2769,8 @@
   if(Array.isArray(window.toggleInputs) && toggleDebugValues && !window.toggleInputs.includes(toggleDebugValues)){
     window.toggleInputs.push(toggleDebugValues);
   }
+  applyCodeParam();
+  applyUrlControlStates({ colorToggleEl, toggleDebugValues });
   syncDebugPanelLayout();
   syncParsedCode();
   if(dataPatternPanel){
@@ -2908,12 +2930,148 @@
       }
     });
   });
+  if(titleIcon){
+    titleIcon.addEventListener("click", () => {
+      const url = buildStateUrl();
+      window.location.assign(url);
+    });
+  }
   if(codePanel){
     const codeTitle = codePanel.querySelector(".panel-title");
     if(codeTitle){
       codeTitle.addEventListener("dblclick", () => {
         codePanel.classList.toggle("show-samples");
       });
+    }
+  }
+
+  function applyCodeParam(){
+    if(!userCodeInput) return;
+    if(!urlParams.has(CODE_PARAM_KEY)) return;
+    const raw = urlParams.get(CODE_PARAM_KEY) || "";
+    const newValue = (raw === CODE_EMPTY_TOKEN) ? "" : raw;
+    userCodeInput.value = newValue;
+    userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
+    userCodeInput.scrollTop = 0;
+    userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function buildFlagString(){
+    return TOGGLE_FLAG_ORDER.map((target) => {
+      if(!target || typeof target.checked !== "boolean") return "0";
+      return target.checked ? "1" : "0";
+    }).join("");
+  }
+
+  function buildStateUrl(){
+    const params = new URLSearchParams();
+    if(txtInput){
+      params.set("data", txtInput.value ?? "");
+    }
+    if(userCodeInput){
+      const codeValue = userCodeInput.value ?? "";
+      params.set(CODE_PARAM_KEY, codeValue === "" ? CODE_EMPTY_TOKEN : codeValue);
+    }
+    const flagString = buildFlagString();
+    if(flagString){
+      params.set(FLAG_PARAM_KEY, flagString);
+    }
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+    const query = params.toString();
+    return query ? `${baseUrl}?${query}` : baseUrl;
+  }
+
+  function applyToggleFlags(flagString){
+    if(typeof flagString !== "string") return { applied: false };
+    const bits = flagString.replace(/[^01]/g, "").split("");
+    if(bits.length === 0) return { applied: false };
+    let viewNeedsRefresh = false;
+    let colorChanged = false;
+    let debugChanged = false;
+    let stepNeedsRefresh = false;
+    bits.forEach((bit, index) => {
+      const target = TOGGLE_FLAG_ORDER[index];
+      if(!target) return;
+      if(typeof target.checked !== "boolean") return;
+      const checked = bit === "1";
+      if(target.checked === checked) return;
+      target.checked = checked;
+      if([toggleCursor, toggleGuide, toggleGrid, toggleEmpty].includes(target)){
+        viewNeedsRefresh = true;
+      }
+      if(target === toggleColor){
+        colorChanged = true;
+      }
+      if(target === toggleDebugValues){
+        debugChanged = true;
+      }
+      if(target === stepMode || target === stepSkipFunctions){
+        stepNeedsRefresh = true;
+      }
+    });
+    return {
+      applied: true,
+      viewNeedsRefresh,
+      colorChanged,
+      debugChanged,
+      stepNeedsRefresh,
+    };
+  }
+
+  function applyUrlControlStates({ colorToggleEl: colorToggleInput, toggleDebugValues: debugToggleInput } = {}){
+    const toggleConfig = [
+      { param: "toggleCursor", element: toggleCursor },
+      { param: "toggleGuide", element: toggleGuide },
+      { param: "toggleGrid", element: toggleGrid },
+      { param: "toggleEmpty", element: toggleEmpty },
+      { param: "toggleColor", element: toggleColor },
+      { param: "toggleDebugValues", element: toggleDebugValues },
+      { param: "stepMode", element: stepMode },
+      { param: "stepSkipFunctions", element: stepSkipFunctions },
+    ];
+    const flagValue = urlParams.get(FLAG_PARAM_KEY);
+    let flagHandled = false;
+    if(flagValue){
+      const result = applyToggleFlags(flagValue);
+      if(result.applied){
+        flagHandled = true;
+        if(result.viewNeedsRefresh && typeof window.syncViewToggles === "function"){
+          window.syncViewToggles();
+        }
+        if(result.colorChanged && colorToggleInput){
+          colorToggleInput.dispatchEvent(new Event("change"));
+        }
+        if(result.debugChanged){
+          syncDebugOverlay();
+        }
+        if(result.stepNeedsRefresh && typeof syncStepControls === "function"){
+          syncStepControls();
+        }
+      }
+    }
+    if(flagHandled) return;
+
+    let viewNeedsRefresh = false;
+    toggleConfig.forEach(({ param, element }) => {
+      if(!element || !urlParams.has(param)) return;
+      const parsed = stringifyBool(urlParams.get(param));
+      if(parsed === null) return;
+      element.checked = parsed;
+      if(["toggleCursor", "toggleGuide", "toggleGrid", "toggleEmpty"].includes(param)){
+        viewNeedsRefresh = true;
+      }
+    });
+    if(viewNeedsRefresh && typeof window.syncViewToggles === "function"){
+      window.syncViewToggles();
+    }
+    if(colorToggleInput && urlParams.has("toggleColor")){
+      colorToggleInput.dispatchEvent(new Event("change"));
+    }
+    if(debugToggleInput && urlParams.has("toggleDebugValues")){
+      syncDebugOverlay();
+    }
+    if((urlParams.has("stepMode") || urlParams.has("stepSkipFunctions")) && typeof syncStepControls === "function"){
+      syncStepControls();
     }
   }
 
