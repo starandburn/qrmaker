@@ -413,9 +413,6 @@
       }
     }
     cells.appendChild(frag);
-    if(!cellsInitialized){
-      window.log("ensureCells(): grid initialized");
-    }
     cellsInitialized = true;
   }
 
@@ -648,7 +645,6 @@
       forceImmediate = abortRun,
       stopStep = abortRun,
     } = options;
-    window.log("resetQRCode()");
     if(abortRun){
       runId++;
       maskRunId++;
@@ -1435,9 +1431,6 @@
       const runner = `(async () => {\n${script}\n})();`;
       const syntaxError = validateRunnerSyntax(runner);
       if(syntaxError){
-        if(typeof window.log === "function"){
-          window.log(`syntax error: ${syntaxError.message}`);
-        }
         return false;
       }
       const res = (0, eval)(runner);
@@ -1452,9 +1445,6 @@
       }
       const msg = err && err.message ? err.message : String(err);
       lastExecutionError = msg;
-      if(typeof window.log === "function"){
-        window.log(`userCode error: ${msg}`);
-      }
       return false;
     }
   }
@@ -2306,7 +2296,6 @@
     const step = !!resolvedStep;
     const baseRow = cursorPos.row;
     const baseCol = cursorPos.col;
-    window.log && window.log(`putAlignmentCells(${baseRow}, ${baseCol}, step=${step}, run=${runToken})`);
     updateCursor(baseRow, baseCol, DIR_RIGHT);
     const pattern = [
       [1,1,1,1,1],
@@ -2382,7 +2371,6 @@
     const baseRow = cursorPos.row;
     const baseCol = cursorPos.col;
     updateCursor(baseRow, baseCol, DIR_RIGHT);
-    window.log && window.log(`putFinderCells(${baseRow}, ${baseCol}, step=${stepInitial}, run=${runToken})`);
     const pattern = [
       [1,1,1,1,1,1,1],
       [1,0,0,0,0,0,1],
@@ -2513,7 +2501,6 @@
   }
 
   async function drawDarkModulePatterns(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    window.log && window.log("drawDarkModulePatterns()");
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runVal = (typeof currentRun === "number") ? currentRun : runId;
     const opts = { stepEnabled: resolvedStep, currentRun: runVal };
@@ -2528,7 +2515,6 @@
     const step = !!resolvedStep;
     const baseRow = cursorPos.row;
     const baseCol = cursorPos.col;
-    window.log && window.log(`putDarkModuleCells(${baseRow}, ${baseCol}, step=${step}, run=${runToken})`);
     if(!shouldPlaceCell(baseRow, baseCol, overwrite !== false)) return true;
     if(!step){
       if(typeof window.updateCell === "function"){
@@ -2552,7 +2538,6 @@
   function putTimingCells(direction = TIMING_HORIZONTAL, index = TIMING_ROW, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
-    window.log && window.log(`putTimingCells(dir=${direction}, idx=${index}, run=${runToken})`);
     const dirVal = Number(direction);
     if(!Number.isFinite(dirVal)) return false;
     if(dirVal !== TIMING_HORIZONTAL && dirVal !== TIMING_VERTICAL) return false;
@@ -2624,7 +2609,6 @@
   async function drawTimingPatterns(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const opts = { stepEnabled: resolvedStep, currentRun };
-    window.log && window.log("drawTimingPatterns()");
     await putTimingCells(TIMING_HORIZONTAL, TIMING_ROW, overwrite, opts);
     await putTimingCells(TIMING_VERTICAL, TIMING_COL, overwrite, opts);
     return true;
@@ -2634,7 +2618,6 @@
     const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     const step = !!resolvedStep;
-    window.log && window.log(`putFormatCells(bits15=${bits15}, step=${step}, run=${runToken})`);
     const coordsArr = Array.isArray(coords) ? coords : [];
     const allowOverwrite = overwrite !== false;
     const shouldDrawCell = (row, col) => shouldPlaceCell(row, col, allowOverwrite);
@@ -2693,7 +2676,6 @@
       }
     }
     const maskLabel = maskIsSpecified ? String(idx) : "unset";
-    window.log && window.log(`drawFormatPatterns(mask=${maskLabel})`);
     const bits15 = maskIsSpecified ? FORMAT_L[idx] : 0;
     const coordsA = [
       [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],
