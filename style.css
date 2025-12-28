@@ -12,6 +12,8 @@
   --col-red-light: #ffe8e8;
   --col-blue-dark: #1f4a85;
   --col-blue-light: #e8f0ff;
+  --col-format-blue-dark: #1d3f7a;
+  --col-format-blue-light: #dfe9ff;
   --col-green-dark: #184c2d;
   --col-green-light: #e8fff0;
   --col-yellow-dark: #927600;
@@ -1097,6 +1099,8 @@ textarea{
 .qr-cells .cell.col-red.state-1{ background:var(--col-red-dark); }
 .qr-cells .cell.col-blue.state-0{ background:var(--col-blue-light); }
 .qr-cells .cell.col-blue.state-1{ background:var(--col-blue-dark); }
+.qr-cells .cell.col-format.state-0{ background:var(--col-format-blue-light); }
+.qr-cells .cell.col-format.state-1{ background:var(--col-format-blue-dark); }
 .qr-cells .cell.col-green.state-0{ background:var(--col-green-light); }
 .qr-cells .cell.col-green.state-1{ background:var(--col-green-dark); }
 .qr-cells .cell.col-yellow.state-0{ background:var(--col-yellow-light); }
