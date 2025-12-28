@@ -208,7 +208,7 @@
   const cursorPos = {
     row: 1,
     col: 1,
-    dir: DIR_DOWN,
+    dir: DIR_RIGHT,
   };
   const pendingCells = new Map();
   const cellStates = new Map(); // key: "r-c", value: { row, col, value, color }
@@ -313,14 +313,14 @@
   let isStepFillRunning = false;
   let runId = 0;
   let maskRunId = 0;
-  function stopCurrentRun({ resetCursor = false, clear = false } = {}){
+  function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false } = {}){
     runId++;
     isStepFillRunning = false;
     if(clear){
       resetQRCode();
     }
-    if(resetCursor){
-      updateCursor(1, 1, DIR_DOWN);
+    if(resetCursorFlag){
+      resetCursor();
     }
     setRenderMode(RENDER_IMMEDIATE);
   }
@@ -396,6 +396,11 @@
     }
     applyCursor(r, c, dir);
     return true;
+  }
+
+  const HOME_CURSOR = { row: 1, col: 1, dir: DIR_RIGHT };
+  function resetCursor(){
+    return updateCursor(HOME_CURSOR.row, HOME_CURSOR.col, HOME_CURSOR.dir);
   }
 
   function moveCursor(...args){
@@ -605,6 +610,7 @@
     if(typeof resetData === "function"){
       resetData();
     }
+    resetCursor();
   }
 
   // Guarded cursor update for async flows: only applies if runToken matches current runId
@@ -1689,7 +1695,7 @@
     }
     setRenderMode(RENDER_BUFFERED);
     resetQRCode({ abortRun: false });
-    updateCursor(1, 1, DIR_DOWN);
+    resetCursor();
     if(currentRun !== undefined && currentRun !== runId) return false;
     await drawFinderPatterns({ stepEnabled: false, currentRun });
     if(currentRun !== undefined && currentRun !== runId) return false;
@@ -2032,7 +2038,7 @@
   btnInit.addEventListener("click", () => {
     runId++;
     resetQRCode({ abortRun: false, forceImmediate: true, stopStep: true });
-    updateCursor(1, 1, DIR_DOWN);
+    resetCursor();
     if(Array.isArray(window.toggleInputs)){
       for(const el of window.toggleInputs){
         el.checked = true;
