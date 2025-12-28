@@ -1,5 +1,5 @@
 resetQRCode
-drawAllFunctionals
+drawBasePatterns
 moveCursor y25 up
 resetData
 for (i = 0; i < 625 && !isDataEnd(); i++){

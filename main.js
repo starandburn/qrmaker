@@ -135,7 +135,7 @@
     move: "moveCursor",
     turn: "turnCursor",
     reset: "resetQRCode",
-    base: "drawAllFunctionals",
+    base: "drawBasePatterns",
     mask: "applyMask",
     empty: "isEmpty",
     used: "isUsed",
@@ -1435,7 +1435,7 @@
     }
     const completed = !shouldAbort();
     if(completed && hasFormatPattern){
-      drawAllFormats(idx);
+      drawFormatPatterns(idx);
     }
     if(renderMode === RENDER_BUFFERED){
       flushRender();
@@ -1450,16 +1450,15 @@
   window.invertCell = invertCell;
   window.applyMask = applyMask;
   window.drawFinder = drawFinder;
-  window.drawAllFunctionals = drawAllFunctionals;
   window.drawAlignment = drawAlignment;
   window.drawTiming = drawTiming;
   window.drawDarkModule = drawDarkModule;
   window.drawFormat = drawFormat;
-  window.drawAllFormats = drawAllFormats;
-  window.drawAllFinders = drawAllFinders;
-  window.drawAllAlignments = drawAllAlignments;
-  window.drawAllDarkModules = drawAllDarkModules;
-  window.drawAllTimings = drawAllTimings;
+  window.drawFormatPatterns = drawFormatPatterns;
+  window.drawFinderPatterns = drawFinderPatterns;
+  window.drawAlignmentPatterns = drawAlignmentPatterns;
+  window.drawDarkModulePatterns = drawDarkModulePatterns;
+  window.drawTimingPatterns = drawTimingPatterns;
   window.drawBasePatterns = drawBasePatterns;
   window.buildFunctionSet = buildFunctionSet;
   window.stopCurrentRun = stopCurrentRun;
@@ -1606,15 +1605,15 @@
     resetQRCode({ abortRun: false });
     updateCursor(1, 1, DIR_DOWN);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAllFinders({ stepEnabled: false, currentRun });
+    drawFinderPatterns({ stepEnabled: false, currentRun });
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAllTimings({ stepEnabled: false, currentRun });
+    drawTimingPatterns({ stepEnabled: false, currentRun });
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAllAlignments({ stepEnabled: false, currentRun });
+    drawAlignmentPatterns({ stepEnabled: false, currentRun });
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAllDarkModules({ stepEnabled: false, currentRun });
+    drawDarkModulePatterns({ stepEnabled: false, currentRun });
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAllFormats(0, { stepEnabled: false, currentRun });
+    drawFormatPatterns(0, { stepEnabled: false, currentRun });
     if(!deferFlush){
       if(currentRun !== undefined && currentRun !== runId) return false;
       flushRender();
@@ -2199,7 +2198,7 @@
     })();
   }
 
-  async function drawAllAlignments(options = {}){
+  async function drawAlignmentPatterns(options = {}){
     const opts = { ...options, currentRun: (typeof options.currentRun === "number" ? options.currentRun : runId) };
     await drawAlignment(19, 19, opts);
     return true;
@@ -2319,7 +2318,7 @@
     return !!res;
   }
 
-  async function drawAllFinders(options = {}){
+  async function drawFinderPatterns(options = {}){
     const opts = { ...options, currentRun: (typeof options.currentRun === "number" ? options.currentRun : runId) };
     await drawFinder(1, 1, opts);
     await drawFinder(1, 19, opts);
@@ -2327,8 +2326,8 @@
     return true;
   }
 
-  async function drawAllDarkModules(options = {}){
-    window.log && window.log("drawAllDarkModules()");
+  async function drawDarkModulePatterns(options = {}){
+    window.log && window.log("drawDarkModulePatterns()");
     const opts = { ...options, currentRun: (typeof options.currentRun === "number" ? options.currentRun : runId) };
     await drawDarkModule(18, 9, opts);
     return true;
@@ -2435,8 +2434,8 @@
     })();
   }
 
-  async function drawAllTimings(options = {}){
-    window.log && window.log("drawAllTimings()");
+  async function drawTimingPatterns(options = {}){
+    window.log && window.log("drawTimingPatterns()");
     const opts = { ...options, currentRun: (typeof options.currentRun === "number" ? options.currentRun : runId) };
     await drawTiming(TIMING_HORIZONTAL, TIMING_ROW, opts);
     await drawTiming(TIMING_VERTICAL, TIMING_COL, opts);
@@ -2485,9 +2484,9 @@
     return true;
   }
 
-  async function drawAllFormats(mask = 0, options = {}){
+  async function drawFormatPatterns(mask = 0, options = {}){
     const runToken = (typeof options.currentRun === "number") ? options.currentRun : runId;
-    window.log && window.log(`drawAllFormats(mask=${mask})`);
+    window.log && window.log(`drawFormatPatterns(mask=${mask})`);
     const m = Math.min(7, Math.max(0, mask));
     const bits15 = FORMAT_L[m];
     const coordsA = [
@@ -2502,15 +2501,6 @@
     await drawFormat(bits15, coordsA, { ...options, currentRun: runToken });
     await drawFormat(bits15, coordsB, { ...options, currentRun: runToken });
     hasFormatPattern = true;
-    return true;
-  }
-
-  async function drawAllFunctionals(){
-    await drawAllFinders();
-    await drawAllTimings();
-    await drawAllAlignments();
-    await drawAllDarkModules();
-    await drawAllFormats(0);
     return true;
   }
 
