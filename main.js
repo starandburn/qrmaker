@@ -229,7 +229,15 @@
 
   function parseCellRef(ref){
     if(typeof ref !== "string") return null;
-    const m = ref.trim().match(/^([a-zA-Z]+)\s*([0-9]+)$/);
+    const trimmed = ref.trim();
+    const lower = trimmed.toLowerCase();
+    if(lower === "home"){
+      return { row: 1, col: 1 };
+    }
+    if(lower === "end"){
+      return { row: BOARD_ROWS, col: BOARD_COLS };
+    }
+    const m = trimmed.match(/^([a-zA-Z]+)\s*([0-9]+)$/);
     if(!m) return null;
     const letters = m[1].toUpperCase();
     let col = 0;
