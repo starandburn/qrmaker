@@ -31,6 +31,31 @@
     if(/^(?:0|false|no|off|close|closed|hide)$/i.test(trimmed)) return false;
     return null;
   };
+  const ensureUserCodeCaretVisible = () => {
+    if(!userCodeInput) return;
+    const pos = typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : 0;
+    const text = userCodeInput.value ?? "";
+    const prefix = text.slice(0, pos);
+    const lineIndex = (prefix.match(/\n/g) || []).length;
+    const computedStyle = window.getComputedStyle ? window.getComputedStyle(userCodeInput) : null;
+    const parsedLineHeight = computedStyle ? parseFloat(computedStyle.lineHeight) : NaN;
+    const parsedFontSize = computedStyle ? parseFloat(computedStyle.fontSize) : NaN;
+    const lineHeight = Number.isFinite(parsedLineHeight) && parsedLineHeight > 0
+      ? parsedLineHeight
+      : (Number.isFinite(parsedFontSize) && parsedFontSize > 0 ? parsedFontSize * 1.25 : 20);
+    const clientHeight = userCodeInput.clientHeight;
+    if(clientHeight <= 0) return;
+    const targetTop = lineIndex * lineHeight;
+    const viewTop = userCodeInput.scrollTop;
+    const viewBottom = viewTop + clientHeight;
+    const caretBottom = targetTop + lineHeight;
+    const maxScroll = Math.max(0, userCodeInput.scrollHeight - clientHeight);
+    if(caretBottom > viewBottom){
+      userCodeInput.scrollTop = Math.min(maxScroll, caretBottom - clientHeight + 4);
+    }else if(targetTop < viewTop){
+      userCodeInput.scrollTop = Math.max(0, targetTop - 4);
+    }
+  };
   const applyDebugVisibility = (visible) => {
     if(!debugPanel) return;
     debugPanel.style.display = visible ? "block" : "none";
@@ -2526,6 +2551,7 @@
   if(userCodeInput){
     userCodeInput.addEventListener("input", () => {
       syncParsedCode();
+      ensureUserCodeCaretVisible();
     });
     userCodeInput.addEventListener("keydown", async (ev) => {
       if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter"){
@@ -2639,7 +2665,11 @@
         const indentLen = indentMatch ? indentMatch[0].length : 0;
         const targetPos = nextLineStart + indentLen;
         userCodeInput.setSelectionRange(targetPos, targetPos);
+        ensureUserCodeCaretVisible();
         return;
+      }
+      if(ev.key === "Enter" && !ev.ctrlKey && !ev.altKey && !ev.shiftKey){
+        requestAnimationFrame(ensureUserCodeCaretVisible);
       }
     });
   }
