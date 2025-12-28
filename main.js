@@ -39,9 +39,12 @@
     if(/^(?:0|false|no|off|close|closed|hide)$/i.test(trimmed)) return false;
     return null;
   };
-  const CODE_PARAM_KEY = "code";
-  const CODE_EMPTY_TOKEN = "__EMPTY__"; // set code=__EMPTY__ to start with an empty textarea
   const FLAG_PARAM_KEY = "flags";
+  const DEBUG_PARAM_KEY = "debug";
+  const DEBUG_PARAM_ALIAS = "d";
+  const PATTERN_PANEL_PARAM_KEY = "patternPanel";
+  const PATTERN_PANEL_PARAM_ALIAS = "p";
+  const STEP_SPEED_PARAM_KEY = "stepSpeed";
   const TOGGLE_FLAG_ORDER = [
     toggleCursor,
     toggleGuide,
@@ -52,6 +55,9 @@
     stepMode,
     stepSkipFunctions,
   ];
+  const DATA_PARAM_KEY = "data";
+  const DATA_EMPTY_TOKEN = "_"; // set data=_ to clear the text field; use ~ prefix to escape "_" or "~" at start
+  const DATA_DEFAULT_TEXT = "Hello, World!";
   const ensureUserCodeCaretVisible = () => {
     if(!userCodeInput) return;
     const pos = typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : 0;
@@ -89,7 +95,7 @@
   };
   const setPatternOpenFromParam = () => {
     if(!dataPatternPanel) return;
-    const spec = lookupParam("patternPanel", "p");
+    const spec = lookupParam(PATTERN_PANEL_PARAM_KEY, PATTERN_PANEL_PARAM_ALIAS);
     if(spec === null) return;
     const parsed = stringifyBool(spec);
     if(parsed === null) return;
@@ -102,11 +108,29 @@
   };
   const setDebugFromParam = () => {
     if(!debugPanel) return;
-    const spec = lookupParam("debug", "d");
+    const spec = lookupParam(DEBUG_PARAM_KEY, DEBUG_PARAM_ALIAS);
     if(spec === null) return;
     const parsed = stringifyBool(spec);
     if(parsed === null) return;
     applyDebugVisibility(parsed);
+  };
+  const applyStepSpeedParam = () => {
+    if(!stepSpeed) return false;
+    if(!urlParams.has(STEP_SPEED_PARAM_KEY)) return false;
+    const rawValue = urlParams.get(STEP_SPEED_PARAM_KEY);
+    if(rawValue === null) return false;
+    const numeric = Number(rawValue);
+    if(!Number.isFinite(numeric)) return false;
+    const minVal = Number(stepSpeed.min);
+    const maxVal = Number(stepSpeed.max);
+    const clampedLower = Number.isFinite(minVal) ? minVal : 0;
+    const clampedUpper = Number.isFinite(maxVal) ? maxVal : clampedLower || 120;
+    const clamped = Math.max(clampedLower, Math.min(clampedUpper, numeric));
+    const nextValue = String(clamped);
+    if(stepSpeed.value !== nextValue){
+      stepSpeed.value = nextValue;
+    }
+    return true;
   };
   setPatternOpenFromParam();
   setDebugFromParam();
@@ -164,6 +188,7 @@
     empty: "isEmpty",
     used: "isUsed",
     clash: "isMoveBlocked",
+    block: "isMoveBlocked",
     put: "putCell",
     timing: "putTimingCells",
     skip: "isSkipZone",
@@ -198,7 +223,7 @@
     if(typeof text !== "string" || !text) return "";
     return text.replace(DIRECTION_SUFFIX_PATTERN, "$1 $2");
   };
-  const CONDITIONAL_KEYWORDS = ["clash", "empty", "used", "timing", "skip"];
+  const CONDITIONAL_KEYWORDS = ["block", "clash", "empty", "used", "timing", "skip"];
   const CONDITIONAL_PATTERN = new RegExp(
     `\\b(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(\\S.*)`,
     "gi",
@@ -2749,6 +2774,7 @@
   if(stepMode){
     stepMode.addEventListener("change", syncStepControls);
   }
+  applyStepSpeedParam();
   syncStepControls();
 
   ensureCells();
@@ -2769,7 +2795,7 @@
   if(Array.isArray(window.toggleInputs) && toggleDebugValues && !window.toggleInputs.includes(toggleDebugValues)){
     window.toggleInputs.push(toggleDebugValues);
   }
-  applyCodeParam();
+  applyDataParam();
   applyUrlControlStates({ colorToggleEl, toggleDebugValues });
   syncDebugPanelLayout();
   syncParsedCode();
@@ -2945,17 +2971,6 @@
     }
   }
 
-  function applyCodeParam(){
-    if(!userCodeInput) return;
-    if(!urlParams.has(CODE_PARAM_KEY)) return;
-    const raw = urlParams.get(CODE_PARAM_KEY) || "";
-    const newValue = (raw === CODE_EMPTY_TOKEN) ? "" : raw;
-    userCodeInput.value = newValue;
-    userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
-    userCodeInput.scrollTop = 0;
-    userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
-  }
-
   function buildFlagString(){
     return TOGGLE_FLAG_ORDER.map((target) => {
       if(!target || typeof target.checked !== "boolean") return "0";
@@ -2963,22 +2978,72 @@
     }).join("");
   }
 
+  function encodeDataParamValue(value){
+    const normalized = value ?? "";
+    if(normalized === ""){
+      return DATA_EMPTY_TOKEN;
+    }
+    if(normalized === DATA_EMPTY_TOKEN || normalized.startsWith("~")){
+      return `~${normalized}`;
+    }
+    return normalized;
+  }
+
+  function decodeDataParamValue(rawValue){
+    if(rawValue === DATA_EMPTY_TOKEN){
+      return "";
+    }
+    if(rawValue.startsWith("~")){
+      return rawValue.slice(1);
+    }
+    return rawValue;
+  }
+
   function buildStateUrl(){
     const params = new URLSearchParams();
     if(txtInput){
-      params.set("data", txtInput.value ?? "");
-    }
-    if(userCodeInput){
-      const codeValue = userCodeInput.value ?? "";
-      params.set(CODE_PARAM_KEY, codeValue === "" ? CODE_EMPTY_TOKEN : codeValue);
+      const value = txtInput.value ?? "";
+      if(value !== DATA_DEFAULT_TEXT){
+        const encoded = encodeDataParamValue(value);
+        params.set(DATA_PARAM_KEY, encoded);
+      }
     }
     const flagString = buildFlagString();
     if(flagString){
       params.set(FLAG_PARAM_KEY, flagString);
     }
+    if(debugPanel){
+      params.set(DEBUG_PARAM_KEY, isDebugVisible() ? "1" : "0");
+    }
+    if(dataPatternPanel){
+      params.set(PATTERN_PANEL_PARAM_KEY, dataPatternPanel.open ? "1" : "0");
+    }
+    if(stepSpeed){
+      const speedValue = stepSpeed.value ?? "";
+      if(speedValue !== ""){
+        params.set(STEP_SPEED_PARAM_KEY, speedValue);
+      }
+    }
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
     const query = params.toString();
     return query ? `${baseUrl}?${query}` : baseUrl;
+  }
+
+  function applyDataParam(){
+    if(!txtInput) return false;
+    if(!urlParams.has(DATA_PARAM_KEY)) return false;
+    const rawValue = urlParams.get(DATA_PARAM_KEY);
+    if(rawValue === null) return false;
+    const nextValue = decodeDataParamValue(rawValue);
+    if(txtInput.value !== nextValue){
+      txtInput.value = nextValue;
+      try{
+        txtInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }catch(err){
+        // some environments may not support dispatching synthetic events
+      }
+    }
+    return true;
   }
 
   function applyToggleFlags(flagString){
