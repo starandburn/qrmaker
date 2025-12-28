@@ -137,6 +137,8 @@
     reset: "resetQRCode",
     base: "drawBasePatterns",
     mask: "applyMask",
+    data: "drawDataPatterns",
+    qrcode: "drawQRCode",
     empty: "isEmpty",
     used: "isUsed",
     clash: "isMoveBlocked",
@@ -153,7 +155,7 @@
     if(typeof text !== "string" || !text) return "";
     return text.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
   };
-  const KEYWORD_NUMBER_PATTERN = /\b(repeat|for|mask|pause)(\d+)\b/gi;
+  const KEYWORD_NUMBER_PATTERN = /\b(repeat|for|mask|pause|qrcode)(\d+)\b/gi;
   const applyKeywordSpacing = (text) => {
     if(typeof text !== "string" || !text) return "";
     return text.replace(KEYWORD_NUMBER_PATTERN, "$1 $2");
@@ -255,13 +257,6 @@
   function parseCellRef(ref){
     if(typeof ref !== "string") return null;
     const trimmed = ref.trim();
-    const lower = trimmed.toLowerCase();
-    if(lower === "home"){
-      return { row: 1, col: 1 };
-    }
-    if(lower === "end"){
-      return { row: BOARD_ROWS, col: BOARD_COLS };
-    }
     const m = trimmed.match(/^([a-zA-Z]+)\s*([0-9]+)$/);
     if(!m) return null;
     const letters = m[1].toUpperCase();
@@ -276,6 +271,18 @@
     if(col < 1) return null;
     return { row, col };
   }
+
+  const resolveCoordinateAlias = (() => {
+    const aliasMap = {
+      home: { row: 1, col: 1 },
+      end: { row: BOARD_ROWS, col: BOARD_COLS },
+    };
+    return (value) => {
+      if(typeof value !== "string") return null;
+      const normalized = value.trim().toLowerCase();
+      return aliasMap[normalized] || null;
+    };
+  })();
 
   function cellRefFromRowCol(row, col){
     const r = Number(row);
@@ -416,20 +423,26 @@
     }else if(args.length === 1){
       const v = args[0];
       if(typeof v === "string"){
-        const parsed = parseCellRef(v);
-        if(parsed){
-          targetRow = parsed.row;
-          targetCol = parsed.col;
+        const aliasCoord = resolveCoordinateAlias(v);
+        if(aliasCoord){
+          targetRow = aliasCoord.row;
+          targetCol = aliasCoord.col;
         }else{
-          const lower = v.toLowerCase();
-          if(lower === DIR_FRONT){
-            stepOnce(cursorPos.dir);
-          }else if(lower === DIR_BACK){
-            stepOnce(rotateDir(cursorPos.dir, 2));
+          const parsed = parseCellRef(v);
+          if(parsed){
+            targetRow = parsed.row;
+            targetCol = parsed.col;
           }else{
-            const dirAbs = normalizeDir(v);
-            if(!dirAbs) return;
-            stepOnce(dirAbs);
+            const lower = v.toLowerCase();
+            if(lower === DIR_FRONT){
+              stepOnce(cursorPos.dir);
+            }else if(lower === DIR_BACK){
+              stepOnce(rotateDir(cursorPos.dir, 2));
+            }else{
+              const dirAbs = normalizeDir(v);
+              if(!dirAbs) return;
+              stepOnce(dirAbs);
+            }
           }
         }
       }else{
@@ -445,10 +458,16 @@
       };
       // pattern: cellRef, dir?
       if(typeof first === "string"){
-        const parsed = parseCellRef(first);
-        if(!parsed) return;
-        targetRow = parsed.row;
-        targetCol = parsed.col;
+        const aliasCoord = resolveCoordinateAlias(first);
+        if(aliasCoord){
+          targetRow = aliasCoord.row;
+          targetCol = aliasCoord.col;
+        }else{
+          const parsed = parseCellRef(first);
+          if(!parsed) return;
+          targetRow = parsed.row;
+          targetCol = parsed.col;
+        }
         if(third !== undefined){
           maybeDir(third);
         }else if(typeof second === "string"){
@@ -1460,6 +1479,10 @@
   window.drawDarkModulePatterns = drawDarkModulePatterns;
   window.drawTimingPatterns = drawTimingPatterns;
   window.drawBasePatterns = drawBasePatterns;
+  window.putNextCell = putNextCell;
+  window.drawDataPatterns = drawDataPatterns;
+  window.drawQRCode = drawQRCode;
+  window.qrcode = drawQRCode;
   window.buildFunctionSet = buildFunctionSet;
   window.stopCurrentRun = stopCurrentRun;
   window.parseCellRef = parseCellRef;
@@ -1565,6 +1588,65 @@
     return isFunctionalKind(kind);
   };
   window.isMoveBlocked = () => lastMoveBlocked;
+  async function putNextCell(){
+    if(window.isEmpty && window.isEmpty()){
+      await putCell();
+    }
+    await moveCursor("left");
+    if(window.isEmpty && window.isEmpty()){
+      await putCell();
+    }
+    await moveCursor();
+    if(window.isMoveBlocked && window.isMoveBlocked()){
+      await turnCursor();
+      await moveCursor("left");
+      if(window.isTimingCell && window.isTimingCell()){
+        await moveCursor("left");
+      }
+    }else{
+      await moveCursor("right");
+    }
+    return true;
+  }
+  async function drawDataPatterns({ currentRun } = {}){
+    const runToken = (typeof currentRun === "number") ? currentRun : runId;
+    const shouldAbort = () => runToken !== runId;
+    resetLoopGuard();
+    resetData();
+    updateCursor(BOARD_ROWS, BOARD_COLS, DIR_UP);
+    while(hasMoreData()){
+      if(shouldAbort()) return false;
+      if(!canContinueLoop()) return false;
+      await putNextCell();
+      if(shouldAbort()) return false;
+    }
+    return runToken === runId;
+  }
+  async function drawQRCode(arg){
+    let maskIndex;
+    if(arg === undefined){
+      maskIndex = undefined;
+    }else if(typeof arg === "object" && arg !== null){
+      maskIndex = arg.maskIndex;
+    }else{
+      maskIndex = arg;
+    }
+    const currentRun = ++runId;
+    const baseOk = await drawBasePatterns({ deferFlush: false, currentRun });
+    if(currentRun !== runId || !baseOk) return false;
+    const dataOk = await drawDataPatterns({ currentRun });
+    if(currentRun !== runId || !dataOk) return false;
+    if(maskIndex === undefined){
+      return true;
+    }
+    let idx = Number(maskIndex);
+    if(!Number.isFinite(idx) || idx < 0 || idx > 7){
+      idx = 0;
+    }
+    const maskOk = await applyMask(idx);
+    if(currentRun !== runId || !maskOk) return false;
+    return true;
+  }
   window.up = DIR_UP;
   window.right = DIR_RIGHT;
   window.down = DIR_DOWN;
@@ -1599,21 +1681,25 @@
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
-  function drawBasePatterns({ deferFlush = false, currentRun } = {}){
+  async function drawBasePatterns({ deferFlush = false, currentRun } = {}){
     if(currentRun !== undefined && currentRun !== runId) return false;
+    if(isStepModeOn() && shouldStepFunctions()){
+      const stepped = await drawBasePatternsStepped({ currentRun });
+      return stepped ? !!stepped.ok : false;
+    }
     setRenderMode(RENDER_BUFFERED);
     resetQRCode({ abortRun: false });
     updateCursor(1, 1, DIR_DOWN);
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawFinderPatterns({ stepEnabled: false, currentRun });
+    await drawFinderPatterns({ stepEnabled: false, currentRun });
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawTimingPatterns({ stepEnabled: false, currentRun });
+    await drawTimingPatterns({ stepEnabled: false, currentRun });
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawAlignmentPatterns({ stepEnabled: false, currentRun });
+    await drawAlignmentPatterns({ stepEnabled: false, currentRun });
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawDarkModulePatterns({ stepEnabled: false, currentRun });
+    await drawDarkModulePatterns({ stepEnabled: false, currentRun });
     if(currentRun !== undefined && currentRun !== runId) return false;
-    drawFormatPatterns(0, { stepEnabled: false, currentRun });
+    await drawFormatPatterns(0, { stepEnabled: false, currentRun });
     if(!deferFlush){
       if(currentRun !== undefined && currentRun !== runId) return false;
       flushRender();
@@ -1983,7 +2069,7 @@
       const skipFunctions = stepEnabled && stepSkipFunctions && stepSkipFunctions.checked;
       setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
       if(stepEnabled && skipFunctions){
-        const ok = drawBasePatterns({ deferFlush: false, currentRun });
+        const ok = await drawBasePatterns({ deferFlush: false, currentRun });
         if(currentRun !== runId || !ok){ aborted = true; return; }
         setRenderMode(RENDER_IMMEDIATE);
       }else if(stepEnabled){
@@ -1992,7 +2078,7 @@
           // already finished function patterns quickly
         }else if(currentRun !== runId || (res && res.ok === false)){ aborted = true; return; }
       }else{
-        const ok = drawBasePatterns({ deferFlush: false, currentRun });
+        const ok = await drawBasePatterns({ deferFlush: false, currentRun });
         if(currentRun !== runId || !ok){ aborted = true; return; }
       }
       // re-evaluate in case step mode changed during base patterns
