@@ -2959,7 +2959,7 @@
   if(titleIcon){
     titleIcon.addEventListener("click", () => {
       const url = buildStateUrl();
-      window.location.assign(url);
+      window.open(url, "_blank");
     });
   }
   if(codePanel){
