@@ -3,6 +3,8 @@
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");
   const btnClearCode = document.getElementById("btnClearCode");
+  const btnCopyCode = document.getElementById("btnCopyCode");
+  const btnPasteCode = document.getElementById("btnPasteCode");
   const debugLog = document.getElementById("debugLog");
   const debugPanel = document.getElementById("debugPanel");
   const dataPatternPanel = document.getElementById("dataPatternPanel") || document.getElementById("patternDetails");
@@ -2956,6 +2958,39 @@
       }
     });
   });
+  const clipboardApi = (typeof navigator !== "undefined" ? navigator.clipboard : null);
+  if(btnCopyCode){
+    if(clipboardApi && typeof clipboardApi.writeText === "function"){
+      btnCopyCode.addEventListener("click", async () => {
+        if(!userCodeInput) return;
+        try{
+          await clipboardApi.writeText(userCodeInput.value ?? "");
+        }catch(err){
+          // ignore clipboard failures
+        }
+      });
+    }else{
+      btnCopyCode.disabled = true;
+    }
+  }
+  if(btnPasteCode){
+    if(clipboardApi && typeof clipboardApi.readText === "function"){
+      btnPasteCode.addEventListener("click", async () => {
+        if(!userCodeInput) return;
+        try{
+          const text = await clipboardApi.readText();
+          userCodeInput.value = text;
+          userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
+          userCodeInput.scrollTop = 0;
+          userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+        }catch(err){
+          // ignore clipboard failures
+        }
+      });
+    }else{
+      btnPasteCode.disabled = true;
+    }
+  }
   if(titleIcon){
     titleIcon.addEventListener("click", () => {
       const url = buildStateUrl();
