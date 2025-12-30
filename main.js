@@ -1146,7 +1146,11 @@
       if(!formatted) return null;
       return `${prefix} (${formatted}) {`;
     };
-      const spacedText = applyKeywordSpacing(rawText || "");
+    const stripLineComments = (value) => {
+      if(typeof value !== "string" || value === "") return "";
+      return value.replace(/^[ \t]*(?:\/\/|#|'|;|-).*$/gm, "");
+    };
+    const spacedText = applyKeywordSpacing(stripLineComments(rawText || ""));
       const directionSpaced = applyCompoundDirectionSpacing(spacedText);
       const conditionalText = applyConditionalAliases(directionSpaced);
       const codeRaw = applyAliasTransforms(conditionalText);
