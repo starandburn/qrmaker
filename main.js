@@ -30,6 +30,8 @@
   const HISTORY_PREVIEW_LENGTH = 64;
   const historyEntries = [];
   let historyVisible = false;
+  let pendingHistoryChange = false;
+  let pendingHistoryLabel = "変更";
   const txtInput = document.getElementById("txtInput");
   const debugRow = document.querySelector(".debug-row");
   const debugOnlyControls = Array.from(document.querySelectorAll(".debug-only"));
@@ -150,6 +152,18 @@
       historyEntries.pop();
     }
     renderHistoryList();
+  };
+  const markHistoryPending = (label = "変更") => {
+    pendingHistoryChange = true;
+    pendingHistoryLabel = label;
+  };
+  const commitPendingHistory = (overrideLabel) => {
+    if(!pendingHistoryChange) return false;
+    pendingHistoryChange = false;
+    const label = overrideLabel || pendingHistoryLabel || "変更";
+    pendingHistoryLabel = "変更";
+    pushHistorySnapshot(label);
+    return true;
   };
   const applyDebugVisibility = (visible) => {
     if(!debugPanel) return;
@@ -2502,6 +2516,7 @@
       if(userCodeInput){
         userCodeInput.value = "";
         userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+        commitPendingHistory("クリア");
       }
       if(userCodeParsed){
         userCodeParsed.value = "";
@@ -2881,10 +2896,19 @@
       syncParsedCode();
       ensureUserCodeCaretVisible();
       if(!ev.isComposing){
-        pushHistorySnapshot("入力");
+        if(ev.inputType === "insertLineBreak"){
+          markHistoryPending("改行");
+          commitPendingHistory();
+        }else{
+          markHistoryPending("入力");
+        }
       }
     });
     userCodeInput.addEventListener("keydown", async (ev) => {
+      const navKey = ev.key === "ArrowUp" || ev.key === "ArrowDown";
+      if(navKey){
+        commitPendingHistory("行移動");
+      }
       if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter"){
         ev.preventDefault();
         ev.stopPropagation();
@@ -2999,9 +3023,12 @@
         ensureUserCodeCaretVisible();
         return;
       }
-      if(ev.key === "Enter" && !ev.ctrlKey && !ev.altKey && !ev.shiftKey){
-        requestAnimationFrame(ensureUserCodeCaretVisible);
-      }
+    if(ev.key === "Enter" && !ev.ctrlKey && !ev.altKey && !ev.shiftKey){
+      requestAnimationFrame(ensureUserCodeCaretVisible);
+    }
+  });
+    userCodeInput.addEventListener("blur", () => {
+      commitPendingHistory("フォーカスアウト");
     });
   }
   setHistoryVisibility(false);
@@ -3026,6 +3053,7 @@
         userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
         userCodeInput.scrollTop = 0;
         userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+        commitPendingHistory("サンプル");
       }
     });
   });
@@ -3069,12 +3097,13 @@
       btnPasteCode.addEventListener("click", async () => {
         if(!userCodeInput) return;
         try{
-          const text = await clipboardApi.readText();
-          userCodeInput.value = text;
-          userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
-          userCodeInput.scrollTop = 0;
-          userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
-        }catch(err){
+      const text = await clipboardApi.readText();
+      userCodeInput.value = text;
+      userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
+      userCodeInput.scrollTop = 0;
+      userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      commitPendingHistory("貼り付け");
+    }catch(err){
           // ignore clipboard failures
         }
       });
