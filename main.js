@@ -12,6 +12,9 @@
   const userCodeParsed = document.getElementById("userCodeParsed");
   const footerCopy = document.querySelector(".page-footer p:first-child");
   const userCodeInput = document.getElementById("userCode");
+  const btnToggleHistory = document.getElementById("btnToggleHistory");
+  const codeHistoryList = document.getElementById("codeHistoryList");
+  const historyCount = document.getElementById("historyCount");
   const stepMode = document.getElementById("stepMode");
   const stepSkipFunctions = document.getElementById("stepSkipFunctions");
   const stepSpeed = document.getElementById("stepSpeed");
@@ -23,6 +26,10 @@
   const toggleGrid = document.getElementById("toggleGrid");
   const toggleEmpty = document.getElementById("toggleEmpty");
   const toggleColor = document.getElementById("toggleColor");
+  const HISTORY_LIMIT = 48;
+  const HISTORY_PREVIEW_LENGTH = 64;
+  const historyEntries = [];
+  let historyVisible = false;
   const txtInput = document.getElementById("txtInput");
   const debugRow = document.querySelector(".debug-row");
   const debugOnlyControls = Array.from(document.querySelectorAll(".debug-only"));
@@ -84,6 +91,65 @@
     }else if(targetTop < viewTop){
       userCodeInput.scrollTop = Math.max(0, targetTop - 4);
     }
+  };
+  const escapeHtml = (value) => {
+    const text = value ?? "";
+    return String(text)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  };
+  const formatHistoryPreview = (value) => {
+    const normalized = (value ?? "").replace(/\s+/g, " ").trim();
+    if(!normalized) return "（空白）";
+    if(normalized.length <= HISTORY_PREVIEW_LENGTH) return normalized;
+    return `${normalized.slice(0, HISTORY_PREVIEW_LENGTH)}…`;
+  };
+  const setHistoryVisibility = (visible) => {
+    historyVisible = Boolean(visible);
+    if(codePanel){
+      codePanel.classList.toggle("history-visible", historyVisible);
+    }
+    if(btnToggleHistory){
+      btnToggleHistory.setAttribute("aria-pressed", historyVisible ? "true" : "false");
+      btnToggleHistory.classList.toggle("is-active", historyVisible);
+    }
+  };
+  const renderHistoryList = () => {
+    if(historyCount){
+      historyCount.textContent = String(historyEntries.length);
+    }
+    if(!codeHistoryList) return;
+    if(!historyEntries.length){
+      codeHistoryList.innerHTML = "<li class=\"history-empty\">履歴はまだありません</li>";
+      return;
+    }
+    const rows = historyEntries.map((entry, index) => {
+      const preview = formatHistoryPreview(entry.value);
+      const label = entry.label || "変更";
+      const timestamp = new Date(entry.timestamp).toLocaleTimeString();
+      const title = `${label} · ${timestamp}`;
+      const htmlPreview = escapeHtml(preview);
+      const htmlLabel = escapeHtml(label);
+      return `<li data-index="${index}" title="${escapeHtml(title)}" class="${index === 0 ? "is-latest" : ""}"><span class="history-snippet">${htmlPreview}</span><span class="history-meta">${htmlLabel}</span></li>`;
+    });
+    codeHistoryList.innerHTML = rows.join("");
+  };
+  const pushHistorySnapshot = (label = "変更") => {
+    if(!userCodeInput) return;
+    const value = userCodeInput.value ?? "";
+    const lastEntry = historyEntries[0];
+    if(lastEntry && lastEntry.value === value) return;
+    historyEntries.unshift({
+      value,
+      label,
+      timestamp: Date.now(),
+    });
+    if(historyEntries.length > HISTORY_LIMIT){
+      historyEntries.pop();
+    }
+    renderHistoryList();
   };
   const applyDebugVisibility = (visible) => {
     if(!debugPanel) return;
@@ -2811,9 +2877,12 @@
     });
   }
   if(userCodeInput){
-    userCodeInput.addEventListener("input", () => {
+    userCodeInput.addEventListener("input", (ev) => {
       syncParsedCode();
       ensureUserCodeCaretVisible();
+      if(!ev.isComposing){
+        pushHistorySnapshot("入力");
+      }
     });
     userCodeInput.addEventListener("keydown", async (ev) => {
       if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter"){
@@ -2935,6 +3004,8 @@
       }
     });
   }
+  setHistoryVisibility(false);
+  pushHistorySnapshot("初期状態");
   const sampleButtons = document.querySelectorAll(".code-debug-btn");
   sampleButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -2958,6 +3029,26 @@
       }
     });
   });
+  if(btnToggleHistory){
+    btnToggleHistory.addEventListener("click", () => {
+      setHistoryVisibility(!historyVisible);
+    });
+  }
+  if(codeHistoryList){
+    codeHistoryList.addEventListener("click", (ev) => {
+      const target = (typeof Element !== "undefined" && ev.target instanceof Element) ? ev.target : null;
+      const item = target ? target.closest("li[data-index]") : null;
+      if(!item) return;
+      const index = Number(item.getAttribute("data-index"));
+      if(Number.isNaN(index)) return;
+      const entry = historyEntries[index];
+      if(!entry || !userCodeInput) return;
+      userCodeInput.value = entry.value;
+      userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
+      userCodeInput.scrollTop = 0;
+      userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
   const clipboardApi = (typeof navigator !== "undefined" ? navigator.clipboard : null);
   if(btnCopyCode){
     if(clipboardApi && typeof clipboardApi.writeText === "function"){
