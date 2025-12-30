@@ -241,10 +241,22 @@
     error: "入力したスクリプトにエラーがあるので実行できません",
   };
   let lastExecutionError = null;
-  const setExecutionStatus = (state) => {
-    if(!executionStatusEl) return;
+  const extractUnknownCommandWord = (message) => {
+    if(!message) return "";
+    const text = String(message).trim();
+    if(!text) return "";
+    const match = text.match(/(?:不明なコマンド|Unknown command)[:：]?\s*([^\s,、。.]+)/i);
+    return match ? match[1] : "";
+  };
+  const buildExecutionStatusText = (state, message) => {
     const label = executionStatusLabels[state] || "";
-    executionStatusEl.textContent = label;
+    if(state !== "error") return label;
+    const token = extractUnknownCommandWord(message);
+    return token ? `${label} (${token})` : label;
+  };
+  const setExecutionStatus = (state, message) => {
+    if(!executionStatusEl) return;
+    executionStatusEl.textContent = buildExecutionStatusText(state, message);
     executionStatusEl.className = `execution-status status-${state}`;
   };
   setExecutionStatus("stopped");
@@ -1403,8 +1415,12 @@
       userCodeParsed.value = "";
       return;
     }
-    const script = buildUserScript(userCodeInput ? userCodeInput.value : "", { awaitCalls: true });
-    userCodeParsed.value = script;
+    try{
+      const script = buildUserScript(userCodeInput ? userCodeInput.value : "", { awaitCalls: true });
+      userCodeParsed.value = script;
+    }catch(err){
+      userCodeParsed.value = `// ${err && err.message ? String(err.message) : String(err)}`;
+    }
   }
 
   // Export helpers to window
@@ -1545,6 +1561,11 @@
     const parts = trimmed.split(/[\s,]+/).filter(Boolean);
     if(parts.length === 0) return "";
     const fn = parts.shift();
+    if(identifierPattern.test(fn)){
+      if(!globalEnv || typeof globalEnv[fn] !== "function"){
+        throw new Error(`不明なコマンド: ${fn}`);
+      }
+    }
     const truthyKeywords = new Set(["true","ok","yes"]);
     const falseyKeywords = new Set(["false","ng","no"]);
     const args = parts.map((arg) => {
@@ -1587,7 +1608,13 @@
     if(!userCodeInput) return true;
     lastExecutionError = null;
     resetLoopGuard();
-    const script = buildUserScript(userCodeInput.value || "", { awaitCalls: true });
+    let script = "";
+    try{
+      script = buildUserScript(userCodeInput.value || "", { awaitCalls: true });
+    }catch(err){
+      lastExecutionError = err && err.message ? String(err.message) : String(err);
+      return false;
+    }
     if(!script.trim()) return true;
     try{
       const runner = `(async () => {\n${script}\n})();`;
@@ -2446,7 +2473,7 @@
     if(ok){
       setExecutionStatus("finished");
     }else if(lastExecutionError){
-      setExecutionStatus("error");
+      setExecutionStatus("error", lastExecutionError);
     }else{
       setExecutionStatus("stopped");
     }
