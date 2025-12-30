@@ -1892,23 +1892,30 @@
   async function drawQRCode(arg){
     let maskIndex;
     if(arg === undefined){
-      maskIndex = undefined;
+      maskIndex = 0;
     }else if(typeof arg === "object" && arg !== null){
       maskIndex = arg.maskIndex;
     }else{
       maskIndex = arg;
+    }
+    if(maskIndex === undefined){
+      maskIndex = 0;
     }
     const currentRun = ++runId;
     const baseOk = await drawBasePatterns({ deferFlush: false, currentRun, resetDelay: true });
     if(currentRun !== runId || !baseOk) return false;
     const dataOk = await drawDataPatterns({ currentRun });
     if(currentRun !== runId || !dataOk) return false;
-    if(maskIndex === undefined){
-      return true;
+    let maskSpecified = false;
+    let idx = 0;
+    const rawValue = maskIndex;
+    const numeric = Number(rawValue);
+    if(Number.isFinite(numeric) && numeric >= 0 && numeric <= 7){
+      maskSpecified = true;
+      idx = numeric;
     }
-    let idx = Number(maskIndex);
-    if(!Number.isFinite(idx) || idx < 0 || idx > 7){
-      idx = 0;
+    if(!maskSpecified){
+      return true;
     }
     const maskOk = await applyMask(idx);
     if(currentRun !== runId || !maskOk) return false;
