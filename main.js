@@ -165,6 +165,12 @@
     pushHistorySnapshot(label);
     return true;
   };
+  const ensureRunHistory = () => {
+    const committed = commitPendingHistory("実行");
+    if(!committed){
+      pushHistorySnapshot("実行");
+    }
+  };
   const applyDebugVisibility = (visible) => {
     if(!debugPanel) return;
     debugPanel.style.display = visible ? "block" : "none";
@@ -2896,7 +2902,8 @@
       syncParsedCode();
       ensureUserCodeCaretVisible();
       if(!ev.isComposing){
-        if(ev.inputType === "insertLineBreak"){
+        const type = ev.inputType || "";
+        if(/insert(LineBreak|Paragraph)/i.test(type)){
           markHistoryPending("改行");
           commitPendingHistory();
         }else{
@@ -2909,9 +2916,14 @@
       if(navKey){
         commitPendingHistory("行移動");
       }
+      const captureEnterHistory = ev.key === "Enter" && !ev.ctrlKey && !ev.altKey;
+      if(captureEnterHistory){
+        setTimeout(() => commitPendingHistory("改行"), 0);
+      }
       if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter"){
         ev.preventDefault();
         ev.stopPropagation();
+        ensureRunHistory();
         if(btnGenerate && !btnGenerate.disabled){
           btnGenerate.click();
         }
