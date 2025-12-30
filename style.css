@@ -34,7 +34,8 @@ html, body{
 
 body{
   font-family: "Segoe UI", "Hiragino Sans", "Meiryo", sans-serif;
-  margin: 10px;
+  margin: 0;
+  padding: 10px;
   background:#f5f6f7;
   min-height:100vh;
   display:flex;
@@ -59,7 +60,7 @@ body.app-loading .page-footer{
 
 .page-head{
   background:linear-gradient(120deg, #0b63d1 0%, #0ad0ff 40%, #e8f6ff 100%);
-  margin:-10px -10px 6px;
+  margin:0 0 6px;
   padding:16px 20px 10px;
   border-bottom:2px solid #c9d8ed;
   display:block;
