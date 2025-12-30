@@ -26,6 +26,7 @@
   const toggleGrid = document.getElementById("toggleGrid");
   const toggleEmpty = document.getElementById("toggleEmpty");
   const toggleColor = document.getElementById("toggleColor");
+  const HISTORY_PARAM_KEY = "history";
   const HISTORY_LIMIT = 48;
   const HISTORY_PREVIEW_LENGTH = 64;
   const historyEntries = [];
@@ -202,6 +203,14 @@
     if(parsed === null) return;
     applyDebugVisibility(parsed);
   };
+  const applyHistoryFromParam = () => {
+    if(!codePanel) return;
+    const spec = urlParams.get(HISTORY_PARAM_KEY);
+    if(spec === null) return;
+    const parsed = stringifyBool(spec);
+    if(parsed === null) return;
+    setHistoryVisibility(parsed);
+  };
   const applyStepSpeedParam = () => {
     if(!stepSpeed) return false;
     if(!urlParams.has(STEP_SPEED_PARAM_KEY)) return false;
@@ -222,6 +231,7 @@
   };
   setPatternOpenFromParam();
   setDebugFromParam();
+  applyHistoryFromParam();
   if(!btnGenerate || !btnInit) return;
   const executionStatusEl = document.getElementById("executionStatus");
   const executionStatusLabels = {
@@ -3043,7 +3053,9 @@
       commitPendingHistory("フォーカスアウト");
     });
   }
-  setHistoryVisibility(false);
+  if(!urlParams.has(HISTORY_PARAM_KEY)){
+    setHistoryVisibility(false);
+  }
   pushHistorySnapshot("初期状態");
   const sampleButtons = document.querySelectorAll(".code-debug-btn");
   sampleButtons.forEach((btn) => {
@@ -3191,6 +3203,7 @@
         params.set(STEP_SPEED_PARAM_KEY, speedValue);
       }
     }
+    params.set(HISTORY_PARAM_KEY, historyVisible ? "1" : "0");
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
     const query = params.toString();
     return query ? `${baseUrl}?${query}` : baseUrl;
