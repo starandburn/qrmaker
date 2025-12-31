@@ -1,18 +1,15 @@
 (function(){
   const params = new URLSearchParams(window.location.search || "");
   const FLAG_PARAM_KEY = "v";
-  const DEBUG_PARAM_KEY = "d";
-  const DEBUG_PARAM_ALIAS = null;
+  const DEBUG_PARAM_KEY = "g";
   const PATTERN_PANEL_PARAM_KEY = "p";
-  const PATTERN_PANEL_PARAM_ALIAS = null;
   const COMBINED_STEP_PARAM_KEY = "s";
-  const DATA_PARAM_KEY = "t";
+  const DATA_PARAM_KEY = "d";
   const DATA_EMPTY_TOKEN = "_";
   const HISTORY_PARAM_KEY = "h";
   const SAMPLES_PARAM_KEY = "m";
 
-  const lookupParam = (primary, alias) => {
-    if(alias && params.has(alias)) return params.get(alias);
+  const lookupParam = (primary) => {
     if(primary && params.has(primary)) return params.get(primary);
     return null;
   };
@@ -50,7 +47,7 @@
 
   const applyPatternOpenFromParam = ({ dataPatternPanel } = {}) => {
     if(!dataPatternPanel) return false;
-    const spec = lookupParam(PATTERN_PANEL_PARAM_KEY, PATTERN_PANEL_PARAM_ALIAS);
+    const spec = lookupParam(PATTERN_PANEL_PARAM_KEY);
     if(spec === null) return false;
     const parsed = stringifyBool(spec);
     if(parsed === null) return false;
@@ -65,7 +62,7 @@
 
   const applyDebugFromParam = ({ debugPanel, applyDebugVisibility } = {}) => {
     if(!debugPanel || typeof applyDebugVisibility !== "function") return false;
-    const spec = lookupParam(DEBUG_PARAM_KEY, DEBUG_PARAM_ALIAS);
+    const spec = lookupParam(DEBUG_PARAM_KEY);
     if(spec === null) return false;
     const parsed = stringifyBool(spec);
     if(parsed === null) return false;
@@ -322,9 +319,7 @@
     PARAM_KEYS: {
       FLAG: FLAG_PARAM_KEY,
       DEBUG: DEBUG_PARAM_KEY,
-      DEBUG_ALIAS: DEBUG_PARAM_ALIAS,
       PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY,
-      PATTERN_PANEL_ALIAS: PATTERN_PANEL_PARAM_ALIAS,
       COMBINED_STEP: COMBINED_STEP_PARAM_KEY,
       SAMPLES: SAMPLES_PARAM_KEY,
       DATA: DATA_PARAM_KEY,
