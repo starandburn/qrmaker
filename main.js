@@ -1,5 +1,5 @@
 
-(function(){
+function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layoutUI || {} } = {}){
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");
   const btnClearCode = document.getElementById("btnClearCode");
@@ -31,8 +31,6 @@
   let pendingHistoryChange = false;
   let pendingHistoryLabel = "変更";
   const txtInput = document.getElementById("txtInput");
-  const urlState = window.urlState || {};
-  const layoutUI = window.layoutUI || {};
   const setHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
   const applyDebugVisibility = layoutUI.applyDebugVisibility || (() => {});
   const renderHistoryList = (entries) => {
@@ -3273,4 +3271,4 @@
       }
     });
   }
-})();
+}
