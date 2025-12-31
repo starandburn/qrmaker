@@ -26,7 +26,6 @@
   const toggleGrid = document.getElementById("toggleGrid");
   const toggleEmpty = document.getElementById("toggleEmpty");
   const toggleColor = document.getElementById("toggleColor");
-  const HISTORY_PARAM_KEY = "history";
   const HISTORY_LIMIT = 48;
   const HISTORY_PREVIEW_LENGTH = 64;
   const historyEntries = [];
@@ -36,27 +35,23 @@
   const txtInput = document.getElementById("txtInput");
   const debugRow = document.querySelector(".debug-row");
   const debugOnlyControls = Array.from(document.querySelectorAll(".debug-only"));
-  const urlParams = new URLSearchParams(window.location.search || "");
-  const lookupParam = (primary, alias) => {
-    if(alias && urlParams.has(alias)) return urlParams.get(alias);
-    if(primary && urlParams.has(primary)) return urlParams.get(primary);
-    return null;
-  };
-  const stringifyBool = (value) => {
-    if(value === null) return null;
-    if(typeof value !== "string") return null;
-    const trimmed = value.trim();
-    if(!trimmed) return true;
-    if(/^(?:1|true|yes|on|open|show)$/i.test(trimmed)) return true;
-    if(/^(?:0|false|no|off|close|closed|hide)$/i.test(trimmed)) return false;
-    return null;
-  };
-  const FLAG_PARAM_KEY = "flags";
-  const DEBUG_PARAM_KEY = "debug";
-  const DEBUG_PARAM_ALIAS = "d";
-  const PATTERN_PANEL_PARAM_KEY = "patternPanel";
-  const PATTERN_PANEL_PARAM_ALIAS = "p";
-  const STEP_SPEED_PARAM_KEY = "stepSpeed";
+  const urlState = window.urlState || {};
+  const urlParams = urlState.params || new URLSearchParams(window.location.search || "");
+  const {
+    decodeDataParamValue,
+    applyPatternOpenFromParam,
+    applyDebugFromParam,
+    applyHistoryFromParam,
+    applyStepSpeedParam,
+    applyUrlControlStates,
+    buildStateUrl: buildStateUrlFromState,
+    PARAM_KEYS = {},
+  } = urlState;
+  const {
+    DATA: DATA_PARAM_KEY = "data",
+    HISTORY: HISTORY_PARAM_KEY = "history",
+  } = PARAM_KEYS;
+  const DATA_DEFAULT_TEXT = "Hello, World!";
   const TOGGLE_FLAG_ORDER = [
     toggleCursor,
     toggleGuide,
@@ -67,9 +62,6 @@
     stepMode,
     stepSkipFunctions,
   ];
-  const DATA_PARAM_KEY = "data";
-  const DATA_EMPTY_TOKEN = "_"; // set data=_ to clear the text field; use ~ prefix to escape "_" or "~" at start
-  const DATA_DEFAULT_TEXT = "Hello, World!";
   const ensureUserCodeCaretVisible = () => {
     if(!userCodeInput) return;
     const pos = typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : 0;
@@ -182,56 +174,9 @@
       control.style.display = visible ? "inline-flex" : "none";
     }
   };
-  const setPatternOpenFromParam = () => {
-    if(!dataPatternPanel) return;
-    const spec = lookupParam(PATTERN_PANEL_PARAM_KEY, PATTERN_PANEL_PARAM_ALIAS);
-    if(spec === null) return;
-    const parsed = stringifyBool(spec);
-    if(parsed === null) return;
-    dataPatternPanel.open = parsed;
-    try{
-      dataPatternPanel.dispatchEvent(new Event("toggle"));
-    }catch(err){
-      // ignore if toggle event cannot fire
-    }
-  };
-  const setDebugFromParam = () => {
-    if(!debugPanel) return;
-    const spec = lookupParam(DEBUG_PARAM_KEY, DEBUG_PARAM_ALIAS);
-    if(spec === null) return;
-    const parsed = stringifyBool(spec);
-    if(parsed === null) return;
-    applyDebugVisibility(parsed);
-  };
-  const applyHistoryFromParam = () => {
-    if(!codePanel) return;
-    const spec = urlParams.get(HISTORY_PARAM_KEY);
-    if(spec === null) return;
-    const parsed = stringifyBool(spec);
-    if(parsed === null) return;
-    setHistoryVisibility(parsed);
-  };
-  const applyStepSpeedParam = () => {
-    if(!stepSpeed) return false;
-    if(!urlParams.has(STEP_SPEED_PARAM_KEY)) return false;
-    const rawValue = urlParams.get(STEP_SPEED_PARAM_KEY);
-    if(rawValue === null) return false;
-    const numeric = Number(rawValue);
-    if(!Number.isFinite(numeric)) return false;
-    const minVal = Number(stepSpeed.min);
-    const maxVal = Number(stepSpeed.max);
-    const clampedLower = Number.isFinite(minVal) ? minVal : 0;
-    const clampedUpper = Number.isFinite(maxVal) ? maxVal : clampedLower || 120;
-    const clamped = Math.max(clampedLower, Math.min(clampedUpper, numeric));
-    const nextValue = String(clamped);
-    if(stepSpeed.value !== nextValue){
-      stepSpeed.value = nextValue;
-    }
-    return true;
-  };
-  setPatternOpenFromParam();
-  setDebugFromParam();
-  applyHistoryFromParam();
+  applyPatternOpenFromParam({ dataPatternPanel });
+  applyDebugFromParam({ debugPanel, applyDebugVisibility });
+  applyHistoryFromParam({ codePanel, setHistoryVisibility });
   if(!btnGenerate || !btnInit) return;
   const executionStatusEl = document.getElementById("executionStatus");
   const executionStatusLabels = {
@@ -2911,7 +2856,7 @@
   if(stepMode){
     stepMode.addEventListener("change", syncStepControls);
   }
-  applyStepSpeedParam();
+  applyStepSpeedParam({ stepSpeed });
   syncStepControls();
 
   ensureCells();
@@ -2933,7 +2878,27 @@
     window.toggleInputs.push(toggleDebugValues);
   }
   applyDataParam();
-  applyUrlControlStates({ colorToggleEl, toggleDebugValues });
+  const urlControlToggleConfig = [
+    { param: "toggleCursor", element: toggleCursor },
+    { param: "toggleGuide", element: toggleGuide },
+    { param: "toggleGrid", element: toggleGrid },
+    { param: "toggleEmpty", element: toggleEmpty },
+    { param: "toggleColor", element: toggleColor },
+    { param: "toggleDebugValues", element: toggleDebugValues },
+    { param: "stepMode", element: stepMode },
+    { param: "stepSkipFunctions", element: stepSkipFunctions },
+  ];
+  applyUrlControlStates({
+    toggleConfig: urlControlToggleConfig,
+    viewRefreshTargets: [toggleCursor, toggleGuide, toggleGrid, toggleEmpty],
+    stepToggleTargets: [stepMode, stepSkipFunctions],
+    colorToggleElement: colorToggleEl,
+    debugToggleElement: toggleDebugValues,
+    applyToggleFlags,
+    syncViewToggles: typeof window.syncViewToggles === "function" ? window.syncViewToggles : undefined,
+    syncDebugOverlay,
+    syncStepControls,
+  });
   syncDebugPanelLayout();
   syncParsedCode();
   if(dataPatternPanel){
@@ -3195,57 +3160,21 @@
     }).join("");
   }
 
-  function encodeDataParamValue(value){
-    const normalized = value ?? "";
-    if(normalized === ""){
-      return DATA_EMPTY_TOKEN;
+  const buildStateUrl = () => {
+    if(typeof buildStateUrlFromState !== "function"){
+      return window.location.href;
     }
-    if(normalized === DATA_EMPTY_TOKEN || normalized.startsWith("~")){
-      return `~${normalized}`;
-    }
-    return normalized;
-  }
-
-  function decodeDataParamValue(rawValue){
-    if(rawValue === DATA_EMPTY_TOKEN){
-      return "";
-    }
-    if(rawValue.startsWith("~")){
-      return rawValue.slice(1);
-    }
-    return rawValue;
-  }
-
-  function buildStateUrl(){
-    const params = new URLSearchParams();
-    if(txtInput){
-      const value = txtInput.value ?? "";
-      if(value !== DATA_DEFAULT_TEXT){
-        const encoded = encodeDataParamValue(value);
-        params.set(DATA_PARAM_KEY, encoded);
-      }
-    }
-    const flagString = buildFlagString();
-    if(flagString){
-      params.set(FLAG_PARAM_KEY, flagString);
-    }
-    if(debugPanel){
-      params.set(DEBUG_PARAM_KEY, isDebugVisible() ? "1" : "0");
-    }
-    if(dataPatternPanel){
-      params.set(PATTERN_PANEL_PARAM_KEY, dataPatternPanel.open ? "1" : "0");
-    }
-    if(stepSpeed){
-      const speedValue = stepSpeed.value ?? "";
-      if(speedValue !== ""){
-        params.set(STEP_SPEED_PARAM_KEY, speedValue);
-      }
-    }
-    params.set(HISTORY_PARAM_KEY, historyVisible ? "1" : "0");
-    const baseUrl = `${window.location.origin}${window.location.pathname}`;
-    const query = params.toString();
-    return query ? `${baseUrl}?${query}` : baseUrl;
-  }
+    return buildStateUrlFromState({
+      txtInput,
+      flagString: buildFlagString(),
+      defaultDataValue: DATA_DEFAULT_TEXT,
+      debugPanel,
+      dataPatternPanel,
+      stepSpeed,
+      historyVisible,
+      isDebugVisible,
+    });
+  };
 
   function applyDataParam(){
     if(!txtInput) return false;
@@ -3299,63 +3228,6 @@
       debugChanged,
       stepNeedsRefresh,
     };
-  }
-
-  function applyUrlControlStates({ colorToggleEl: colorToggleInput, toggleDebugValues: debugToggleInput } = {}){
-    const toggleConfig = [
-      { param: "toggleCursor", element: toggleCursor },
-      { param: "toggleGuide", element: toggleGuide },
-      { param: "toggleGrid", element: toggleGrid },
-      { param: "toggleEmpty", element: toggleEmpty },
-      { param: "toggleColor", element: toggleColor },
-      { param: "toggleDebugValues", element: toggleDebugValues },
-      { param: "stepMode", element: stepMode },
-      { param: "stepSkipFunctions", element: stepSkipFunctions },
-    ];
-    const flagValue = urlParams.get(FLAG_PARAM_KEY);
-    let flagHandled = false;
-    if(flagValue){
-      const result = applyToggleFlags(flagValue);
-      if(result.applied){
-        flagHandled = true;
-        if(result.viewNeedsRefresh && typeof window.syncViewToggles === "function"){
-          window.syncViewToggles();
-        }
-        if(result.colorChanged && colorToggleInput){
-          colorToggleInput.dispatchEvent(new Event("change"));
-        }
-        if(result.debugChanged){
-          syncDebugOverlay();
-        }
-        if(result.stepNeedsRefresh && typeof syncStepControls === "function"){
-          syncStepControls();
-        }
-      }
-    }
-    if(flagHandled) return;
-
-    let viewNeedsRefresh = false;
-    toggleConfig.forEach(({ param, element }) => {
-      if(!element || !urlParams.has(param)) return;
-      const parsed = stringifyBool(urlParams.get(param));
-      if(parsed === null) return;
-      element.checked = parsed;
-      if(["toggleCursor", "toggleGuide", "toggleGrid", "toggleEmpty"].includes(param)){
-        viewNeedsRefresh = true;
-      }
-    });
-    if(viewNeedsRefresh && typeof window.syncViewToggles === "function"){
-      window.syncViewToggles();
-    }
-    if(colorToggleInput && urlParams.has("toggleColor")){
-      colorToggleInput.dispatchEvent(new Event("change"));
-    }
-    if(debugToggleInput && urlParams.has("toggleDebugValues")){
-      syncDebugOverlay();
-    }
-    if((urlParams.has("stepMode") || urlParams.has("stepSkipFunctions")) && typeof syncStepControls === "function"){
-      syncStepControls();
-    }
   }
 
   if(document && document.body){

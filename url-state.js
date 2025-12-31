@@ -1,0 +1,239 @@
+(function(){
+  const params = new URLSearchParams(window.location.search || "");
+  const FLAG_PARAM_KEY = "flags";
+  const DEBUG_PARAM_KEY = "debug";
+  const DEBUG_PARAM_ALIAS = "d";
+  const PATTERN_PANEL_PARAM_KEY = "patternPanel";
+  const PATTERN_PANEL_PARAM_ALIAS = "p";
+  const STEP_SPEED_PARAM_KEY = "stepSpeed";
+  const DATA_PARAM_KEY = "data";
+  const DATA_EMPTY_TOKEN = "_";
+  const HISTORY_PARAM_KEY = "history";
+
+  const lookupParam = (primary, alias) => {
+    if(alias && params.has(alias)) return params.get(alias);
+    if(primary && params.has(primary)) return params.get(primary);
+    return null;
+  };
+
+  const stringifyBool = (value) => {
+    if(value === null) return null;
+    if(typeof value !== "string") return null;
+    const trimmed = value.trim();
+    if(!trimmed) return true;
+    if(/^(?:1|true|yes|on|open|show)$/i.test(trimmed)) return true;
+    if(/^(?:0|false|no|off|close|closed|hide)$/i.test(trimmed)) return false;
+    return null;
+  };
+
+  function encodeDataParamValue(value){
+    const normalized = value ?? "";
+    if(normalized === ""){
+      return DATA_EMPTY_TOKEN;
+    }
+    if(normalized === DATA_EMPTY_TOKEN || normalized.startsWith("~")){
+      return `~${normalized}`;
+    }
+    return normalized;
+  }
+
+  function decodeDataParamValue(rawValue){
+    if(rawValue === DATA_EMPTY_TOKEN){
+      return "";
+    }
+    if(rawValue.startsWith("~")){
+      return rawValue.slice(1);
+    }
+    return rawValue;
+  }
+
+  const applyPatternOpenFromParam = ({ dataPatternPanel } = {}) => {
+    if(!dataPatternPanel) return false;
+    const spec = lookupParam(PATTERN_PANEL_PARAM_KEY, PATTERN_PANEL_PARAM_ALIAS);
+    if(spec === null) return false;
+    const parsed = stringifyBool(spec);
+    if(parsed === null) return false;
+    dataPatternPanel.open = parsed;
+    try{
+      dataPatternPanel.dispatchEvent(new Event("toggle"));
+    }catch(err){
+      // ignore environments that do not expose Event
+    }
+    return true;
+  };
+
+  const applyDebugFromParam = ({ debugPanel, applyDebugVisibility } = {}) => {
+    if(!debugPanel || typeof applyDebugVisibility !== "function") return false;
+    const spec = lookupParam(DEBUG_PARAM_KEY, DEBUG_PARAM_ALIAS);
+    if(spec === null) return false;
+    const parsed = stringifyBool(spec);
+    if(parsed === null) return false;
+    applyDebugVisibility(parsed);
+    return true;
+  };
+
+  const applyHistoryFromParam = ({ codePanel, setHistoryVisibility } = {}) => {
+    if(!codePanel || typeof setHistoryVisibility !== "function") return false;
+    const spec = params.get(HISTORY_PARAM_KEY);
+    if(spec === null) return false;
+    const parsed = stringifyBool(spec);
+    if(parsed === null) return false;
+    setHistoryVisibility(parsed);
+    return true;
+  };
+
+  const applyStepSpeedParam = ({ stepSpeed } = {}) => {
+    if(!stepSpeed) return false;
+    if(!params.has(STEP_SPEED_PARAM_KEY)) return false;
+    const rawValue = params.get(STEP_SPEED_PARAM_KEY);
+    if(rawValue === null) return false;
+    const numeric = Number(rawValue);
+    if(!Number.isFinite(numeric)) return false;
+    const minVal = Number(stepSpeed.min);
+    const maxVal = Number(stepSpeed.max);
+    const clampedLower = Number.isFinite(minVal) ? minVal : 0;
+    const clampedUpper = Number.isFinite(maxVal) ? maxVal : clampedLower || 120;
+    const clamped = Math.max(clampedLower, Math.min(clampedUpper, numeric));
+    const nextValue = String(clamped);
+    if(stepSpeed.value !== nextValue){
+      stepSpeed.value = nextValue;
+    }
+    return true;
+  };
+
+  const applyUrlControlStates = ({
+    toggleConfig = [],
+    viewRefreshTargets = [],
+    stepToggleTargets = [],
+    colorToggleElement,
+    debugToggleElement,
+    applyToggleFlags,
+    syncViewToggles,
+    syncDebugOverlay,
+    syncStepControls,
+  } = {}) => {
+    const flagValue = params.get(FLAG_PARAM_KEY);
+    let flagHandled = false;
+    if(flagValue && typeof applyToggleFlags === "function"){
+      const result = applyToggleFlags(flagValue);
+      if(result && result.applied){
+        flagHandled = true;
+        if(result.viewNeedsRefresh && typeof syncViewToggles === "function"){
+          syncViewToggles();
+        }
+        if(result.colorChanged && colorToggleElement){
+          colorToggleElement.dispatchEvent(new Event("change"));
+        }
+        if(result.debugChanged && typeof syncDebugOverlay === "function"){
+          syncDebugOverlay();
+        }
+        if(result.stepNeedsRefresh && typeof syncStepControls === "function"){
+          syncStepControls();
+        }
+      }
+    }
+    if(flagHandled) return;
+    let viewNeedsRefresh = false;
+    let colorChanged = false;
+    let debugChanged = false;
+    let stepNeedsRefresh = false;
+    toggleConfig.forEach(({ param, element }) => {
+      if(!element || !params.has(param)) return;
+      const parsed = stringifyBool(params.get(param));
+      if(parsed === null) return;
+      if(typeof element.checked === "boolean"){
+        element.checked = parsed;
+      }
+      if(viewRefreshTargets.includes(element)){
+        viewNeedsRefresh = true;
+      }
+      if(element === colorToggleElement){
+        colorChanged = true;
+      }
+      if(element === debugToggleElement){
+        debugChanged = true;
+      }
+      if(stepToggleTargets.includes(element)){
+        stepNeedsRefresh = true;
+      }
+    });
+    if(viewNeedsRefresh && typeof syncViewToggles === "function"){
+      syncViewToggles();
+    }
+    if(colorChanged && colorToggleElement){
+      colorToggleElement.dispatchEvent(new Event("change"));
+    }
+    if(debugChanged && typeof syncDebugOverlay === "function"){
+      syncDebugOverlay();
+    }
+    if(stepNeedsRefresh && typeof syncStepControls === "function"){
+      syncStepControls();
+    }
+  };
+
+  const buildStateUrl = ({
+    txtInput,
+    flagString,
+    defaultDataValue,
+    debugPanel,
+    dataPatternPanel,
+    stepSpeed,
+    historyVisible,
+    isDebugVisible,
+  } = {}) => {
+    const stateParams = new URLSearchParams();
+    if(txtInput){
+      const value = txtInput.value ?? "";
+      const defaultValue = typeof defaultDataValue === "string" ? defaultDataValue : "";
+      if(value !== defaultValue){
+        const encoded = encodeDataParamValue(value);
+        stateParams.set(DATA_PARAM_KEY, encoded);
+      }
+    }
+    if(typeof flagString === "string" && flagString.length){
+      stateParams.set(FLAG_PARAM_KEY, flagString);
+    }
+    if(debugPanel && typeof isDebugVisible === "function"){
+      stateParams.set(DEBUG_PARAM_KEY, isDebugVisible() ? "1" : "0");
+    }
+    if(dataPatternPanel){
+      stateParams.set(PATTERN_PANEL_PARAM_KEY, dataPatternPanel.open ? "1" : "0");
+    }
+    if(stepSpeed){
+      const speedValue = stepSpeed.value ?? "";
+      if(speedValue !== ""){
+        stateParams.set(STEP_SPEED_PARAM_KEY, speedValue);
+      }
+    }
+    stateParams.set(HISTORY_PARAM_KEY, historyVisible ? "1" : "0");
+    const baseUrl = `${window.location.origin}${window.location.pathname}`;
+    const query = stateParams.toString();
+    return query ? `${baseUrl}?${query}` : baseUrl;
+  };
+
+  const urlState = {
+    params,
+    lookupParam,
+    stringifyBool,
+    encodeDataParamValue,
+    decodeDataParamValue,
+    applyPatternOpenFromParam,
+    applyDebugFromParam,
+    applyHistoryFromParam,
+    applyStepSpeedParam,
+    applyUrlControlStates,
+    buildStateUrl,
+    PARAM_KEYS: {
+      FLAG: FLAG_PARAM_KEY,
+      DEBUG: DEBUG_PARAM_KEY,
+      DEBUG_ALIAS: DEBUG_PARAM_ALIAS,
+      PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY,
+      PATTERN_PANEL_ALIAS: PATTERN_PANEL_PARAM_ALIAS,
+      STEP_SPEED: STEP_SPEED_PARAM_KEY,
+      DATA: DATA_PARAM_KEY,
+      HISTORY: HISTORY_PARAM_KEY,
+    },
+  };
+
+  window.urlState = Object.assign({}, window.urlState || {}, urlState);
+})();
