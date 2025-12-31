@@ -48,8 +48,8 @@
     PARAM_KEYS = {},
   } = urlState;
   const {
-    DATA: DATA_PARAM_KEY = "data",
-    HISTORY: HISTORY_PARAM_KEY = "history",
+    DATA: DATA_PARAM_KEY = "t",
+    HISTORY: HISTORY_PARAM_KEY = "h",
   } = PARAM_KEYS;
   const DATA_DEFAULT_TEXT = "Hello, World!";
   const TOGGLE_FLAG_ORDER = [

@@ -1,14 +1,14 @@
 (function(){
   const params = new URLSearchParams(window.location.search || "");
-  const FLAG_PARAM_KEY = "flags";
-  const DEBUG_PARAM_KEY = "debug";
-  const DEBUG_PARAM_ALIAS = "d";
-  const PATTERN_PANEL_PARAM_KEY = "patternPanel";
-  const PATTERN_PANEL_PARAM_ALIAS = "p";
+  const FLAG_PARAM_KEY = "v";
+  const DEBUG_PARAM_KEY = "d";
+  const DEBUG_PARAM_ALIAS = null;
+  const PATTERN_PANEL_PARAM_KEY = "p";
+  const PATTERN_PANEL_PARAM_ALIAS = null;
   const COMBINED_STEP_PARAM_KEY = "s";
-  const DATA_PARAM_KEY = "data";
+  const DATA_PARAM_KEY = "t";
   const DATA_EMPTY_TOKEN = "_";
-  const HISTORY_PARAM_KEY = "history";
+  const HISTORY_PARAM_KEY = "h";
 
   const lookupParam = (primary, alias) => {
     if(alias && params.has(alias)) return params.get(alias);
