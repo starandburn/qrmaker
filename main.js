@@ -53,9 +53,9 @@
     PARAM_KEYS = {},
   } = urlState;
   const {
-    DATA: DATA_PARAM_KEY = "t",
+    DATA: DATA_PARAM_KEY = "d",
     HISTORY: HISTORY_PARAM_KEY = "h",
-    DEBUG: DEBUG_PARAM_KEY = "d",
+    DEBUG: DEBUG_PARAM_KEY = "g",
     SAMPLES: SAMPLES_PARAM_KEY = "m",
   } = PARAM_KEYS;
   const DATA_DEFAULT_TEXT = "Hello, World!";

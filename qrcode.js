@@ -110,79 +110,101 @@ function qrComputeParity(dataCodewords, ecLen){
   return ec;
 }
 
-/**
- * Build QR (v2-L) pattern bits from input text.
- * - Generates A(mode/len), B(data+terminator+padding), C(parity)
- * - Each bit is encoded with sign (black/white) and kind (BIT_INFO_*)
- * - Stores flattened bits to window.patternBits
- */
-function parsePattern(text){
-  const input = typeof text === "string" ? text : "";
-  // QR v2-L constants
-  const DATA_CODEWORDS = 34; // data bytes
-  const EC_CODEWORDS = 10;   // parity bytes
-  const PAD_CODEWORDS = [0xec, 0x11];
+const toBinaryString = (value, width = 8) => {
+  const numeric = Number.isFinite(value) ? value : 0;
+  return numeric.toString(2).padStart(width, "0");
+};
 
+function qrBuildPatternSegments(text){
+  const input = typeof text === "string" ? text : "";
+  const DATA_CODEWORDS = 34;
+  const EC_CODEWORDS = 10;
+  const PAD_CODEWORDS = [0xec, 0x11];
   const flat = [];
-  const pushBits = (bits, kind) => {
-    const k = typeof kind === "number" ? kind : BIT_UNKNOWN;
-    for(const ch of bits){
-      const isBlack = ch === "1";
-      flat.push(encodeBit(k, isBlack));
+  const pushBitsToFlat = (bits, kind) => {
+    const baseKind = typeof kind === "number" ? kind : BIT_UNKNOWN;
+    for(const bit of bits){
+      const isBlack = bit === "1";
+      flat.push(encodeBit(baseKind, isBlack));
     }
   };
 
-  // A: mode (0100) + length (8bit)
   const modeBits = "0100";
-  const lenBits = input.length.toString(2).padStart(8, "0");
-  pushBits(modeBits, BIT_INFO_MODE);
-  pushBits(lenBits, BIT_INFO_LENGTH);
-
-  // B: chars + terminator + zero-pad + pad codewords
-  let bitStream = modeBits + lenBits;
+  const lenBits = Math.max(0, input.length).toString(2).padStart(8, "0");
+  let dataBitStream = modeBits + lenBits;
+  const characterEntries = [];
   for(let i = 0; i < input.length; i++){
-    const code = input.charCodeAt(i) & 0xff; // ASCII 8bit
+    const code = input.charCodeAt(i) & 0xff;
     const bits = code.toString(2).padStart(8, "0");
-    pushBits(bits, BIT_INFO_CHAR);
-    bitStream += bits;
+    characterEntries.push({
+      char: input.charAt(i),
+      code,
+      bits,
+    });
+    dataBitStream += bits;
   }
-  // Terminator (up to 4 bits)
+
   const terminatorBits = "0000";
-  pushBits(terminatorBits, BIT_INFO_TERMINATOR);
-  bitStream += terminatorBits;
-
-  // Align to byte boundary with zero padding if needed
-  const mod8 = bitStream.length % 8;
+  dataBitStream += terminatorBits;
+  let zeroPadBits = "";
+  const mod8 = dataBitStream.length % 8;
   if(mod8 !== 0){
-    const zeroPad = "0".repeat(8 - mod8);
-    pushBits(zeroPad, BIT_INFO_PADDING);
-    bitStream += zeroPad;
+    const paddingLength = 8 - mod8;
+    zeroPadBits = "0".repeat(paddingLength);
+    dataBitStream += zeroPadBits;
   }
 
-  // Split into bytes and pad to DATA_CODEWORDS with 0xEC/0x11
   const dataCodewords = [];
-  for(let i = 0; i < bitStream.length; i += 8){
-    const byteBits = bitStream.slice(i, i + 8);
+  for(let offset = 0; offset < dataBitStream.length; offset += 8){
+    const byteBits = dataBitStream.slice(offset, offset + 8);
+    if(byteBits.length < 8) continue;
     dataCodewords.push(parseInt(byteBits, 2));
   }
+
+  const padEntries = [];
   let padIdx = 0;
   while(dataCodewords.length < DATA_CODEWORDS){
-    const padVal = PAD_CODEWORDS[padIdx % PAD_CODEWORDS.length];
-    dataCodewords.push(padVal);
-    pushBits(padVal.toString(2).padStart(8, "0"), BIT_INFO_PADDING);
+    const value = PAD_CODEWORDS[padIdx % PAD_CODEWORDS.length];
+    const bits = toBinaryString(value, 8);
+    dataCodewords.push(value);
+    padEntries.push({ value, bits });
     padIdx++;
   }
 
-  // C: parity (Reed-Solomon)
-  const parity = qrComputeParity(dataCodewords, EC_CODEWORDS);
-  for(const val of parity){
-    const bits = val.toString(2).padStart(8, "0");
-    pushBits(bits, BIT_INFO_PARITY);
+  const parityBytes = qrComputeParity(dataCodewords, EC_CODEWORDS);
+
+  pushBitsToFlat(modeBits, BIT_INFO_MODE);
+  pushBitsToFlat(lenBits, BIT_INFO_LENGTH);
+  for(const entry of characterEntries){
+    pushBitsToFlat(entry.bits, BIT_INFO_CHAR);
+  }
+  pushBitsToFlat(terminatorBits, BIT_INFO_TERMINATOR);
+  if(zeroPadBits){
+    pushBitsToFlat(zeroPadBits, BIT_INFO_PADDING);
+  }
+  for(const padEntry of padEntries){
+    pushBitsToFlat(padEntry.bits, BIT_INFO_PADDING);
+  }
+  for(const byte of parityBytes){
+    pushBitsToFlat(toBinaryString(byte, 8), BIT_INFO_PARITY);
   }
 
-  window.patternBits = flat;
-  try{ console.log("patternBits", flat); }catch(_e){}
-  return flat;
+  window.patternBits = flat.slice();
+  return {
+    modeBits,
+    lenBits,
+    characterEntries,
+    terminatorBits,
+    zeroPadBits,
+    padEntries,
+    dataCodewords,
+    parityBytes,
+  };
+}
+
+function parsePattern(text){
+  const builder = qrBuildPatternSegments(text);
+  return Array.isArray(window.patternBits) ? window.patternBits : [];
 }
 
 // Export to global scope for use by layout.js / main.js
@@ -207,3 +229,5 @@ window.isBlackBit = isBlackBit;
 window.isWhiteBit = isWhiteBit;
 window.isUnplacedBit = isUnplacedBit;
 window.parsePattern = parsePattern;
+window.qrBuildPatternSegments = qrBuildPatternSegments;
+window.qrComputeParity = qrComputeParity;

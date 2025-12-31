@@ -75,66 +75,6 @@ if(typeof window.log !== "function"){
   };
 }
 
-// Reed-Solomon (QR, GF(256), poly 0x11d) helpers
-const GF256_EXP = new Array(512);
-const GF256_LOG = new Array(256);
-let gfReady = false;
-const generatorCache = {};
-function ensureGF(){
-  if(gfReady) return;
-  let x = 1;
-  for(let i = 0; i < 256; i++){
-    GF256_EXP[i] = x;
-    GF256_LOG[x] = i;
-    x <<= 1;
-    if(x & 0x100){
-      x ^= 0x11d;
-    }
-  }
-  for(let i = 256; i < 512; i++){
-    GF256_EXP[i] = GF256_EXP[i - 256];
-  }
-  gfReady = true;
-}
-function gfMul(a, b){
-  if(a === 0 || b === 0) return 0;
-  return GF256_EXP[(GF256_LOG[a] + GF256_LOG[b]) % 255];
-}
-function polyMultiply(p, q){
-  const res = new Array(p.length + q.length - 1).fill(0);
-  for(let i = 0; i < p.length; i++){
-    for(let j = 0; j < q.length; j++){
-      res[i + j] ^= gfMul(p[i], q[j]);
-    }
-  }
-  return res;
-}
-function getGenerator(ecLen){
-  if(generatorCache[ecLen]) return generatorCache[ecLen];
-  ensureGF();
-  let poly = [1];
-  for(let i = 0; i < ecLen; i++){
-    poly = polyMultiply(poly, [1, GF256_EXP[i]]);
-  }
-  generatorCache[ecLen] = poly;
-  return poly;
-}
-function computeParity(dataCodewords, ecLen){
-  const gen = getGenerator(ecLen);
-  const ec = new Array(ecLen).fill(0);
-  for(const d of dataCodewords){
-    const factor = d ^ ec[0];
-    ec.shift();
-    ec.push(0);
-    if(factor !== 0){
-      for(let i = 0; i < ecLen; i++){
-        ec[i] ^= gfMul(gen[i + 1], factor);
-      }
-    }
-  }
-  return ec;
-}
-
 function renderRow(row, groups, { small = false, breakAfterTerminator = false } = {}){
   if(!row) return;
   const gapLarge = 7;
@@ -251,72 +191,45 @@ function refreshPattern(){
   if(!patternRowA || !patternRowB || !patternRowC) return;
   const input = txtInput.value;
 
-  // Build flat pattern bits for drawing using parsePattern (qrcode.js)
-  try{
-    if(typeof window.parsePattern === "function"){
-      window.patternBits = window.parsePattern(input);
-    }
-  }catch(e){
-    window.log && window.log(e);
-  }
+  const builder = (typeof window.qrBuildPatternSegments === "function") ? window.qrBuildPatternSegments(input) : null;
+  if(!builder) return;
 
-  // Rebuild panel display groups (A/B/C) with labels
-  const DATA_CODEWORDS = 34; // v2-L data bytes
-  const EC_CODEWORDS = 10;   // parity bytes
-  const PAD_CODEWORDS = [0xec, 0x11];
+  const {
+    modeBits,
+    lenBits,
+    characterEntries,
+    terminatorBits,
+    zeroPadBits,
+    padEntries,
+    dataCodewords,
+  } = builder;
 
   const groupA = [];
-  const groupB = [];
-
-  // A: mode + length
-  const modeBits = "0100";
-  const lenBits = input.length.toString(2).padStart(8, "0");
   groupA.push({ label: `${TYPE_MODE}:4`, bits: modeBits, color: getKindColor(BIT_INFO_MODE) });
   groupA.push({ label: `${TYPE_LENGTH}:${input.length}`, bits: lenBits, color: getKindColor(BIT_INFO_LENGTH) });
 
-  // B: chars + terminator + zero-pad + pad codewords
-  let bitStream = modeBits + lenBits;
-  for(let i = 0; i < input.length; i++){
-    const code = input.charCodeAt(i) & 0xff; // ASCII 8bit
-    const bits = code.toString(2).padStart(8, "0");
-    const dispChar = input[i] === " " ? CHAR_SPACE 
-      : input[i] === ":" ? CHAR_COLON
-      : input[i];
-    const label = `${dispChar}:${code}`;
-    groupB.push({ label, bits, color: getKindColor(BIT_INFO_CHAR) });
-    bitStream += bits;
+  const groupB = [];
+  for(const entry of characterEntries){
+    const dispChar = entry.char === " " ? CHAR_SPACE
+      : entry.char === ":" ? CHAR_COLON
+      : entry.char;
+    const label = `${dispChar}:${entry.code}`;
+    groupB.push({ label, bits: entry.bits, color: getKindColor(BIT_INFO_CHAR) });
   }
-  // Terminator (up to 4 bits)
-  const terminatorBits = "0000";
   groupB.push({ label: `${CHAR_TERMINATE}:0`, bits: terminatorBits, terminator: true, color: getKindColor(BIT_INFO_TERMINATOR) });
-  bitStream += terminatorBits;
-
-  // Align to byte boundary with zero padding if needed
-  const mod8 = bitStream.length % 8;
-  if(mod8 !== 0){
-    const zeroPad = "0".repeat(8 - mod8);
-    groupB.push({ label: "zero-pad", bits: zeroPad, color: getKindColor(BIT_INFO_PADDING), padding: true });
-    bitStream += zeroPad;
+  if(zeroPadBits){
+    groupB.push({ label: "zero-pad", bits: zeroPadBits, color: getKindColor(BIT_INFO_PADDING), padding: true });
+  }
+  for(const padEntry of padEntries){
+    const padLabel = `${CHAR_PADDING}:${padEntry.value}`;
+    groupB.push({ label: padLabel, bits: padEntry.bits, color: getKindColor(BIT_INFO_PADDING), padding: true });
   }
 
-  // Split into bytes and pad to DATA_CODEWORDS with 0xEC/0x11
-  const dataCodewords = [];
-  for(let i = 0; i < bitStream.length; i += 8){
-    const byteBits = bitStream.slice(i, i + 8);
-    dataCodewords.push(parseInt(byteBits, 2));
-  }
-  let padIdx = 0;
-  while(dataCodewords.length < DATA_CODEWORDS){
-    const padVal = PAD_CODEWORDS[padIdx % PAD_CODEWORDS.length];
-    dataCodewords.push(padVal);
-    const label = `${CHAR_PADDING}:${padVal}`;
-    groupB.push({ label, bits: padVal.toString(2).padStart(8, "0"), color: getKindColor(BIT_INFO_PADDING), padding: true });
-    padIdx++;
-  }
-
-  // C: Reed-Solomon parity bytes
-  const parity = computeParity(dataCodewords, EC_CODEWORDS);
-  const groupC = parity.map(val => ({
+  const EC_CODEWORDS = 10;
+  const parityBytes = (typeof window.qrComputeParity === "function")
+    ? window.qrComputeParity(dataCodewords, EC_CODEWORDS)
+    : [];
+  const groupC = parityBytes.map((val) => ({
     label: "",
     bits: val.toString(2).padStart(8, "0"),
     color: getKindColor(BIT_INFO_PARITY),
