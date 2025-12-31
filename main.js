@@ -710,6 +710,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       forceImmediate = abortRun,
       stopStep = abortRun,
     } = options;
+    window.logEvent("resetQRCode", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, "QRコード描画をリセット");
     if(abortRun){
       runId++;
       maskRunId++;
@@ -745,6 +746,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   async function resetCommand(){
+    window.logEvent("resetCommand", "", "コマンドをリセット");
     resetQRCode();
     await sleep(RESET_DELAY_MS);
   }
@@ -1570,8 +1572,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       idx = 0;
     }
     if(idx < 0 || idx > 7){
+      window.logEvent("applyMask", maskIndex ?? "", "マスクインデックスが無効");
       return false; // out of range: do nothing
     }
+    window.logEvent("applyMask", idx, `マスク${idx}を適用`);
     const maskFn = MASK_FUNCTIONS[idx];
     if(!maskFn) return false;
     const stepMask = isStepModeOn() && !(stepSkipFunctions && stepSkipFunctions.checked);
