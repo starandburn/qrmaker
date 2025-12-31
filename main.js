@@ -42,7 +42,7 @@
     applyPatternOpenFromParam,
     applyDebugFromParam,
     applyHistoryFromParam,
-    applyStepSpeedParam,
+    applyCombinedStepParam,
     applyUrlControlStates,
     buildStateUrl: buildStateUrlFromState,
     PARAM_KEYS = {},
@@ -2856,7 +2856,7 @@
   if(stepMode){
     stepMode.addEventListener("change", syncStepControls);
   }
-  applyStepSpeedParam({ stepSpeed });
+  applyCombinedStepParam({ stepMode, stepSpeed, stepSkipFunctions });
   syncStepControls();
 
   ensureCells();
@@ -3170,7 +3170,9 @@
       defaultDataValue: DATA_DEFAULT_TEXT,
       debugPanel,
       dataPatternPanel,
-      stepSpeed,
+    stepSpeed,
+    stepMode,
+    stepSkipFunctions,
       historyVisible,
       isDebugVisible,
     });

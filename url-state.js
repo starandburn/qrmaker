@@ -5,7 +5,7 @@
   const DEBUG_PARAM_ALIAS = "d";
   const PATTERN_PANEL_PARAM_KEY = "patternPanel";
   const PATTERN_PANEL_PARAM_ALIAS = "p";
-  const STEP_SPEED_PARAM_KEY = "stepSpeed";
+  const COMBINED_STEP_PARAM_KEY = "s";
   const DATA_PARAM_KEY = "data";
   const DATA_EMPTY_TOKEN = "_";
   const HISTORY_PARAM_KEY = "history";
@@ -82,21 +82,65 @@
     return true;
   };
 
-  const applyStepSpeedParam = ({ stepSpeed } = {}) => {
-    if(!stepSpeed) return false;
-    if(!params.has(STEP_SPEED_PARAM_KEY)) return false;
-    const rawValue = params.get(STEP_SPEED_PARAM_KEY);
-    if(rawValue === null) return false;
+  const parseCombinedStepParam = () => {
+    if(!params.has(COMBINED_STEP_PARAM_KEY)) return null;
+    const rawValue = params.get(COMBINED_STEP_PARAM_KEY);
+    if(rawValue === null) return null;
     const numeric = Number(rawValue);
-    if(!Number.isFinite(numeric)) return false;
-    const minVal = Number(stepSpeed.min);
-    const maxVal = Number(stepSpeed.max);
+    if(!Number.isFinite(numeric)) return null;
+    const skipOff = numeric >= 1000;
+    const baseValue = skipOff ? numeric - 1000 : numeric;
+    return {
+      enabled: baseValue >= 1,
+      speedSource: Math.max(0, baseValue),
+      skipFunctions: !skipOff,
+    };
+  };
+ 
+  const buildCombinedStepParamValue = ({
+    stepMode,
+    stepSpeed,
+    stepSkipFunctions,
+  } = {}) => {
+    const modeEnabled = stepMode && typeof stepMode.checked === "boolean" ? stepMode.checked : false;
+    if(!modeEnabled){
+      return "0";
+    }
+    const rawSpeed = stepSpeed ? Number(stepSpeed.value ?? stepSpeed.defaultValue ?? "") : NaN;
+    const numericSpeed = Number.isFinite(rawSpeed) ? rawSpeed : 0;
+    const minVal = Number(stepSpeed?.min ?? 0);
+    const maxVal = Number(stepSpeed?.max ?? 120);
     const clampedLower = Number.isFinite(minVal) ? minVal : 0;
     const clampedUpper = Number.isFinite(maxVal) ? maxVal : clampedLower || 120;
-    const clamped = Math.max(clampedLower, Math.min(clampedUpper, numeric));
-    const nextValue = String(clamped);
-    if(stepSpeed.value !== nextValue){
-      stepSpeed.value = nextValue;
+    const clampedSpeed = Math.max(clampedLower, Math.min(clampedUpper, numericSpeed));
+    const baseValue = Math.max(0, clampedSpeed) + 1;
+    const skipOff = stepSkipFunctions && typeof stepSkipFunctions.checked === "boolean" ? !stepSkipFunctions.checked : false;
+    const combined = baseValue + (skipOff ? 1000 : 0);
+    return String(Math.round(combined));
+  };
+
+  const applyCombinedStepParam = ({
+    stepMode,
+    stepSpeed,
+    stepSkipFunctions,
+  } = {}) => {
+    if(!stepMode && !stepSpeed && !stepSkipFunctions) return false;
+    const spec = parseCombinedStepParam();
+    if(!spec) return false;
+
+    if(stepMode && typeof stepMode.checked === "boolean"){
+      stepMode.checked = spec.enabled;
+    }
+    if(spec.enabled && stepSpeed){
+      const minVal = Number(stepSpeed.min);
+      const maxVal = Number(stepSpeed.max);
+      const clampedLower = Number.isFinite(minVal) ? minVal : 0;
+      const clampedUpper = Number.isFinite(maxVal) ? maxVal : clampedLower || 120;
+      const targetValue = Math.max(clampedLower, Math.min(clampedUpper, spec.speedSource - 1));
+      stepSpeed.value = String(targetValue);
+    }
+    if(stepSkipFunctions && typeof stepSkipFunctions.checked === "boolean"){
+      stepSkipFunctions.checked = spec.skipFunctions;
     }
     return true;
   };
@@ -178,6 +222,8 @@
     debugPanel,
     dataPatternPanel,
     stepSpeed,
+    stepMode,
+    stepSkipFunctions,
     historyVisible,
     isDebugVisible,
   } = {}) => {
@@ -199,11 +245,9 @@
     if(dataPatternPanel){
       stateParams.set(PATTERN_PANEL_PARAM_KEY, dataPatternPanel.open ? "1" : "0");
     }
-    if(stepSpeed){
-      const speedValue = stepSpeed.value ?? "";
-      if(speedValue !== ""){
-        stateParams.set(STEP_SPEED_PARAM_KEY, speedValue);
-      }
+    const combinedStepValue = buildCombinedStepParamValue({ stepMode, stepSpeed, stepSkipFunctions });
+    if(typeof combinedStepValue === "string"){
+      stateParams.set(COMBINED_STEP_PARAM_KEY, combinedStepValue);
     }
     stateParams.set(HISTORY_PARAM_KEY, historyVisible ? "1" : "0");
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
@@ -220,7 +264,7 @@
     applyPatternOpenFromParam,
     applyDebugFromParam,
     applyHistoryFromParam,
-    applyStepSpeedParam,
+    applyCombinedStepParam,
     applyUrlControlStates,
     buildStateUrl,
     PARAM_KEYS: {
@@ -229,7 +273,7 @@
       DEBUG_ALIAS: DEBUG_PARAM_ALIAS,
       PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY,
       PATTERN_PANEL_ALIAS: PATTERN_PANEL_PARAM_ALIAS,
-      STEP_SPEED: STEP_SPEED_PARAM_KEY,
+      COMBINED_STEP: COMBINED_STEP_PARAM_KEY,
       DATA: DATA_PARAM_KEY,
       HISTORY: HISTORY_PARAM_KEY,
     },
