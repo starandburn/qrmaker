@@ -82,6 +82,16 @@ function flushLogBuffer(){
   }
 }
 
+function formatEventMessage(fnName, mainArg, description){
+  const clip = window.formatLogEventMessage || ((fnName, mainArg, description) => {
+    const safeName = fnName || "unknown";
+    const mainArgText = (mainArg === undefined || mainArg === null) ? "" : String(mainArg);
+    const callText = `${safeName}(${mainArgText})`;
+    return description ? `${callText}: ${description}` : callText;
+  });
+  return clip(fnName, mainArg, description);
+}
+
 window.log = (msg) => {
   const logEl = getDebugLogElement();
   if(logEl && logBuffer.length){
@@ -97,6 +107,13 @@ window.log = (msg) => {
     // ignore console errors
   }
 };
+
+function logEvent(fnName, mainArg, description){
+  const message = formatEventMessage(fnName, mainArg, description);
+  window.log(message);
+}
+
+window.logEvent = logEvent;
 
 const debugUI = {
   applyDebugVisibility,

@@ -2242,7 +2242,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   btnInit.addEventListener("click", () => {
-    window.log("btnInit clicked");
+    window.logEvent("btnInit", "", "初期化ボタン押下");
     runId++;
     resetQRCode({ abortRun: false, forceImmediate: true, stopStep: true });
     resetCursor();
@@ -2369,7 +2369,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   btnGenerate.addEventListener("click", async () => {
-    window.log("btnGenerate clicked");
+    window.logEvent("btnGenerate", "", "コード生成ボタン押下");
     setExecutionStatus("running");
     const ok = await runUserCodeWithStep();
     if(ok){
@@ -2468,7 +2468,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
 
   if(btnClearCode){
     btnClearCode.addEventListener("click", () => {
-      window.log("code cleared");
+      window.logEvent("clearCode", "", "コード入力をクリア");
       if(userCodeInput){
         userCodeInput.value = "";
         userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));

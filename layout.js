@@ -1,15 +1,14 @@
-
 const CHAR_SPACE = "空白";
 const CHAR_TERMINATE = "終端";
-const CHAR_COLON = "コロン(:)";
-const CHAR_PADDING = "固定";
+const CHAR_COLON = "：";
+const CHAR_PADDING = "パディング";
 
-const TYPE_MODE = "種別";
-const TYPE_LENGTH = "文字数";
+const TYPE_MODE = "モード";
+const TYPE_LENGTH = "長さ";
 
-const CAPTION_CODEPATTERN="コードパターンを";
-const CAPTION_SHOWCODEPATTERN = CAPTION_CODEPATTERN + "表示";
-const CAPTION_HIDECODEPATTERN = CAPTION_CODEPATTERN + "隠す";
+const CAPTION_CODEPATTERN = "コードパターン";
+const CAPTION_SHOWCODEPATTERN = `${CAPTION_CODEPATTERN}を表示`;
+const CAPTION_HIDECODEPATTERN = `${CAPTION_CODEPATTERN}を非表示`;
 
 const txtInput = document.getElementById("txtInput");
 const patternBox = document.getElementById("patternBox");
@@ -72,6 +71,21 @@ if(typeof window.log !== "function"){
     const line = `[${hh}:${mm}:${ss}] ${String(msg)}`;
     window._logBuffer.push(line);
     try{ console.log(msg); }catch(e){}
+  };
+}
+
+const formatLogEventMessage = (fnName, mainArg, description) => {
+  const safeName = fnName || "unknown";
+  const mainArgText = (mainArg === undefined || mainArg === null) ? "" : String(mainArg);
+  const callText = `${safeName}(${mainArgText})`;
+  return description ? `${callText}: ${description}` : callText;
+};
+window.formatLogEventMessage = formatLogEventMessage;
+
+if(typeof window.logEvent !== "function"){
+  window.logEvent = (fnName, mainArg, description) => {
+    const message = formatLogEventMessage(fnName, mainArg, description);
+    window.log(message);
   };
 }
 
@@ -186,10 +200,10 @@ function renderAsciiTable(){
 }
 
 function refreshPattern(){
-  window.log("refreshPattern()");
   if(!txtInput) return;
   if(!patternRowA || !patternRowB || !patternRowC) return;
   const input = txtInput.value;
+  window.logEvent("refreshPattern", input, "パターンを再描画");
 
   const builder = (typeof window.qrBuildPatternSegments === "function") ? window.qrBuildPatternSegments(input) : null;
   if(!builder) return;
@@ -304,7 +318,7 @@ if(userCode){
 refreshPattern();
 
 function fitSquare(){
-  window.log("fitSquare()");
+  window.logEvent("fitSquare", "", "描画領域にフィット");
   const area = document.querySelector(".view-area");
   const sq = document.querySelector(".square");
   if(!area || !sq) return;
@@ -341,7 +355,7 @@ requestAnimationFrame(fitSquare);
 window.fitSquare = fitSquare;
 
 function syncViewToggles(){
-  window.log("syncViewToggles()");
+  window.logEvent("syncViewToggles", "", "表示トグルの状態を同期");
   const area = document.querySelector(".view-area");
   if(!area) return;
   area.classList.toggle("hide-guide", toggleGuide && !toggleGuide.checked);
@@ -487,4 +501,8 @@ const layoutUI = {
 };
 
 window.layoutUI = Object.assign({}, window.layoutUI || {}, layoutUI);
+
+
+
+
 

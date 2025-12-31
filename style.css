@@ -234,8 +234,8 @@ main.layout{
 .debug-log{
   margin-top:8px;
   width:100%;
-  min-height:calc(1.05em * 3.3);
-  max-height:calc(1.05em * 3.3);
+  min-height:calc(1.05em * 2.2);
+  max-height:calc(1.05em * 2.2);
   padding:4px 6px;
   border:1px solid #cfd3da;
   border-radius:0;
