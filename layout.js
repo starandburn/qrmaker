@@ -436,9 +436,6 @@ const historyCount = document.getElementById("historyCount");
 const codeHistoryList = document.getElementById("codeHistoryList");
 const codePanelElement = document.querySelector(".code-panel");
 const btnToggleHistory = document.getElementById("btnToggleHistory");
-const debugPanelElement = document.getElementById("debugPanel");
-const debugRowElement = document.querySelector(".debug-row");
-const debugOnlyControlsList = Array.from(document.querySelectorAll(".debug-only"));
 
 const LAYOUT_HISTORY_PREVIEW_LENGTH = 64;
 const escapeHtml = (value) => {
@@ -486,17 +483,6 @@ const layoutUI = {
       return `<li data-index="${index}" title="${escapeHtml(title)}" class="${index === 0 ? "is-latest" : ""}"><span class="history-snippet">${htmlPreview}</span><span class="history-meta">${htmlLabel}</span></li>`;
     });
     codeHistoryList.innerHTML = rows.join("");
-  },
-  applyDebugVisibility(visible){
-    const isVisible = Boolean(visible);
-    if(!debugPanelElement) return;
-    debugPanelElement.style.display = isVisible ? "block" : "none";
-    if(debugRowElement){
-      debugRowElement.style.display = isVisible ? "flex" : "none";
-    }
-    for(const control of debugOnlyControlsList){
-      control.style.display = isVisible ? "inline-flex" : "none";
-    }
   },
 };
 

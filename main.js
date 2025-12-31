@@ -1,12 +1,11 @@
 
-function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layoutUI || {} } = {}){
+function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layoutUI || {}, debugUI = window.debugUI || {} } = {}){
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");
   const btnClearCode = document.getElementById("btnClearCode");
   const btnCopyCode = document.getElementById("btnCopyCode");
   const btnPasteCode = document.getElementById("btnPasteCode");
   const debugLog = document.getElementById("debugLog");
-  const debugPanel = document.getElementById("debugPanel");
   const dataPatternPanel = document.getElementById("dataPatternPanel") || document.getElementById("patternDetails");
   const codePanel = document.querySelector(".code-panel");
   const userCodeParsed = document.getElementById("userCodeParsed");
@@ -32,7 +31,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   let pendingHistoryLabel = "変更";
   const txtInput = document.getElementById("txtInput");
   const setHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
-  const applyDebugVisibility = layoutUI.applyDebugVisibility || (() => {});
+  const applyDebugVisibility = layoutUI.applyDebugVisibility || debugUI.applyDebugVisibility || (() => {});
+  const isDebugVisible = debugUI.isDebugVisible || (() => false);
+  const getDebugPanel = () => debugUI.debugPanel;
   const renderHistoryList = (entries) => {
     if(typeof layoutUI.renderHistoryList === "function"){
       layoutUI.renderHistoryList(entries);
@@ -74,7 +75,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   const defaultFlagString = TOGGLE_FLAG_ORDER.map((target) => (readToggleDefault(target) ? "1" : "0")).join("");
   const defaultHistoryVisible = historyVisible;
-  let defaultDebugVisible = false;
+  let defaultDebugVisible = isDebugVisible();
   const defaultPatternOpen = dataPatternPanel ? dataPatternPanel.open : false;
   const defaultStepMode = stepMode ? (typeof stepMode.defaultChecked === "boolean" ? stepMode.defaultChecked : Boolean(stepMode.checked)) : false;
   const defaultStepSkipFunctions = stepSkipFunctions ? (typeof stepSkipFunctions.defaultChecked === "boolean" ? stepSkipFunctions.defaultChecked : Boolean(stepSkipFunctions.checked)) : false;
@@ -138,7 +139,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
   };
   applyPatternOpenFromParam({ dataPatternPanel });
-  applyDebugFromParam({ debugPanel, applyDebugVisibility });
+  applyDebugFromParam({ debugPanel: getDebugPanel(), applyDebugVisibility });
   applyHistoryFromParam({ codePanel, setHistoryVisibility });
   applySampleParam({ codePanel });
   if(!btnGenerate || !btnInit) return;
@@ -315,15 +316,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   let timingRowIndex = 0;
   let timingColIndex = 0;
   let hasFormatPattern = false;
-  const isDebugVisible = () => {
-    if(!debugPanel) return false;
-    const styleDisp = debugPanel.style.display;
-    if(styleDisp){
-      return styleDisp !== "none";
-    }
-    return getComputedStyle(debugPanel).display !== "none";
-  };
-  defaultDebugVisible = isDebugVisible();
   let lastMoveBlocked = false;
   const BOARD_ROWS = 25;
   const BOARD_COLS = 25;
@@ -960,13 +952,13 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
 
   function syncDebugPanelLayout(){
     if(!debugLog) return;
-    const baseMin = "120px";
-    const baseMax = "160px";
+    const baseMin = "80px";
+    const baseMax = "110px";
     let minH = baseMin;
     let maxH = baseMax;
     if(isDebugVisible() && dataPatternPanel && dataPatternPanel.open){
-      minH = "110px";
-      maxH = "120px";
+      minH = "70px";
+      maxH = "80px";
     }
     debugLog.style.minHeight = minH;
     debugLog.style.maxHeight = maxH;
@@ -3133,7 +3125,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       txtInput,
       flagString: buildFlagString(),
       defaultDataValue: DATA_DEFAULT_TEXT,
-      debugPanel,
+      debugPanel: getDebugPanel(),
       dataPatternPanel,
       stepSpeed,
       stepMode,
@@ -3259,7 +3251,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   window.log("window initialized");
 
-  if(footerCopy && debugPanel){
+  const setupFooterDebugToggle = () => {
+    const panel = getDebugPanel();
+    if(!footerCopy || !panel) return;
     footerCopy.addEventListener("dblclick", () => {
       const nextVisible = !isDebugVisible();
       applyDebugVisibility(nextVisible);
@@ -3270,5 +3264,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         requestAnimationFrame(window.fitSquare);
       }
     });
-  }
+  };
+  setupFooterDebugToggle();
 }

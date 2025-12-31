@@ -223,33 +223,6 @@ main.layout{
     margin-bottom:4px;
     display:none;
   }
-.debug-row{
-  display:none;
-}
-.debug-label{
-  font-size:14px;
-  color:#2b2f33;
-}
-.debug-row input{
-  flex:1 1 140px;
-  padding:8px 10px;
-  border:1px solid #cfd3da;
-  border-radius:8px;
-  font-size:14px;
-  box-sizing:border-box;
-}
-.debug-row button{
-  padding:8px 14px;
-  border:none;
-  border-radius:8px;
-  background:#1b66ff;
-  color:#fff;
-  font-size:14px;
-  cursor:pointer;
-}
-.debug-row button:hover{
-  background:#1452cc;
-}
 .debug-output{
   min-height:20px;
   padding:0 6px;
@@ -261,8 +234,8 @@ main.layout{
 .debug-log{
   margin-top:8px;
   width:100%;
-  min-height:calc(1.05em * 5);
-  max-height:calc(1.05em * 5);
+  min-height:calc(1.05em * 3.3);
+  max-height:calc(1.05em * 3.3);
   padding:4px 6px;
   border:1px solid #cfd3da;
   border-radius:0;
