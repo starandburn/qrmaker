@@ -739,8 +739,7 @@ details.pattern-panel:not([open]) .summary-title::before{
   font-size:0.85rem;
   cursor:pointer;
 }
-.code-panel.show-samples .code-debug-toolbar,
-.code-panel.debug-mode .code-debug-toolbar{
+.code-panel.show-samples .code-debug-toolbar{
   display:flex;
 }
 

@@ -9,6 +9,7 @@
   const DATA_PARAM_KEY = "t";
   const DATA_EMPTY_TOKEN = "_";
   const HISTORY_PARAM_KEY = "h";
+  const SAMPLES_PARAM_KEY = "m";
 
   const lookupParam = (primary, alias) => {
     if(alias && params.has(alias)) return params.get(alias);
@@ -79,6 +80,15 @@
     const parsed = stringifyBool(spec);
     if(parsed === null) return false;
     setHistoryVisibility(parsed);
+    return true;
+  };
+
+  const applySampleParam = ({ codePanel } = {}) => {
+    if(!codePanel) return false;
+    if(!params.has(SAMPLES_PARAM_KEY)) return false;
+    const parsed = stringifyBool(params.get(SAMPLES_PARAM_KEY));
+    if(parsed === null) return false;
+    codePanel.classList.toggle("show-samples", parsed);
     return true;
   };
 
@@ -226,6 +236,15 @@
     stepSkipFunctions,
     historyVisible,
     isDebugVisible,
+    defaultFlagString,
+    defaultHistoryVisible = false,
+    defaultDebugVisible = false,
+    defaultPatternOpen = false,
+    defaultStepMode = false,
+    defaultStepSkipFunctions = false,
+    defaultStepSpeed = "",
+    initialDebugParamPresent = false,
+    codePanel,
   } = {}) => {
     const stateParams = new URLSearchParams();
     if(txtInput){
@@ -237,19 +256,51 @@
       }
     }
     if(typeof flagString === "string" && flagString.length){
-      stateParams.set(FLAG_PARAM_KEY, flagString);
+      const flagDefault = typeof defaultFlagString === "string" && defaultFlagString.length ? defaultFlagString : "";
+      if(flagString !== flagDefault){
+        stateParams.set(FLAG_PARAM_KEY, flagString);
+      }
     }
     if(debugPanel && typeof isDebugVisible === "function"){
-      stateParams.set(DEBUG_PARAM_KEY, isDebugVisible() ? "1" : "0");
+      const visible = isDebugVisible();
+      const shouldIncludeDebug = initialDebugParamPresent || visible !== Boolean(defaultDebugVisible);
+      if(shouldIncludeDebug){
+        stateParams.set(DEBUG_PARAM_KEY, visible ? "1" : "0");
+      }
     }
     if(dataPatternPanel){
-      stateParams.set(PATTERN_PANEL_PARAM_KEY, dataPatternPanel.open ? "1" : "0");
+      const patternOpen = dataPatternPanel.open;
+      if(patternOpen !== Boolean(defaultPatternOpen)){
+        stateParams.set(PATTERN_PANEL_PARAM_KEY, patternOpen ? "1" : "0");
+      }
+    }
+    if(codePanel){
+      const sampleVisible = codePanel.classList.contains("show-samples");
+      if(sampleVisible){
+        stateParams.set(SAMPLES_PARAM_KEY, "1");
+      }
     }
     const combinedStepValue = buildCombinedStepParamValue({ stepMode, stepSpeed, stepSkipFunctions });
+    const defaultCombinedStepValue = buildCombinedStepParamValue({
+      stepMode: { checked: Boolean(defaultStepMode) },
+      stepSpeed: stepSpeed
+        ? {
+            value: defaultStepSpeed ?? stepSpeed.defaultValue ?? "",
+            defaultValue: defaultStepSpeed ?? stepSpeed.defaultValue ?? "",
+            min: stepSpeed.min,
+            max: stepSpeed.max,
+          }
+        : undefined,
+      stepSkipFunctions: { checked: Boolean(defaultStepSkipFunctions) },
+    });
     if(typeof combinedStepValue === "string"){
-      stateParams.set(COMBINED_STEP_PARAM_KEY, combinedStepValue);
+      if(combinedStepValue !== defaultCombinedStepValue){
+        stateParams.set(COMBINED_STEP_PARAM_KEY, combinedStepValue);
+      }
     }
-    stateParams.set(HISTORY_PARAM_KEY, historyVisible ? "1" : "0");
+    if(historyVisible !== Boolean(defaultHistoryVisible)){
+      stateParams.set(HISTORY_PARAM_KEY, historyVisible ? "1" : "0");
+    }
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
     const query = stateParams.toString();
     return query ? `${baseUrl}?${query}` : baseUrl;
@@ -264,6 +315,7 @@
     applyPatternOpenFromParam,
     applyDebugFromParam,
     applyHistoryFromParam,
+    applySampleParam,
     applyCombinedStepParam,
     applyUrlControlStates,
     buildStateUrl,
@@ -274,6 +326,7 @@
       PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY,
       PATTERN_PANEL_ALIAS: PATTERN_PANEL_PARAM_ALIAS,
       COMBINED_STEP: COMBINED_STEP_PARAM_KEY,
+      SAMPLES: SAMPLES_PARAM_KEY,
       DATA: DATA_PARAM_KEY,
       HISTORY: HISTORY_PARAM_KEY,
     },

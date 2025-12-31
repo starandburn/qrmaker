@@ -42,6 +42,7 @@
     applyPatternOpenFromParam,
     applyDebugFromParam,
     applyHistoryFromParam,
+    applySampleParam,
     applyCombinedStepParam,
     applyUrlControlStates,
     buildStateUrl: buildStateUrlFromState,
@@ -50,6 +51,8 @@
   const {
     DATA: DATA_PARAM_KEY = "t",
     HISTORY: HISTORY_PARAM_KEY = "h",
+    DEBUG: DEBUG_PARAM_KEY = "d",
+    SAMPLES: SAMPLES_PARAM_KEY = "m",
   } = PARAM_KEYS;
   const DATA_DEFAULT_TEXT = "Hello, World!";
   const TOGGLE_FLAG_ORDER = [
@@ -62,6 +65,18 @@
     stepMode,
     stepSkipFunctions,
   ];
+  const initialDebugParamPresent = urlParams.has(DEBUG_PARAM_KEY);
+  const readToggleDefault = (target) => {
+    if(!target || typeof target.checked !== "boolean") return false;
+    return typeof target.defaultChecked === "boolean" ? target.defaultChecked : Boolean(target.checked);
+  };
+  const defaultFlagString = TOGGLE_FLAG_ORDER.map((target) => (readToggleDefault(target) ? "1" : "0")).join("");
+  const defaultHistoryVisible = historyVisible;
+  let defaultDebugVisible = false;
+  const defaultPatternOpen = dataPatternPanel ? dataPatternPanel.open : false;
+  const defaultStepMode = stepMode ? (typeof stepMode.defaultChecked === "boolean" ? stepMode.defaultChecked : Boolean(stepMode.checked)) : false;
+  const defaultStepSkipFunctions = stepSkipFunctions ? (typeof stepSkipFunctions.defaultChecked === "boolean" ? stepSkipFunctions.defaultChecked : Boolean(stepSkipFunctions.checked)) : false;
+  const defaultStepSpeed = stepSpeed ? (stepSpeed.defaultValue ?? stepSpeed.value ?? "") : "";
   const ensureUserCodeCaretVisible = () => {
     if(!userCodeInput) return;
     const pos = typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : 0;
@@ -177,6 +192,7 @@
   applyPatternOpenFromParam({ dataPatternPanel });
   applyDebugFromParam({ debugPanel, applyDebugVisibility });
   applyHistoryFromParam({ codePanel, setHistoryVisibility });
+  applySampleParam({ codePanel });
   if(!btnGenerate || !btnInit) return;
   const executionStatusEl = document.getElementById("executionStatus");
   const executionStatusLabels = {
@@ -359,6 +375,7 @@
     }
     return getComputedStyle(debugPanel).display !== "none";
   };
+  defaultDebugVisible = isDebugVisible();
   let lastMoveBlocked = false;
   const BOARD_ROWS = 25;
   const BOARD_COLS = 25;
@@ -3170,11 +3187,20 @@
       defaultDataValue: DATA_DEFAULT_TEXT,
       debugPanel,
       dataPatternPanel,
-    stepSpeed,
-    stepMode,
-    stepSkipFunctions,
+      stepSpeed,
+      stepMode,
+      stepSkipFunctions,
       historyVisible,
       isDebugVisible,
+      defaultFlagString,
+      defaultHistoryVisible,
+      defaultDebugVisible,
+      defaultPatternOpen,
+      defaultStepMode,
+      defaultStepSkipFunctions,
+      defaultStepSpeed,
+      initialDebugParamPresent,
+      codePanel,
     });
   };
 
