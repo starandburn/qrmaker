@@ -519,3 +519,73 @@ if(dataPatternPanel){
   updatePatternToggleText();
 }
 
+const historyCount = document.getElementById("historyCount");
+const codeHistoryList = document.getElementById("codeHistoryList");
+const codePanelElement = document.querySelector(".code-panel");
+const btnToggleHistory = document.getElementById("btnToggleHistory");
+const debugPanelElement = document.getElementById("debugPanel");
+const debugRowElement = document.querySelector(".debug-row");
+const debugOnlyControlsList = Array.from(document.querySelectorAll(".debug-only"));
+
+const LAYOUT_HISTORY_PREVIEW_LENGTH = 64;
+const escapeHtml = (value) => {
+  const text = value ?? "";
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+};
+const formatHistoryPreview = (value) => {
+  const normalized = (value ?? "").replace(/\s+/g, " ").trim();
+  if(!normalized) return "（空白）";
+  if(normalized.length <= LAYOUT_HISTORY_PREVIEW_LENGTH) return normalized;
+  return `${normalized.slice(0, LAYOUT_HISTORY_PREVIEW_LENGTH)}…`;
+};
+
+const layoutUI = {
+  setHistoryVisibility(visible){
+    const isVisible = Boolean(visible);
+    if(codePanelElement){
+      codePanelElement.classList.toggle("history-visible", isVisible);
+    }
+    if(btnToggleHistory){
+      btnToggleHistory.setAttribute("aria-pressed", isVisible ? "true" : "false");
+      btnToggleHistory.classList.toggle("is-active", isVisible);
+    }
+  },
+  renderHistoryList(entries){
+    if(historyCount){
+      historyCount.textContent = String(entries.length);
+    }
+    if(!codeHistoryList) return;
+    if(!entries.length){
+      codeHistoryList.innerHTML = "<li class=\"history-empty\">履歴はまだありません</li>";
+      return;
+    }
+    const rows = entries.map((entry, index) => {
+      const preview = formatHistoryPreview(entry.value);
+      const label = entry.label || "変更";
+      const timestamp = new Date(entry.timestamp).toLocaleTimeString();
+      const title = `${label} · ${timestamp}`;
+      const htmlPreview = escapeHtml(preview);
+      const htmlLabel = escapeHtml(label);
+      return `<li data-index="${index}" title="${escapeHtml(title)}" class="${index === 0 ? "is-latest" : ""}"><span class="history-snippet">${htmlPreview}</span><span class="history-meta">${htmlLabel}</span></li>`;
+    });
+    codeHistoryList.innerHTML = rows.join("");
+  },
+  applyDebugVisibility(visible){
+    const isVisible = Boolean(visible);
+    if(!debugPanelElement) return;
+    debugPanelElement.style.display = isVisible ? "block" : "none";
+    if(debugRowElement){
+      debugRowElement.style.display = isVisible ? "flex" : "none";
+    }
+    for(const control of debugOnlyControlsList){
+      control.style.display = isVisible ? "inline-flex" : "none";
+    }
+  },
+};
+
+window.layoutUI = Object.assign({}, window.layoutUI || {}, layoutUI);
+

@@ -14,7 +14,6 @@
   const userCodeInput = document.getElementById("userCode");
   const btnToggleHistory = document.getElementById("btnToggleHistory");
   const codeHistoryList = document.getElementById("codeHistoryList");
-  const historyCount = document.getElementById("historyCount");
   const stepMode = document.getElementById("stepMode");
   const stepSkipFunctions = document.getElementById("stepSkipFunctions");
   const stepSpeed = document.getElementById("stepSpeed");
@@ -27,15 +26,20 @@
   const toggleEmpty = document.getElementById("toggleEmpty");
   const toggleColor = document.getElementById("toggleColor");
   const HISTORY_LIMIT = 48;
-  const HISTORY_PREVIEW_LENGTH = 64;
   const historyEntries = [];
   let historyVisible = false;
   let pendingHistoryChange = false;
   let pendingHistoryLabel = "変更";
   const txtInput = document.getElementById("txtInput");
-  const debugRow = document.querySelector(".debug-row");
-  const debugOnlyControls = Array.from(document.querySelectorAll(".debug-only"));
   const urlState = window.urlState || {};
+  const layoutUI = window.layoutUI || {};
+  const setHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
+  const applyDebugVisibility = layoutUI.applyDebugVisibility || (() => {});
+  const renderHistoryList = (entries) => {
+    if(typeof layoutUI.renderHistoryList === "function"){
+      layoutUI.renderHistoryList(entries);
+    }
+  };
   const urlParams = urlState.params || new URLSearchParams(window.location.search || "");
   const {
     decodeDataParamValue,
@@ -102,50 +106,6 @@
       userCodeInput.scrollTop = Math.max(0, targetTop - 4);
     }
   };
-  const escapeHtml = (value) => {
-    const text = value ?? "";
-    return String(text)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  };
-  const formatHistoryPreview = (value) => {
-    const normalized = (value ?? "").replace(/\s+/g, " ").trim();
-    if(!normalized) return "（空白）";
-    if(normalized.length <= HISTORY_PREVIEW_LENGTH) return normalized;
-    return `${normalized.slice(0, HISTORY_PREVIEW_LENGTH)}…`;
-  };
-  const setHistoryVisibility = (visible) => {
-    historyVisible = Boolean(visible);
-    if(codePanel){
-      codePanel.classList.toggle("history-visible", historyVisible);
-    }
-    if(btnToggleHistory){
-      btnToggleHistory.setAttribute("aria-pressed", historyVisible ? "true" : "false");
-      btnToggleHistory.classList.toggle("is-active", historyVisible);
-    }
-  };
-  const renderHistoryList = () => {
-    if(historyCount){
-      historyCount.textContent = String(historyEntries.length);
-    }
-    if(!codeHistoryList) return;
-    if(!historyEntries.length){
-      codeHistoryList.innerHTML = "<li class=\"history-empty\">履歴はまだありません</li>";
-      return;
-    }
-    const rows = historyEntries.map((entry, index) => {
-      const preview = formatHistoryPreview(entry.value);
-      const label = entry.label || "変更";
-      const timestamp = new Date(entry.timestamp).toLocaleTimeString();
-      const title = `${label} · ${timestamp}`;
-      const htmlPreview = escapeHtml(preview);
-      const htmlLabel = escapeHtml(label);
-      return `<li data-index="${index}" title="${escapeHtml(title)}" class="${index === 0 ? "is-latest" : ""}"><span class="history-snippet">${htmlPreview}</span><span class="history-meta">${htmlLabel}</span></li>`;
-    });
-    codeHistoryList.innerHTML = rows.join("");
-  };
   const pushHistorySnapshot = (label = "変更") => {
     if(!userCodeInput) return;
     const value = userCodeInput.value ?? "";
@@ -159,7 +119,7 @@
     if(historyEntries.length > HISTORY_LIMIT){
       historyEntries.pop();
     }
-    renderHistoryList();
+    renderHistoryList(historyEntries);
   };
   const markHistoryPending = (label = "変更") => {
     pendingHistoryChange = true;
@@ -177,16 +137,6 @@
     const committed = commitPendingHistory("実行");
     if(!committed){
       pushHistorySnapshot("実行");
-    }
-  };
-  const applyDebugVisibility = (visible) => {
-    if(!debugPanel) return;
-    debugPanel.style.display = visible ? "block" : "none";
-    if(debugRow){
-      debugRow.style.display = visible ? "flex" : "none";
-    }
-    for(const control of debugOnlyControls){
-      control.style.display = visible ? "inline-flex" : "none";
     }
   };
   applyPatternOpenFromParam({ dataPatternPanel });
