@@ -1635,6 +1635,19 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   window.putTimingCells = putTimingCells;
   window.putDarkModuleCells = putDarkModuleCells;
   window.putFormatCells = putFormatCells;
+  const wrapDrawApi = (name, fn, description) => {
+    const wrapped = async function(...args){
+      const mainArg = args[0] ?? "";
+      window.logEvent(name, mainArg, description);
+      return fn.apply(this, args);
+    };
+    return wrapped;
+  };
+  drawFinderPatterns = wrapDrawApi("drawFinderPatterns", drawFinderPatterns, "ファインダーパターンを描画");
+  drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", drawAlignmentPatterns, "配置パターンを描画");
+  drawDarkModulePatterns = wrapDrawApi("drawDarkModulePatterns", drawDarkModulePatterns, "ダークモジュールを描画");
+  drawTimingPatterns = wrapDrawApi("drawTimingPatterns", drawTimingPatterns, "タイミングパターンを描画");
+  drawFormatPatterns = wrapDrawApi("drawFormatPatterns", drawFormatPatterns, "フォーマットパターンを描画");
   window.drawFormatPatterns = drawFormatPatterns;
   window.drawFinderPatterns = drawFinderPatterns;
   window.drawAlignmentPatterns = drawAlignmentPatterns;
@@ -1809,6 +1822,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return true;
   }
   async function drawDataPatterns({ currentRun } = {}){
+    window.logEvent("drawDataPatterns", currentRun ?? "", "データパターンを描画");
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     const shouldAbort = () => runToken !== runId;
     resetLoopGuard();
@@ -1823,6 +1837,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return runToken === runId;
   }
   async function drawQRCode(arg){
+    window.logEvent("drawQRCode", arg ?? "", "QRコードを描画");
     let maskIndex;
     if(arg === undefined){
       maskIndex = 0;
@@ -1889,6 +1904,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   async function drawBasePatterns({ deferFlush = false, currentRun, resetDelay = false } = {}){
+    window.logEvent("drawBasePatterns", currentRun ?? "", `基本パターンを描画 (deferFlush=${deferFlush}, resetDelay=${resetDelay})`);
     if(currentRun !== undefined && currentRun !== runId) return false;
     if(isStepModeOn() && shouldStepFunctions()){
       const stepped = await drawBasePatternsStepped({ currentRun });
@@ -1921,6 +1937,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   async function drawBasePatternsStepped({ currentRun } = {}){
+    window.logEvent("drawBasePatternsStepped", currentRun ?? "", "基本パターンを描画");
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     resetQRCode({ abortRun: false });
     setRenderMode(RENDER_IMMEDIATE);
@@ -3220,3 +3237,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   setupFooterDebugToggle();
 }
+
+
+
+
