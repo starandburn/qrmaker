@@ -3204,53 +3204,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     });
   }
 
-  const logBuffer = window._logBuffer || [];
-
-  let lastLogBody = null;
-  function appendDebugLog(message, { raw = false } = {}){
-    const text = raw ? String(message) : (() => {
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, "0");
-      const mm = String(now.getMinutes()).padStart(2, "0");
-      const ss = String(now.getSeconds()).padStart(2, "0");
-      return `[${hh}:${mm}:${ss}] ${String(message)}`;
-    })();
-    const body = String(message);
-    if(!debugLog){
-      logBuffer.push(text);
-      return;
-    }
-    const first = debugLog.firstChild;
-    if(first && first.dataset && first.dataset.body === body){
-      first.textContent += ".";
-      return;
-    }
-    const line = document.createElement("div");
-    line.className = "log-line";
-    line.dataset.body = body;
-    line.textContent = text;
-    debugLog.insertBefore(line, first || null);
-    debugLog.scrollTop = 0;
-    lastLogBody = body;
-  }
-
-  // Expose simple logger for debugging
-  window.log = (msg) => {
-    // flush buffered entries if any
-    if(debugLog && logBuffer.length){
-      for(const buffered of logBuffer.splice(0)){
-        appendDebugLog(buffered, { raw: true });
-      }
-    }
-    appendDebugLog(String(msg));
-    try{
-      console.log(msg);
-    }catch(e){
-      // ignore console errors
-    }
-  };
-  window.log("window initialized");
-
   const setupFooterDebugToggle = () => {
     const panel = getDebugPanel();
     if(!footerCopy || !panel) return;
