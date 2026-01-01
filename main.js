@@ -30,7 +30,12 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   let pendingHistoryChange = false;
   let pendingHistoryLabel = "変更";
   const txtInput = document.getElementById("txtInput");
-  const setHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
+  const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
+  const setHistoryVisibility = (visible) => {
+    const target = Boolean(visible);
+    historyVisible = target;
+    layoutSetHistoryVisibility(target);
+  };
   const applyDebugVisibility = layoutUI.applyDebugVisibility || debugUI.applyDebugVisibility || (() => {});
   const isDebugVisible = debugUI.isDebugVisible || (() => false);
   const getDebugPanel = () => debugUI.debugPanel;
@@ -3241,7 +3246,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   setupFooterDebugToggle();
 }
-
 
 
 
