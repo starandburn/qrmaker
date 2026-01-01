@@ -490,19 +490,18 @@ const layoutUI = {
     const rows = entries.map((entry, index) => {
       const preview = formatHistoryPreview(entry.value);
       const label = entry.label || "変更";
+      const metaLabel = entry.explanation ?? label;
       const timestamp = new Date(entry.timestamp).toLocaleTimeString();
       const title = `${label} · ${timestamp}`;
       const htmlPreview = escapeHtml(preview);
-      const htmlLabel = escapeHtml(label);
-      return `<li data-index="${index}" title="${escapeHtml(title)}" class="${index === 0 ? "is-latest" : ""}"><span class="history-snippet">${htmlPreview}</span><span class="history-meta">${htmlLabel}</span></li>`;
+      const htmlMeta = escapeHtml(metaLabel);
+      const status = entry.status ? String(entry.status).toLowerCase().replace(/[^a-z0-9-_]/g, "") : "";
+      const classAttr = status ? ` class="status-${status}"` : "";
+      return `<li data-index="${index}" title="${escapeHtml(title)}"${classAttr}><span class="history-snippet">${htmlPreview}</span><span class="history-meta">${htmlMeta}</span></li>`;
     });
     codeHistoryList.innerHTML = rows.join("");
   },
 };
 
 window.layoutUI = Object.assign({}, window.layoutUI || {}, layoutUI);
-
-
-
-
 

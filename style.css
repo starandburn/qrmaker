@@ -817,11 +817,6 @@ details.pattern-panel:not([open]) .summary-title::before{
   background:#eef2ff;
 }
 
-.history-list li.is-latest{
-  border-color:#1f4aed;
-  background:#e9f0ff;
-}
-
 .history-list li .history-snippet{
   flex:1;
   display:block;
@@ -839,6 +834,20 @@ details.pattern-panel:not([open]) .summary-title::before{
   overflow:hidden;
   text-overflow:ellipsis;
   padding-right:10px;
+}
+.history-list li.status-success{
+  border-color:#1f4aed;
+  background:#e9f0ff;
+}
+.history-list li.status-error{
+  border-color:#c0392b;
+  background:#ffecec;
+}
+.history-list li.status-success .history-meta{
+  color:#1f4aed;
+}
+.history-list li.status-error .history-meta{
+  color:#c0392b;
 }
 
 .history-list li .history-meta{

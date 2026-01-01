@@ -110,7 +110,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       userCodeInput.scrollTop = Math.max(0, targetTop - 4);
     }
   };
-  const pushHistorySnapshot = (label = "変更") => {
+  const pushHistorySnapshot = (label = "変更", { explanation = null, status = null } = {}) => {
     if(!userCodeInput) return;
     const value = userCodeInput.value ?? "";
     const lastEntry = historyEntries[0];
@@ -118,6 +118,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     historyEntries.unshift({
       value,
       label,
+      explanation,
+      status,
       timestamp: Date.now(),
     });
     if(historyEntries.length > HISTORY_LIMIT){
@@ -137,11 +139,28 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     pushHistorySnapshot(label);
     return true;
   };
+  let runHistoryEntryPending = false;
   const ensureRunHistory = () => {
+    if(runHistoryEntryPending) return;
     const committed = commitPendingHistory("実行");
     if(!committed){
       pushHistorySnapshot("実行");
     }
+    runHistoryEntryPending = true;
+  };
+  const finalizeRunHistoryEntry = (success) => {
+    if(!runHistoryEntryPending){
+      return;
+    }
+    runHistoryEntryPending = false;
+    const entry = historyEntries[0];
+    if(!entry){
+      return;
+    }
+    entry.label = "実行";
+    entry.status = success ? "success" : "error";
+    entry.explanation = success ? "実行成功" : "エラー";
+    renderHistoryList(historyEntries);
   };
   applyPatternOpenFromParam({ dataPatternPanel });
   applyDebugFromParam({ debugPanel: getDebugPanel(), applyDebugVisibility });
@@ -2395,15 +2414,21 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   btnGenerate.addEventListener("click", async () => {
+    ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
     setExecutionStatus("running");
-    const ok = await runUserCodeWithStep();
-    if(ok){
-      setExecutionStatus("finished");
-    }else if(lastExecutionError){
-      setExecutionStatus("error", lastExecutionError);
-    }else{
-      setExecutionStatus("stopped");
+    let runOk = false;
+    try{
+      runOk = await runUserCodeWithStep();
+      if(runOk){
+        setExecutionStatus("finished");
+      }else if(lastExecutionError){
+        setExecutionStatus("error", lastExecutionError);
+      }else{
+        setExecutionStatus("stopped");
+      }
+    }finally{
+      finalizeRunHistoryEntry(runOk);
     }
   });
   if(btnGenerate){
@@ -3035,8 +3060,12 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       requestAnimationFrame(ensureUserCodeCaretVisible);
     }
   });
-    userCodeInput.addEventListener("blur", () => {
-      commitPendingHistory("フォーカスアウト");
+    userCodeInput.addEventListener("blur", (ev) => {
+      const related = ev.relatedTarget || document.activeElement;
+      if(btnGenerate && related === btnGenerate){
+        return;
+      }
+      commitPendingHistory("修正");
     });
   }
   if(!urlParams.has(HISTORY_PARAM_KEY)){
@@ -3246,6 +3275,3 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   setupFooterDebugToggle();
 }
-
-
-
