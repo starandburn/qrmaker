@@ -99,7 +99,10 @@
         <div class="code-history-pane" id="codeHistoryPane">
           <div class="history-header">
             <span>履歴</span>
-            <span id="historyCount" class="history-count" aria-live="polite">0</span>
+            <div class="history-header-actions">
+              <span id="historyCount" class="history-count" aria-live="polite">0</span>
+              <button id="btnPruneHistory" type="button" class="history-action-btn">整理</button>
+            </div>
           </div>
           <ul id="codeHistoryList" class="history-list" role="list"></ul>
         </div>

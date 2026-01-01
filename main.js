@@ -12,6 +12,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const footerCopy = document.querySelector(".page-footer p:first-child");
   const userCodeInput = document.getElementById("userCode");
   const btnToggleHistory = document.getElementById("btnToggleHistory");
+  const btnPruneHistory = document.getElementById("btnPruneHistory");
   const codeHistoryList = document.getElementById("codeHistoryList");
   const stepMode = document.getElementById("stepMode");
   const stepSkipFunctions = document.getElementById("stepSkipFunctions");
@@ -160,6 +161,37 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     entry.label = "実行";
     entry.status = success ? "success" : "error";
     entry.explanation = success ? "実行成功" : "エラー";
+    renderHistoryList(historyEntries);
+  };
+  const pruneHistoryEntries = () => {
+    if(!historyEntries.length) return;
+    const seenKeys = new Set();
+    const filtered = [];
+    let blankKept = false;
+    for(const entry of historyEntries){
+      if(entry.status === "error"){
+        continue;
+      }
+      const valueText = entry.value ?? "";
+      const isBlank = String(valueText).trim().length === 0;
+      if(isBlank){
+        if(blankKept){
+          continue;
+        }
+        blankKept = true;
+      }
+      const key = `${valueText}\u0000${entry.label ?? ""}\u0000${entry.explanation ?? ""}\u0000${entry.status ?? ""}`;
+      if(seenKeys.has(key)){
+        continue;
+      }
+      seenKeys.add(key);
+      filtered.push(entry);
+    }
+    if(filtered.length === historyEntries.length){
+      return;
+    }
+    historyEntries.length = 0;
+    historyEntries.push(...filtered);
     renderHistoryList(historyEntries);
   };
   applyPatternOpenFromParam({ dataPatternPanel });
@@ -2118,8 +2150,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         if(!stepCell(r, c, 0, BIT_FUNC_FINDER)) return;
         const md = await maybeStepDelay();
         if(md === false) return;
-      }
-    };
+    }
+  };
     await drawFinderStep(1, 1);
     if((await moveCursorPath(1, 19)) === false) return { ok: false, fastForwarded };
     await drawFinderStep(1, 19);
@@ -3100,6 +3132,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     btnToggleHistory.addEventListener("click", () => {
       setHistoryVisibility(!historyVisible);
     });
+  }
+  if(btnPruneHistory){
+    btnPruneHistory.addEventListener("click", pruneHistoryEntries);
   }
   if(codeHistoryList){
     codeHistoryList.addEventListener("click", (ev) => {

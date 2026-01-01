@@ -771,6 +771,26 @@ details.pattern-panel:not([open]) .summary-title::before{
   font-size:0.9rem;
   color:#1c2431;
 }
+.history-header-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.history-action-btn{
+  border:1px solid #cfd6df;
+  border-radius:4px;
+  background:#fff;
+  color:#1b49dc;
+  font-size:0.75rem;
+  padding:4px 10px;
+  cursor:pointer;
+  transition:background 0.15s, border-color 0.15s;
+}
+.history-action-btn:hover,
+.history-action-btn:focus{
+  background:#eef2ff;
+  border-color:#a7b7df;
+}
 
 .history-count{
   display:inline-flex;
