@@ -25,11 +25,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const toggleGrid = document.getElementById("toggleGrid");
   const toggleEmpty = document.getElementById("toggleEmpty");
   const toggleColor = document.getElementById("toggleColor");
-  const HISTORY_LIMIT = 48;
-  const historyEntries = [];
   let historyVisible = false;
-  let pendingHistoryChange = false;
-  let pendingHistoryLabel = "変更";
   const txtInput = document.getElementById("txtInput");
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
   const setHistoryVisibility = (visible) => {
@@ -45,6 +41,23 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       layoutUI.renderHistoryList(entries);
     }
   };
+  const historyController = window.historyController || {
+    pushHistorySnapshot: () => {},
+    markHistoryPending: () => {},
+    commitPendingHistory: () => false,
+    ensureRunHistory: () => {},
+    finalizeRunHistoryEntry: () => {},
+    pruneHistoryEntries: () => {},
+    getEntry: () => null,
+    getEntries: () => [],
+    setRenderer: () => {},
+    setValueGetter: () => {},
+  };
+  historyController.setRenderer(renderHistoryList);
+  const getCurrentCodeValue = () => {
+    return userCodeInput ? userCodeInput.value ?? "" : "";
+  };
+  historyController.setValueGetter(getCurrentCodeValue);
   const urlParams = urlState.params || new URLSearchParams(window.location.search || "");
   const {
     decodeDataParamValue,
@@ -110,89 +123,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }else if(targetTop < viewTop){
       userCodeInput.scrollTop = Math.max(0, targetTop - 4);
     }
-  };
-  const pushHistorySnapshot = (label = "変更", { explanation = null, status = null } = {}) => {
-    if(!userCodeInput) return;
-    const value = userCodeInput.value ?? "";
-    const lastEntry = historyEntries[0];
-    if(lastEntry && lastEntry.value === value) return;
-    historyEntries.unshift({
-      value,
-      label,
-      explanation,
-      status,
-      timestamp: Date.now(),
-    });
-    if(historyEntries.length > HISTORY_LIMIT){
-      historyEntries.pop();
-    }
-    renderHistoryList(historyEntries);
-  };
-  const markHistoryPending = (label = "変更") => {
-    pendingHistoryChange = true;
-    pendingHistoryLabel = label;
-  };
-  const commitPendingHistory = (overrideLabel) => {
-    if(!pendingHistoryChange) return false;
-    pendingHistoryChange = false;
-    const label = overrideLabel || pendingHistoryLabel || "変更";
-    pendingHistoryLabel = "変更";
-    pushHistorySnapshot(label);
-    return true;
-  };
-  let runHistoryEntryPending = false;
-  const ensureRunHistory = () => {
-    if(runHistoryEntryPending) return;
-    const committed = commitPendingHistory("実行");
-    if(!committed){
-      pushHistorySnapshot("実行");
-    }
-    runHistoryEntryPending = true;
-  };
-  const finalizeRunHistoryEntry = (success) => {
-    if(!runHistoryEntryPending){
-      return;
-    }
-    runHistoryEntryPending = false;
-    const entry = historyEntries[0];
-    if(!entry){
-      return;
-    }
-    entry.label = "実行";
-    entry.status = success ? "success" : "error";
-    entry.explanation = success ? "実行成功" : "エラー";
-    renderHistoryList(historyEntries);
-  };
-  const pruneHistoryEntries = () => {
-    if(!historyEntries.length) return;
-    const seenKeys = new Set();
-    const filtered = [];
-    let blankKept = false;
-    for(const entry of historyEntries){
-      if(entry.status === "error"){
-        continue;
-      }
-      const valueText = entry.value ?? "";
-      const isBlank = String(valueText).trim().length === 0;
-      if(isBlank){
-        if(blankKept){
-          continue;
-        }
-        blankKept = true;
-      }
-      const key = `${valueText}\u0000${entry.label ?? ""}\u0000${entry.explanation ?? ""}\u0000${entry.status ?? ""}`;
-      if(seenKeys.has(key)){
-        continue;
-      }
-      seenKeys.add(key);
-      filtered.push(entry);
-    }
-    if(filtered.length === historyEntries.length){
-      return;
-    }
-    historyEntries.length = 0;
-    historyEntries.push(...filtered);
-    renderHistoryList(historyEntries);
   };
   applyPatternOpenFromParam({ dataPatternPanel });
   applyDebugFromParam({ debugPanel: getDebugPanel(), applyDebugVisibility });
@@ -2446,7 +2376,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   btnGenerate.addEventListener("click", async () => {
-    ensureRunHistory();
+    historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
     setExecutionStatus("running");
     let runOk = false;
@@ -2460,7 +2390,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         setExecutionStatus("stopped");
       }
     }finally{
-      finalizeRunHistoryEntry(runOk);
+      historyController.finalizeRunHistoryEntry(runOk);
     }
   });
   if(btnGenerate){
@@ -2555,7 +2485,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       if(userCodeInput){
         userCodeInput.value = "";
         userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
-        commitPendingHistory("クリア");
+        historyController.commitPendingHistory("クリア");
       }
       if(userCodeParsed){
         userCodeParsed.value = "";
@@ -2957,26 +2887,26 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       if(!ev.isComposing){
         const type = ev.inputType || "";
         if(/insert(LineBreak|Paragraph)/i.test(type)){
-          markHistoryPending("改行");
-          commitPendingHistory();
+          historyController.markHistoryPending("改行");
+          historyController.commitPendingHistory();
         }else{
-          markHistoryPending("入力");
+          historyController.markHistoryPending("入力");
         }
       }
     });
     userCodeInput.addEventListener("keydown", async (ev) => {
       const navKey = ev.key === "ArrowUp" || ev.key === "ArrowDown";
       if(navKey){
-        commitPendingHistory("行移動");
+        historyController.commitPendingHistory("行移動");
       }
       const captureEnterHistory = ev.key === "Enter" && !ev.ctrlKey && !ev.altKey;
       if(captureEnterHistory){
-        setTimeout(() => commitPendingHistory("改行"), 0);
+        setTimeout(() => historyController.commitPendingHistory("改行"), 0);
       }
       if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter"){
         ev.preventDefault();
         ev.stopPropagation();
-        ensureRunHistory();
+        historyController.ensureRunHistory();
         if(btnGenerate && !btnGenerate.disabled){
           btnGenerate.click();
         }
@@ -3097,13 +3027,13 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       if(btnGenerate && related === btnGenerate){
         return;
       }
-      commitPendingHistory("修正");
+      historyController.commitPendingHistory("修正");
     });
   }
   if(!urlParams.has(HISTORY_PARAM_KEY)){
     setHistoryVisibility(false);
   }
-  pushHistorySnapshot("初期状態");
+  historyController.pushHistorySnapshot("初期状態");
   const sampleButtons = document.querySelectorAll(".code-debug-btn");
   sampleButtons.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -3124,7 +3054,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
         userCodeInput.scrollTop = 0;
         userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
-        commitPendingHistory("サンプル");
+        historyController.commitPendingHistory("サンプル");
       }
     });
   });
@@ -3134,7 +3064,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     });
   }
   if(btnPruneHistory){
-    btnPruneHistory.addEventListener("click", pruneHistoryEntries);
+    btnPruneHistory.addEventListener("click", historyController.pruneHistoryEntries);
   }
   if(codeHistoryList){
     codeHistoryList.addEventListener("click", (ev) => {
@@ -3143,7 +3073,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       if(!item) return;
       const index = Number(item.getAttribute("data-index"));
       if(Number.isNaN(index)) return;
-      const entry = historyEntries[index];
+      const entry = historyController.getEntry(index);
       if(!entry || !userCodeInput) return;
       userCodeInput.value = entry.value;
       userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
@@ -3176,7 +3106,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
       userCodeInput.scrollTop = 0;
       userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
-      commitPendingHistory("貼り付け");
+      historyController.commitPendingHistory("貼り付け");
     }catch(err){
           // ignore clipboard failures
         }
