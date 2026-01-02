@@ -153,8 +153,7 @@ function moveCursor(...args){
   let targetRow = cursorPos.row;
   let targetCol = cursorPos.col;
   let finalDir = cursorPos.dir;
-  const hasExplicitArgs = args.length > 0;
-  let shouldLog = false;
+  let logLabel = null;
   const stepOnce = (dirVal) => {
     const norm = normalizeDir(dirVal);
     if(!norm) return false;
@@ -169,8 +168,39 @@ function moveCursor(...args){
     }
     return true;
   };
+  const getOrientationLabel = (dirVal) => {
+    if(!dirVal) return "";
+    const orientationMap = {
+      up: "上向き",
+      right: "右向き",
+      down: "下向き",
+      left: "左向き",
+    };
+    return orientationMap[dirVal] || dirVal;
+  };
+  const describeMove = (key) => {
+    const directionWords = {
+      front: "前",
+      back: "後",
+      left: "左",
+      right: "右",
+      up: "上",
+      down: "下",
+    };
+    const word = directionWords[key] ?? key;
+    return `カーソル${word}移動`;
+  };
+
+  const recordStraightMove = () => {
+    logLabel = "カーソル直移動";
+    shouldLog = true;
+  };
+  const recordRelativeMove = (key) => {
+    logLabel = describeMove(key);
+  };
 
   if(args.length === 0){
+    recordRelativeMove("front");
     stepOnce(cursorPos.dir);
   }else if(args.length === 1){
     const v = args[0];
@@ -179,22 +209,25 @@ function moveCursor(...args){
         if(aliasCoord){
           targetRow = aliasCoord.row;
           targetCol = aliasCoord.col;
-          shouldLog = true;
+          recordStraightMove();
         }else{
           const parsed = parseCellRef(v);
           if(parsed){
             targetRow = parsed.row;
             targetCol = parsed.col;
-            shouldLog = true;
+            recordStraightMove();
           }else{
           const lower = v.toLowerCase();
           if(lower === DIR_FRONT){
+            recordRelativeMove("front");
             stepOnce(cursorPos.dir);
           }else if(lower === DIR_BACK){
+            recordRelativeMove("back");
             stepOnce(rotateDir(cursorPos.dir, 2));
           }else{
             const dirAbs = normalizeDir(v);
             if(!dirAbs) return;
+            recordRelativeMove(dirAbs);
             stepOnce(dirAbs);
           }
         }
@@ -202,6 +235,7 @@ function moveCursor(...args){
     }else{
       const dirAbs = normalizeDir(v);
       if(!dirAbs) return;
+      recordRelativeMove(dirAbs);
       stepOnce(dirAbs);
     }
   }else if(args.length >= 2){
@@ -211,17 +245,17 @@ function moveCursor(...args){
       if(d) finalDir = d;
     };
     if(typeof first === "string"){
-        const aliasCoord = resolveCoordinateAlias(first);
+      const aliasCoord = resolveCoordinateAlias(first);
       if(aliasCoord){
         targetRow = aliasCoord.row;
         targetCol = aliasCoord.col;
-        shouldLog = true;
+        recordStraightMove();
       }else{
         const parsed = parseCellRef(first);
         if(!parsed) return;
         targetRow = parsed.row;
         targetCol = parsed.col;
-        shouldLog = true;
+        recordStraightMove();
       }
       if(third !== undefined){
         maybeDir(third);
@@ -231,7 +265,7 @@ function moveCursor(...args){
     }else if(Number.isFinite(first) && Number.isFinite(second)){
       targetRow = first;
       targetCol = second;
-      shouldLog = true;
+      recordStraightMove();
       if(third !== undefined){
         maybeDir(third);
       }
@@ -249,14 +283,19 @@ function moveCursor(...args){
     lastMoveBlocked = true;
     return false;
   }
-  if(hasExplicitArgs && shouldLog){
+  if(logLabel){
     const payload = {
       args,
       target: { row: targetRow, col: targetCol },
       dir: finalDir,
     };
     if(typeof window.logEvent === "function"){
-      window.logEvent("moveCursor", JSON.stringify(payload), "位置指定移動");
+      const cellRef = cellRefFromRowCol(targetRow, targetCol);
+      const refLabel = cellRef ? `@${cellRef}` : "";
+      const coordsLabel = `(${targetRow}, ${targetCol})`;
+      const orientationLabel = getOrientationLabel(finalDir);
+      const description = `${logLabel}${refLabel}${coordsLabel} / ${orientationLabel}`;
+      window.logEvent("moveCursor", JSON.stringify(payload), description);
     }
   }
   lastMoveBlocked = false;
