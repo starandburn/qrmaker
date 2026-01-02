@@ -659,10 +659,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     resetData();
     updateCursor(BOARD_ROWS, BOARD_COLS, DIR_UP);
     while(hasMoreData()){
-      if(shouldAbort()) return false;
+      if(shouldAbort()) throw ABORT_ERR;
       if(!canContinueLoop()) return false;
       await putNextCell();
-      if(shouldAbort()) return false;
+      if(shouldAbort()) throw ABORT_ERR;
     }
     return runToken === runId;
   }
@@ -735,7 +735,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
 
   async function drawBasePatterns({ deferFlush = false, currentRun, resetDelay = false } = {}){
     window.logEvent("drawBasePatterns", currentRun ?? "", `基本パターンを描画 (deferFlush=${deferFlush}, resetDelay=${resetDelay})`);
-    if(currentRun !== undefined && currentRun !== runId) return false;
+    if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
     if(isStepModeOn() && shouldStepFunctions()){
       const stepped = await drawBasePatternsStepped({ currentRun });
       return stepped ? !!stepped.ok : false;
@@ -746,19 +746,19 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(resetDelay){
       await sleep(RESET_DELAY_MS);
     }
-    if(currentRun !== undefined && currentRun !== runId) return false;
+    if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
     const funcOpts = { stepEnabled: false, currentRun, overwrite: false };
     await drawFinderPatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
-    if(currentRun !== undefined && currentRun !== runId) return false;
+    if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
     await drawTimingPatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
-    if(currentRun !== undefined && currentRun !== runId) return false;
+    if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
     await drawAlignmentPatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
-    if(currentRun !== undefined && currentRun !== runId) return false;
+    if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
     await drawDarkModulePatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
-    if(currentRun !== undefined && currentRun !== runId) return false;
+    if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
     await drawFormatPatterns(undefined, funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
     if(!deferFlush){
-      if(currentRun !== undefined && currentRun !== runId) return false;
+      if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
       flushRender();
       setRenderMode(RENDER_IMMEDIATE);
     }
@@ -775,9 +775,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     let stepEnabled = isStepModeOn();
     let fastForwarded = false;
     const stepActive = () => stepEnabled && isStepModeOn();
-    const shouldAbort = () => (currentRun !== undefined && currentRun !== runId);
+    const shouldAbort = () => runToken !== runId;
     const shouldSkipFunctions = () => {
-      if(currentRun !== undefined && currentRun !== runId) return false;
+      if(runToken !== runId) return false;
       return !!(stepSkipFunctions && stepSkipFunctions.checked && isStepModeOn());
     };
     const maybeCursorJumpDelay = async () => {
@@ -795,7 +795,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       return !shouldAbort();
     };
     const maybeStepDelay = async () => {
-      if(shouldAbort()) return false;
+      if(shouldAbort()) throw ABORT_ERR;
       if(shouldSkipFunctions()){
         fastForwarded = true;
         stepEnabled = false;
@@ -809,7 +809,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }else{
         await new Promise(requestAnimationFrame);
       }
-      if(shouldAbort()) return false;
+      if(shouldAbort()) throw ABORT_ERR;
       if(shouldSkipFunctions()){
         fastForwarded = true;
         stepEnabled = false;
@@ -826,7 +826,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     let lastCol = 1;
     let lastDir = DIR_DOWN;
     const moveCursorPath = async (targetRow, targetCol) => {
-      if(shouldAbort()) return false;
+      if(shouldAbort()) throw ABORT_ERR;
       const dr = targetRow - lastRow;
       const dc = targetCol - lastCol;
       if(Math.abs(dr) > Math.abs(dc)){
@@ -841,7 +841,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       return !shouldAbort();
     };
   const stepCell = (row, col, value, cellKind) => {
-    if(shouldAbort()) return false;
+    if(shouldAbort()) throw ABORT_ERR;
     const kind = typeof cellKind === "number" ? cellKind : BIT_UNKNOWN;
     const encoded = window.encodeBit(kind, value === 1);
     window.updateCell(row, col, encoded);
@@ -892,10 +892,12 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       ];
       const coreSpiral = spiralOrder(7);
       for(const [r0, c0] of coreSpiral){
+        if(shouldAbort()) throw ABORT_ERR;
         const row = topRow + r0;
         const col = leftCol + c0;
         if(row < 1 || row > 25 || col < 1 || col > 25) continue;
         const bit = pattern[r0][c0];
+        if(shouldAbort()) throw ABORT_ERR;
         if(!stepCell(row, col, bit, BIT_FUNC_FINDER)) return;
         const md = await maybeStepDelay();
         if(md === false) return;
@@ -913,20 +915,25 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         if((await moveCursorPath(ring[0][0], ring[0][1])) === false) return { ok: false, fastForwarded };
       }
       for(const [r, c] of ring){
+        if(shouldAbort()) throw ABORT_ERR;
         if(r < 1 || r > 25 || c < 1 || c > 25) continue;
         if(typeof window.updateCell === "function"){
           window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
         }
+        if(shouldAbort()) throw ABORT_ERR;
         if(!stepCell(r, c, 0, BIT_FUNC_FINDER)) return;
         const md = await maybeStepDelay();
         if(md === false) return;
     }
   };
     await drawFinderStep(1, 1);
+    if(shouldAbort()) throw ABORT_ERR;
     if((await moveCursorPath(1, 19)) === false) return { ok: false, fastForwarded };
     await drawFinderStep(1, 19);
+    if(shouldAbort()) throw ABORT_ERR;
     if((await moveCursorPath(19, 1)) === false) return { ok: false, fastForwarded };
     await drawFinderStep(19, 1);
+    if(shouldAbort()) throw ABORT_ERR;
 
     // timing (row 7, col 7) after finders
     {
@@ -935,6 +942,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
       if((await moveCursorPath(timingRowIndex, 1)) === false) return { ok: false, fastForwarded };
       for(let c = 1; c <= 25; c++){
+        if(shouldAbort()) throw ABORT_ERR;
         const existing = boardMatrix[timingRowIndex - 1][c - 1];
         const kind = (typeof window.bitKind === "function") ? window.bitKind(existing) : Math.abs(existing);
         const empty = (typeof window.isUnplacedBit === "function") ? window.isUnplacedBit(existing) : (kind === unplacedKind);
@@ -949,6 +957,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
       if((await moveCursorPath(1, timingColIndex)) === false) return { ok: false, fastForwarded };
       for(let r = 1; r <= 25; r++){
+        if(shouldAbort()) throw ABORT_ERR;
         const existing = boardMatrix[r - 1][timingColIndex - 1];
         const kind = (typeof window.bitKind === "function") ? window.bitKind(existing) : Math.abs(existing);
         const empty = (typeof window.isUnplacedBit === "function") ? window.isUnplacedBit(existing) : (kind === unplacedKind);
@@ -977,6 +986,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       const leftCol = centerCol - 2;
       const coreSpiral = spiralOrder(5);
       for(const [r0, c0] of coreSpiral){
+        if(shouldAbort()) throw ABORT_ERR;
         const row = topRow + r0;
         const col = leftCol + c0;
         if(row < 1 || row > 25 || col < 1 || col > 25) continue;
@@ -991,9 +1001,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
     };
     await drawAlignmentStep(19, 19);
+    if(shouldAbort()) throw ABORT_ERR;
 
     // dark module
     if((await moveCursorPath(18, 9)) === false) return { ok: false, fastForwarded };
+    if(shouldAbort()) throw ABORT_ERR;
     if(typeof window.updateCell === "function"){
       window.updateCell(18, 9, window.encodeBit(BIT_FUNC_DARK, true));
     }
@@ -1015,6 +1027,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const bits15 = FORMAT_L[0];
     const drawFormatSide = async (coords) => {
       for(let i = 0; i < 15; i++){
+        if(shouldAbort()) throw ABORT_ERR;
         const bit = (bits15 >>> i) & 1;
         const [r, c] = coords[i];
         if(typeof window.updateCell === "function"){
@@ -1030,6 +1043,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if((await moveCursorPath(coordsB[0][0] + 1, coordsB[0][1] + 1)) === false) return { ok: false, fastForwarded };
     await drawFormatSide(coordsB);
 
+    if(shouldAbort()) throw ABORT_ERR;
     await moveCursorPath(25, 25);
 
     if(renderMode === RENDER_BUFFERED){
@@ -1090,9 +1104,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
 
   btnInit.addEventListener("click", () => {
     window.logEvent("btnInit", "", "初期化ボタン押下");
-    runId++;
-    resetQRCode({ abortRun: false, forceImmediate: true, stopStep: true });
-    resetCursor();
+    stopCurrentRun({ resetCursor: true, clear: true });
     if(Array.isArray(window.toggleInputs)){
       for(const el of window.toggleInputs){
         el.checked = true;
