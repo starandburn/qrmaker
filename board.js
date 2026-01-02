@@ -154,6 +154,7 @@ function moveCursor(...args){
   let targetCol = cursorPos.col;
   let finalDir = cursorPos.dir;
   const hasExplicitArgs = args.length > 0;
+  let shouldLog = false;
   const stepOnce = (dirVal) => {
     const norm = normalizeDir(dirVal);
     if(!norm) return false;
@@ -175,15 +176,17 @@ function moveCursor(...args){
     const v = args[0];
     if(typeof v === "string"){
       const aliasCoord = resolveCoordinateAlias(v);
-      if(aliasCoord){
-        targetRow = aliasCoord.row;
-        targetCol = aliasCoord.col;
-      }else{
-        const parsed = parseCellRef(v);
-        if(parsed){
-          targetRow = parsed.row;
-          targetCol = parsed.col;
+        if(aliasCoord){
+          targetRow = aliasCoord.row;
+          targetCol = aliasCoord.col;
+          shouldLog = true;
         }else{
+          const parsed = parseCellRef(v);
+          if(parsed){
+            targetRow = parsed.row;
+            targetCol = parsed.col;
+            shouldLog = true;
+          }else{
           const lower = v.toLowerCase();
           if(lower === DIR_FRONT){
             stepOnce(cursorPos.dir);
@@ -208,15 +211,17 @@ function moveCursor(...args){
       if(d) finalDir = d;
     };
     if(typeof first === "string"){
-      const aliasCoord = resolveCoordinateAlias(first);
+        const aliasCoord = resolveCoordinateAlias(first);
       if(aliasCoord){
         targetRow = aliasCoord.row;
         targetCol = aliasCoord.col;
+        shouldLog = true;
       }else{
         const parsed = parseCellRef(first);
         if(!parsed) return;
         targetRow = parsed.row;
         targetCol = parsed.col;
+        shouldLog = true;
       }
       if(third !== undefined){
         maybeDir(third);
@@ -226,6 +231,7 @@ function moveCursor(...args){
     }else if(Number.isFinite(first) && Number.isFinite(second)){
       targetRow = first;
       targetCol = second;
+      shouldLog = true;
       if(third !== undefined){
         maybeDir(third);
       }
@@ -243,7 +249,7 @@ function moveCursor(...args){
     lastMoveBlocked = true;
     return false;
   }
-  if(hasExplicitArgs){
+  if(hasExplicitArgs && shouldLog){
     const payload = {
       args,
       target: { row: targetRow, col: targetCol },
@@ -266,9 +272,20 @@ function callMakeStepThenable(){
 
 function turnCursor(dirArg){
   let targetDir = cursorPos.dir;
+  const requestedDir = dirArg === undefined ? "back" : dirArg;
   if(dirArg === undefined){
     targetDir = rotateDir(cursorPos.dir, 2);
-    return targetDir ? updateCursor(cursorPos.row, cursorPos.col, targetDir) : false;
+    if(!targetDir) return false;
+    const ok = updateCursor(cursorPos.row, cursorPos.col, targetDir);
+    if(!ok) return false;
+    const logPayload = {
+      requested: requestedDir,
+      result: targetDir,
+    };
+    if(typeof window.logEvent === "function"){
+      window.logEvent("turnCursor", JSON.stringify(logPayload), "回転");
+    }
+    return callMakeStepThenable();
   }
   if(typeof dirArg === "string"){
     const lower = dirArg.toLowerCase();
@@ -293,10 +310,12 @@ function turnCursor(dirArg){
   if(!targetDir) return false;
   const ok = updateCursor(cursorPos.row, cursorPos.col, targetDir);
   if(!ok) return false;
-  if(dirArg !== undefined){
-    if(typeof window.logEvent === "function"){
-      window.logEvent("turnCursor", String(dirArg), "方向指定回転");
-    }
+  const logPayload = {
+    requested: requestedDir,
+    result: targetDir,
+  };
+  if(typeof window.logEvent === "function"){
+    window.logEvent("turnCursor", JSON.stringify(logPayload), "回転");
   }
   return callMakeStepThenable();
 }
