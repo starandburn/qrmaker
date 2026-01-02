@@ -79,6 +79,64 @@
     return text;
   };
 
+  const countBraceDelta = (line) => {
+    let depth = 0;
+    let inSingle = false;
+    let inDouble = false;
+    let inBacktick = false;
+    let escapeChar = false;
+    for(const ch of line){
+      if(escapeChar){
+        escapeChar = false;
+        continue;
+      }
+      if(ch === "\\" && (inSingle || inDouble || inBacktick)){
+        escapeChar = true;
+        continue;
+      }
+      if(ch === "'" && !inDouble && !inBacktick){
+        inSingle = !inSingle;
+        continue;
+      }
+      if(ch === '"' && !inSingle && !inBacktick){
+        inDouble = !inDouble;
+        continue;
+      }
+      if(ch === "`" && !inSingle && !inDouble){
+        inBacktick = !inBacktick;
+        continue;
+      }
+      if(inSingle || inDouble || inBacktick){
+        continue;
+      }
+      if(ch === "{"){
+        depth++;
+      }else if(ch === "}"){
+        depth--;
+      }
+    }
+    return depth;
+  };
+
+  const indentScriptLines = (lines) => {
+    const indented = [];
+    let level = 0;
+    for(const rawLine of lines){
+      const trimmed = rawLine.trim();
+      if(trimmed === ""){
+        indented.push("");
+        continue;
+      }
+      let effectiveLevel = level;
+      if(/^\}/.test(trimmed)){
+        effectiveLevel = Math.max(0, effectiveLevel - 1);
+      }
+      indented.push("  ".repeat(effectiveLevel) + trimmed);
+      level = Math.max(0, level + countBraceDelta(trimmed));
+    }
+    return indented.join("\n");
+  };
+
   function buildUserScript(rawText, { awaitCalls = true } = {}){
     let autoLoopCounter = 0;
     const repeatDefaultConditionName = () => {
@@ -187,44 +245,6 @@
     const formattedLines = codeRaw.replace(/\r/g, "").split("\n");
     const combined = [];
     let blockDepth = 0;
-    const countBraceDelta = (line) => {
-      let depth = 0;
-      let inSingle = false;
-      let inDouble = false;
-      let inBacktick = false;
-      let escapeChar = false;
-      for(const ch of line){
-        if(escapeChar){
-          escapeChar = false;
-          continue;
-        }
-        if(ch === "\\" && (inSingle || inDouble || inBacktick)){
-          escapeChar = true;
-          continue;
-        }
-        if(ch === "'" && !inDouble && !inBacktick){
-          inSingle = !inSingle;
-          continue;
-        }
-        if(ch === '"' && !inSingle && !inBacktick){
-          inDouble = !inDouble;
-          continue;
-        }
-        if(ch === "`" && !inSingle && !inDouble){
-          inBacktick = !inBacktick;
-          continue;
-        }
-        if(inSingle || inDouble || inBacktick){
-          continue;
-        }
-        if(ch === "{"){
-          depth++;
-        }else if(ch === "}"){
-          depth--;
-        }
-      }
-      return depth;
-    };
     let pendingInlineIf = null;
     for(const raw of formattedLines){
       const trimmed = typeof raw === "string" ? raw.trim() : "";
@@ -302,13 +322,13 @@
         if(!line.includes("{")){
           if(conditionRaw){
             const buildLine = buildConditionalLine("if", conditionRaw);
-          if(buildLine){
-            combined.push(buildLine);
-            blockDepth += countBraceDelta(buildLine);
-            continue;
+            if(buildLine){
+              combined.push(buildLine);
+              blockDepth += countBraceDelta(buildLine);
+              continue;
+            }
           }
         }
-      }
       }
       if(elseMatch && !line.includes("{")){
         const restIfMatch = elseRest.match(/^if\b(.*)$/i);
@@ -418,7 +438,7 @@
       combined.push("}");
       blockDepth--;
     }
-    return combined.join("\n");
+    return indentScriptLines(combined);
   }
 
   function formatStudentCodeLine(line){
