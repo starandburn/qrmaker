@@ -80,22 +80,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     SAMPLES: SAMPLES_PARAM_KEY = "m",
   } = PARAM_KEYS;
   const DATA_DEFAULT_TEXT = "Hello, World!";
-  const TOGGLE_FLAG_ORDER = [
-    toggleCursor,
-    toggleGuide,
-    toggleGrid,
-    toggleEmpty,
-    toggleColor,
-    toggleDebugValues,
-    stepMode,
-    stepSkipFunctions,
-  ];
   const initialDebugParamPresent = urlParams.has(DEBUG_PARAM_KEY);
-  const readToggleDefault = (target) => {
-    if(!target || typeof target.checked !== "boolean") return false;
-    return typeof target.defaultChecked === "boolean" ? target.defaultChecked : Boolean(target.checked);
-  };
-  const defaultFlagString = TOGGLE_FLAG_ORDER.map((target) => (readToggleDefault(target) ? "1" : "0")).join("");
   const defaultHistoryVisible = historyVisible;
   let defaultDebugVisible = isDebugVisible();
   const defaultPatternOpen = dataPatternPanel ? dataPatternPanel.open : false;
@@ -793,6 +778,31 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       userCodeParsed.value = `// ${err && err.message ? String(err.message) : String(err)}`;
     }
   }
+
+  const {
+    defaultFlagString,
+    applyToggleFlags,
+    buildFlagString,
+    setupFooterDebugToggle,
+  } = initUIControls({
+    toggleCursor,
+    toggleGuide,
+    toggleGrid,
+    toggleEmpty,
+    toggleColor,
+    toggleDebugValues,
+    stepMode,
+    stepSkipFunctions,
+    footerCopy,
+    getDebugPanel,
+    applyDebugVisibility,
+    syncDebugOverlay,
+    syncDebugPanelLayout,
+    syncParsedCode,
+    isDebugVisible,
+    requestAnimationFrame,
+    fitSquare: window.fitSquare,
+  });
 
   // Export helpers to window
   window.RENDER_IMMEDIATE = RENDER_IMMEDIATE;
@@ -2425,13 +2435,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
   }
 
-  function buildFlagString(){
-    return TOGGLE_FLAG_ORDER.map((target) => {
-      if(!target || typeof target.checked !== "boolean") return "0";
-      return target.checked ? "1" : "0";
-    }).join("");
-  }
-
   const buildStateUrl = () => {
     if(typeof buildStateUrlFromState !== "function"){
       return window.location.href;
@@ -2476,62 +2479,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return true;
   }
 
-  function applyToggleFlags(flagString){
-    if(typeof flagString !== "string") return { applied: false };
-    const bits = flagString.replace(/[^01]/g, "").split("");
-    if(bits.length === 0) return { applied: false };
-    let viewNeedsRefresh = false;
-    let colorChanged = false;
-    let debugChanged = false;
-    let stepNeedsRefresh = false;
-    bits.forEach((bit, index) => {
-      const target = TOGGLE_FLAG_ORDER[index];
-      if(!target) return;
-      if(typeof target.checked !== "boolean") return;
-      const checked = bit === "1";
-      if(target.checked === checked) return;
-      target.checked = checked;
-      if([toggleCursor, toggleGuide, toggleGrid, toggleEmpty].includes(target)){
-        viewNeedsRefresh = true;
-      }
-      if(target === toggleColor){
-        colorChanged = true;
-      }
-      if(target === toggleDebugValues){
-        debugChanged = true;
-      }
-      if(target === stepMode || target === stepSkipFunctions){
-        stepNeedsRefresh = true;
-      }
-    });
-    return {
-      applied: true,
-      viewNeedsRefresh,
-      colorChanged,
-      debugChanged,
-      stepNeedsRefresh,
-    };
-  }
-
   if(document && document.body){
     requestAnimationFrame(() => {
       document.body.classList.remove("app-loading");
     });
   }
 
-  const setupFooterDebugToggle = () => {
-    const panel = getDebugPanel();
-    if(!footerCopy || !panel) return;
-    footerCopy.addEventListener("dblclick", () => {
-      const nextVisible = !isDebugVisible();
-      applyDebugVisibility(nextVisible);
-      syncDebugOverlay();
-      syncDebugPanelLayout();
-      syncParsedCode();
-      if(typeof window.fitSquare === "function"){
-        requestAnimationFrame(window.fitSquare);
-      }
-    });
-  };
   setupFooterDebugToggle();
 }
