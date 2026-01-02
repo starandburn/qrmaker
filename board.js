@@ -153,6 +153,7 @@ function moveCursor(...args){
   let targetRow = cursorPos.row;
   let targetCol = cursorPos.col;
   let finalDir = cursorPos.dir;
+  const hasExplicitArgs = args.length > 0;
   const stepOnce = (dirVal) => {
     const norm = normalizeDir(dirVal);
     if(!norm) return false;
@@ -242,6 +243,16 @@ function moveCursor(...args){
     lastMoveBlocked = true;
     return false;
   }
+  if(hasExplicitArgs){
+    const payload = {
+      args,
+      target: { row: targetRow, col: targetCol },
+      dir: finalDir,
+    };
+    if(typeof window.logEvent === "function"){
+      window.logEvent("moveCursor", JSON.stringify(payload), "位置指定移動");
+    }
+  }
   lastMoveBlocked = false;
   return callMakeStepThenable();
 }
@@ -282,6 +293,11 @@ function turnCursor(dirArg){
   if(!targetDir) return false;
   const ok = updateCursor(cursorPos.row, cursorPos.col, targetDir);
   if(!ok) return false;
+  if(dirArg !== undefined){
+    if(typeof window.logEvent === "function"){
+      window.logEvent("turnCursor", String(dirArg), "方向指定回転");
+    }
+  }
   return callMakeStepThenable();
 }
 
