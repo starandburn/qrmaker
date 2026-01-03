@@ -275,9 +275,19 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   let isStepFillRunning = false;
   let runId = 0;
   let maskRunId = 0;
+  const ctx = {
+    get runId(){ return runId; },
+    set runId(value){ runId = value; return runId; },
+    get maskRunId(){ return maskRunId; },
+    set maskRunId(value){ maskRunId = value; return maskRunId; },
+    get isStepFillRunning(){ return isStepFillRunning; },
+    set isStepFillRunning(value){ isStepFillRunning = value; return isStepFillRunning; },
+    get renderMode(){ return renderMode; },
+    set renderMode(value){ renderMode = value; return renderMode; },
+  };
   function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false } = {}){
-    runId++;
-    isStepFillRunning = false;
+    ctx.runId++;
+    ctx.isStepFillRunning = false;
     if(clear){
       resetQRCode();
     }
@@ -296,11 +306,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     } = options;
     window.logEvent("resetQRCode", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, "QRコード描画をリセット");
     if(abortRun){
-      runId++;
-      maskRunId++;
+      ctx.runId++;
+      ctx.maskRunId++;
     }
     if(stopStep){
-      isStepFillRunning = false;
+      ctx.isStepFillRunning = false;
     }
     if(forceImmediate){
       setRenderMode(RENDER_IMMEDIATE);
@@ -546,9 +556,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   async function runUserCodeWithStep(){
-    const currentRun = ++runId;
-    isStepFillRunning = true;
-    const prevRender = renderMode;
+    const currentRun = ++ctx.runId;
+    ctx.isStepFillRunning = true;
+    const prevRender = ctx.renderMode;
     const stepOn = isStepModeOn();
     setRenderMode(RENDER_IMMEDIATE);
     try{
@@ -561,15 +571,15 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
       throw err;
     }finally{
-      isStepFillRunning = false;
+    ctx.isStepFillRunning = false;
       requestRender("runUserCodeWithStep");
       setRenderMode(prevRender);
     }
   }
 
   async function applyMask(maskIndex = 0){
-    const baseRun = runId;
-    const currentMaskRun = ++maskRunId;
+    const baseRun = ctx.runId;
+    const currentMaskRun = ++ctx.maskRunId;
     let idx = (maskIndex === undefined) ? 0 : Number(maskIndex);
     if(!Number.isFinite(idx)){
       idx = 0;
@@ -582,8 +592,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const maskFn = MASK_FUNCTIONS[idx];
     if(!maskFn) return false;
     const stepMask = isStepModeOn() && !(stepSkipFunctions && stepSkipFunctions.checked);
-    const prevRender = renderMode;
-    const shouldAbort = () => (baseRun !== runId) || (currentMaskRun !== maskRunId);
+    const prevRender = ctx.renderMode;
+    const shouldAbort = () => (baseRun !== ctx.runId) || (currentMaskRun !== ctx.maskRunId);
     const updateCursorSafe = (row, col, dir = DIR_RIGHT) => {
       if(shouldAbort()) return false;
       return updateCursor(row, col, dir);
@@ -624,7 +634,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(completed && hasFormatPattern){
       await drawFormatPatterns(idx, true);
     }
-    if(renderMode === RENDER_BUFFERED){
+    if(ctx.renderMode === RENDER_BUFFERED){
       requestRender("applyMask");
     }
     setRenderMode(prevRender);
