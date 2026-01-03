@@ -31,8 +31,23 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   let historyVisible = false;
   const txtInput = document.getElementById("txtInput");
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
+  const stateStore = (window.appState && typeof window.appState.createStore === "function")
+    ? window.appState.createStore({ historyVisible })
+    : null;
+  if(stateStore){
+    const { historyVisible: storedHistory = historyVisible } = stateStore.getState();
+    historyVisible = storedHistory;
+    stateStore.subscribe((next) => {
+      if(next && typeof next.historyVisible === "boolean"){
+        historyVisible = next.historyVisible;
+      }
+    });
+  }
   const setHistoryVisibility = (visible) => {
     const target = Boolean(visible);
+    if(stateStore){
+      stateStore.setState({ historyVisible: target }, "historyVisibility");
+    }
     historyVisible = target;
     layoutSetHistoryVisibility(target);
   };
@@ -116,6 +131,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const cycle = window.renderCycle;
     if(cycle && typeof cycle.requestRender === "function"){
       cycle.requestRender(reason);
+      return;
+    }
+    if(typeof window.flushRender === "function"){
+      window.flushRender();
     }
   };
   applyPatternOpenFromParam({ dataPatternPanel });
