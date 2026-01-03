@@ -452,7 +452,6 @@
     const bits15 = maskIsSpecified && ctx.FORMAT_L && ctx.FORMAT_L[idx]
       ? ctx.FORMAT_L[idx]
       : 0;
-    console.log("drawFormatPatterns", { mask, maskIsSpecified, bits15 });
     const coordsA = [
       [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],
       [8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8],

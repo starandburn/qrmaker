@@ -858,7 +858,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     let idx = 0;
     const rawValue = maskIndex;
     const numeric = Number(rawValue);
-    console.log("drawQRCode mask decision", { arg, maskIndex, numeric });
     if(Number.isFinite(numeric) && numeric >= 0 && numeric <= 7){
       maskSpecified = true;
       idx = numeric;

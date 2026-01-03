@@ -116,7 +116,6 @@ function debugLog(...args){
       return stepped ? !!stepped.ok : false;
     }
     setRenderMode(RENDER_BUFFERED);
-    hasFormatPattern = false;
     resetQRCode({ abortRun: false });
     resetCursor();
     if(resetDelay){
@@ -139,7 +138,6 @@ function debugLog(...args){
       setRenderMode(RENDER_IMMEDIATE);
     }
     resetCursor();
-    hasFormatPattern = true;
     return true;
   }
 
@@ -371,9 +369,9 @@ function debugLog(...args){
       [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
       [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
     ];
-    const bits15 = 0;
-    console.log("drawBasePatterns -> drawFormatPatterns(undefined)", { currentRun, bits15 });
-    const drawFormatSide = async (coords, side) => {
+    const formatSource = Array.isArray(FORMAT_L) ? FORMAT_L : [];
+    const bits15 = formatSource.length > 0 ? formatSource[0] : 0;
+  const drawFormatSide = async (coords, side) => {
       for(let i = 0; i < 15; i++){
         if(shouldAbort()) throw ABORT_ERR;
         const bit = (bits15 >>> i) & 1;
