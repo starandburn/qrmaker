@@ -306,7 +306,38 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   window.setRenderMode = setRenderMode;
   ctx.helpers = ctx.helpers || {};
   ctx.FORMAT_L = FORMAT_L;
+  const runIdAccessor = {
+    get: () => runId,
+    set: (value) => { runId = value; return runId; },
+    increment: () => ++runId,
+  };
   const H = ctx.helpers;
+  const {
+    syncStepControls,
+    getStepDelay,
+    stepDelayAbort,
+    makeStepThenable,
+    shouldStepFunctions,
+  } = typeof createStepControl === "function"
+    ? createStepControl({
+      stepMode,
+      stepSkipFunctions,
+      stepSpeed,
+      stepSpeedLabel,
+      isStepModeOn,
+      requestAnimationFrame,
+      sleep,
+      ABORT_ERR,
+      runIdAccessor,
+      defaultStepDelay: STEP_DELAY_MS,
+    })
+    : {
+      syncStepControls: () => {},
+      getStepDelay: () => 0,
+      stepDelayAbort: () => Promise.resolve(true),
+      makeStepThenable: () => true,
+      shouldStepFunctions: () => false,
+    };
   function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false } = {}){
     ctx.runId++;
     ctx.isStepFillRunning = false;
@@ -375,75 +406,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return updateCursor(row, col, dir);
   }
 
-  function syncStepControls(){
-    if(!stepSpeed) return;
-    const on = isStepModeOn();
-    stepSpeed.disabled = !on;
-    if(stepSpeedLabel){
-      stepSpeedLabel.classList.toggle("disabled", stepSpeed.disabled);
-    }
-    if(stepSkipFunctions){
-      stepSkipFunctions.disabled = !on;
-      const label = stepSkipFunctions.closest("label");
-      if(label){
-        label.classList.toggle("disabled", !on);
-      }
-    }
-  }
-
-  function getStepDelay(){
-    if(!isStepModeOn()) return 0;
-    const val = Number(stepSpeed ? stepSpeed.value : STEP_DELAY_MS);
-    if(Number.isNaN(val)) return 0;
-    return Math.max(0, Math.min(120, val));
-  }
-  ctx.getStepDelay = getStepDelay;
-
-  function stepDelayAbort(runToken){
-    const token = (typeof runToken === "number") ? runToken : runId;
-    const d = getStepDelay();
-    const wait = d > 0 ? sleep(d) : new Promise(requestAnimationFrame);
-    return wait.then(() => {
-      if(token !== runId){
-        throw ABORT_ERR;
-      }
-      return true;
-    });
-  }
-
-  function makeStepThenable(ok){
-    if(!ok) return false;
-    if(!isStepModeOn()){
-      return true;
-    }
-    const stepRunToken = runId;
-    const delay = getStepDelay();
-    const wait = () => new Promise((resolve) => {
-      const done = () => resolve(true);
-      if(delay > 0){
-        setTimeout(() => requestAnimationFrame(done), delay);
-      }else{
-        requestAnimationFrame(done);
-      }
-    });
-    const p = wait().then(() => {
-      if(stepRunToken !== runId){
-        throw ABORT_ERR;
-      }
-      return true;
-    });
-    return {
-      then: (...args) => p.then(...args),
-      catch: (...args) => p.catch(...args),
-      valueOf: () => true,
-      toString: () => "true",
-    };
-  }
-  const runIdAccessor = {
-    get: () => runId,
-    set: (value) => { runId = value; return runId; },
-    increment: () => ++runId,
-  };
   const stepFillAccessor = {
     get: () => isStepFillRunning,
     set: (value) => { isStepFillRunning = value; },
@@ -508,12 +470,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   window.boardMatrix = boardMatrix;
   window.getNextData = getNextData;
   // Update board matrix directly: row/col 1-based, encoded value (encodeBit)
-  function shouldStepFunctions(){
-    return isStepModeOn() && !(stepSkipFunctions && stepSkipFunctions.checked);
-  }
-
   function validateRunnerSyntax(runner){
-    try{
+   try{
       new Function(runner);
       return null;
     }catch(err){
