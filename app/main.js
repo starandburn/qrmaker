@@ -275,16 +275,31 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   let isStepFillRunning = false;
   let runId = 0;
   let maskRunId = 0;
-  const ctx = {
-    get runId(){ return runId; },
-    set runId(value){ runId = value; return runId; },
-    get maskRunId(){ return maskRunId; },
-    set maskRunId(value){ maskRunId = value; return maskRunId; },
-    get isStepFillRunning(){ return isStepFillRunning; },
-    set isStepFillRunning(value){ isStepFillRunning = value; return isStepFillRunning; },
-    get renderMode(){ return renderMode; },
-    set renderMode(value){ renderMode = value; return renderMode; },
+  const originalSetRenderMode = window.setRenderMode;
+  let renderModeState = RENDER_IMMEDIATE;
+  const setRenderMode = (mode) => {
+    const normalized = mode === RENDER_BUFFERED ? RENDER_BUFFERED : RENDER_IMMEDIATE;
+    renderModeState = normalized;
+    if(typeof originalSetRenderMode === "function"){
+      originalSetRenderMode(mode);
+    }
+    return normalized;
   };
+    const ctx = {
+      get runId(){ return runId; },
+      set runId(value){ runId = value; return runId; },
+      get maskRunId(){ return maskRunId; },
+      set maskRunId(value){ maskRunId = value; return maskRunId; },
+      get isStepFillRunning(){ return isStepFillRunning; },
+      set isStepFillRunning(value){ isStepFillRunning = value; return isStepFillRunning; },
+      get renderMode(){ return renderModeState; },
+      set renderMode(value){ renderModeState = value; return renderModeState; },
+    };
+    ctx.setRenderMode = setRenderMode;
+      ctx.isStepModeOn = isStepModeOn;
+      ctx.stepSkipFunctions = stepSkipFunctions;
+      ctx.requestRender = requestRender;
+      window.setRenderMode = setRenderMode;
   function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false } = {}){
     ctx.runId++;
     ctx.isStepFillRunning = false;
@@ -338,6 +353,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     resetCursor();
     pendingCursor = null;
   }
+  ctx.resetCursor = resetCursor;
 
   async function resetCommand(){
     window.logEvent("resetCommand", "", "コマンドをリセット");
@@ -373,6 +389,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(Number.isNaN(val)) return 0;
     return Math.max(0, Math.min(120, val));
   }
+  ctx.getStepDelay = getStepDelay;
 
   function stepDelayAbort(runToken){
     const token = (typeof runToken === "number") ? runToken : runId;
@@ -577,76 +594,15 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
   }
 
-  async function applyMask(maskIndex = 0){
-    const baseRun = ctx.runId;
-    const currentMaskRun = ++ctx.maskRunId;
-    let idx = (maskIndex === undefined) ? 0 : Number(maskIndex);
-    if(!Number.isFinite(idx)){
-      idx = 0;
-    }
-    if(idx < 0 || idx > 7){
-      window.logEvent("applyMask", maskIndex ?? "", "マスクインデックスが無効");
-      return false; // out of range: do nothing
-    }
-    window.logEvent("applyMask", idx, `マスク${idx}を適用`);
-    const maskFn = MASK_FUNCTIONS[idx];
-    if(!maskFn) return false;
-    const stepMask = isStepModeOn() && !(stepSkipFunctions && stepSkipFunctions.checked);
-    const prevRender = ctx.renderMode;
-    const shouldAbort = () => (baseRun !== ctx.runId) || (currentMaskRun !== ctx.maskRunId);
-    const updateCursorSafe = (row, col, dir = DIR_RIGHT) => {
-      if(shouldAbort()) return false;
-      return updateCursor(row, col, dir);
-    };
-    const prevCursor = { row: cursorPos.row, col: cursorPos.col, dir: cursorPos.dir };
-    const maskCursorDir = stepMask ? DIR_RIGHT : prevCursor.dir;
-    setRenderMode(stepMask ? RENDER_IMMEDIATE : RENDER_BUFFERED);
-    const maybeDelay = async () => {
-      if(!stepMask) return true;
-      if(shouldAbort()) return false;
-      const delay = getStepDelay();
-      if(delay > 0){
-        await sleep(delay);
-      }else{
-        await new Promise(requestAnimationFrame);
-      }
-      return !shouldAbort();
-    };
-    for(let row = 1; row <= 25; row++){
-      for(let col = 1; col <= 25; col++){
-        if(shouldAbort()) break;
-        const encoded = window.getCell(row, col);
-        if(typeof encoded !== "number") continue;
-        const kind = (typeof window.bitKind === "function") ? window.bitKind(encoded) : Math.abs(encoded);
-        if(isFunctionalKind(kind)) continue;
-        if(!maskFn(row - 1, col - 1)) continue;
-        if(stepMask){
-          updateCursorSafe(row, col, maskCursorDir);
-        }
-        // Apply mask by toggling the bit; invertCell handles unplaced/mask kinds.
-        invertCell(row, col);
-        const ok = await maybeDelay();
-        if(!ok) break;
-      }
-      if(shouldAbort()) break;
-    }
-    const completed = !shouldAbort();
-    if(completed && hasFormatPattern){
-      await drawFormatPatterns(idx, true);
-    }
-    if(ctx.renderMode === RENDER_BUFFERED){
-      requestRender("applyMask");
-    }
-    setRenderMode(prevRender);
-    if(stepMask){
-      updateCursorSafe(prevCursor.row, prevCursor.col, maskCursorDir);
-    }
-    resetCursor();
-    return completed;
-  }
-
   window.invertCell = invertCell;
-  window.applyMask = applyMask;
+    const callApplyMask = (...args) => {
+      const drawer = window.qrLegacyDrawers;
+      if(drawer && typeof drawer.applyMask === "function"){
+        return drawer.applyMask(ctx, ...args);
+      }
+      return false;
+    };
+    window.applyMask = callApplyMask;
   window.putFinderCells = putFinderCells;
   window.putAlignmentCells = putAlignmentCells;
   window.putTimingCells = putTimingCells;
@@ -805,7 +761,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(!maskSpecified){
       return true;
     }
-    const maskOk = await applyMask(idx);
+      const maskOk = await window.qrLegacyDrawers.applyMask(ctx, idx);
     if(currentRun !== runId || !maskOk) return false;
     return true;
   }
@@ -838,6 +794,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     6: (r, c) => ((((r * c) % 2) + ((r * c) % 3)) % 2) === 0,
     7: (r, c) => ((((r + c) % 2) + ((r * c) % 3)) % 2) === 0,
   };
+  ctx.MASK_FUNCTIONS = MASK_FUNCTIONS;
+  ctx.isFunctionalKind = isFunctionalKind;
 
   function randomInt(min, max){
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -890,6 +848,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       if(runToken !== runId) return false;
       return !!(stepSkipFunctions && stepSkipFunctions.checked && isStepModeOn());
     };
+
+    window.isFunctionalKind = isFunctionalKind;
+    window.MASK_FUNCTIONS = MASK_FUNCTIONS;
     const maybeCursorJumpDelay = async () => {
       if(!stepActive()) return true;
       const delay = getStepDelay();
@@ -1708,6 +1669,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     hasFormatPattern = true;
     return true;
   }
+  ctx.drawFormatPatterns = drawFormatPatterns;
 
   if(stepMode){
     stepMode.addEventListener("change", syncStepControls);
