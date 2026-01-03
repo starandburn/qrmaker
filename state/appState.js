@@ -31,7 +31,15 @@
     return { getState, setState, subscribe };
   };
 
-  global.appState = Object.assign(global.appState || {}, {
+  const appState = Object.assign(global.appState || {}, {
     createStore,
   });
+  let singletonStore = null;
+  const getStore = (initialState) => {
+    if(singletonStore) return singletonStore;
+    singletonStore = createStore(initialState);
+    return singletonStore;
+  };
+  appState.getStore = getStore;
+  global.appState = appState;
 })(typeof window !== "undefined" ? window : globalThis);

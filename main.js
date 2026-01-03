@@ -28,28 +28,27 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const toggleGrid = document.getElementById("toggleGrid");
   const toggleEmpty = document.getElementById("toggleEmpty");
   const toggleColor = document.getElementById("toggleColor");
-  let historyVisible = false;
   const txtInput = document.getElementById("txtInput");
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
-  const stateStore = (window.appState && typeof window.appState.createStore === "function")
-    ? window.appState.createStore({ historyVisible })
+  const store = (window.appState && typeof window.appState.getStore === "function")
+    ? window.appState.getStore({ historyVisible: false })
     : null;
-  if(stateStore){
-    const { historyVisible: storedHistory = historyVisible } = stateStore.getState();
-    historyVisible = storedHistory;
-    stateStore.subscribe((next) => {
+  const getHistoryVisible = () => (store ? Boolean(store.getState().historyVisible) : false);
+  if(store){
+    layoutSetHistoryVisibility(getHistoryVisible());
+    store.subscribe((next) => {
       if(next && typeof next.historyVisible === "boolean"){
-        historyVisible = next.historyVisible;
+        layoutSetHistoryVisibility(Boolean(next.historyVisible));
       }
     });
   }
   const setHistoryVisibility = (visible) => {
     const target = Boolean(visible);
-    if(stateStore){
-      stateStore.setState({ historyVisible: target }, "historyVisibility");
+    if(store){
+      store.setState({ historyVisible: target }, "historyVisibility");
+    }else{
+      layoutSetHistoryVisibility(target);
     }
-    historyVisible = target;
-    layoutSetHistoryVisibility(target);
   };
   const applyDebugVisibility = layoutUI.applyDebugVisibility || debugUI.applyDebugVisibility || (() => {});
   const isDebugVisible = debugUI.isDebugVisible || (() => false);
@@ -96,7 +95,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   } = PARAM_KEYS;
   const DATA_DEFAULT_TEXT = "Hello, World!";
   const initialDebugParamPresent = urlParams.has(DEBUG_PARAM_KEY);
-  const defaultHistoryVisible = historyVisible;
+  const defaultHistoryVisible = getHistoryVisible();
   let defaultDebugVisible = isDebugVisible();
   const defaultPatternOpen = dataPatternPanel ? dataPatternPanel.open : false;
   const defaultStepMode = stepMode ? (typeof stepMode.defaultChecked === "boolean" ? stepMode.defaultChecked : Boolean(stepMode.checked)) : false;
@@ -1937,7 +1936,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   });
   if(btnToggleHistory){
     btnToggleHistory.addEventListener("click", () => {
-      setHistoryVisibility(!historyVisible);
+      setHistoryVisibility(!getHistoryVisible());
     });
   }
   if(btnPruneHistory){
@@ -2020,7 +2019,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       stepSpeed,
       stepMode,
       stepSkipFunctions,
-      historyVisible,
+      historyVisible: getHistoryVisible(),
       isDebugVisible,
       defaultFlagString,
       defaultHistoryVisible,
