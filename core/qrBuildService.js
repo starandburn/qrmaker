@@ -20,6 +20,7 @@
     } = deps;
     const {
       drawBasePatternsService,
+      prepareDataBits,
     } = deps;
     // Cursor / board helpers
     const {
@@ -75,9 +76,12 @@
       setRenderMode(stepEnabled ? renderModeImmediate : renderModeBuffered);
       // --- Data bit preparation ---
       // TODO(step12): move bit sequence construction to a builder helper
-      const funcSet = buildFunctionSet();
-      const bitsSeq = buildBitSequence();
-      updateCursor(25, 25, directionUp);
+      const { funcSet, bitsSeq } = prepareDataBits({
+        buildFunctionSet,
+        buildBitSequence,
+        updateCursor,
+        directionUp,
+      });
       let bitIdx = 0;
       let col = 25;
       let upward = true;
