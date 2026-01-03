@@ -628,13 +628,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
       return { ok: false, fastForwarded: false };
     };
-    window.drawBasePatterns = callDrawBasePatterns;
-    window.drawBasePatternsStepped = callDrawBasePatternsStepped;
-  window.putFinderCells = putFinderCells;
-  window.putAlignmentCells = putAlignmentCells;
-  window.putTimingCells = putTimingCells;
-  window.putDarkModuleCells = putDarkModuleCells;
-  window.putFormatCells = putFormatCells;
+  window.drawBasePatterns = callDrawBasePatterns;
+  window.drawBasePatternsStepped = callDrawBasePatternsStepped;
   const wrapDrawApi = (name, fn, description) => {
     const wrapped = async function(...args){
       const mainArg = args[0] ?? "";
@@ -643,16 +638,102 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     };
     return wrapped;
   };
-  drawFinderPatterns = wrapDrawApi("drawFinderPatterns", drawFinderPatterns, "ファインダーパターンを描画");
-  drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", drawAlignmentPatterns, "配置パターンを描画");
-  drawDarkModulePatterns = wrapDrawApi("drawDarkModulePatterns", drawDarkModulePatterns, "ダークモジュールを描画");
-  drawTimingPatterns = wrapDrawApi("drawTimingPatterns", drawTimingPatterns, "タイミングパターンを描画");
-  drawFormatPatterns = wrapDrawApi("drawFormatPatterns", drawFormatPatterns, "フォーマットパターンを描画");
+  const callPutFinderCells = (...args) => {
+    const drawerInstance = window.qrLegacyDrawers;
+    if(!ctx) return false;
+    if(drawerInstance && typeof drawerInstance.putFinderCells === "function"){
+      return drawerInstance.putFinderCells(ctx, ...args);
+    }
+    return false;
+  };
+  window.putFinderCells = callPutFinderCells;
+  const callDrawFinderPatterns = (...args) => {
+    const drawerInstance = window.qrLegacyDrawers;
+    if(!ctx) return false;
+    if(drawerInstance && typeof drawerInstance.drawFinderPatterns === "function"){
+      return drawerInstance.drawFinderPatterns(ctx, ...args);
+    }
+    return false;
+  };
+  const callPutAlignmentCells = (...args) => {
+    const drawerInstance = window.qrLegacyDrawers;
+    if(!ctx) return false;
+    if(drawerInstance && typeof drawerInstance.putAlignmentCells === "function"){
+      return drawerInstance.putAlignmentCells(ctx, ...args);
+    }
+    return false;
+  };
+  const callDrawAlignmentPatterns = (...args) => {
+    const drawerInstance = window.qrLegacyDrawers;
+    if(!ctx) return false;
+    if(drawerInstance && typeof drawerInstance.drawAlignmentPatterns === "function"){
+      return drawerInstance.drawAlignmentPatterns(ctx, ...args);
+    }
+    return false;
+  };
+  const callPutTimingCells = (...args) => {
+    const drawerInstance = window.qrLegacyDrawers;
+    if(!ctx) return false;
+    if(drawerInstance && typeof drawerInstance.putTimingCells === "function"){
+      return drawerInstance.putTimingCells(ctx, ...args);
+    }
+    return false;
+  };
+  const callDrawTimingPatterns = (...args) => {
+    const drawerInstance = window.qrLegacyDrawers;
+    if(!ctx) return false;
+    if(drawerInstance && typeof drawerInstance.drawTimingPatterns === "function"){
+      return drawerInstance.drawTimingPatterns(ctx, ...args);
+    }
+    return false;
+  };
+  const callPutDarkModuleCells = (...args) => {
+    const drawerInstance = window.qrLegacyDrawers;
+    if(!ctx) return false;
+    if(drawerInstance && typeof drawerInstance.putDarkModuleCells === "function"){
+      return drawerInstance.putDarkModuleCells(ctx, ...args);
+    }
+    return false;
+  };
+  const callDrawDarkModulePatterns = (...args) => {
+    const drawerInstance = window.qrLegacyDrawers;
+    if(!ctx) return false;
+    if(drawerInstance && typeof drawerInstance.drawDarkModulePatterns === "function"){
+      return drawerInstance.drawDarkModulePatterns(ctx, ...args);
+    }
+    return false;
+  };
+  const callPutFormatCells = (...args) => {
+    const drawerInstance = window.qrLegacyDrawers;
+    if(!ctx) return false;
+    if(drawerInstance && typeof drawerInstance.putFormatCells === "function"){
+      return drawerInstance.putFormatCells(ctx, ...args);
+    }
+    return false;
+  };
+  const callDrawFormatPatterns = (...args) => {
+    const drawerInstance = window.qrLegacyDrawers;
+    if(!ctx) return false;
+    if(drawerInstance && typeof drawerInstance.drawFormatPatterns === "function"){
+      return drawerInstance.drawFormatPatterns(ctx, ...args);
+    }
+    return false;
+  };
+  window.putAlignmentCells = callPutAlignmentCells;
+  window.putTimingCells = callPutTimingCells;
+  window.putDarkModuleCells = callPutDarkModuleCells;
+  window.putFormatCells = callPutFormatCells;
+  const drawFinderPatterns = wrapDrawApi("drawFinderPatterns", callDrawFinderPatterns, "ファインダーパターンを描画");
+  const drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", callDrawAlignmentPatterns, "配置パターンを描画");
+  const drawDarkModulePatterns = wrapDrawApi("drawDarkModulePatterns", callDrawDarkModulePatterns, "ダークモジュールを描画");
+  const drawTimingPatterns = wrapDrawApi("drawTimingPatterns", callDrawTimingPatterns, "タイミングパターンを描画");
+  const drawFormatPatterns = wrapDrawApi("drawFormatPatterns", callDrawFormatPatterns, "フォーマットパターンを描画");
   window.drawFormatPatterns = drawFormatPatterns;
   window.drawFinderPatterns = drawFinderPatterns;
   window.drawAlignmentPatterns = drawAlignmentPatterns;
   window.drawDarkModulePatterns = drawDarkModulePatterns;
   window.drawTimingPatterns = drawTimingPatterns;
+  ctx.drawFormatPatterns = drawFormatPatterns;
   window.putNextCell = putNextCell;
   window.drawDataPatterns = drawDataPatterns;
   window.drawQRCode = drawQRCode;
@@ -956,79 +1037,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     });
   }
 
-  function putAlignmentCells(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runToken = (typeof currentRun === "number") ? currentRun : runId;
-    const step = !!resolvedStep;
-    updateCursor(cursorPos.row, cursorPos.col, DIR_RIGHT);
-    const baseRow = cursorPos.row;
-    const baseCol = cursorPos.col;
-    const pattern = [
-      [1,1,1,1,1],
-      [1,0,0,0,1],
-      [1,0,1,0,1],
-      [1,0,0,0,1],
-      [1,1,1,1,1],
-    ];
-    const startRow = baseRow - 2;
-    const startCol = baseCol - 2;
-    const allowOverwrite = overwrite !== false;
-    const shouldDrawCell = (row, col) => shouldPlaceCell(row, col, allowOverwrite);
-    if(!step){
-      const prevRender = renderMode;
-      setRenderMode(RENDER_BUFFERED);
-      for(let r = 0; r < 5; r++){
-        for(let c = 0; c < 5; c++){
-          const row = startRow + r;
-          const col = startCol + c;
-          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-          const bit = pattern[r][c];
-          if(!shouldDrawCell(row, col)) continue;
-          window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
-        }
-      }
-      requestRender("putAlignmentCells");
-      setRenderMode(prevRender);
-      return true;
-    }
-    const stepActive = () => shouldStepFunctions() && runToken === runId;
-    const delay = async () => {
-      await stepDelayAbort(runToken);
-    };
-    return (async () => {
-      const prevRender = renderMode;
-      setRenderMode(RENDER_IMMEDIATE);
-      for(let r = 0; r < 5; r++){
-        for(let c = 0; c < 5; c++){
-          if(runToken !== runId) return false;
-          if(!stepActive()){
-            setRenderMode(prevRender);
-            return putAlignmentCells(overwrite, { stepEnabled: false, currentRun: runToken });
-          }
-          const row = startRow + r;
-          const col = startCol + c;
-          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-          const bit = pattern[r][c];
-          if(!shouldDrawCell(row, col)) continue;
-          window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
-          updateCursorIfRun(runToken, row, col, DIR_RIGHT);
-          await delay();
-        }
-      }
-      setRenderMode(prevRender);
-      return true;
-    })();
-  }
-
-  async function drawAlignmentPatterns(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runVal = (typeof currentRun === "number") ? currentRun : runId;
-    const opts = { stepEnabled: resolvedStep, currentRun: runVal };
-    updateCursor(19, 19, DIR_RIGHT);
-    await putAlignmentCells(overwrite, opts);
-    return true;
-  }
-
   if(btnClearCode){
     btnClearCode.addEventListener("click", () => {
       window.logEvent("clearCode", "", "コード入力をクリア");
@@ -1043,345 +1051,14 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     });
   }
 
-  async function putFinderCells(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runToken = (typeof currentRun === "number") ? currentRun : runId;
-    const shouldAbort = () => runToken !== runId;
-    const stepInitial = !!resolvedStep;
-    const baseRow = cursorPos.row;
-    const baseCol = cursorPos.col;
-    updateCursor(baseRow, baseCol, DIR_RIGHT);
-    const pattern = [
-      [1,1,1,1,1,1,1],
-      [1,0,0,0,0,0,1],
-      [1,0,1,1,1,0,1],
-      [1,0,1,1,1,0,1],
-      [1,0,1,1,1,0,1],
-      [1,0,0,0,0,0,1],
-      [1,1,1,1,1,1,1],
-    ];
-    const prevRender = renderMode;
-    const allowOverwrite = overwrite !== false;
-    const shouldDrawCell = (row, col) => shouldPlaceCell(row, col, allowOverwrite);
-    const updateCursorSafe = (row, col, dir = DIR_RIGHT) => {
-      if(runToken !== runId) return false;
-      return updateCursor(row, col, dir);
-    };
-    let lastCursorRow = null;
-    let lastCursorCol = null;
-    const drawSync = () => {
-      for(let r = 0; r < 7; r++){
-        for(let c = 0; c < 7; c++){
-          const row = baseRow + r;
-          const col = baseCol + c;
-          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-          const bit = pattern[r][c];
-          if(!shouldDrawCell(row, col)) continue;
-          window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
-          lastCursorRow = row;
-          lastCursorCol = col;
-        }
-      }
-      const sRow = baseRow - 1;
-      const eRow = baseRow + 7;
-      const sCol = baseCol - 1;
-      const eCol = baseCol + 7;
-      for(let r = sRow; r <= eRow; r++){
-        for(let c = sCol; c <= eCol; c++){
-          const insideCore = r >= baseRow && r < baseRow + 7 && c >= baseCol && c < baseCol + 7;
-          if(insideCore) continue;
-          if(r < 1 || r > 25 || c < 1 || c > 25) continue;
-          if(r === sRow || r === eRow || c === sCol || c === eCol){
-            if(!shouldDrawCell(r, c)) continue;
-            window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
-            lastCursorRow = r;
-            lastCursorCol = c;
-          }
-        }
-      }
-    };
-    const finishSync = () => {
-      setRenderMode(RENDER_BUFFERED);
-      drawSync();
-      requestRender("drawFinderPatterns");
-      setRenderMode(prevRender);
-      if(lastCursorRow !== null && lastCursorCol !== null){
-        updateCursorSafe(lastCursorRow, lastCursorCol, DIR_RIGHT);
-      }
-      return true;
-    };
-    if(!stepInitial){
-      return finishSync();
-    }
-    const stepActive = () => shouldStepFunctions();
-    const delay = async () => {
-      await stepDelayAbort(runToken);
-    };
-    const drawStep = async () => {
-      for(let r = 0; r < 7; r++){
-        for(let c = 0; c < 7; c++){
-          if(shouldAbort()) return false;
-          if(!stepActive()) return finishSync();
-          const row = baseRow + r;
-          const col = baseCol + c;
-          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-          const bit = pattern[r][c];
-          if(!shouldDrawCell(row, col)) continue;
-          window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
-          updateCursorSafe(row, col, DIR_RIGHT);
-          lastCursorRow = row;
-          lastCursorCol = col;
-          await delay();
-        }
-      }
-      const sRow = baseRow - 1;
-      const eRow = baseRow + 7;
-      const sCol = baseCol - 1;
-      const eCol = baseCol + 7;
-      for(let r = sRow; r <= eRow; r++){
-        for(let c = sCol; c <= eCol; c++){
-          if(shouldAbort()) return false;
-          if(!stepActive()) return finishSync();
-          const insideCore = r >= baseRow && r < baseRow + 7 && c >= baseCol && c < baseCol + 7;
-          if(insideCore) continue;
-          if(r < 1 || r > 25 || c < 1 || c > 25) continue;
-          if(r === sRow || r === eRow || c === sCol || c === eCol){
-            if(!shouldDrawCell(r, c)) continue;
-            window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
-            updateCursorSafe(r, c, DIR_RIGHT);
-            lastCursorRow = r;
-            lastCursorCol = c;
-            await delay();
-          }
-        }
-      }
-      return true;
-    };
-    setRenderMode(RENDER_IMMEDIATE);
-    const res = await drawStep();
-    setRenderMode(prevRender);
-    if(lastCursorRow !== null && lastCursorCol !== null){
-      updateCursorSafe(lastCursorRow, lastCursorCol, DIR_RIGHT);
-    }
-    return !!res;
-  }
-
-  async function drawFinderPatterns(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runVal = (typeof currentRun === "number") ? currentRun : runId;
-    const opts = { stepEnabled: resolvedStep, currentRun: runVal };
-    const moveAndDraw = async (row, col) => {
-      updateCursor(row, col, DIR_RIGHT);
-      return putFinderCells(overwrite, opts);
-    };
-    await moveAndDraw(1, 1);
-    await moveAndDraw(1, 19);
-    await moveAndDraw(19, 1);
-    return true;
-  }
-
-  async function drawDarkModulePatterns(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runVal = (typeof currentRun === "number") ? currentRun : runId;
-    const opts = { stepEnabled: resolvedStep, currentRun: runVal };
-    updateCursor(18, 9, DIR_RIGHT);
-    await putDarkModuleCells(overwrite, opts);
-    return true;
-  }
-
-  async function putDarkModuleCells(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runToken = (typeof currentRun === "number") ? currentRun : runId;
-    const step = !!resolvedStep;
-    const baseRow = cursorPos.row;
-    const baseCol = cursorPos.col;
-    if(!shouldPlaceCell(baseRow, baseCol, overwrite !== false)) return true;
-    if(!step){
-      if(typeof window.updateCell === "function"){
-        window.updateCell(baseRow, baseCol, window.encodeBit(BIT_FUNC_DARK, true));
-      }
-      return true;
-    }
-    const delay = async () => {
-      await stepDelayAbort(runToken);
-    };
-    if(runToken !== runId) return false;
-    setRenderMode(RENDER_IMMEDIATE);
-    if(typeof window.updateCell === "function"){
-      window.updateCell(baseRow, baseCol, window.encodeBit(BIT_FUNC_DARK, true));
-    }
-    updateCursorIfRun(runToken, baseRow, baseCol, DIR_RIGHT);
-    await delay();
-    return true;
-  }
-
-  function putTimingCells(direction = TIMING_HORIZONTAL, index = TIMING_ROW, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runToken = (typeof currentRun === "number") ? currentRun : runId;
-    const dirVal = Number(direction);
-    if(!Number.isFinite(dirVal)) return false;
-    if(dirVal !== TIMING_HORIZONTAL && dirVal !== TIMING_VERTICAL) return false;
-    const resolvedIndex = (dirVal === TIMING_VERTICAL)
-      ? resolveRowCol(undefined, index, cursorPos.row, cursorPos.col)
-      : resolveRowCol(index, undefined, cursorPos.row, cursorPos.col);
-    const pos = (dirVal === TIMING_HORIZONTAL) ? resolvedIndex.row : resolvedIndex.col;
-    if(!Number.isFinite(pos) || !Number.isInteger(pos) || pos < 1 || pos > 25) return false;
-    if(dirVal === TIMING_HORIZONTAL){
-      timingRowIndex = pos;
-    }else{
-      timingColIndex = pos;
-    }
-      const step = !!resolvedStep;
-    const allowOverwrite = overwrite !== false;
-    const canWriteTimingCell = (r, c) => shouldPlaceCell(r, c, allowOverwrite);
-    if(!step){
-      const prevRender = renderMode;
-      setRenderMode(RENDER_BUFFERED);
-      if(dirVal === TIMING_HORIZONTAL){
-        for(let c = 1; c <= 25; c++){
-          const bit = (c % 2 === 1) ? 1 : 0;
-          if(!canWriteTimingCell(pos, c)) continue;
-          window.updateCell(pos, c, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
-        }
-      }else{
-        for(let r = 1; r <= 25; r++){
-          const bit = (r % 2 === 1) ? 1 : 0;
-          if(!canWriteTimingCell(r, pos)) continue;
-          window.updateCell(r, pos, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
-        }
-      }
-      requestRender("putTimingCells");
-      setRenderMode(prevRender);
-      return true;
-    }
-    const delay = async () => {
-      await stepDelayAbort(runToken);
-    };
-    return (async () => {
-      const prevRender = renderMode;
-      setRenderMode(RENDER_IMMEDIATE);
-      if(dirVal === TIMING_HORIZONTAL){
-        for(let c = 1; c <= 25; c++){
-          if(runToken !== runId) return false;
-          if(!shouldStepFunctions()) return putTimingCells(direction, index, overwrite, { stepEnabled: false, currentRun: runToken });
-          const bit = (c % 2 === 1) ? 1 : 0;
-          if(!canWriteTimingCell(pos, c)) continue;
-          window.updateCell(pos, c, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
-          updateCursorIfRun(runToken, pos, c, DIR_RIGHT);
-          await delay();
-        }
-      }else{
-        for(let r = 1; r <= 25; r++){
-          if(runToken !== runId) return false;
-          if(!shouldStepFunctions()) return putTimingCells(direction, index, overwrite, { stepEnabled: false, currentRun: runToken });
-          const bit = (r % 2 === 1) ? 1 : 0;
-          if(!canWriteTimingCell(r, pos)) continue;
-          window.updateCell(r, pos, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
-          updateCursorIfRun(runToken, r, pos, DIR_RIGHT);
-          await delay();
-        }
-      }
-      setRenderMode(prevRender);
-      return true;
-    })();
-  }
-
-  async function drawTimingPatterns(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const opts = { stepEnabled: resolvedStep, currentRun };
-    await putTimingCells(TIMING_HORIZONTAL, TIMING_ROW, overwrite, opts);
-    await putTimingCells(TIMING_VERTICAL, TIMING_COL, overwrite, opts);
-    return true;
-  }
-
-  async function putFormatCells(bits15, coords, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runToken = (typeof currentRun === "number") ? currentRun : runId;
-    const step = !!resolvedStep;
-    const coordsArr = Array.isArray(coords) ? coords : [];
-    const allowOverwrite = overwrite !== false;
-    const shouldDrawCell = (row, col) => shouldPlaceCell(row, col, allowOverwrite);
-    if(!step){
-      setRenderMode(RENDER_BUFFERED);
-      for(let i = 0; i < coordsArr.length && i < 15; i++){
-        const bit = (bits15 >>> i) & 1; // LSB first
-        const [r1, c1] = coordsArr[i];
-        const row = r1 + 1;
-        const col = c1 + 1;
-        if(!shouldDrawCell(row, col)) continue;
-        if(typeof window.updateCell === "function"){
-          const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
-          window.updateCell(row, col, enc);
-        }
-      }
-      hasFormatPattern = true;
-      requestRender("putFormatCells");
-      setRenderMode(RENDER_IMMEDIATE);
-      return true;
-    }
-    const delay = async () => {
-      await stepDelayAbort(runToken);
-    };
-    const prevRender = renderMode;
-    setRenderMode(RENDER_IMMEDIATE);
-    for(let i = 0; i < coordsArr.length && i < 15; i++){
-      if(runToken !== runId) return false;
-      if(!shouldStepFunctions()) return putFormatCells(bits15, coords, overwrite, { stepEnabled: false, currentRun: runToken });
-      const bit = (bits15 >>> i) & 1; // LSB first
-      const [r1, c1] = coordsArr[i];
-      const row = r1 + 1;
-      const col = c1 + 1;
-      if(!shouldDrawCell(row, col)) continue;
-      if(typeof window.updateCell === "function"){
-        const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
-        window.updateCell(row, col, enc);
-      }
-      updateCursorIfRun(runToken, row, col, DIR_RIGHT);
-      await delay();
-    }
-    hasFormatPattern = true;
-    setRenderMode(prevRender);
-    return true;
-  }
-
-  async function drawFormatPatterns(mask, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runToken = (typeof currentRun === "number") ? currentRun : runId;
-    const maskIsSpecified = mask !== undefined;
-    let idx = 0;
-    if(maskIsSpecified){
-      idx = Number(mask);
-      if(!Number.isFinite(idx) || idx < 0 || idx > 7){
-        idx = 0;
-      }
-    }
-    const maskLabel = maskIsSpecified ? String(idx) : "unset";
-    const bits15 = maskIsSpecified ? FORMAT_L[idx] : 0;
-    const coordsA = [
-      [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],
-      [8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8],
-    ];
-    const n = 25;
-    const coordsB = [
-      [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
-      [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
-    ];
-    const opts = { stepEnabled: resolvedStep, currentRun: runToken };
-    await putFormatCells(bits15, coordsA, overwrite, opts);
-    await putFormatCells(bits15, coordsB, overwrite, opts);
-    hasFormatPattern = true;
-    return true;
-  }
-  ctx.drawFormatPatterns = drawFormatPatterns;
-
   H.shouldStepFunctions = shouldStepFunctions;
   H.updateCursorIfRun = updateCursorIfRun;
   H.stepDelayAbort = stepDelayAbort;
-  H.drawFinderPatterns = drawFinderPatterns;
-  H.drawTimingPatterns = drawTimingPatterns;
-  H.drawAlignmentPatterns = drawAlignmentPatterns;
-  H.drawFormatPatterns = drawFormatPatterns;
-  H.drawDarkModulePatterns = drawDarkModulePatterns;
+  H.drawFinderPatterns = callDrawFinderPatterns;
+  H.drawTimingPatterns = callDrawTimingPatterns;
+  H.drawAlignmentPatterns = callDrawAlignmentPatterns;
+  H.drawFormatPatterns = callDrawFormatPatterns;
+  H.drawDarkModulePatterns = callDrawDarkModulePatterns;
   H.sleep = sleep;
   H.requestAnimationFrame = requestAnimationFrame;
   H.requestRender = requestRender;

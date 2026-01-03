@@ -1,3 +1,9 @@
+const DEBUG_STEP_LOG = false;
+function debugLog(...args){
+  if(!DEBUG_STEP_LOG) return;
+  console.log(...args);
+}
+
 (function(global){
   if(!global) return;
 
@@ -181,17 +187,17 @@
       return !shouldAbort();
     };
     const maybeStepDelay = async () => {
-      console.log("maybeStepDelay enter", { runToken, stepEnabled, fastForwarded });
+      debugLog("maybeStepDelay enter", { runToken, stepEnabled, fastForwarded });
       if(shouldAbort()) throw ABORT_ERR;
       if(shouldSkipFunctions()){
         fastForwarded = true;
         stepEnabled = false;
         setRenderMode(RENDER_BUFFERED);
-        console.log("maybeStepDelay exit (skipped functions)", { runToken, fastForwarded });
+        debugLog("maybeStepDelay exit (skipped functions)", { runToken, fastForwarded });
         return true;
       }
       if(!stepActive()){
-        console.log("maybeStepDelay exit (step inactive)", { runToken });
+        debugLog("maybeStepDelay exit (step inactive)", { runToken });
         return true;
       }
       const delay = H.getStepDelay();
@@ -205,14 +211,14 @@
         fastForwarded = true;
         stepEnabled = false;
         setRenderMode(RENDER_BUFFERED);
-        console.log("maybeStepDelay exit (skip after wait)", { runToken, fastForwarded });
+        debugLog("maybeStepDelay exit (skip after wait)", { runToken, fastForwarded });
         return true;
       }
       if(!H.isStepModeOn()){
         stepEnabled = false;
         setRenderMode(RENDER_BUFFERED);
       }
-      console.log("maybeStepDelay exit (normal)", { runToken, fastForwarded });
+      debugLog("maybeStepDelay exit (normal)", { runToken, fastForwarded });
       return true;
     };
     let lastRow = 1;
@@ -363,7 +369,6 @@
       [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
       [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
     ];
-    if((await moveCursorPath(coordsA[0][0] + 1, coordsA[0][1] + 1)) === false) return;
     const formatSource = Array.isArray(FORMAT_L) ? FORMAT_L : [];
     const bits15 = formatSource.length > 0 ? formatSource[0] : 0;
     const drawFormatSide = async (coords, side) => {
@@ -371,7 +376,7 @@
         if(shouldAbort()) throw ABORT_ERR;
         const bit = (bits15 >>> i) & 1;
         const [r, c] = coords[i];
-        console.log("drawFormatSide", { side, i, row: r + 1, col: c + 1 });
+        debugLog("drawFormatSide", { side, i, row: r + 1, col: c + 1 });
         if(typeof window.updateCell === "function"){
           window.updateCell(r + 1, c + 1, window.encodeBit(BIT_FUNC_FORMAT, bit === 1));
         }
@@ -396,9 +401,11 @@
     return { ok: true, fastForwarded };
   }
 
+  const legacyPatterns = global.legacyFunctionalPatterns || {};
   global.qrLegacyDrawers = Object.assign(global.qrLegacyDrawers || {}, {
     applyMask,
     drawBasePatterns,
     drawBasePatternsStepped,
+    ...legacyPatterns,
   });
 })(typeof window !== "undefined" ? window : globalThis);
