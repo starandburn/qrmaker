@@ -1247,6 +1247,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       directionUp: DIR_UP,
       directionDown: DIR_DOWN,
       placeDataBits: globalThis.dataPlacementService?.placeDataBits,
+      runWithCoordinator: globalThis.runCoordinatorService?.runWithCoordinator,
     });
   }
 

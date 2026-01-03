@@ -22,6 +22,7 @@
       drawBasePatternsService,
       prepareDataBits,
       placeDataBits,
+      runWithCoordinator,
     } = deps;
     // Cursor / board helpers
     const {
@@ -38,23 +39,17 @@
       directionUp,
       directionDown,
     } = deps;
-    if(!runIdAccessor || !stepFillAccessor || typeof runUserCode !== "function") return;
-    // --- Run control / cancellation ---
-    // TODO(step10): hoist run/abort guard to a run coordinator helper
-    const requestedRun = runIdAccessor.increment();
-    if(stepFillAccessor.get()){
-      const start = Date.now();
-      while(stepFillAccessor.get() && Date.now() - start < 2000){
-        await sleep(10);
-      }
-    }
-    stepFillAccessor.set(true);
-    const currentRun = runIdAccessor.set(requestedRun);
-    let aborted = false;
-    // --- User code execution ---
-    try{
+    if(!runIdAccessor || !stepFillAccessor || typeof runUserCode !== "function" || typeof runWithCoordinator !== "function") return;
+    return runWithCoordinator({
+      runIdAccessor,
+      stepFillAccessor,
+      sleep,
+      setRenderMode,
+      renderModeImmediate,
+    }, async (currentRun) => {
+      // --- User code execution ---
       const userOk = await runUserCode();
-      if(!userOk){ aborted = true; return; }
+      if(!userOk){ return; }
       let stepEnabled = isStepModeOn();
       const skipFunctions = stepEnabled && stepSkipFunctions && stepSkipFunctions.checked;
       // --- Base pattern drawing ---
@@ -70,7 +65,6 @@
         runIdAccessor,
       });
       if(basePatternResult && basePatternResult.shouldAbort){
-        aborted = true;
         return;
       }
       stepEnabled = isStepModeOn();
@@ -107,7 +101,6 @@
         stepEnabled,
       });
       if(placementResult && placementResult.aborted){
-        aborted = true;
         return;
       }
       if(placementResult && typeof placementResult.stepEnded === "boolean"){
@@ -119,17 +112,7 @@
       if(currentRun === runIdAccessor.get() && Array.isArray(global.toggleInputs)){
         // do not auto-clear toggles; user can use 全解除 as needed
       }
-    }catch(err){
-      if(err === global.ABORT_ERR){
-        aborted = true;
-        return;
-      }
-      throw err;
-    }finally{
-      // --- Final render / cleanup ---
-      stepFillAccessor.set(false);
-      setRenderMode(renderModeImmediate);
-    }
+    });
   };
 
   global.qrBuildService = Object.assign(global.qrBuildService || {}, {
