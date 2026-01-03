@@ -369,8 +369,7 @@ function debugLog(...args){
       [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
       [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
     ];
-    const formatSource = Array.isArray(FORMAT_L) ? FORMAT_L : [];
-    const bits15 = formatSource.length > 0 ? formatSource[0] : 0;
+    const bits15 = 0;
   const drawFormatSide = async (coords, side) => {
       for(let i = 0; i < 15; i++){
         if(shouldAbort()) throw ABORT_ERR;
