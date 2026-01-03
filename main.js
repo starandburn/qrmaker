@@ -112,6 +112,17 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       userCodeInput.scrollTop = Math.max(0, targetTop - 4);
     }
   };
+  const requestRender = (() => {
+    const cycle = window.renderCycle;
+    if(cycle && typeof cycle.requestRender === "function"){
+      return cycle.requestRender;
+    }
+    return () => {
+      if(typeof window.flushRender === "function"){
+        window.flushRender();
+      }
+    };
+  })();
   applyPatternOpenFromParam({ dataPatternPanel });
   applyDebugFromParam({ debugPanel: getDebugPanel(), applyDebugVisibility });
   applyHistoryFromParam({ codePanel, setHistoryVisibility });
@@ -462,7 +473,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       throw err;
     }finally{
       isStepFillRunning = false;
-      flushRender();
+      requestRender("runUserCodeWithStep");
       setRenderMode(prevRender);
     }
   }
@@ -525,7 +536,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       await drawFormatPatterns(idx, true);
     }
     if(renderMode === RENDER_BUFFERED){
-      flushRender();
+      requestRender("applyMask");
     }
     setRenderMode(prevRender);
     if(stepMask){
@@ -629,7 +640,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       col -= 2;
     }
     if(currentRun === runId && !stepEnabled){
-      flushRender();
+      requestRender("drawBasePatternsStepped");
     }
     return currentRun === runId;
   };
@@ -759,7 +770,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     await drawFormatPatterns(undefined, funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
     if(!deferFlush){
       if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
-      flushRender();
+      requestRender("drawBasePatterns");
       setRenderMode(RENDER_IMMEDIATE);
     }
     resetCursor();
@@ -1047,7 +1058,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     await moveCursorPath(25, 25);
 
     if(renderMode === RENDER_BUFFERED){
-      flushRender();
+      requestRender("drawFormatSide");
       setRenderMode(RENDER_IMMEDIATE);
     }
     return { ok: true, fastForwarded };
@@ -1210,7 +1221,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         col -= 2;
       }
       if(currentRun === runId && !stepEnabled){
-        flushRender();
+        requestRender("runGenerateLegacy");
       }
       if(currentRun === runId && Array.isArray(window.toggleInputs)){
         // do not auto-clear toggles; user can use 全解除 as needed
@@ -1289,7 +1300,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
           window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
         }
       }
-      flushRender();
+      requestRender("putAlignmentCells");
       setRenderMode(prevRender);
       return true;
     }
@@ -1405,7 +1416,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const finishSync = () => {
       setRenderMode(RENDER_BUFFERED);
       drawSync();
-      flushRender();
+      requestRender("drawFinderPatterns");
       setRenderMode(prevRender);
       if(lastCursorRow !== null && lastCursorCol !== null){
         updateCursorSafe(lastCursorRow, lastCursorCol, DIR_RIGHT);
@@ -1552,7 +1563,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
           window.updateCell(r, pos, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
         }
       }
-      flushRender();
+      requestRender("putTimingCells");
       setRenderMode(prevRender);
       return true;
     }
@@ -1617,7 +1628,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         }
       }
       hasFormatPattern = true;
-      flushRender();
+      requestRender("putFormatCells");
       setRenderMode(RENDER_IMMEDIATE);
       return true;
     }
