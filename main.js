@@ -404,6 +404,15 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       toString: () => "true",
     };
   }
+  const runIdAccessor = {
+    get: () => runId,
+    set: (value) => { runId = value; return runId; },
+    increment: () => ++runId,
+  };
+  const stepFillAccessor = {
+    get: () => isStepFillRunning,
+    set: (value) => { isStepFillRunning = value; },
+  };
   window.makeStepThenable = makeStepThenable;
 
   function syncDebugOverlay(){
@@ -1213,109 +1222,30 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   });
 
   async function runGenerateLegacy(){
-    // Advance runId to signal any in-flight render to cancel
-    const requestedRun = ++runId;
-    // If a run is active, wait briefly for it to stop
-    if(isStepFillRunning){
-      const start = Date.now();
-      while(isStepFillRunning && Date.now() - start < 2000){
-        await sleep(10);
-      }
+    if(typeof globalThis.qrBuildService !== "object" || typeof globalThis.qrBuildService.generateQr !== "function"){
+      return;
     }
-    isStepFillRunning = true;
-    const currentRun = runId = requestedRun;
-    let aborted = false;
-    try{
-      const userOk = await runUserCode();
-      if(!userOk){ aborted = true; return; }
-      let stepEnabled = isStepModeOn();
-      const skipFunctions = stepEnabled && stepSkipFunctions && stepSkipFunctions.checked;
-      setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
-      if(stepEnabled && skipFunctions){
-        const ok = await drawBasePatterns({ deferFlush: false, currentRun });
-        if(currentRun !== runId || !ok){ aborted = true; return; }
-        setRenderMode(RENDER_IMMEDIATE);
-      }else if(stepEnabled){
-        const res = await drawBasePatternsStepped({ currentRun });
-        if(res && res.fastForwarded){
-          // already finished function patterns quickly
-        }else if(currentRun !== runId || (res && res.ok === false)){ aborted = true; return; }
-      }else{
-        const ok = await drawBasePatterns({ deferFlush: false, currentRun });
-        if(currentRun !== runId || !ok){ aborted = true; return; }
-      }
-      // re-evaluate in case step mode changed during base patterns
-      stepEnabled = isStepModeOn();
-      setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
-      const funcSet = buildFunctionSet();
-      const bitsSeq = buildBitSequence();
-
-      // Start at bottom-right, facing up
-      updateCursor(25, 25, DIR_UP);
-      let bitIdx = 0;
-      let col = 25;
-      let upward = true;
-      let startRow = 25;
-      while(col > 0 && bitIdx < bitsSeq.length){
-        if(currentRun !== runId){ aborted = true; break; }
-        if(timingColIndex > 0 && col === timingColIndex){ col--; continue; } // skip timing column
-        const colLeft = col - 1;
-        for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
-          if(currentRun !== runId){ aborted = true; break; }
-          const row = (() => {
-            if(upward){
-              const r = startRow - i;
-              return r >= 1 ? r : 25 + r;
-            }else{
-              const r = startRow + i;
-              return r <= 25 ? r : r - 25;
-            }
-          })();
-          updateCursor(cursorPos.row, cursorPos.col, upward ? DIR_UP : DIR_DOWN);
-          for(const cTarget of [col, colLeft]){
-            if(bitIdx >= bitsSeq.length) break;
-            if(cTarget < 1) continue;
-            if(timingColIndex > 0 && cTarget === timingColIndex) continue;
-            if(cTarget < 1 || cTarget > 25) continue;
-            const moved = moveCursor(row, cTarget);
-            if(!moved) continue;
-            if(!window.isEmpty()) continue;
-            const { bit, kind } = bitsSeq[bitIdx];
-            const encoded = window.encodeBit(kind, bit === 1);
-            window.updateCell(cursorPos.row, cursorPos.col, encoded);
-            bitIdx++;
-            if(currentRun !== runId){ aborted = true; break; }
-            if(stepEnabled){
-              const delay = getStepDelay();
-              await sleep(Math.max(0, delay));
-              if(currentRun !== runId){ aborted = true; break; }
-              if(!isStepModeOn()){
-                stepEnabled = false;
-                setRenderMode(RENDER_BUFFERED);
-              }
-            }
-          }
-        }
-        upward = !upward;
-        startRow = upward ? 25 : 1;
-        col -= 2;
-      }
-      if(currentRun === runId && !stepEnabled){
-        requestRender("runGenerateLegacy");
-      }
-      if(currentRun === runId && Array.isArray(window.toggleInputs)){
-        // do not auto-clear toggles; user can use 全解除 as needed
-      }
-    }catch(err){
-      if(err === ABORT_ERR){
-        aborted = true;
-        return;
-      }
-      throw err;
-    }finally{
-      isStepFillRunning = false;
-      setRenderMode(RENDER_IMMEDIATE);
-    }
+    return globalThis.qrBuildService.generateQr({
+      runIdAccessor,
+      stepFillAccessor,
+      runUserCode,
+      isStepModeOn,
+      stepSkipFunctions,
+      setRenderMode,
+      drawBasePatterns,
+      drawBasePatternsStepped,
+      buildFunctionSet,
+      buildBitSequence,
+      updateCursor,
+      moveCursor,
+      getStepDelay,
+      sleep,
+      requestRender,
+      renderModeImmediate: RENDER_IMMEDIATE,
+      renderModeBuffered: RENDER_BUFFERED,
+      directionUp: DIR_UP,
+      directionDown: DIR_DOWN,
+    });
   }
 
   btnGenerate.addEventListener("click", async () => {
