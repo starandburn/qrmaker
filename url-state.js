@@ -45,12 +45,16 @@
     return rawValue;
   }
 
-  const applyPatternOpenFromParam = ({ dataPatternPanel } = {}) => {
-    if(!dataPatternPanel) return false;
+  const applyPatternOpenFromParam = ({ dataPatternPanel, setPatternPanelOpen } = {}) => {
+    if(!dataPatternPanel && typeof setPatternPanelOpen !== "function") return false;
     const spec = lookupParam(PATTERN_PANEL_PARAM_KEY);
     if(spec === null) return false;
     const parsed = stringifyBool(spec);
     if(parsed === null) return false;
+    if(typeof setPatternPanelOpen === "function"){
+      setPatternPanelOpen(parsed);
+      return true;
+    }
     dataPatternPanel.open = parsed;
     try{
       dataPatternPanel.dispatchEvent(new Event("toggle"));

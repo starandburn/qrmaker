@@ -35,19 +35,43 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     : null;
   const getHistoryVisible = () => (store ? Boolean(store.getState().historyVisible) : false);
   const getPatternPanelOpen = () => (store ? Boolean(store.getState().patternPanelOpen) : Boolean(dataPatternPanel?.open));
-  const syncPatternPanelOpenToStore = () => {
-    if(!store || !dataPatternPanel) return;
-    const nextValue = Boolean(dataPatternPanel.open);
-    if(Boolean(store.getState().patternPanelOpen) === nextValue) return;
-    store.setState({ patternPanelOpen: nextValue }, "patternPanelToggle");
+  const setPatternPanelOpen = (value) => {
+    const target = Boolean(value);
+    if(store){
+      const current = Boolean(store.getState().patternPanelOpen);
+      if(current === target) return;
+      store.setState({ patternPanelOpen: target }, "patternPanelToggle");
+      return;
+    }
+    if(dataPatternPanel && dataPatternPanel.open !== target){
+      dataPatternPanel.open = target;
+      try{
+        dataPatternPanel.dispatchEvent(new Event("toggle"));
+      }catch(_err){
+        // ignore environments without Event
+      }
+    }
+  };
+  const handleStoreUpdate = (next) => {
+    if(!next) return;
+    if(typeof next.historyVisible === "boolean"){
+      layoutSetHistoryVisibility(Boolean(next.historyVisible));
+    }
+    if(dataPatternPanel && typeof next.patternPanelOpen === "boolean"){
+      const target = Boolean(next.patternPanelOpen);
+      if(dataPatternPanel.open !== target){
+        dataPatternPanel.open = target;
+        try{
+          dataPatternPanel.dispatchEvent(new Event("toggle"));
+        }catch(_err){
+          // ignore environments without Event
+        }
+      }
+    }
   };
   if(store){
-    layoutSetHistoryVisibility(getHistoryVisible());
-    store.subscribe((next) => {
-      if(next && typeof next.historyVisible === "boolean"){
-        layoutSetHistoryVisibility(Boolean(next.historyVisible));
-      }
-    });
+    handleStoreUpdate(store.getState());
+    store.subscribe(handleStoreUpdate);
   }
   const setHistoryVisibility = (visible) => {
     const target = Boolean(visible);
@@ -104,7 +128,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const initialDebugParamPresent = urlParams.has(DEBUG_PARAM_KEY);
   const defaultHistoryVisible = getHistoryVisible();
   let defaultDebugVisible = isDebugVisible();
-  const defaultPatternOpen = dataPatternPanel ? dataPatternPanel.open : false;
+  const defaultPatternOpen = getPatternPanelOpen();
   const defaultStepMode = stepMode ? (typeof stepMode.defaultChecked === "boolean" ? stepMode.defaultChecked : Boolean(stepMode.checked)) : false;
   const defaultStepSkipFunctions = stepSkipFunctions ? (typeof stepSkipFunctions.defaultChecked === "boolean" ? stepSkipFunctions.defaultChecked : Boolean(stepSkipFunctions.checked)) : false;
   const defaultStepSpeed = stepSpeed ? (stepSpeed.defaultValue ?? stepSpeed.value ?? "") : "";
@@ -143,10 +167,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       window.flushRender();
     }
   };
-  applyPatternOpenFromParam({ dataPatternPanel });
-  if(store){
-    syncPatternPanelOpenToStore();
-  }
+  applyPatternOpenFromParam({ dataPatternPanel, setPatternPanelOpen });
   applyDebugFromParam({ debugPanel: getDebugPanel(), applyDebugVisibility });
   applyHistoryFromParam({ codePanel, setHistoryVisibility });
   applySampleParam({ codePanel });
@@ -1759,7 +1780,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   syncParsedCode();
   if(dataPatternPanel){
     dataPatternPanel.addEventListener("toggle", () => {
-      syncPatternPanelOpenToStore();
+      setPatternPanelOpen(dataPatternPanel.open);
       syncDebugPanelLayout();
       syncParsedCode();
       if(typeof window.fitSquare === "function"){
