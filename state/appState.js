@@ -1,6 +1,16 @@
 (function(global){
   if(!global) return;
 
+  // State keys:
+  // - historyVisible: boolean
+  // - patternPanelOpen: boolean
+  // - debugVisible: boolean
+  const DEFAULT_STATE = {
+    historyVisible: false,
+    patternPanelOpen: false,
+    debugVisible: false,
+  };
+
   const createStore = (initialState = {}) => {
     let state = Object.assign({}, initialState);
     const listeners = new Set();
@@ -37,7 +47,8 @@
   let singletonStore = null;
   const getStore = (initialState) => {
     if(singletonStore) return singletonStore;
-    singletonStore = createStore(initialState);
+    const merged = Object.assign({}, DEFAULT_STATE, initialState || {});
+    singletonStore = createStore(merged);
     return singletonStore;
   };
   appState.getStore = getStore;
