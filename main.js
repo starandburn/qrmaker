@@ -112,17 +112,12 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       userCodeInput.scrollTop = Math.max(0, targetTop - 4);
     }
   };
-  const requestRender = (() => {
+  const requestRender = (reason) => {
     const cycle = window.renderCycle;
     if(cycle && typeof cycle.requestRender === "function"){
-      return cycle.requestRender;
+      cycle.requestRender(reason);
     }
-    return () => {
-      if(typeof window.flushRender === "function"){
-        window.flushRender();
-      }
-    };
-  })();
+  };
   applyPatternOpenFromParam({ dataPatternPanel });
   applyDebugFromParam({ debugPanel: getDebugPanel(), applyDebugVisibility });
   applyHistoryFromParam({ codePanel, setHistoryVisibility });
