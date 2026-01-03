@@ -21,6 +21,7 @@
     const {
       drawBasePatternsService,
       prepareDataBits,
+      placeDataBits,
     } = deps;
     // Cursor / board helpers
     const {
@@ -82,56 +83,36 @@
         updateCursor,
         directionUp,
       });
-      let bitIdx = 0;
-      let col = 25;
-      let upward = true;
-      let startRow = 25;
-      while(col > 0 && bitIdx < bitsSeq.length){
-        if(currentRun !== runIdAccessor.get()){ aborted = true; break; }
-        if(global.timingColIndex > 0 && col === global.timingColIndex){ col--; continue; }
-        const colLeft = col - 1;
-        for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
-          if(currentRun !== runIdAccessor.get()){ aborted = true; break; }
-          const row = (() => {
-            if(upward){
-              const r = startRow - i;
-              return r >= 1 ? r : 25 + r;
-            }else{
-              const r = startRow + i;
-              return r <= 25 ? r : r - 25;
-            }
-          })();
-          updateCursor(global.cursorPos.row, global.cursorPos.col, upward ? directionUp : directionDown);
-          for(const cTarget of [col, colLeft]){
-            if(bitIdx >= bitsSeq.length) break;
-            if(cTarget < 1) continue;
-            if(global.timingColIndex > 0 && cTarget === global.timingColIndex) continue;
-            if(cTarget < 1 || cTarget > 25) continue;
-            const moved = moveCursor(row, cTarget);
-            if(!moved) continue;
-            if(!global.isEmpty()) continue;
-            const { bit, kind } = bitsSeq[bitIdx];
-            const encoded = global.encodeBit(kind, bit === 1);
-            global.updateCell(global.cursorPos.row, global.cursorPos.col, encoded);
-            bitIdx++;
-            if(currentRun !== runIdAccessor.get()){ aborted = true; break; }
-            if(stepEnabled){
-              const delay = getStepDelay();
-              await sleep(Math.max(0, delay));
-              if(currentRun !== runIdAccessor.get()){ aborted = true; break; }
-              if(!isStepModeOn()){
-                stepEnabled = false;
-                setRenderMode(renderModeBuffered);
-              }
-            }
-          }
-        }
-        upward = !upward;
-        startRow = upward ? 25 : 1;
-        col -= 2;
-      }
       // --- Data placement loop ---
-      // TODO(step13): break out placement loop into placeDataBits handler
+      const placementResult = await placeDataBits({
+        bitsSeq,
+        updateCursor,
+        moveCursor,
+        getStepDelay,
+        sleep,
+        isStepModeOn,
+        setRenderMode,
+        renderModeBuffered,
+        renderModeImmediate,
+        requestRender,
+        directionUp,
+        directionDown,
+        runIdAccessor,
+        currentRun,
+        cursorPos: global.cursorPos,
+        encodeBit: global.encodeBit,
+        updateCell: global.updateCell,
+        isEmpty: global.isEmpty,
+        getTimingColIndex: () => global.timingColIndex,
+        stepEnabled,
+      });
+      if(placementResult && placementResult.aborted){
+        aborted = true;
+        return;
+      }
+      if(placementResult && typeof placementResult.stepEnded === "boolean"){
+        stepEnabled = !placementResult.stepEnded;
+      }
       if(currentRun === runIdAccessor.get() && !stepEnabled){
         requestRender("runGenerateLegacy");
       }

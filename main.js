@@ -1246,6 +1246,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       renderModeBuffered: RENDER_BUFFERED,
       directionUp: DIR_UP,
       directionDown: DIR_DOWN,
+      placeDataBits: globalThis.dataPlacementService?.placeDataBits,
     });
   }
 
