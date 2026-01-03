@@ -31,10 +31,20 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const txtInput = document.getElementById("txtInput");
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
   const store = (window.appState && typeof window.appState.getStore === "function")
-    ? window.appState.getStore({ historyVisible: false, patternPanelOpen: false })
+    ? window.appState.getStore({ historyVisible: false, patternPanelOpen: false, debugVisible: false })
     : null;
   const getHistoryVisible = () => (store ? Boolean(store.getState().historyVisible) : false);
   const getPatternPanelOpen = () => (store ? Boolean(store.getState().patternPanelOpen) : Boolean(dataPatternPanel?.open));
+  const applyDebugVisibilityBase = layoutUI.applyDebugVisibility || debugUI.applyDebugVisibility || (() => {});
+  let lastAppliedDebugVisible = null;
+  const getDebugVisible = () => (store ? Boolean(store.getState().debugVisible) : (typeof debugUI.isDebugVisible === "function" ? debugUI.isDebugVisible() : false));
+  const isDebugVisible = () => getDebugVisible();
+  const applyDebugVisibilityDom = (visible) => {
+    const target = Boolean(visible);
+    if(target === lastAppliedDebugVisible) return;
+    applyDebugVisibilityBase(target);
+    lastAppliedDebugVisible = target;
+  };
   const setPatternPanelOpen = (value) => {
     const target = Boolean(value);
     if(store){
@@ -68,6 +78,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         }
       }
     }
+    if(typeof next.debugVisible === "boolean"){
+      const target = Boolean(next.debugVisible);
+      applyDebugVisibilityDom(target);
+    }
   };
   if(store){
     handleStoreUpdate(store.getState());
@@ -81,8 +95,23 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       layoutSetHistoryVisibility(target);
     }
   };
-  const applyDebugVisibility = layoutUI.applyDebugVisibility || debugUI.applyDebugVisibility || (() => {});
-  const isDebugVisible = debugUI.isDebugVisible || (() => false);
+  const setDebugVisible = (value) => {
+    const target = Boolean(value);
+    if(store){
+      const current = Boolean(store.getState().debugVisible);
+      if(current === target) return;
+      store.setState({ debugVisible: target }, "debugToggle");
+      return;
+    }
+    applyDebugVisibilityDom(target);
+  };
+  const applyDebugVisibility = (visible) => {
+    if(store){
+      setDebugVisible(visible);
+      return;
+    }
+    applyDebugVisibilityDom(visible);
+  };
   const getDebugPanel = () => debugUI.debugPanel;
   const renderHistoryList = (entries) => {
     if(typeof layoutUI.renderHistoryList === "function"){
@@ -168,7 +197,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
   };
   applyPatternOpenFromParam({ dataPatternPanel, setPatternPanelOpen });
-  applyDebugFromParam({ debugPanel: getDebugPanel(), applyDebugVisibility });
+  applyDebugFromParam({ debugPanel: getDebugPanel(), setDebugVisible });
   applyHistoryFromParam({ codePanel, setHistoryVisibility });
   applySampleParam({ codePanel });
   if(!btnGenerate || !btnInit) return;

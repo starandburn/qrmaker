@@ -64,13 +64,17 @@
     return true;
   };
 
-  const applyDebugFromParam = ({ debugPanel, applyDebugVisibility } = {}) => {
-    if(!debugPanel || typeof applyDebugVisibility !== "function") return false;
+  const applyDebugFromParam = ({ debugPanel, applyDebugVisibility, setDebugVisible } = {}) => {
+    if(!debugPanel && typeof setDebugVisible !== "function") return false;
     const spec = lookupParam(DEBUG_PARAM_KEY);
     if(spec === null) return false;
     const parsed = stringifyBool(spec);
     if(parsed === null) return false;
-    applyDebugVisibility(parsed);
+    if(typeof setDebugVisible === "function"){
+      setDebugVisible(parsed);
+    }else{
+      applyDebugVisibility(parsed);
+    }
     return true;
   };
 
