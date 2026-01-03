@@ -1234,6 +1234,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       setRenderMode,
       drawBasePatterns,
       drawBasePatternsStepped,
+      drawBasePatternsService: globalThis.basePatternService?.drawBasePatternsService,
       buildFunctionSet,
       buildBitSequence,
       updateCursor,

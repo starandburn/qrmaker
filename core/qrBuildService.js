@@ -18,6 +18,9 @@
       buildFunctionSet,
       buildBitSequence,
     } = deps;
+    const {
+      drawBasePatternsService,
+    } = deps;
     // Cursor / board helpers
     const {
       updateCursor,
@@ -53,20 +56,20 @@
       let stepEnabled = isStepModeOn();
       const skipFunctions = stepEnabled && stepSkipFunctions && stepSkipFunctions.checked;
       // --- Base pattern drawing ---
-      // TODO(step11): extract base pattern sequencing to drawBasePatternsService
-      setRenderMode(stepEnabled ? renderModeImmediate : renderModeBuffered);
-      if(stepEnabled && skipFunctions){
-        const ok = await drawBasePatterns({ deferFlush: false, currentRun });
-        if(currentRun !== runIdAccessor.get() || !ok){ aborted = true; return; }
-        setRenderMode(renderModeImmediate);
-      }else if(stepEnabled){
-        const res = await drawBasePatternsStepped({ currentRun });
-        if(res && res.fastForwarded){
-          // already finished function patterns quickly
-        }else if(currentRun !== runIdAccessor.get() || (res && res.ok === false)){ aborted = true; return; }
-      }else{
-        const ok = await drawBasePatterns({ deferFlush: false, currentRun });
-        if(currentRun !== runIdAccessor.get() || !ok){ aborted = true; return; }
+      const basePatternResult = await drawBasePatternsService({
+        isStepModeOn,
+        stepSkipFunctions,
+        setRenderMode,
+        drawBasePatterns,
+        drawBasePatternsStepped,
+        renderModeImmediate,
+        renderModeBuffered,
+        currentRun,
+        runIdAccessor,
+      });
+      if(basePatternResult && basePatternResult.shouldAbort){
+        aborted = true;
+        return;
       }
       stepEnabled = isStepModeOn();
       setRenderMode(stepEnabled ? renderModeImmediate : renderModeBuffered);
