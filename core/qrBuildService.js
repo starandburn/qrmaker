@@ -39,7 +39,14 @@
       directionUp,
       directionDown,
     } = deps;
-    if(!runIdAccessor || !stepFillAccessor || typeof runUserCode !== "function" || typeof runWithCoordinator !== "function") return;
+    if(!runIdAccessor || !stepFillAccessor || typeof runUserCode !== "function" || typeof runWithCoordinator !== "function"){
+      return { ok: false, aborted: false, stepEnded: false };
+    }
+    const normalizeResult = (abortedFlag, stepEndedFlag) => ({
+      ok: !abortedFlag,
+      aborted: abortedFlag,
+      stepEnded: Boolean(stepEndedFlag),
+    });
     return runWithCoordinator({
       runIdAccessor,
       stepFillAccessor,
@@ -47,70 +54,88 @@
       setRenderMode,
       renderModeImmediate,
     }, async (currentRun) => {
-      // --- User code execution ---
-      const userOk = await runUserCode();
-      if(!userOk){ return; }
-      let stepEnabled = isStepModeOn();
-      const skipFunctions = stepEnabled && stepSkipFunctions && stepSkipFunctions.checked;
-      // --- Base pattern drawing ---
-      const basePatternResult = await drawBasePatternsService({
-        isStepModeOn,
-        stepSkipFunctions,
-        setRenderMode,
-        drawBasePatterns,
-        drawBasePatternsStepped,
-        renderModeImmediate,
-        renderModeBuffered,
-        currentRun,
-        runIdAccessor,
-      });
-      if(basePatternResult && basePatternResult.shouldAbort){
-        return;
-      }
-      stepEnabled = isStepModeOn();
-      setRenderMode(stepEnabled ? renderModeImmediate : renderModeBuffered);
-      // --- Data bit preparation ---
-      // TODO(step12): move bit sequence construction to a builder helper
-      const { funcSet, bitsSeq } = prepareDataBits({
-        buildFunctionSet,
-        buildBitSequence,
-        updateCursor,
-        directionUp,
-      });
-      // --- Data placement loop ---
-      const placementResult = await placeDataBits({
-        bitsSeq,
-        updateCursor,
-        moveCursor,
-        getStepDelay,
-        sleep,
-        isStepModeOn,
-        setRenderMode,
-        renderModeBuffered,
-        renderModeImmediate,
-        requestRender,
-        directionUp,
-        directionDown,
-        runIdAccessor,
-        currentRun,
-        cursorPos: global.cursorPos,
-        encodeBit: global.encodeBit,
-        updateCell: global.updateCell,
-        isEmpty: global.isEmpty,
-        getTimingColIndex: () => global.timingColIndex,
-        stepEnabled,
-      });
-      if(placementResult && placementResult.aborted){
-        return;
-      }
-      if(placementResult && typeof placementResult.stepEnded === "boolean"){
-        stepEnabled = !placementResult.stepEnded;
-      }
-      if(currentRun === runIdAccessor.get() && !stepEnabled){
-        requestRender("runGenerateLegacy");
-      }
-      if(currentRun === runIdAccessor.get() && Array.isArray(global.toggleInputs)){
-        // do not auto-clear toggles; user can use 全解除 as needed
+      let aborted = false;
+      let stepEnded = false;
+      const result = () => normalizeResult(aborted, stepEnded);
+      try{
+        // --- User code execution ---
+        const userOk = await runUserCode();
+        if(!userOk){
+          aborted = true;
+          return result();
+        }
+        let stepEnabled = isStepModeOn();
+        const skipFunctions = stepEnabled && stepSkipFunctions && stepSkipFunctions.checked;
+        // --- Base pattern drawing ---
+        const basePatternResult = await drawBasePatternsService({
+          isStepModeOn,
+          stepSkipFunctions,
+          setRenderMode,
+          drawBasePatterns,
+          drawBasePatternsStepped,
+          renderModeImmediate,
+          renderModeBuffered,
+          currentRun,
+          runIdAccessor,
+        });
+        if(basePatternResult && basePatternResult.shouldAbort){
+          aborted = true;
+          return result();
+        }
+        stepEnabled = isStepModeOn();
+        setRenderMode(stepEnabled ? renderModeImmediate : renderModeBuffered);
+        // --- Data bit preparation ---
+        // TODO(step12): move bit sequence construction to a builder helper
+        const { funcSet, bitsSeq } = prepareDataBits({
+          buildFunctionSet,
+          buildBitSequence,
+          updateCursor,
+          directionUp,
+        });
+        // --- Data placement loop ---
+        const placementResult = await placeDataBits({
+          bitsSeq,
+          updateCursor,
+          moveCursor,
+          getStepDelay,
+          sleep,
+          isStepModeOn,
+          setRenderMode,
+          renderModeBuffered,
+          renderModeImmediate,
+          requestRender,
+          directionUp,
+          directionDown,
+          runIdAccessor,
+          currentRun,
+          cursorPos: global.cursorPos,
+          encodeBit: global.encodeBit,
+          updateCell: global.updateCell,
+          isEmpty: global.isEmpty,
+          getTimingColIndex: () => global.timingColIndex,
+          stepEnabled,
+        });
+        if(placementResult && placementResult.aborted){
+          aborted = true;
+          return result();
+        }
+        if(placementResult && typeof placementResult.stepEnded === "boolean"){
+          stepEnabled = !placementResult.stepEnded;
+          stepEnded = placementResult.stepEnded;
+        }
+        if(currentRun === runIdAccessor.get() && !stepEnabled){
+          requestRender("runGenerateLegacy");
+        }
+        if(currentRun === runIdAccessor.get() && Array.isArray(global.toggleInputs)){
+          // do not auto-clear toggles; user can use 全解除 as needed
+        }
+        return result();
+      }catch(err){
+        if(err === global.ABORT_ERR){
+          aborted = true;
+          return result();
+        }
+        throw err;
       }
     });
   };
