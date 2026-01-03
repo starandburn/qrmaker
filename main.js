@@ -112,6 +112,13 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
     applyDebugVisibilityDom(visible);
   };
+  if(typeof window.bindUiEvents === "function"){
+    window.bindUiEvents({
+      setHistoryVisibility,
+      getHistoryVisible,
+      setPatternPanelOpen,
+    });
+  }
   const getDebugPanel = () => debugUI.debugPanel;
   const renderHistoryList = (entries) => {
     if(typeof layoutUI.renderHistoryList === "function"){
@@ -1809,7 +1816,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   syncParsedCode();
   if(dataPatternPanel){
     dataPatternPanel.addEventListener("toggle", () => {
-      setPatternPanelOpen(dataPatternPanel.open);
       syncDebugPanelLayout();
       syncParsedCode();
       if(typeof window.fitSquare === "function"){
@@ -1995,11 +2001,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
     });
   });
-  if(btnToggleHistory){
-    btnToggleHistory.addEventListener("click", () => {
-      setHistoryVisibility(!getHistoryVisible());
-    });
-  }
   if(btnPruneHistory){
     btnPruneHistory.addEventListener("click", historyController.pruneHistoryEntries);
   }
