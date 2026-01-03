@@ -285,21 +285,21 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
     return normalized;
   };
-    const ctx = {
-      get runId(){ return runId; },
-      set runId(value){ runId = value; return runId; },
-      get maskRunId(){ return maskRunId; },
-      set maskRunId(value){ maskRunId = value; return maskRunId; },
-      get isStepFillRunning(){ return isStepFillRunning; },
-      set isStepFillRunning(value){ isStepFillRunning = value; return isStepFillRunning; },
-      get renderMode(){ return renderModeState; },
-      set renderMode(value){ renderModeState = value; return renderModeState; },
-    };
-    ctx.setRenderMode = setRenderMode;
-      ctx.isStepModeOn = isStepModeOn;
-      ctx.stepSkipFunctions = stepSkipFunctions;
-      ctx.requestRender = requestRender;
-      window.setRenderMode = setRenderMode;
+  const ctx = {
+    get runId(){ return runId; },
+    set runId(value){ runId = value; return runId; },
+    get maskRunId(){ return maskRunId; },
+    set maskRunId(value){ maskRunId = value; return maskRunId; },
+    get isStepFillRunning(){ return isStepFillRunning; },
+    set isStepFillRunning(value){ isStepFillRunning = value; return isStepFillRunning; },
+    get renderMode(){ return renderModeState; },
+    set renderMode(value){ renderModeState = value; return renderModeState; },
+  };
+  ctx.setRenderMode = setRenderMode;
+  ctx.isStepModeOn = isStepModeOn;
+  ctx.stepSkipFunctions = stepSkipFunctions;
+  ctx.requestRender = requestRender;
+  window.setRenderMode = setRenderMode;
   function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false } = {}){
     ctx.runId++;
     ctx.isStepFillRunning = false;
