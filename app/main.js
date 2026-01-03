@@ -450,33 +450,12 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   window.makeStepThenable = makeStepThenable;
 
-  function syncDebugOverlay(){
-    const cellsWrap = document.querySelector(".qr-cells");
-    if(!cellsWrap) return;
-    const debugOn = isDebugVisible();
-    if(toggleDebugValues){
-      const label = toggleDebugValues.closest("label");
-      if(label){
-        label.style.display = debugOn ? "inline-flex" : "none";
-      }
-    }
-    const showValues = debugOn && toggleDebugValues && toggleDebugValues.checked;
-    cellsWrap.classList.toggle("show-debug-values", showValues);
-  }
-
-  function syncDebugPanelLayout(){
-    if(!debugLog) return;
-    const baseMin = "80px";
-    const baseMax = "110px";
-    let minH = baseMin;
-    let maxH = baseMax;
-    if(isDebugVisible() && dataPatternPanel && dataPatternPanel.open){
-      minH = "70px";
-      maxH = "80px";
-    }
-    debugLog.style.minHeight = minH;
-    debugLog.style.maxHeight = maxH;
-  }
+  const {
+    syncDebugOverlay,
+    syncDebugPanelLayout,
+  } = typeof createDebugSync === "function"
+    ? createDebugSync({ toggleDebugValues, dataPatternPanel, debugLog, isDebugVisible })
+    : { syncDebugOverlay: () => {}, syncDebugPanelLayout: () => {} };
 
   function syncParsedCode(){
     if(!userCodeParsed || !codePanel) return;
