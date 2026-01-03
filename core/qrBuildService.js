@@ -1,29 +1,41 @@
 (function(global){
   if(!global) return;
 
-const generateQr = async (deps = {}) => {
+  const generateQr = async (deps = {}) => {
+    // Control dependencies
     const {
       runIdAccessor,
       stepFillAccessor,
       runUserCode,
       isStepModeOn,
       stepSkipFunctions,
+    } = deps;
+    // Rendering dependencies
+    const {
       setRenderMode,
       drawBasePatterns,
       drawBasePatternsStepped,
       buildFunctionSet,
       buildBitSequence,
+    } = deps;
+    // Cursor / board helpers
+    const {
       updateCursor,
       moveCursor,
       getStepDelay,
       sleep,
       requestRender,
+    } = deps;
+    // Environment constants
+    const {
       renderModeImmediate,
       renderModeBuffered,
       directionUp,
       directionDown,
     } = deps;
     if(!runIdAccessor || !stepFillAccessor || typeof runUserCode !== "function") return;
+    // --- Run control / cancellation ---
+    // TODO(step10): hoist run/abort guard to a run coordinator helper
     const requestedRun = runIdAccessor.increment();
     if(stepFillAccessor.get()){
       const start = Date.now();
@@ -34,11 +46,14 @@ const generateQr = async (deps = {}) => {
     stepFillAccessor.set(true);
     const currentRun = runIdAccessor.set(requestedRun);
     let aborted = false;
+    // --- User code execution ---
     try{
       const userOk = await runUserCode();
       if(!userOk){ aborted = true; return; }
       let stepEnabled = isStepModeOn();
       const skipFunctions = stepEnabled && stepSkipFunctions && stepSkipFunctions.checked;
+      // --- Base pattern drawing ---
+      // TODO(step11): extract base pattern sequencing to drawBasePatternsService
       setRenderMode(stepEnabled ? renderModeImmediate : renderModeBuffered);
       if(stepEnabled && skipFunctions){
         const ok = await drawBasePatterns({ deferFlush: false, currentRun });
@@ -55,6 +70,8 @@ const generateQr = async (deps = {}) => {
       }
       stepEnabled = isStepModeOn();
       setRenderMode(stepEnabled ? renderModeImmediate : renderModeBuffered);
+      // --- Data bit preparation ---
+      // TODO(step12): move bit sequence construction to a builder helper
       const funcSet = buildFunctionSet();
       const bitsSeq = buildBitSequence();
       updateCursor(25, 25, directionUp);
@@ -106,6 +123,8 @@ const generateQr = async (deps = {}) => {
         startRow = upward ? 25 : 1;
         col -= 2;
       }
+      // --- Data placement loop ---
+      // TODO(step13): break out placement loop into placeDataBits handler
       if(currentRun === runIdAccessor.get() && !stepEnabled){
         requestRender("runGenerateLegacy");
       }
@@ -119,6 +138,7 @@ const generateQr = async (deps = {}) => {
       }
       throw err;
     }finally{
+      // --- Final render / cleanup ---
       stepFillAccessor.set(false);
       setRenderMode(renderModeImmediate);
     }
