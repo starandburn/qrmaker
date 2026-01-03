@@ -650,7 +650,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   window.buildQRCode = async () => {
     const currentRun = runId;
-    let stepEnabled = isStepModeOn();
+    let stepEnabled = H.isStepModeOn();
     setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
     const bitsSeq = buildBitSequence();
 
@@ -805,9 +805,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   async function drawBasePatterns({ deferFlush = false, currentRun, resetDelay = false } = {}){
+    const H = ctx && ctx.helpers ? ctx.helpers : null;
+    if(!H) return false;
     window.logEvent("drawBasePatterns", currentRun ?? "", `基本パターンを描画 (deferFlush=${deferFlush}, resetDelay=${resetDelay})`);
     if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
-    if(isStepModeOn() && shouldStepFunctions()){
+    if(H.isStepModeOn() && H.shouldStepFunctions()){
       const stepped = await drawBasePatternsStepped({ currentRun });
       return stepped ? !!stepped.ok : false;
     }
@@ -815,22 +817,22 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     resetQRCode({ abortRun: false });
     resetCursor();
     if(resetDelay){
-      await sleep(RESET_DELAY_MS);
+      await H.sleep(RESET_DELAY_MS);
     }
     if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
     const funcOpts = { stepEnabled: false, currentRun, overwrite: false };
-    await drawFinderPatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
+    await H.drawFinderPatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
     if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
-    await drawTimingPatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
+    await H.drawTimingPatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
     if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
-    await drawAlignmentPatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
+    await H.drawAlignmentPatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
     if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
-    await drawDarkModulePatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
+    await H.drawDarkModulePatterns(funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
     if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
-    await drawFormatPatterns(undefined, funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
+    await H.drawFormatPatterns(undefined, funcOpts.overwrite, funcOpts.currentRun, funcOpts.stepEnabled);
     if(!deferFlush){
       if(currentRun !== undefined && currentRun !== runId) throw ABORT_ERR;
-      requestRender("drawBasePatterns");
+      H.requestRender("drawBasePatterns");
       setRenderMode(RENDER_IMMEDIATE);
     }
     resetCursor();
@@ -838,33 +840,35 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   async function drawBasePatternsStepped({ currentRun } = {}){
+    const H = ctx && ctx.helpers ? ctx.helpers : null;
+    if(!H) return { ok: false, fastForwarded: false };
     window.logEvent("drawBasePatternsStepped", currentRun ?? "", "基本パターンを描画");
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     resetQRCode({ abortRun: false });
     setRenderMode(RENDER_IMMEDIATE);
-    updateCursorIfRun(runToken, 1, 1, DIR_DOWN);
-    let stepEnabled = isStepModeOn();
+    H.updateCursorIfRun(runToken, 1, 1, DIR_DOWN);
+    let stepEnabled = H.isStepModeOn();
     let fastForwarded = false;
-    const stepActive = () => stepEnabled && isStepModeOn();
+    const stepActive = () => stepEnabled && H.isStepModeOn();
     const shouldAbort = () => runToken !== runId;
     const shouldSkipFunctions = () => {
       if(runToken !== runId) return false;
-      return !!(stepSkipFunctions && stepSkipFunctions.checked && isStepModeOn());
+      return !!(stepSkipFunctions && stepSkipFunctions.checked && H.isStepModeOn());
     };
 
     window.isFunctionalKind = isFunctionalKind;
     window.MASK_FUNCTIONS = MASK_FUNCTIONS;
     const maybeCursorJumpDelay = async () => {
       if(!stepActive()) return true;
-      const delay = getStepDelay();
+      const delay = H.getStepDelay();
       if(delay > 0){
-        await sleep(delay * 5);
+        await H.sleep(delay * 5);
       }else{
-        await new Promise(requestAnimationFrame);
-        await new Promise(requestAnimationFrame);
-        await new Promise(requestAnimationFrame);
-        await new Promise(requestAnimationFrame);
-        await new Promise(requestAnimationFrame);
+        await new Promise(H.requestAnimationFrame);
+        await new Promise(H.requestAnimationFrame);
+        await new Promise(H.requestAnimationFrame);
+        await new Promise(H.requestAnimationFrame);
+        await new Promise(H.requestAnimationFrame);
       }
       return !shouldAbort();
     };
@@ -877,11 +881,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         return true;
       }
       if(!stepActive()) return true;
-      const delay = getStepDelay();
+      const delay = H.getStepDelay();
       if(delay > 0){
-        await sleep(delay);
+        await H.sleep(delay);
       }else{
-        await new Promise(requestAnimationFrame);
+        await new Promise(H.requestAnimationFrame);
       }
       if(shouldAbort()) throw ABORT_ERR;
       if(shouldSkipFunctions()){
@@ -890,7 +894,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         setRenderMode(RENDER_BUFFERED);
         return true;
       }
-      if(!isStepModeOn()){
+      if(!H.isStepModeOn()){
         stepEnabled = false;
         setRenderMode(RENDER_BUFFERED);
       }
@@ -910,7 +914,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
       lastRow = targetRow;
       lastCol = targetCol;
-      updateCursorIfRun(runToken, targetRow, targetCol, lastDir);
+      H.updateCursorIfRun(runToken, targetRow, targetCol, lastDir);
       if(!(await maybeCursorJumpDelay())) return false;
       return !shouldAbort();
     };
@@ -926,7 +930,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }else if(Math.abs(dc) > 0){
       lastDir = dc > 0 ? DIR_RIGHT : DIR_LEFT;
     }
-      updateCursorIfRun(runToken, row, col, lastDir);
+      H.updateCursorIfRun(runToken, row, col, lastDir);
       lastRow = row;
       lastCol = col;
       return true;
@@ -1121,7 +1125,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     await moveCursorPath(25, 25);
 
     if(renderMode === RENDER_BUFFERED){
-      requestRender("drawFormatSide");
+      H.requestRender("drawFormatSide");
       setRenderMode(RENDER_IMMEDIATE);
     }
     return { ok: true, fastForwarded };
