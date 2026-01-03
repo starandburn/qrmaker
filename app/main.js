@@ -300,6 +300,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   ctx.stepSkipFunctions = stepSkipFunctions;
   ctx.requestRender = requestRender;
   window.setRenderMode = setRenderMode;
+  ctx.helpers = ctx.helpers || {};
+  const H = ctx.helpers;
   function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false } = {}){
     ctx.runId++;
     ctx.isStepFillRunning = false;
@@ -596,7 +598,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
 
   window.invertCell = invertCell;
     const callApplyMask = (...args) => {
-      const drawer = window.qrLegacyDrawers;
+    const drawer = window.qrLegacyDrawers;
+      if(!ctx) return false;
       if(drawer && typeof drawer.applyMask === "function"){
         return drawer.applyMask(ctx, ...args);
       }
@@ -1670,6 +1673,20 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return true;
   }
   ctx.drawFormatPatterns = drawFormatPatterns;
+
+  H.shouldStepFunctions = shouldStepFunctions;
+  H.updateCursorIfRun = updateCursorIfRun;
+  H.stepDelayAbort = stepDelayAbort;
+  H.drawFinderPatterns = drawFinderPatterns;
+  H.drawTimingPatterns = drawTimingPatterns;
+  H.drawAlignmentPatterns = drawAlignmentPatterns;
+  H.drawFormatPatterns = drawFormatPatterns;
+  H.drawDarkModulePatterns = drawDarkModulePatterns;
+  H.sleep = sleep;
+  H.requestAnimationFrame = requestAnimationFrame;
+  H.requestRender = requestRender;
+  H.getStepDelay = getStepDelay;
+  H.isStepModeOn = isStepModeOn;
 
   if(stepMode){
     stepMode.addEventListener("change", syncStepControls);
