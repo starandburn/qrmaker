@@ -39,15 +39,15 @@
       directionUp,
       directionDown,
     } = deps;
-    if(!runIdAccessor || !stepFillAccessor || typeof runUserCode !== "function" || typeof runWithCoordinator !== "function"){
-      return { ok: false, aborted: false, stepEnded: false };
-    }
     const normalizeResult = (abortedFlag, stepEndedFlag) => ({
       ok: !abortedFlag,
       aborted: abortedFlag,
       stepEnded: Boolean(stepEndedFlag),
     });
-    return runWithCoordinator({
+    if(!runIdAccessor || !stepFillAccessor || typeof runUserCode !== "function" || typeof runWithCoordinator !== "function"){
+      return normalizeResult(false, false);
+    }
+    const runResult = await runWithCoordinator({
       runIdAccessor,
       stepFillAccessor,
       sleep,
@@ -138,6 +138,7 @@
         throw err;
       }
     });
+    return runResult ?? normalizeResult(false, false);
   };
 
   global.qrBuildService = Object.assign(global.qrBuildService || {}, {
