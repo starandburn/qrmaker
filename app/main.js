@@ -412,28 +412,40 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   window.makeStepThenable = makeStepThenable;
 
+  const setLastExecutionError = (value) => { lastExecutionError = value; };
+  const {
+    syncParsedCode,
+    validateRunnerSyntax,
+    runUserCode,
+    runUserCodeWithStep,
+  } = typeof createUserCodeRunner === "function"
+    ? createUserCodeRunner({
+      userCodeInput,
+      userCodeParsed,
+      codePanel,
+      buildUserScript,
+      resetLoopGuard,
+      isDebugVisible,
+      requestRender,
+      setRenderMode,
+      ctx,
+      ABORT_ERR,
+      sleep,
+      setLastExecutionError,
+    })
+    : {
+      syncParsedCode: () => {},
+      validateRunnerSyntax: () => null,
+      runUserCode: async () => true,
+      runUserCodeWithStep: async () => true,
+    };
+
   const {
     syncDebugOverlay,
     syncDebugPanelLayout,
   } = typeof createDebugSync === "function"
     ? createDebugSync({ toggleDebugValues, dataPatternPanel, debugLog, isDebugVisible })
     : { syncDebugOverlay: () => {}, syncDebugPanelLayout: () => {} };
-
-  function syncParsedCode(){
-    if(!userCodeParsed || !codePanel) return;
-    const debugOn = isDebugVisible();
-    codePanel.classList.toggle("debug-mode", debugOn);
-    if(!debugOn){
-      userCodeParsed.value = "";
-      return;
-    }
-    try{
-      const script = buildUserScript(userCodeInput ? userCodeInput.value : "", { awaitCalls: true });
-      userCodeParsed.value = script;
-    }catch(err){
-      userCodeParsed.value = `// ${err && err.message ? String(err.message) : String(err)}`;
-    }
-  }
 
   const {
     defaultFlagString,
@@ -470,75 +482,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   window.boardMatrix = boardMatrix;
   window.getNextData = getNextData;
   // Update board matrix directly: row/col 1-based, encoded value (encodeBit)
-  function validateRunnerSyntax(runner){
-   try{
-      new Function(runner);
-      return null;
-    }catch(err){
-      if(err instanceof SyntaxError){
-        lastExecutionError = err.message;
-        return err;
-      }
-      throw err;
-    }
-  }
-
-  async function runUserCode(){
-    if(!userCodeInput) return true;
-    lastExecutionError = null;
-    resetLoopGuard();
-    let script = "";
-    try{
-      script = buildUserScript(userCodeInput.value || "", { awaitCalls: true });
-    }catch(err){
-      lastExecutionError = err && err.message ? String(err.message) : String(err);
-      return false;
-    }
-    if(!script.trim()) return true;
-    try{
-      const runner = `(async () => {\n${script}\n})();`;
-      const syntaxError = validateRunnerSyntax(runner);
-      if(syntaxError){
-        return false;
-      }
-      const res = (0, eval)(runner);
-      if(res && typeof res.then === "function"){
-        await res;
-      }
-      lastExecutionError = null;
-      return true;
-    }catch(err){
-      if(err === ABORT_ERR){
-        return false;
-      }
-      const msg = err && err.message ? err.message : String(err);
-      lastExecutionError = msg;
-      return false;
-    }
-  }
-
-  async function runUserCodeWithStep(){
-    const currentRun = ++ctx.runId;
-    ctx.isStepFillRunning = true;
-    const prevRender = ctx.renderMode;
-    const stepOn = isStepModeOn();
-    setRenderMode(RENDER_IMMEDIATE);
-    try{
-      const ok = await runUserCode();
-      if(!ok) return false;
-      return true;
-    }catch(err){
-      if(err === ABORT_ERR){
-        return false;
-      }
-      throw err;
-    }finally{
-    ctx.isStepFillRunning = false;
-      requestRender("runUserCodeWithStep");
-      setRenderMode(prevRender);
-    }
-  }
-
   window.invertCell = invertCell;
     const callApplyMask = (...args) => {
     const drawer = window.qrLegacyDrawers;
