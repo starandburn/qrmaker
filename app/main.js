@@ -475,9 +475,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   window.RENDER_IMMEDIATE = RENDER_IMMEDIATE;
   window.RENDER_BUFFERED = RENDER_BUFFERED;
   window.updateCursor = updateCursor;
-  window.resetQRCode = resetQRCode;
-  window.resetCommand = resetCommand;
-  window.clearAllCells = resetQRCode; // backward compat
   window.boardMatrix = boardMatrix;
   window.getNextData = getNextData;
   // Update board matrix directly: row/col 1-based, encoded value (encodeBit)
@@ -531,7 +528,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
     return false;
   };
-  window.putFinderCells = callPutFinderCells;
   const callDrawFinderPatterns = (...args) => {
     const drawerInstance = window.qrLegacyDrawers;
     if(!ctx) return false;
@@ -604,32 +600,20 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
     return false;
   };
-  window.putAlignmentCells = callPutAlignmentCells;
-  window.putTimingCells = callPutTimingCells;
-  window.putDarkModuleCells = callPutDarkModuleCells;
-  window.putFormatCells = callPutFormatCells;
   const drawFinderPatterns = wrapDrawApi("drawFinderPatterns", callDrawFinderPatterns, "ファインダーパターンを描画");
   const drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", callDrawAlignmentPatterns, "配置パターンを描画");
   const drawDarkModulePatterns = wrapDrawApi("drawDarkModulePatterns", callDrawDarkModulePatterns, "ダークモジュールを描画");
   const drawTimingPatterns = wrapDrawApi("drawTimingPatterns", callDrawTimingPatterns, "タイミングパターンを描画");
   const drawFormatPatterns = wrapDrawApi("drawFormatPatterns", callDrawFormatPatterns, "フォーマットパターンを描画");
-  window.drawFormatPatterns = drawFormatPatterns;
-  window.drawFinderPatterns = drawFinderPatterns;
-  window.drawAlignmentPatterns = drawAlignmentPatterns;
-  window.drawDarkModulePatterns = drawDarkModulePatterns;
-  window.drawTimingPatterns = drawTimingPatterns;
   ctx.drawFormatPatterns = drawFormatPatterns;
   window.putNextCell = putNextCell;
-  window.drawDataPatterns = drawDataPatterns;
-  window.qrcode = drawQRCode;
   window.buildFunctionSet = buildFunctionSet;
-  window.stopCurrentRun = stopCurrentRun;
   window.parseCellRef = parseCellRef;
   window.cellRefFromRowCol = cellRefFromRowCol;
   window.moveCursor = moveCursor;
   window.turnCursor = turnCursor;
-  window.drawFunctionalPatterns = () => callDrawBasePatterns({ deferFlush: false, currentRun: runId });
-  window.initializeQRCode = async () => {
+  const drawFunctionalPatterns = () => callDrawBasePatterns({ deferFlush: false, currentRun: runId });
+  const initializeQRCode = async () => {
     const current = ++runId;
     await callDrawBasePatterns({ deferFlush: false, currentRun: current });
     if(current !== runId) return false;
@@ -695,6 +679,22 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     window.__deferredWindowApi = Object.assign(window.__deferredWindowApi || {}, {
       drawQRCode,
       buildQRCode,
+      drawDataPatterns,
+      drawFunctionalPatterns,
+      initializeQRCode,
+      resetQRCode,
+      resetCommand,
+      stopCurrentRun,
+      drawFormatPatterns,
+      drawFinderPatterns,
+      drawAlignmentPatterns,
+      drawDarkModulePatterns,
+      drawTimingPatterns,
+      putFinderCells: callPutFinderCells,
+      putAlignmentCells: callPutAlignmentCells,
+      putTimingCells: callPutTimingCells,
+      putDarkModuleCells: callPutDarkModuleCells,
+      putFormatCells: callPutFormatCells,
       syncViewToggles: window.syncViewToggles,
       toggleInputs: window.toggleInputs,
     });
