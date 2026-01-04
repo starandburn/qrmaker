@@ -1,3 +1,6 @@
+/**
+ * 描画リクエストをまとめて requestAnimationFrame に流すレンダリングサイクル周りのユーティリティ。
+ */
 (function(global){
   if(!global) return;
 

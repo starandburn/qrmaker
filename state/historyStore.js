@@ -1,3 +1,6 @@
+/**
+ * コマンド履歴の記録・レンダリング・Prune を扱う履歴ストア。
+ */
 ;(function(window){
   const HISTORY_LIMIT = 48;
   const historyEntries = [];

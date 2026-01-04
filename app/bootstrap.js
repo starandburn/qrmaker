@@ -1,3 +1,6 @@
+/**
+ * 最終的に window 入口APIを統一公開するブートストラップ処理。
+ */
 (function(){
   if(typeof window === "undefined") return;
   const publishWindowApi = () => {

@@ -1,3 +1,6 @@
+/**
+ * QRコードのビット種別や符号化・パリティ計算を扱うドメインロジック。
+ */
 const BIT_UNPLACED = 0;
 const BIT_FUNC_FINDER = 10;
 const BIT_FUNC_TIMING = 11;

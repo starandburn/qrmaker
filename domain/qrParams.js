@@ -1,3 +1,6 @@
+/**
+ * URLパラメータ/ステータス解決の純粋関数をまとめた domain 層モジュール。
+ */
 (function(global){
   if(!global) return;
 

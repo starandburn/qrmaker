@@ -1,3 +1,6 @@
+/**
+ * デバッグパネルのログ／表示同期を提供するファイル。
+ */
 let debugPanelElement = document.getElementById("debugPanel");
 let debugLogElement = document.getElementById("debugLog");
 const debugOnlyControlsList = Array.from(document.querySelectorAll(".debug-only"));

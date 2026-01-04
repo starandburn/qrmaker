@@ -1,3 +1,6 @@
+/**
+ * データビットのセット構築・ビット列作成・カーソル移動を担うサービス。
+ */
 (function(global){
   if(!global) return;
 

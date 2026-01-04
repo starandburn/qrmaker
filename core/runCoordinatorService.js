@@ -1,3 +1,6 @@
+/**
+ * 実行の runId/stepFill 管理とタスクの排他制御を提供するコーディネータ。
+ */
 (function(global){
   if(!global) return;
 

@@ -504,4 +504,6 @@ const layoutUI = {
 };
 
 window.layoutUI = Object.assign({}, window.layoutUI || {}, layoutUI);
-
+/**
+ * レイアウト周りの定数/表示トグル/パターン出力ロジックをまとめたモジュール。
+ */

@@ -1,3 +1,6 @@
+/**
+ * アプリ全体の共有状態（history/pattern/debugVisible）を管理するシンプルなストア。
+ */
 (function(global){
   if(!global) return;
 

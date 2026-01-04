@@ -1,3 +1,6 @@
+/**
+ * URLパラメータの解析・適用・URL再構築の補助処理をまとめたstateモジュール。
+ */
 (function(){
   const params = new URLSearchParams(window.location.search || "");
   const FLAG_PARAM_KEY = "v";

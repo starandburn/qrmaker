@@ -1,4 +1,7 @@
 
+/**
+ * 実行環境を初期化し、UI/状態/描画APIの依存を束ねるメイン関数。
+ */
 function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layoutUI || {}, debugUI = window.debugUI || {} } = {}){
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");

@@ -1,3 +1,6 @@
+/**
+ * UIコントロール群（トグルやフッター、ステップ速度）を初期化し、状態と連動させるヘルパー。
+ */
 (function(global){
   function initUIControls(opts = {}){
     const {

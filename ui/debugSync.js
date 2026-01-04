@@ -1,3 +1,6 @@
+/**
+ * デバッグパネル/オーバーレイの同期処理を提供するヘルパー。
+ */
 (function(global){
   if(!global) return;
 

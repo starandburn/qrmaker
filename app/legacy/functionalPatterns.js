@@ -1,3 +1,6 @@
+/**
+ * QR基本パターン描画（finder/timing/alignment/...）を提供するレガシーモジュール。
+ */
 (function(global){
   if(!global) return;
 

@@ -1,3 +1,6 @@
+/**
+ * QR描画アダプタ群。applyMask や各パターン描画を ctx/helpers 経由で提供し、window 互換APIに公開。
+ */
 const DEBUG_STEP_LOG = false;
 function debugLog(...args){
   if(!DEBUG_STEP_LOG) return;

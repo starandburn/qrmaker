@@ -1,3 +1,6 @@
+/**
+ * 学習用スクリプト（英語キーワード→内部API）を解析/変換するパーサ実装。
+ */
 (function(global){
   if(!global) return;
   const ABORT_ERR = global.ABORT_ERR || Symbol("run-aborted");

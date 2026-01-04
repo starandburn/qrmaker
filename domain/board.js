@@ -1,3 +1,6 @@
+/**
+ * マスの座標/方向・カーソル制御・セル更新を担う board モジュール。
+ */
 const DIR_UP = "up";
 const DIR_RIGHT = "right";
 const DIR_DOWN = "down";
