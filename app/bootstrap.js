@@ -49,4 +49,7 @@
   const debugUI = window.debugUI || {};
   runMainApp({ layoutUI, urlState, debugUI });
   publishWindowApi();
+  if(typeof window.__qrmakerSelfCheck === "function"){
+    window.__qrmakerSelfCheck();
+  }
 })();
