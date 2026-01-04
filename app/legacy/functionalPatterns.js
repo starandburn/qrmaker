@@ -257,90 +257,19 @@
   }
 
   async function putFormatCells(ctx, bits15, coords, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    if(!ctx) return false;
-    const H = ensureHelpers(ctx);
-    const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runToken = (typeof currentRun === "number") ? currentRun : ctx.runId;
-    const step = !!resolvedStep;
-    const coordsArr = Array.isArray(coords) ? coords : [];
-    const allowOverwrite = overwrite !== false;
-    const shouldDrawCell = (row, col) => shouldPlaceCell(row, col, allowOverwrite);
-    if(!step){
-      ctx.setRenderMode(ctx.RENDER_BUFFERED);
-      for(let i = 0; i < coordsArr.length && i < 15; i++){
-        const bit = (bits15 >>> i) & 1;
-        const [r1, c1] = coordsArr[i];
-        const row = r1 + 1;
-        const col = c1 + 1;
-        if(!shouldDrawCell(row, col)) continue;
-        if(typeof window.updateCell === "function"){
-          const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
-          window.updateCell(row, col, enc);
-        }
-      }
-      hasFormatPattern = true;
-      ctx.requestRender("putFormatCells");
-      ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
-      return true;
+    const bridge = window.formatPattern;
+    if(bridge && typeof bridge.putFormatCells === "function"){
+      return bridge.putFormatCells(ctx, bits15, coords, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     }
-    const delay = async () => {
-      return H.stepDelayAbort ? H.stepDelayAbort(runToken) : Promise.resolve();
-    };
-    const prevRender = ctx.renderMode;
-    ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
-    for(let i = 0; i < coordsArr.length && i < 15; i++){
-      if(runToken !== ctx.runId) return false;
-      if(H.shouldStepFunctions && !H.shouldStepFunctions()){
-        return putFormatCells(ctx, bits15, coords, overwrite, { stepEnabled: false, currentRun: runToken });
-      }
-      const bit = (bits15 >>> i) & 1;
-      const [r1, c1] = coordsArr[i];
-      const row = r1 + 1;
-      const col = c1 + 1;
-      if(!shouldDrawCell(row, col)) continue;
-      if(typeof window.updateCell === "function"){
-        const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
-        window.updateCell(row, col, enc);
-      }
-      if(H.updateCursorIfRun){
-        H.updateCursorIfRun(runToken, row, col, DIR_RIGHT);
-      }
-      await delay();
-    }
-    hasFormatPattern = true;
-    ctx.setRenderMode(prevRender);
-    return true;
+    return false;
   }
 
   async function drawFormatPatterns(ctx, mask, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    if(!ctx) return false;
-    const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runToken = (typeof currentRun === "number") ? currentRun : ctx.runId;
-    const maskIsSpecified = mask !== undefined;
-    let idx = 0;
-    if(maskIsSpecified){
-      idx = Number(mask);
-      if(!Number.isFinite(idx) || idx < 0 || idx > 7){
-        idx = 0;
-      }
+    const bridge = window.formatPattern;
+    if(bridge && typeof bridge.drawFormatPatterns === "function"){
+      return bridge.drawFormatPatterns(ctx, mask, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     }
-    const bits15 = maskIsSpecified && ctx.FORMAT_L && ctx.FORMAT_L[idx]
-      ? ctx.FORMAT_L[idx]
-      : 0;
-    const coordsA = [
-      [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],
-      [8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8],
-    ];
-    const n = 25;
-    const coordsB = [
-      [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
-      [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
-    ];
-    const opts = { stepEnabled: resolvedStep, currentRun: runToken };
-    await putFormatCells(ctx, bits15, coordsA, overwrite, opts);
-    await putFormatCells(ctx, bits15, coordsB, overwrite, opts);
-    hasFormatPattern = true;
-    return true;
+    return false;
   }
 
   global.legacyFunctionalPatterns = Object.assign(global.legacyFunctionalPatterns || {}, {
