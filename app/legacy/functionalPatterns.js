@@ -45,43 +45,19 @@
   }
 
   async function putDarkModuleCells(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    if(!ctx) return true;
-    const H = ensureHelpers(ctx);
-    const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runToken = (typeof currentRun === "number") ? currentRun : ctx.runId;
-    const step = !!resolvedStep;
-    const baseRow = cursorPos.row;
-    const baseCol = cursorPos.col;
-    if(!shouldPlaceCell(baseRow, baseCol, overwrite !== false)) return true;
-    if(!step){
-      if(typeof window.updateCell === "function"){
-        window.updateCell(baseRow, baseCol, window.encodeBit(BIT_FUNC_DARK, true));
-      }
-      return true;
+    const bridge = window.darkModulePattern;
+    if(bridge && typeof bridge.putDarkModuleCells === "function"){
+      return bridge.putDarkModuleCells(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     }
-    const delay = async () => {
-      return H.stepDelayAbort ? H.stepDelayAbort(runToken) : Promise.resolve();
-    };
-    if(runToken !== ctx.runId) return false;
-    ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
-    if(typeof window.updateCell === "function"){
-      window.updateCell(baseRow, baseCol, window.encodeBit(BIT_FUNC_DARK, true));
-    }
-    if(H.updateCursorIfRun){
-      H.updateCursorIfRun(runToken, baseRow, baseCol, DIR_RIGHT);
-    }
-    await delay();
     return true;
   }
 
   async function drawDarkModulePatterns(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    if(!ctx) return false;
-    const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runVal = (typeof currentRun === "number") ? currentRun : ctx.runId;
-    const opts = { stepEnabled: resolvedStep, currentRun: runVal };
-    updateCursor(18, 9, DIR_RIGHT);
-    await putDarkModuleCells(ctx, overwrite, opts);
-    return true;
+    const bridge = window.darkModulePattern;
+    if(bridge && typeof bridge.drawDarkModulePatterns === "function"){
+      return bridge.drawDarkModulePatterns(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
+    }
+    return false;
   }
 
   function resolveTimingPos(direction, index){
