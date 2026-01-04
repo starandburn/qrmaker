@@ -13,6 +13,12 @@
     assign("drawBasePatternsStepped", api.drawBasePatternsStepped);
     assign("makeStepThenable", api.makeStepThenable);
     assign("shouldStepFunctions", api.shouldStepFunctions);
+    assign("buildQRCode", api.buildQRCode);
+    assign("drawQRCode", api.drawQRCode);
+    assign("syncViewToggles", api.syncViewToggles);
+    if(Array.isArray(api.toggleInputs)){
+      win.toggleInputs = api.toggleInputs;
+    }
     if(api.qrLegacyDrawers && typeof api.qrLegacyDrawers === "object"){
       win.qrLegacyDrawers = api.qrLegacyDrawers;
     }

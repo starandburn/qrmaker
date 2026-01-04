@@ -621,7 +621,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   ctx.drawFormatPatterns = drawFormatPatterns;
   window.putNextCell = putNextCell;
   window.drawDataPatterns = drawDataPatterns;
-  window.drawQRCode = drawQRCode;
   window.qrcode = drawQRCode;
   window.buildFunctionSet = buildFunctionSet;
   window.stopCurrentRun = stopCurrentRun;
@@ -637,7 +636,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     updateCursor(cursorPos.row, cursorPos.col, DIR_UP);
     return true;
   };
-  window.buildQRCode = async () => {
+  async function buildQRCode(){
     const currentRun = runId;
     let stepEnabled = H.isStepModeOn();
     setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
@@ -691,6 +690,15 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
     return currentRun === runId;
   };
+
+  if(typeof window !== "undefined"){
+    window.__deferredWindowApi = Object.assign(window.__deferredWindowApi || {}, {
+      drawQRCode,
+      buildQRCode,
+      syncViewToggles: window.syncViewToggles,
+      toggleInputs: window.toggleInputs,
+    });
+  }
     function resolveFunctionalOptions(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
       if(typeof overwriteOrOpts === "object" && overwriteOrOpts !== null && !Array.isArray(overwriteOrOpts)){
         const { overwrite = false, currentRun, stepEnabled: stepFromOpts } = overwriteOrOpts;
