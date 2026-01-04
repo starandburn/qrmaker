@@ -1233,7 +1233,30 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
   if(titleIcon){
     titleIcon.addEventListener("click", () => {
-      const url = buildStateUrl();
+      const buildFn = typeof buildStateUrlFromState === "function"
+        ? buildStateUrlFromState
+        : (() => window.location.href);
+      const url = buildFn({
+        txtInput,
+        flagString: buildFlagString(),
+        defaultDataValue: DATA_DEFAULT_TEXT,
+        debugPanel: getDebugPanel(),
+        dataPatternPanel,
+        stepSpeed,
+        stepMode,
+        stepSkipFunctions,
+        historyVisible: getHistoryVisible(),
+        isDebugVisible,
+        defaultFlagString,
+        defaultHistoryVisible,
+        defaultDebugVisible,
+        defaultPatternOpen,
+        defaultStepMode,
+        defaultStepSkipFunctions,
+        defaultStepSpeed,
+        initialDebugParamPresent,
+        codePanel,
+      });
       window.open(url, "_blank");
     });
   }
@@ -1245,33 +1268,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       });
     }
   }
-
-  const buildStateUrl = () => {
-    if(typeof buildStateUrlFromState !== "function"){
-      return window.location.href;
-    }
-    return buildStateUrlFromState({
-      txtInput,
-      flagString: buildFlagString(),
-      defaultDataValue: DATA_DEFAULT_TEXT,
-      debugPanel: getDebugPanel(),
-      dataPatternPanel,
-      stepSpeed,
-      stepMode,
-      stepSkipFunctions,
-      historyVisible: getHistoryVisible(),
-      isDebugVisible,
-      defaultFlagString,
-      defaultHistoryVisible,
-      defaultDebugVisible,
-      defaultPatternOpen,
-      defaultStepMode,
-      defaultStepSkipFunctions,
-      defaultStepSpeed,
-      initialDebugParamPresent,
-      codePanel,
-    });
-  };
 
   if(document && document.body){
     requestAnimationFrame(() => {
