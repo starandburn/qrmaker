@@ -38,7 +38,7 @@
 - `runMainApp` を `window.layoutUI`/`window.urlState`/`window.debugUI` を引数に実行し、レスポンスの準備が完了したタイミングで `publishWindowApi()` により `window` 上にプロパティを定義する。
 
 ### B.2 `window.__deferredWindowApi` の登録（`app/main.js` 起点）
-`window.__deferredWindowApi` は `app/main.js` 側で構築され、`app/bootstrap.js` がコピーして `window` に直接公開する。登録順に関数と由来を列挙する。
+`window.__deferredWindowApi` は `app/main.js` 側で構築され、`app/bootstrap.js` がコピーして `window` に直接公開する。以下の名前一覧が現在公開されている契約であり、併記した由来は現状の実装から読み取れる範囲にとどめている。
 - `applyMask`：`app/main.js` で `callApplyMask` を経由（`window.qrLegacyDrawers.applyMask` をラップ）
 - `drawBasePatterns`：同（`qrLegacyDrawers.drawBasePatterns` ）
 - `drawBasePatternsStepped`：同（`qrLegacyDrawers.drawBasePatternsStepped`）
@@ -63,14 +63,14 @@
 - `putTimingCells`：同様にタイミング（`app/main.js`）
 - `putDarkModuleCells`：同様にダークモジュール（`app/main.js`）
 - `putFormatCells`：同様にフォーマット（`app/main.js`）
-- `syncViewToggles`：`ui/layout.js` で定義されたビュートグル同期関数（`app/bootstrap.js` は `window.__deferredWindowApi` の `syncViewToggles` をそのまま流す）
-- `toggleInputs`：`ui/layout.js` で `global.toggleInputs` に格納されている表示トグル要素の配列（必要に応じて再設定）
+- `syncViewToggles`：`ui/layout.js` で定義されたビュートグル同期関数。現在は `app/bootstrap.js` が `window.__deferredWindowApi` の `syncViewToggles` をそのまま流している。
+- `toggleInputs`：`ui/layout.js` で `global.toggleInputs` に格納されている表示トグル要素の配列。必要に応じて再設定される。
 
-### B.3 その他 `window` パブリック値
-- `syncViewToggles`：`ui/layout.js` で定義され、トグルのチェック状態とビュー描画の同期を取る。`window.syncViewToggles()` で外部からも呼び出せる。
-- `toggleInputs`：同じく `ui/layout.js` 側で初期化されるトグル要素一覧。`window.toggleInputs` は `core` と `app` 側が参照して画面制御を整えるために配列で公開されている。
+### B.3 補足
+- `syncViewToggles` / `toggleInputs` については `ui/layout.js` 由来で上記契約名に含まれている。`core`/`app` 側では配列を共有する前提で参照しているため、変更の際はこれらの依存先を先に検証することを推奨する。
 
 ## C. URL パラメータ（`state/urlState.js`）
+現状把握しているすべてのキーを列挙してあり、実装で差分が現れた場合はこのファイルを更新すること。
 各パラメータは `stringifyBool` により真偽判定され、その他値は個別スキーマに従う。`buildStateUrl()` で現在状態の URL を生成するときは既定値との差分のみクエリに含める。
 
 ### 1. `d`（データ文字列）
