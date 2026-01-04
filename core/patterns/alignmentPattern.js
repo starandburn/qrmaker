@@ -128,6 +128,12 @@
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runVal = (typeof currentRun === "number") ? currentRun : ctx.runId;
     const opts = { stepEnabled: resolvedStep, currentRun: runVal };
+    /*
+     * [前提] Alignment base is fixed at (19,19) on the 25x25 board used here.
+     * [理由] QR version and teaching setup use the lower-right finder corner as anchor.
+     * [影響] Any board resizing or version change would misplace this updateCursor call.
+     * [将来] Derive center positions from ctx metadata instead of hard-coding.
+     */
     updateCursor(19, 19, DIR_RIGHT);
     await putAlignmentCells(ctx, overwrite, opts);
     return true;
@@ -138,4 +144,3 @@
     drawAlignmentPatterns,
   });
 })(typeof window !== "undefined" ? window : globalThis);
-

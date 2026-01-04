@@ -82,6 +82,12 @@
     if(!ctx) return false;
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const opts = { stepEnabled: resolvedStep, currentRun };
+    /*
+     * [前提] Dark module sits at (18,9) for the fixed 25x25 board/version.
+     * [理由] QR spec mandates a single dark module near the timing patterns.
+     * [影響] Changing board layout would leave this cell unchanged or mislocated.
+     * [将来] Compute dark module position from ctx/version metadata instead of constants.
+     */
     updateCursor(18, 9, DIR_RIGHT);
     await putDarkModuleCells(ctx, overwrite, opts);
     return true;
@@ -92,4 +98,3 @@
     drawDarkModulePatterns,
   });
 })(typeof window !== "undefined" ? window : globalThis);
-

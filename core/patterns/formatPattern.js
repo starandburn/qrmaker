@@ -119,6 +119,12 @@
     const bits15 = maskIsSpecified && ctx.FORMAT_L && ctx.FORMAT_L[idx]
       ? ctx.FORMAT_L[idx]
       : 0;
+    /*
+     * [前提] Format patterns live in the standard two 15-cell lines around the top-left & top-right corners.
+     * [理由] QR format info is conventionally stored along these fixed paths on a 25x25 grid.
+     * [影響] Non-standard board sizes or versioning would require recalculating these lists.
+     * [将来] Derive coordinates from ctx.FORMAT_COORDS instead of hard-coded arrays.
+     */
     const coordsA = [
       [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],
       [8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8],
@@ -140,4 +146,3 @@
     drawFormatPatterns,
   });
 })(typeof window !== "undefined" ? window : globalThis);
-
