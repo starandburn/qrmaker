@@ -1,5 +1,10 @@
 /**
- * Finderパターン描画を提供するモジュール（core/patterns 専用）
+ * [役割] Finder pattern drawing
+ * [入力] ctx, runToken, functional options, helpers
+ * [副作用] board cell updates, cursor moves, renderMode changes
+ * [中断] prefer executionControl.shouldAbort, fallback to runToken !== ctx.runId
+ * [非対象] data placement, mask, UI, URL, history
+ * [公開] window.finderPattern: putFinderCells, drawFinderPatterns
  */
 (function(global){
   if(!global) return;
@@ -28,6 +33,7 @@
     return { overwrite: overwriteValue, currentRun: resolvedRun, stepEnabled: resolvedStep };
   }
 
+  /** Draws a single finder block with step/abort awareness. */
   async function putFinderCells(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     if(!ctx) return false;
     const H = ensureHelpers(ctx);
@@ -163,6 +169,7 @@
     return !!res;
   }
 
+  /** Moves to each corner and calls putFinderCells to place finders. */
   async function drawFinderPatterns(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     if(!ctx) return false;
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
@@ -183,3 +190,4 @@
     drawFinderPatterns,
   });
 })(typeof window !== "undefined" ? window : globalThis);
+

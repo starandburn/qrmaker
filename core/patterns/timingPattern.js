@@ -1,5 +1,10 @@
 /**
- * Timing行/列描画を提供するモジュール（core/patterns 専用）
+ * [役割] Timing pattern drawing (horizontal/vertical lines)
+ * [入力] ctx, runToken, direction/index, helpers
+ * [副作用] writes timing bits, updates cursor when stepping
+ * [中断] prefer executionControl.shouldAbort, fallback to runToken !== ctx.runId
+ * [非対象] data placement, mask, UI, URL, history
+ * [公開] window.timingPattern: putTimingCells, drawTimingPatterns
  */
 (function(global){
   if(!global) return;
@@ -28,6 +33,7 @@
     return { overwrite: overwriteValue, currentRun: resolvedRun, stepEnabled: resolvedStep };
   }
 
+  /** Writes one timing row or column and tracks stepping/abort. */
   async function putTimingCells(ctx, direction = TIMING_HORIZONTAL, index = TIMING_ROW, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     if(!ctx) return false;
     const H = ensureHelpers(ctx);
@@ -122,6 +128,7 @@
     })();
   }
 
+  /** Entrypoint that draws both horizontal and vertical timing lines. */
   async function drawTimingPatterns(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     if(!ctx) return false;
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
@@ -137,3 +144,4 @@
     drawTimingPatterns,
   });
 })(typeof window !== "undefined" ? window : globalThis);
+

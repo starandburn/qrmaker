@@ -1,6 +1,10 @@
 /**
- * Dark Module（固定暗モジュール）描画処理を提供する
- * core/patterns 用モジュール
+ * [役割] Dark module pattern drawing (fixed module)
+ * [入力] ctx, runToken, helpers
+ * [副作用] sets dark module cell, updates cursor in steps
+ * [中断] prefer executionControl.shouldAbort, fallback to runToken !== ctx.runId
+ * [非対象] data placement, mask, UI, URL, history
+ * [公開] window.darkModulePattern: putDarkModuleCells, drawDarkModulePatterns
  */
 (function(global){
   if(!global) return;
@@ -44,6 +48,7 @@
     return updateCursor(row, col, dir);
   }
 
+  /** Places the fixed dark module cell with optional stepping support. */
   async function putDarkModuleCells(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     if(!ctx) return true;
     const H = ensureHelpers(ctx);
@@ -72,6 +77,7 @@
     return true;
   }
 
+  /** Calls putDarkModuleCells with resolved options to paint the single dark module. */
   async function drawDarkModulePatterns(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     if(!ctx) return false;
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
@@ -86,3 +92,4 @@
     drawDarkModulePatterns,
   });
 })(typeof window !== "undefined" ? window : globalThis);
+

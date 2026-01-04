@@ -1,5 +1,10 @@
 /**
- * Alignmentパターン描画を提供するモジュール（core/patterns 用）
+ * [役割] Alignment pattern drawing
+ * [入力] ctx, runToken, helpers
+ * [副作用] writes 5x5 alignment cells, cursor updates when stepping
+ * [中断] prefer executionControl.shouldAbort, fallback to runToken !== ctx.runId
+ * [非対象] data placement, mask, UI, URL, history
+ * [公開] window.alignmentPattern: putAlignmentCells, drawAlignmentPatterns
  */
 (function(global){
   if(!global) return;
@@ -43,6 +48,7 @@
     return updateCursor(row, col, dir);
   }
 
+  /** Draws alignment square, respecting step/abort helpers. */
   async function putAlignmentCells(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     if(!ctx) return false;
     const H = ensureHelpers(ctx);
@@ -116,6 +122,7 @@
     })();
   }
 
+  /** Positions cursor and runs putAlignmentCells for each alignment location. */
   async function drawAlignmentPatterns(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     if(!ctx) return false;
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
@@ -131,3 +138,4 @@
     drawAlignmentPatterns,
   });
 })(typeof window !== "undefined" ? window : globalThis);
+

@@ -1,6 +1,10 @@
 /**
- * Formatパターン（フォーマット情報）描画を提供する
- * core/patterns 用モジュール
+ * [役割] Format pattern drawing (format bits)
+ * [入力] ctx, runToken, coords, helpers
+ * [副作用] draws format info cells, updates cursor when stepping
+ * [中断] prefer executionControl.shouldAbort, fallback to runToken !== ctx.runId
+ * [非対象] data placement, mask, UI, URL, history
+ * [公開] window.formatPattern: putFormatCells, drawFormatPatterns
  */
 (function(global){
   if(!global) return;
@@ -44,6 +48,7 @@
     return updateCursor(row, col, dir);
   }
 
+  /** Writes format bits over provided coordinates, honoring steps and aborts. */
   async function putFormatCells(ctx, bits15, coords, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     if(!ctx) return false;
     const H = ensureHelpers(ctx);
@@ -98,6 +103,7 @@
     return true;
   }
 
+  /** Calculates coords for both format regions and delegates to putFormatCells. */
   async function drawFormatPatterns(ctx, mask, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     if(!ctx) return false;
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
@@ -134,3 +140,4 @@
     drawFormatPatterns,
   });
 })(typeof window !== "undefined" ? window : globalThis);
+
