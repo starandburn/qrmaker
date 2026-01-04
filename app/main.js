@@ -305,6 +305,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   ctx.RESET_DELAY_MS = RESET_DELAY_MS;
   window.setRenderMode = setRenderMode;
   ctx.helpers = ctx.helpers || {};
+  const domainUtil = window.domainUtil || {};
+  const domainQrParams = window.domainQrParams || {};
+  const applyDataParam = (typeof domainQrParams.applyDataParam === "function")
+    ? (options) => domainQrParams.applyDataParam(options)
+    : () => false;
   ctx.FORMAT_L = FORMAT_L;
   const runIdAccessor = {
     get: () => runId,
@@ -699,24 +704,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       toggleInputs: window.toggleInputs,
     });
   }
-    function resolveFunctionalOptions(overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-      if(typeof overwriteOrOpts === "object" && overwriteOrOpts !== null && !Array.isArray(overwriteOrOpts)){
-        const { overwrite = false, currentRun, stepEnabled: stepFromOpts } = overwriteOrOpts;
-        const resolvedRun = (typeof currentRun === "number") ? currentRun : runId;
-        const resolvedStep = (typeof stepFromOpts === "boolean") ? stepFromOpts : shouldStepFunctions();
-        return { overwrite, currentRun: resolvedRun, stepEnabled: resolvedStep };
-      }
-      const overwriteValue = (overwriteOrOpts === undefined) ? true : overwriteOrOpts;
-      if(typeof currentRunOrOpts === "object" && currentRunOrOpts !== null && !Array.isArray(currentRunOrOpts)){
-        const { currentRun, stepEnabled: stepFromOpts } = currentRunOrOpts;
-        const resolvedRun = (typeof currentRun === "number") ? currentRun : runId;
-        const resolvedStep = (typeof stepFromOpts === "boolean") ? stepFromOpts : shouldStepFunctions();
-        return { overwrite: overwriteValue, currentRun: resolvedRun, stepEnabled: resolvedStep };
-      }
-      const resolvedRun = (typeof currentRunOrOpts === "number") ? currentRunOrOpts : runId;
-      const resolvedStep = (typeof stepEnabled === "boolean") ? stepEnabled : shouldStepFunctions();
-      return { overwrite: overwriteValue, currentRun: resolvedRun, stepEnabled: resolvedStep };
-    }
   async function drawDataPatterns({ currentRun } = {}){
     window.logEvent("drawDataPatterns", currentRun ?? "", "データパターンを描画");
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
@@ -793,10 +780,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   ctx.MASK_FUNCTIONS = MASK_FUNCTIONS;
   ctx.isFunctionalKind = isFunctionalKind;
-
-  function randomInt(min, max){
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
 
   function buildFunctionSet(){
     const set = new Set();
@@ -979,7 +962,12 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   if(Array.isArray(window.toggleInputs) && toggleDebugValues && !window.toggleInputs.includes(toggleDebugValues)){
     window.toggleInputs.push(toggleDebugValues);
   }
-  applyDataParam();
+  applyDataParam({
+    txtInput,
+    urlParams,
+    DATA_PARAM_KEY,
+    decodeDataParamValue,
+  });
   const urlControlToggleConfig = [
     { param: "toggleCursor", element: toggleCursor },
     { param: "toggleGuide", element: toggleGuide },
@@ -1283,23 +1271,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       codePanel,
     });
   };
-
-  function applyDataParam(){
-    if(!txtInput) return false;
-    if(!urlParams.has(DATA_PARAM_KEY)) return false;
-    const rawValue = urlParams.get(DATA_PARAM_KEY);
-    if(rawValue === null) return false;
-    const nextValue = decodeDataParamValue(rawValue);
-    if(txtInput.value !== nextValue){
-      txtInput.value = nextValue;
-      try{
-        txtInput.dispatchEvent(new Event("input", { bubbles: true }));
-      }catch(err){
-        // some environments may not support dispatching synthetic events
-      }
-    }
-    return true;
-  }
 
   if(document && document.body){
     requestAnimationFrame(() => {
