@@ -828,6 +828,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return runToken === runId;
   }
   async function drawQRCode(arg){
+    resetQRCode({ abortRun: false, forceImmediate: true, stopStep: true });
     window.logEvent("drawQRCode", arg ?? "", "QRコードを描画");
     let maskIndex;
     if(arg === undefined){
