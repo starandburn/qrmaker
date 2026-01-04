@@ -96,6 +96,10 @@
   }
 
   async function putTimingCells(ctx, direction = TIMING_HORIZONTAL, index = TIMING_ROW, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+    const bridge = window.timingPattern;
+    if(bridge && typeof bridge.putTimingCells === "function"){
+      return bridge.putTimingCells(ctx, direction, index, overwriteOrOpts, currentRunOrOpts, stepEnabled);
+    }
     if(!ctx) return false;
     const H = ensureHelpers(ctx);
     const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
@@ -174,6 +178,10 @@
   }
 
   async function drawTimingPatterns(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+    const bridge = window.timingPattern;
+    if(bridge && typeof bridge.drawTimingPatterns === "function"){
+      return bridge.drawTimingPatterns(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
+    }
     if(!ctx) return false;
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const opts = { stepEnabled: resolvedStep, currentRun };
