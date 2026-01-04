@@ -29,145 +29,19 @@
   }
 
   async function putFinderCells(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    if(!ctx) return false;
-    const H = ensureHelpers(ctx);
-    const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runToken = (typeof currentRun === "number") ? currentRun : ctx.runId;
-    const shouldAbort = () => executionControl.shouldAbort(runToken, ctx);
-    const stepInitial = !!resolvedStep;
-    const baseRow = cursorPos.row;
-    const baseCol = cursorPos.col;
-    updateCursor(baseRow, baseCol, DIR_RIGHT);
-    const pattern = [
-      [1,1,1,1,1,1,1],
-      [1,0,0,0,0,0,1],
-      [1,0,1,1,1,0,1],
-      [1,0,1,1,1,0,1],
-      [1,0,1,1,1,0,1],
-      [1,0,0,0,0,0,1],
-      [1,1,1,1,1,1,1],
-    ];
-    const prevRender = ctx.renderMode;
-    const allowOverwrite = overwrite !== false;
-    const shouldDrawCell = (row, col) => shouldPlaceCell(row, col, allowOverwrite);
-    const updateCursorSafe = (row, col, dir = DIR_RIGHT) => executionControl.updateCursorSafe(runToken, ctx, row, col, dir);
-    let lastCursorRow = null;
-    let lastCursorCol = null;
-    const drawSync = () => {
-      for(let r = 0; r < 7; r++){
-        for(let c = 0; c < 7; c++){
-          const row = baseRow + r;
-          const col = baseCol + c;
-          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-          const bit = pattern[r][c];
-          if(!shouldDrawCell(row, col)) continue;
-          window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
-          lastCursorRow = row;
-          lastCursorCol = col;
-        }
-      }
-      const sRow = baseRow - 1;
-      const eRow = baseRow + 7;
-      const sCol = baseCol - 1;
-      const eCol = baseCol + 7;
-      for(let r = sRow; r <= eRow; r++){
-        for(let c = sCol; c <= eCol; c++){
-          const insideCore = r >= baseRow && r < baseRow + 7 && c >= baseCol && c < baseCol + 7;
-          if(insideCore) continue;
-          if(r < 1 || r > 25 || c < 1 || c > 25) continue;
-          if(r === sRow || r === eRow || c === sCol || c === eCol){
-            if(!shouldDrawCell(r, c)) continue;
-            window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
-            lastCursorRow = r;
-            lastCursorCol = c;
-          }
-        }
-      }
-    };
-    const finishSync = () => {
-      ctx.setRenderMode(ctx.RENDER_BUFFERED);
-      drawSync();
-      ctx.requestRender("drawFinderPatterns");
-      ctx.setRenderMode(prevRender);
-      if(lastCursorRow !== null && lastCursorCol !== null){
-        updateCursorSafe(lastCursorRow, lastCursorCol, DIR_RIGHT);
-      }
-      return true;
-    };
-    if(!stepInitial){
-      return finishSync();
+    const bridge = window.finderPattern;
+    if(bridge && typeof bridge.putFinderCells === "function"){
+      return bridge.putFinderCells(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     }
-    const stepActive = () => executionControl.stepActive({
-      helpers: H,
-      ctx,
-      runToken,
-      stepEnabled: !!resolvedStep,
-    });
-    const delay = async () => {
-      return H.stepDelayAbort ? H.stepDelayAbort(runToken) : Promise.resolve();
-    };
-    const drawStep = async () => {
-      for(let r = 0; r < 7; r++){
-        for(let c = 0; c < 7; c++){
-          if(shouldAbort()) return false;
-          if(!stepActive()) return finishSync();
-          const row = baseRow + r;
-          const col = baseCol + c;
-          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-          const bit = pattern[r][c];
-          if(!shouldDrawCell(row, col)) continue;
-          window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
-          updateCursorSafe(row, col, DIR_RIGHT);
-          lastCursorRow = row;
-          lastCursorCol = col;
-          await delay();
-        }
-      }
-      const sRow = baseRow - 1;
-      const eRow = baseRow + 7;
-      const sCol = baseCol - 1;
-      const eCol = baseCol + 7;
-      for(let r = sRow; r <= eRow; r++){
-        for(let c = sCol; c <= eCol; c++){
-          if(shouldAbort()) return false;
-          if(!stepActive()) return finishSync();
-          const insideCore = r >= baseRow && r < baseRow + 7 && c >= baseCol && c < baseCol + 7;
-          if(insideCore) continue;
-          if(r < 1 || r > 25 || c < 1 || c > 25) continue;
-          if(r === sRow || r === eRow || c === sCol || c === eCol){
-            if(!shouldDrawCell(r, c)) continue;
-            window.updateCell(r, c, window.encodeBit(BIT_FUNC_FINDER, false));
-            updateCursorSafe(r, c, DIR_RIGHT);
-            lastCursorRow = r;
-            lastCursorCol = c;
-            await delay();
-          }
-        }
-      }
-      return true;
-    };
-    ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
-    const res = await drawStep();
-    ctx.setRenderMode(prevRender);
-    if(lastCursorRow !== null && lastCursorCol !== null){
-      updateCursorSafe(lastCursorRow, lastCursorCol, DIR_RIGHT);
-    }
-    return !!res;
+    return false;
   }
 
   async function drawFinderPatterns(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    if(!ctx) return false;
-    const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
-    const runVal = (typeof currentRun === "number") ? currentRun : ctx.runId;
-    const opts = { stepEnabled: resolvedStep, currentRun: runVal };
-    const moveAndDraw = async (row, col) => {
-      updateCursor(row, col, DIR_RIGHT);
-      await putFinderCells(ctx, overwrite, opts);
-    };
-    await moveAndDraw(1, 1);
-    await moveAndDraw(1, 19);
-    await moveAndDraw(19, 1);
-    return true;
+    const bridge = window.finderPattern;
+    if(bridge && typeof bridge.drawFinderPatterns === "function"){
+      return bridge.drawFinderPatterns(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
+    }
+    return false;
   }
 
   async function putDarkModuleCells(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
