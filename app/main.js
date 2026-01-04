@@ -38,16 +38,14 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     : null;
   const getHistoryVisible = () => (store ? Boolean(store.getState().historyVisible) : false);
   const getPatternPanelOpen = () => (store ? Boolean(store.getState().patternPanelOpen) : Boolean(dataPatternPanel?.open));
-  const applyDebugVisibilityBase = layoutUI.applyDebugVisibility || debugUI.applyDebugVisibility || (() => {});
-  let lastAppliedDebugVisible = null;
-  const getDebugVisible = () => (store ? Boolean(store.getState().debugVisible) : (typeof debugUI.isDebugVisible === "function" ? debugUI.isDebugVisible() : false));
+  const debugViewApply = (typeof debugUI.applyDebugVisibility === "function") ? debugUI.applyDebugVisibility : (() => {});
+  const debugViewIsVisible = (typeof debugUI.isDebugVisible === "function") ? debugUI.isDebugVisible : (() => false);
+  const getDebugVisible = () => (store ? Boolean(store.getState().debugVisible) : debugViewIsVisible());
   const isDebugVisible = () => getDebugVisible();
   const applyDebugVisibilityDom = (visible) => {
-    const target = Boolean(visible);
-    if(target === lastAppliedDebugVisible) return;
-    applyDebugVisibilityBase(target);
-    lastAppliedDebugVisible = target;
+    debugViewApply(Boolean(visible));
   };
+
   const setPatternPanelOpen = (value) => {
     const target = Boolean(value);
     if(store){
