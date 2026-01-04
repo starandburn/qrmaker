@@ -1,44 +1,65 @@
-# ŠO•”Œ_?E??ƒLƒ…ƒƒ“ƒ`E
-## A. `index.html` ‚Ì `<script>` “Ç‚İ‚İ‡
-1. `script` `type="text/plain"` `id="codeSample1"` iƒTƒ“ƒvƒ‹ 1j
-2. `script` `type="text/plain"` `id="codeSample2"` iƒTƒ“ƒvƒ‹ 2j
-3. `script` `type="text/plain"` `id="codeSample3"` iƒTƒ“ƒvƒ‹ 3j
-4. `script` `type="text/plain"` `id="codeSample4"` iƒTƒ“ƒvƒ‹ 4j
-5. `script` `type="text/plain"` `id="codeSample5"` iƒTƒ“ƒvƒ‹ 5j
-6. `script src="domain/qrcode.js"` i“¯Šúj
-7. `script src="domain/board.js"` i“¯Šúj
-8. `script src="domain/util.js"` i“¯Šúj
-9. `script src="domain/qr-params.js"` i“¯Šúj
-10. `script src="core/render-cycle.js"` i“¯Šúj
-11. `script src="ui/layout.js"` i“¯Šúj
-12. `script src="state/url-state.js"` i“¯Šúj
-13. `script src="state/history-store.js"` i“¯Šúj
-14. `script src="io/script-parser.js"` i“¯Šúj
-15. `script src="ui/ui-controls.js"` i“¯Šúj
-16. `script src="state/app-state.js"` i“¯Šúj
-17. `script src="core/base-pattern-service.js"` i“¯Šúj
-18. `script src="core/data-placement-service.js"` i“¯Šúj
-19. `script src="core/qr-build-service.js"` i“¯Šúj
-20. `script src="ui/event-bindings.js"` i“¯Šúj
-21. `script src="app/legacy/functionalPatterns.js"` i“¯Šúj
-22. `script src="app/qrLegacyDrawers.js"` i“¯Šúj
-23. `script src="app/step-control.js"` i“¯Šúj
-24. `script src="app/user-code-runner.js"` i“¯Šúj
-25. `script src="app/main.js"` i“¯Šúj
-26. `script src="app/bootstrap.js"` i“¯ŠúAÅŒã‚Éå—v§Œä‚ğ‹N“®j
-## B. `window` ‚ÉŒöŠJ‚³‚ê‚é API?E?Eapp/bootstrap.js` Œo—R?E?E### B.1 `app/bootstrap.js` ‚Å‚Ì‹´“n‚ŸE- `window.publishWindowApi`?E?`window.__deferredWindowApi` ‚Ì?E??‚ßE`window` ‚ÉÄ“K—p‚·‚éŒöŠJ?Eƒ‹ƒp?EB`runMainApp` ‚Ì‰ŠúÀsŒã‚ÉŒÄ‚Ño‚³‚êA?E??‚É‰‚¶‚ÄÄ“x“¯–¼ API ‚ğã‘‚«‚·‚éAE- `runMainApp` ‚ßE`window.layoutUI`/`window.urlState`/`window.debugUI` ‚ğˆø”‚ÉÀs‚µAƒŒƒXƒ|ƒ“ƒX‚Ì€”õ‚ªŠ®?E??‚½ƒ^ƒCƒ~ƒ“ƒO‚Å `publishWindowApi()` ‚É‚æ‚è `window` ã‚ÉƒvƒƒpƒeƒB‚ğ’è‹`‚·‚éAE
-### B.2 `window.__deferredWindowApi` ‚Ì“o˜^?E?Eapp/main.js` ‹N“_?E?E`window.__deferredWindowApi` ‚Í `app/main.js` ‘¤‚Å\’z‚³‚êA`app/bootstrap.js` ‚ªƒRƒs?E‚µ‚Ä `window` ‚É’¼ÚŒöŠJ‚·‚éBˆÈ‰º?E–¼‘Oˆê——‚ªŒ»İŒöŠJ‚³‚ê‚Ä‚ŸE??Œ_?E??‚ ‚èA•¹‹L‚µ‚½—R—ˆ‚ÍŒ»ó‚ÌÀÙE??‚ç“Ç‚İæ‚ê‚éâ¹E??‚É‚Æ‚Ç‚ß‚Ä‚ŸE??AE- `applyMask`?E?`app/main.js` ‚Å `callApplyMask` ‚ğŒo—R?E?Ewindow.qrLegacyDrawers.applyMask` ‚ğƒ‰ƒ`E?E?E?E- `drawBasePatterns`?E?“¯?E?EqrLegacyDrawers.drawBasePatterns` ?E?E- `drawBasePatternsStepped`?E?“¯?E?EqrLegacyDrawers.drawBasePatternsStepped`?E?E- `makeStepThenable`?E?ƒXƒ`E??ƒvÀs‚Æ’ÊM‚·‚é•â•ŠÖ”?E?Eapp/main.js` ?E???E?E- `shouldStepFunctions`?E?ƒXƒ`E??ƒvÀs’†‚Ì‹““®”»’èIEapp/main.js` ?E???E?E- `qrLegacyDrawers`?E?`app/qrLegacyDrawers.js` ‚©‚ç `window.qrLegacyDrawers` ‚ÉƒZƒ`E??‚³‚ê‚Ä‚ŸE??•`‰æƒIƒuƒWƒFƒNƒ`E- `drawQRCode`?E?å—v•`‰æŠÖ”?E?Eapp/main.js`?E?E- `buildQRCode`?E?QR ¶?EƒRƒ“ƒgƒ[ƒ‰?E?Eapp/main.js`?E?E- `drawDataPatterns`?E?ƒf[ƒ^•`‰æƒ‹[ƒvIEapp/main.js`?E?E- `drawFunctionalPatterns`?E?‹@?Eƒpƒ^[ƒ“•`‰æ?E?Eapp/main.js`?E?E- `initializeQRCode`?E??EŠú‰»ˆ?E??Eapp/main.js`?E?E- `resetQRCode`?E?ƒŠƒZƒ`E??ˆ?E??Eapp/main.js`?E?E- `resetCommand`?E?ƒRƒ}ƒ“ƒhƒŠƒZƒ`E???E?Eapp/main.js`?E?E- `stopCurrentRun`?E?Às’†’f?E?Eapp/main.js`?E?E- `drawFormatPatterns`?E?ƒtƒH[ƒ}ƒbƒgƒpƒ^[ƒ“•`‰æ?E?Eapp/main.js`?E?E- `drawFinderPatterns`?E?ƒtƒ@ƒCƒ“ƒ_ƒpƒ^[ƒ“•`‰æ?E?Eapp/main.js`?E?E- `drawAlignmentPatterns`?E?ƒAƒ‰ƒCƒƒ“ƒgƒpƒ^[ƒ“•`‰æ?E?Eapp/main.js`?E?E- `drawDarkModulePatterns`?E?ƒ_[ƒNƒ‚ƒWƒ…[ƒ‹•`‰æ?E?Eapp/main.js`?E?E- `drawTimingPatterns`?E?ƒ^ƒCƒ~ƒ“ƒOƒpƒ^[ƒ“•`‰æ?E?Eapp/main.js`?E?E- `putFinderCells`?E?`callPutFinderCells` ‚ğŒo—R‚ŸE`qrLegacyDrawers.putFinderCells` ‚ğŒÄ‚Ño‚·IEapp/main.js`?E?E- `putAlignmentCells`?E?“¯—l‚ÉƒAƒ‰ƒCƒƒ“ƒgIEapp/main.js`?E?E- `putTimingCells`?E?“¯—l‚Éƒ^ƒCƒ~ƒ“ƒO?E?Eapp/main.js`?E?E- `putDarkModuleCells`?E?“¯—l‚Éƒ_[ƒNƒ‚ƒWƒ…[ƒ‹?E?Eapp/main.js`?E?E- `putFormatCells`?E?“¯—l‚ÉƒtƒH[ƒ}ƒbƒgIEapp/main.js`?E?E- `syncViewToggles`?E?`ui/layout.js` ‚Å’è‹`‚³‚ê‚½ƒrƒ…[ƒgƒOƒ‹“¯ŠúŠÖ”BŒ»İ‚Í `app/bootstrap.js` ‚ŸE`window.__deferredWindowApi` ‚Ì `syncViewToggles` ‚ğ‚»‚Ì‚Ü‚Ü—¬‚µ‚Ä‚ŸE??AE- `toggleInputs`?E?`ui/layout.js` ‚Å `global.toggleInputs` ‚ÉŠi”[‚³‚ê‚Ä‚ŸE??•\¦ƒgƒOƒ‹—v‘f‚Ì”z?EB?E??‚É‰‚¶‚ÄÄİ’è‚³‚ê‚éAE
-### B.3 •â‘«
-- `syncViewToggles` / `toggleInputs` ‚É‚Â‚ŸE??‚Í `ui/layout.js` —R—ˆ‚Åã‹LŒ_?E??‚ÉŠÜ‚Ü‚ê‚Ä‚ŸE??B`core`/`app` ‘¤‚Å‚Í”z?E‚ğ?E—L‚·‚é‘O’ñ‚ÅQ?E‚µ‚Ä‚ŸE??‚½‚ßA•ÏX‚ÌÛ?E‚±‚ê‚ç?EˆË‘¶?E‚ğ?E‚ÉŒŸØ‚·‚é‚±‚Æ‚ğ„§‚·‚éAE
-## C. URL ƒpƒ‰ƒ[ƒ^?E?Estate/url-state.js`?E?EŒ»ó”cˆ¬‚µ‚Ä‚ŸE??‚·‚×‚Ä‚ÌƒL[‚ğ?E‹“‚µ‚Ä‚ ‚èAÀÙE??·?E??Œ»‚ê‚½ê‡?E‚±?Eƒtƒ@ƒCƒ‹‚ğXV‚·‚é‚±‚ÆAE™ÜE??ƒ‰ƒ[ƒ^‚Í `stringifyBool` ‚É‚æ‚è^‹U”»’è‚³‚êA‚»‚Ì‘¼’l‚ÍŒÂ•ÊƒXƒL[ƒ}‚É]‚¤B`buildStateUrl()` ‚ÅŒ»İó‘Ô?E URL ‚ğ¶¬‚·‚é‚Æ‚«?EŠù’è’l‚Æ‚Ì·?E?E‚İƒNƒGƒŠ‚ÉŠÜ‚ß‚éAE
-### 1. `d`?E?ƒf[ƒ^?E???E?E?E- `txtInput` ‚Ì?E??‚ğ•\‚µA‹ó?E???E `_` ‚É’uŠ·IEDATA_EMPTY_TOKEN`?E?BÀÛ‚É `_` ‚ğ‘—‚è‚½‚¢ê‡‚â `~` ‚Ån‚Ü‚é•¶š?E‚Íæ“ª‚É `~` ‚ğ•t‚¯‚½‚¤‚¦‚Å‘—‚é?E?EencodeDataParamValue` / `decodeDataParamValue` ‚ª‘ŠŒİ?E?E??AE- ƒ`E??ƒHƒ‹ƒg?E `defaultDataValue`?E?’Êí‚Í‹ó?E?BUI ã?Eƒ^ƒO?E??ƒLƒXƒgIE#txtInput`?E?‚ª‚±?E’l‚Å‰Šú‰»‚³‚ê‚éAE
-### 2. `v`?E?•\¦ƒgƒOƒ‹ƒtƒ‰ƒO?E?E- `ui/ui-controls.js` ‚Ì `TOGGLE_FLAG_ORDER` ‚É]‚¢A`toggleCursor`/`toggleGuide`/`toggleGrid`/`toggleEmpty`/`toggleColor`/`toggleDebugValues`/`stepMode`/`stepSkipFunctions` ‚Ì•ÅE?? `1`/`0` ‚ğ•À‚×‚½ƒrƒ`E???E???EAE- `applyUrlControlStates` ‚É `applyToggleFlags` ‚ğ“n‚·‚ÆŠY“–—v‘f‚ğXV‚µ‚Ä `syncViewToggles()` / `syncDebugOverlay()` / `syncStepControls()` “™‚ğ?E??‚É‰‚¶‚ÄŒÄ‚Ño‚·AE- ƒ`E??ƒHƒ‹ƒg?E™ÜE??ƒOƒ‹‚Ì‰Šúƒ`ƒFƒ`E??ó‘Ô‚ğ•À‚×‚ŸE`defaultFlagString`BƒNƒGƒŠ’l‚Í?E`0` ?E??iƒAƒ‹ƒtƒ@ƒxƒbƒg‚â‹L†?E?‚àƒtƒBƒ‹ƒ^Œã?E `0/1` ‚Å”»•Ê‚³‚ê‚éAE
-### 3. `g`?E?ƒfƒoƒbƒOƒpƒlƒ‹•\¦?E?E- `applyDebugFromParam` ‚Å `debugPanel` ‚Ì•\¦E”ñ•\¦‚ğ§ŒäB`stringifyBool` ‚Í `1|true|yes|on|open|show` ‚Å `true`A`0|false|no|off|close|closed|hide` ‚Å `false`A‹ó?E???E `true`AE- `setDebugVisible` ‚ª“n‚³‚ê‚Ä‚ŸE??‚Î‚»‚¿‚ç‚ğŒÄ‚ÑA–³‚¯‚ê‚Î `applyDebugVisibility()` ‚ğg‚Á‚Ä•\¦‚ğ?E‚è‘Ö‚¦‚éAE- `buildStateUrl()` ‚ÍA?E?E`g` ƒpƒ‰ƒ[ƒ^‚Ì—L–³‚Ü‚½?EŒ»İ‚Ìó‘Ô‚ªŠù’è’l‚ÆˆÙ‚È‚é‚Æ‚«?E‚İ `g=1`/`0` ‚ğ?E—ÍAE
-### 4. `p`?E?ƒf[ƒ^ƒpƒ^[ƒ“ƒpƒlƒ‹?E?E- `applyPatternOpenFromParam` ‚Å `<details id="dataPatternPanel">` ‚Ì `open` ‘®«‚ğ?E‚è‘Ö‚¦‚éB`stringifyBool` ‚Ì^‹U‚É‰‚¶‚Ä `setPatternPanelOpen(parsed)` ‚Ü‚½?E `dataPatternPanel.open = parsed`/`toggle` ƒCƒxƒ“ƒg”h¶‚Å UI •\¦‚ğXVAE- Šù’è‚Å‚Íƒpƒlƒ‹‚Ì `open` ó‘Ô‚É]‚¤?E?Œ»İ‚Í•Â‚¶‚½ó‘ÔjAE
-### 5. `s`?E?ƒXƒ`E??ƒvƒ‚[ƒhŠÖ˜A?E?E- ®”’l‚ğg‚ŸE??E000 ˆÈã‚È‚çuŠÖ”ƒXƒLƒ`E?E OFFvA‚»‚ê–¢–‚È‚ßEONB`parseCombinedStepParam()` ‚Í `enabled`?E?E ˆÈã‚ÅƒXƒ`E??ƒv—LŒø?E?A`speedSource`?E?Elamp ‚µ‚½‘¬“x?E?`A`skipFunctions`?E?Eumeric < 1000 ‚È‚ßEtrue?E?‚ğ•Ô‚·AE- `applyCombinedStepParam()` ‚Í `#stepMode` / `#stepSpeed` / `#stepSkipFunctions` ‚ğXV‚µA`stepSpeed` ‚ÍƒXƒ‰ƒCƒ_[’l?E?EAE20 ‚Å clamped?E?‚ğ `baseValue - 1` ‚ÅÄŒ»B`stepSkipFunctions` ‚Í `skipFunctions` ƒtƒ‰ƒO‚Åƒ`ƒFƒ`E??‚·‚éAE- `buildCombinedStepParamValue()` ‚Å‚ÍƒXƒ`E??ƒvOFF‚É "0"AON ‚É `speed + 1`A‚©‚ÂƒXƒLƒ`E?E OFF ‚È‚ßE`+1000` ‚µ‚Ä URL ‚É encodeAE
-### 6. `h`?E?—š—ğƒpƒlƒ‹?E?E- `applyHistoryFromParam()` ‚Å `codePanel` ‘€ì—š—ğƒGƒŠƒA‚Ì•\¦ó‘Ô‚ğ `historyController.setHistoryVisibility(parsed)` ‚Å?E??‘Ö‚¦‚éB`stringifyBool` ‚ğg‚ŸE??‚ßA`h=1`/`h=true` ‚Å•\¦A`h=0`/`false` ‚Å”ñ•\¦AE- ƒpƒ‰ƒ[ƒ^E??‚ª–³‚ŸE??‡A‹N“®’¼Œã‚É `setHistoryVisibility(false)` ‚µ‚Ä”ñ•\¦ƒXƒ^[ƒgIEhistoryStore` ‘¤‚ÌŠù’èjAE
-### 7. `m`?E?ƒR[ƒhƒpƒlƒ‹‚ÌƒTƒ“ƒvƒ‹•\¦?E?E- `applySampleParam()` ‚Å `.code-panel` ‚É `show-samples` ƒNƒ‰ƒX‚ğ?E‚µ‚½‚èÁ‚µ‚½‚è‚·‚éB`stringifyBool` ‚ÌŒ‹‰Ê‚ßE`codePanel.classList.toggle("show-samples", parsed)` ‚Å”½‰fAE- E??‚ª–³‚ŸE??‡?E `.code-panel` ‚Ìƒ`E??ƒHƒ‹ƒgó‘ÔIEavaScript ‚É‚æ‚è `false` ‚©‚çƒXƒ^[ƒgjAE
-### •â‘«?E?URL ‘¤‚©‚ç‚Ì§Œä‚Æó‘Ô\â¹E- `applyUrlControlStates()` ‚Í `toggleConfig` ”z?E‚ÅŒÂ•Êƒpƒ‰ƒ[ƒ^?E?Eflag` Œn?E?‚ğó‚¯æ‚èA`viewRefreshTargets`/`colorToggleElement`/`debugToggleElement`/`stepToggleTargets` ‚ğüV‚·‚éAE- `buildStateUrl()` ‚Í `txtInput`/`flagString`/`debugPanel`/`historyVisible`/`codePanel` ‚È‚Ç‚ÌŒ»İ’l‚ÆŠù’è’l‚Ì·?E?E‚İ‚ßE`URLSearchParams` ‚É’Ç‰Á‚µA‹ó‚È‚çƒpƒ‰ƒ[ƒ^–³‚µ?EƒpƒX‚ğ•Ô‚·AE- `PARAM_KEYS` ƒ}ƒbƒvIEFLAG`, `DEBUG`, `PATTERN_PANEL`, `COMBINED_STEP`, `SAMPLES`, `DATA`, `HISTORY`?E?‚ğŠO•”‚©‚çQ?E‚·‚é‚±‚Æ‚Åƒpƒ‰ƒ[ƒ^ƒL[‚Ìƒn?EƒhƒR[ƒh‚ğ”ğ‚¯‚Ä‚ŸE??AE
-## D. è“®“®ìŠm”Fƒ`ƒFƒ`E??ƒŠƒXƒgIEtep 1?E?E- docs/contracts.md ‚Ì’Ç‰ÁˆÈŠO‚É·?E??‚È‚ŸE??‚Æ‚ğŠm”F‚·‚éAE- ’Êí‹N“®‚µ‚Ä‰æ–Ê‚ª•\¦‚³‚ê‚é‚±‚Æ?E?Eindex.html` ‚ğŠJ‚ŸE?? UI ‚ªƒŒƒ“ƒ_ƒŠƒ“ƒO‚³‚ê‚é‚±‚Æ?E?AE- QR ¶?EEƒŠƒZƒ`E??EƒXƒ`E??ƒvÀs?EƒgƒOƒ‹‘€ì?E—š—ğ•\¦EURL ‰Šú‰»‚ª]—ˆ‚Ç‚¨‚è“®ì‚·‚é‚±‚Æ?E?Šm”FŠÏ“_‚Æ‚µ‚Ä—ñ‹“?E?AE
+# å¤–éƒ¨å¥‘ç´„ãƒ‰ã‚­ãƒ¥ãƒ¡ãƒ³ãƒˆ
 
+## A. `index.html` ã® `<script>` èª­ã¿è¾¼ã¿é †
+1. `script` `type="text/plain"` `id="codeSample1"`
+2. `script` `type="text/plain"` `id="codeSample2"`
+3. `script` `type="text/plain"` `id="codeSample3"`
+4. `script` `type="text/plain"` `id="codeSample4"`
+5. `script` `type="text/plain"` `id="codeSample5"`
+6. `script src="domain/qrcode.js"`
+7. `script src="domain/board.js"`
+8. `script src="domain/util.js"`
+9. `script src="domain/qr-params.js"`
+10. `script src="core/render-cycle.js"`
+11. `script src="ui/layout.js"`
+12. `script src="ui/debug.js"`
+13. `script src="state/url-state.js"`
+14. `script src="state/history-store.js"`
+15. `script src="io/script-parser.js"`
+16. `script src="ui/ui-controls.js"`
+17. `script src="state/app-state.js"`
+18. `script src="core/patterns/finder-pattern.js"`
+19. `script src="core/patterns/timing-pattern.js"`
+20. `script src="core/patterns/alignment-pattern.js"`
+21. `script src="core/patterns/dark-module-pattern.js"`
+22. `script src="core/patterns/format-pattern.js"`
+23. `script src="core/base-pattern-service.js"`
+24. `script src="core/data-encoding-service.js"`
+25. `script src="core/data-placement-service.js"`
+26. `script src="core/execution-coordinator-service.js"`
+27. `script src="core/qr-build-service.js"`
+28. `script src="core/execution-control.js"`
+29. `script src="ui/event-bindings.js"`
+30. `script src="app/step-control.js"`
+31. `script src="app/user-code-runner.js"`
+32. `script src="app/self-check.js"`
+33. `script src="app/main.js"`
+34. `script src="app/bootstrap.js"`
 
+## B. window ã«å…¬é–‹ã•ã‚Œã‚‹ API
+### B.1 èµ·ç‚¹ã¯ `app/main.js`
+- `window.__deferredWindowApi` ã«ã¯ã€UI å‘¨ã‚Šã‚„æç”»æ©Ÿèƒ½ãªã©ãŒã¾ã¨ã‚ã¦ç™»éŒ²ã•ã‚Œã¦ã„ã‚‹ã€‚`app/bootstrap.js` ãŒ `publishWindowApi()` ã§ `window` ã«å±•é–‹ã™ã‚‹ã€‚
+- å…¬é–‹åã®ä¸€è¦§ï¼ˆç¾çŠ¶ç¢ºèªã§ãã‚‹ã‚‚ã®ï¼‰
+  - `applyMask`ï¼ˆç¾åœ¨ã¯ `callApplyMask` ã‚’çµŒç”±ã—ã€ãƒã‚¹ã‚¯æç”»å‡¦ç†ã‚’æä¾›ï¼‰
+  - `drawQRCode`, `buildQRCode`, `drawDataPatterns`, `drawFunctionalPatterns`, `initializeQRCode`, `resetQRCode`, `resetCommand`, `stopCurrentRun`
+  - `drawFormatPatterns`, `drawFinderPatterns`, `drawAlignmentPatterns`, `drawDarkModulePatterns`, `drawTimingPatterns`
+  - `putFinderCells`, `putAlignmentCells`, `putTimingCells`, `putDarkModuleCells`, `putFormatCells`
+  - `syncViewToggles`, `toggleInputs`
+- æœ¬ãƒ‰ã‚­ãƒ¥ãƒ¡ãƒ³ãƒˆã§ã¯ä¸Šè¨˜ãŒå¤–éƒ¨å¥‘ç´„ã¨ã¿ãªã—ã€ç”±æ¥ã¯ç¾è¡Œã‚³ãƒ¼ãƒ‰ã‹ã‚‰ç¢ºèªã§ãã‚‹ç¯„å›²ã®èª¬æ˜ã«ã¨ã©ã‚ã‚‹ã€‚
+
+## C. URL ãƒ‘ãƒ©ãƒ¡ãƒ¼ã‚¿ï¼ˆ`state/url-state.js`ï¼‰
+1. `d` â€¦ `#txtInput` ã«å…¥åŠ›ã•ã‚ŒãŸãƒ‡ãƒ¼ã‚¿ï¼ˆç©ºã¯ `_`ï¼‰ã§ã€`defaultDataValue` ã¨ç•°ãªã‚‹ã¨ãã«ã‚¯ã‚¨ãƒªã«å«ã¾ã‚Œã‚‹ã€‚`encodeDataParamValue`/`decodeDataParamValue` ã§ã‚¨ã‚¹ã‚±ãƒ¼ãƒ—å‡¦ç†ã€‚
+2. `v` â€¦ è¡¨ç¤ºç³»ãƒˆã‚°ãƒ« `toggleCursor`/`toggleGuide`/`toggleGrid`/`toggleEmpty`/`toggleColor`/`toggleDebugValues`/`stepMode`/`stepSkipFunctions` ã‚’ä¸¦ã¹ãŸãƒ•ãƒ©ã‚°æ–‡å­—åˆ—ã€‚`defaultFlagString` ã«ä¸€è‡´ã™ã‚‹ãªã‚‰ã‚¯ã‚¨ãƒªã‹ã‚‰çœç•¥ã€‚
+3. `g` â€¦ ãƒ‡ãƒãƒƒã‚°ãƒ‘ãƒãƒ«è¡¨ç¤ºã€‚`applyDebugFromParam()` ãŒ `debugPanel` ã‚’é–‹é–‰ã—ã€æ—¢å®šå€¤ã¨ç•°ãªã‚‹ã¨ãã®ã¿ `g=1`/`g=0` ã‚’å‡ºåŠ›ã€‚
+4. `p` â€¦ `dataPatternPanel` ã® `open` å±æ€§ã€‚çœŸå½ã¯ `stringifyBool` ã«ã‚ˆã£ã¦ç”Ÿæˆã•ã‚Œã‚‹ã€‚åˆæœŸçŠ¶æ…‹ã¯ `false`ã€‚
+5. `s` â€¦ ã‚¹ãƒ†ãƒƒãƒ—ãƒ¢ãƒ¼ãƒ‰ã€‚`parseCombinedStepParam()` ã§ `enabled`/`speed`/`skipFunctions` ã«åˆ†è§£ã€‚`buildCombinedStepParamValue()` ã¯ã‚¹ã‚­ãƒƒãƒ—OFFã§ `0`ã€ON ã§ `speed+1`ã€ã‹ã¤ã‚¹ã‚­ãƒƒãƒ—OFFã§ `+1000` ã‚’ä»˜ä¸ã€‚
+6. `h` â€¦ å±¥æ­´ãƒ‘ãƒãƒ«ã®è¡¨ç¤ºã€‚`historyController.setHistoryVisibility()` ã‚’é€šã˜ã¦ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ«ã—ã€`h=1/true` ã§è¡¨ç¤ºã€`h=0/false` ã§éè¡¨ç¤ºã€‚
+7. `m` â€¦ ã‚µãƒ³ãƒ—ãƒ«è¡¨ç¤ºã€‚`applySampleParam()` ã§ `.code-panel` ã« `show-samples` ã‚¯ãƒ©ã‚¹ã‚’ãƒˆã‚°ãƒ«ã€‚
+
+è£œè¶³: `applyUrlControlStates()` ã¯ `PARAM_KEYS` ã‚’ä½¿ã£ã¦ã‚­ãƒ¼åã‚’é›†ä¸­ç®¡ç†ã™ã‚‹ãŸã‚ã€æ›´æ–°ã®éš›ã¯ãã¡ã‚‰ã‚‚ä½µã›ã¦èª¿æ•´ã™ã‚‹ã€‚
+
+## D. æ‰‹å‹•å‹•ä½œç¢ºèªãƒã‚§ãƒƒã‚¯ãƒªã‚¹ãƒˆ
+- docs/contracts.md ã®å·®åˆ†ä»¥å¤–ã«ãƒ•ã‚¡ã‚¤ãƒ«å¤‰æ›´ãŒãªã„ã“ã¨ã‚’ç¢ºèª
+- é€šå¸¸èµ·å‹•ã§ UI ãŒè¡¨ç¤ºã•ã‚Œã€ã‚¨ãƒ©ãƒ¼ãŒç™ºç”Ÿã—ãªã„ã“ã¨
+- QR ç”Ÿæˆï¼ãƒªã‚»ãƒƒãƒˆï¼ã‚¹ãƒ†ãƒƒãƒ—ï¼ãƒˆã‚°ãƒ«æ“ä½œï¼å±¥æ­´è¡¨ç¤ºï¼URL åˆæœŸåŒ–ãŒå¾“æ¥ã©ãŠã‚Šå‹•ãã“ã¨
+- æ—§ API ã‚„ legacy ãƒ•ã‚¡ã‚¤ãƒ«ã‚’å‚ç…§ã™ã‚‹ç®‡æ‰€ãŒæ®‹ã£ã¦ã„ãªã„ã“ã¨
