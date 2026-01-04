@@ -410,7 +410,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     get: () => isStepFillRunning,
     set: (value) => { isStepFillRunning = value; },
   };
-  window.makeStepThenable = makeStepThenable;
 
   const setLastExecutionError = (value) => { lastExecutionError = value; };
   const {
@@ -491,7 +490,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
       return false;
     };
-    window.applyMask = callApplyMask;
     const callDrawBasePatterns = (...args) => {
       const drawerInstance = window.qrLegacyDrawers;
       if(!ctx) return false;
@@ -508,8 +506,15 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
       return { ok: false, fastForwarded: false };
     };
-  window.drawBasePatterns = callDrawBasePatterns;
-  window.drawBasePatternsStepped = callDrawBasePatternsStepped;
+    const deferredWindowApi = {
+      applyMask: callApplyMask,
+      drawBasePatterns: callDrawBasePatterns,
+      drawBasePatternsStepped: callDrawBasePatternsStepped,
+      makeStepThenable,
+      shouldStepFunctions,
+      qrLegacyDrawers: window.qrLegacyDrawers,
+    };
+    window.__deferredWindowApi = Object.assign(window.__deferredWindowApi || {}, deferredWindowApi);
   const wrapDrawApi = (name, fn, description) => {
     const wrapped = async function(...args){
       const mainArg = args[0] ?? "";
