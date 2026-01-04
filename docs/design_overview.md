@@ -1,67 +1,67 @@
-# QRコード作成アプリ 簡易設計書
+# QRコード作�Eアプリ 簡易設計書
 
-## 1. 概要
-- このアプリはブラウザ上で完結するQRコード作成の教材として、入力文字列→QR描画までを一貫して扱います。
-- 25×25の固定サイズと限定的な描画順序で進めることで、学習者が全体の流れを追いやすい簡易構造になっています。
-- シンプルなHTML+JavaScript構成で、外部ビルドやモジュールバンドルを使わずに動作する点も教材向けです。
+## 1. 概要E
+- こ�Eアプリはブラウザ上で完結するQRコード作�Eの教材として、�E力文字�E→QR描画までを一貫して扱ぁE��す、E
+- 25ÁE5の固定サイズと限定的な描画頁E��で進めることで、学習老E��全体�E流れを追ぁE��すい簡易構造になってぁE��す、E
+- シンプルなHTML+JavaScript構�Eで、外部ビルドやモジュールバンドルを使わずに動作する点も教材向けです、E
 
-## 2. 全体構成
-- `domain/` では基礎的なボード、カーソル、セル操作を公開し、`core/` は描画ロジックと実行制御、`ui/` は表示・トグル制御、`state/` はURL/history連携、`app/` はユーザー操作から各処理への仲介を担っています。
-- import/exportを使わず、`index.html` からの `<script>` 直読みを採用しているのは、ブラウザで順序制御を明示的に可視化し、学習者が依存関係を把握しやすくするためです。
-- `core/executionControl.js` と `core/executionCoordinatorService.js` を軸に、`runToken/runId` で同時実行・中断を制御しつつ、ステップ実行も同一口径で扱う方針が貫かれています。
+## 2. 全体構�E
+- `domain/` では基礎的なボ�Eド、カーソル、セル操作を公開し、`core/` は描画ロジチE��と実行制御、`ui/` は表示・トグル制御、`state/` はURL/history連携、`app/` はユーザー操作から各処琁E��の仲介を拁E��てぁE��す、E
+- import/exportを使わず、`index.html` からの `<script>` 直読みを採用してぁE��のは、ブラウザで頁E��制御を�E示皁E��可視化し、学習老E��依存関係を把握しやすくするためです、E
+- `core/execution-control.js` と `core/execution-coordinator-service.js` を軸に、`runToken/runId` で同時実行�E中断を制御しつつ、スチE��プ実行も同一口征E��扱ぁE��針が貫かれてぁE��す、E
 
-## 3. 実行制御の設計
-- `executionControl` は `runToken/runId` を参照しながら `shouldAbort` で中断判定を行い、`updateCursorSafe` でカーソル更新もガードします。ステップ機能に関する判定・遅延処理もここで再利用されます。
-- `executionCoordinatorService` は描画処理の起動手順やマスク/データ描画の呼び出しを統括し、`executionControl` と上下で連携します。
-- 途中停止やリセットで `runId` をインクリメントすることで、描画処理内の非同期ループが安全に中断される設計です。
+## 3. 実行制御の設訁E
+- `executionControl` は `runToken/runId` を参照しながら `shouldAbort` で中断判定を行い、`updateCursorSafe` でカーソル更新もガードします。スチE��プ機�Eに関する判定�E遁E��処琁E��ここで再利用されます、E
+- `executionCoordinatorService` は描画処琁E�E起動手頁E��マスク/チE�Eタ描画の呼び出しを統括し、`executionControl` と上下で連携します、E
+- 途中停止めE��セチE��で `runId` をインクリメントすることで、描画処琁E�Eの非同期ループが安�Eに中断される設計です、E
 
-## 4. 機能パターン描画（core/patterns）
-- `core/patterns/` 以下は各パターン（Finder/Timing/Alignment/Dark/Format）の本体ロジックを集約し、元の `legacyFunctionalPatterns` はこれらを呼び出す薄いラッパーになっています。
-- `functionalPatterns`（legacy側）はパターン描画のオーケストレーションを担当し、一貫したオプション解決と実行順（Finder→Timing→Alignment→Dark→Format）を提供します。
+## 4. 機�Eパターン描画�E�Eore/patterns�E�E
+- `core/patterns/` 以下�E吁E��ターン�E�Einder/Timing/Alignment/Dark/Format�E��E本体ロジチE��を集紁E��、�Eの `legacyFunctionalPatterns` はこれらを呼び出す薄ぁE��チE��ーになってぁE��す、E
+- `functionalPatterns`�E�Eegacy側�E��Eパターン描画のオーケストレーションを担当し、一貫したオプション解決と実行頁E��Einder→Timing→Alignment→Dark→Format�E�を提供します、E
 
 ### 4.1 Finder Pattern
-- 担当責務：3か所のFinderブロックの描画と、ステップ時の1セルずつ描画ループ。
-- 入力／副作用：`ctx/runToken/functional options` を受け取り、盤面セルとカーソルを更新しながら描画します。
-- 非対象：マスクやデータ部、UI・URL・履歴操作は含みません。
-- 固定前提：特定の7×7ブロック位置をそのまま描き、サイズ変更には依存している点に留意します。
+- 拁E��責務！Eか所のFinderブロチE��の描画と、スチE��プ時の1セルずつ描画ループ、E
+- 入力／副作用�E�`ctx/runToken/functional options` を受け取り、盤面セルとカーソルを更新しながら描画します、E
+- 非対象�E��EスクめE��ータ部、UI・URL・履歴操作�E含みません、E
+- 固定前提：特定�E7ÁEブロチE��位置をそのまま描き、サイズ変更には依存してぁE��点に留意します、E
 
 ### 4.2 Timing Pattern
-- 担当責務：水平・垂直のTimingライン（列・行）を引き、ステップ/非ステップで描画経路を制御します。
-- 入力／副作用：`direction/index` などのパラメータと `ctx helpers` を受け、対応するタイミングビットを書き込むとともにステップ時にカーソルを更新します。
-- 非対象：Finder以外のパターン、マスクやUI、URL処理は含まれません。
-- 固定前提：25×25ボード上で行/列の位置は固定しており、サイズ変更を想定していません。
+- 拁E��責務：水平・垂直のTimingライン�E��E・行）を引き、スチE��チE非スチE��プで描画経路を制御します、E
+- 入力／副作用�E�`direction/index` などのパラメータと `ctx helpers` を受け、対応するタイミングビットを書き込むとともにスチE��プ時にカーソルを更新します、E
+- 非対象�E�Finder以外�Eパターン、�EスクやUI、URL処琁E�E含まれません、E
+- 固定前提！E5ÁE5ボ�Eド上で衁E列�E位置は固定しており、サイズ変更を想定してぁE��せん、E
 
 ### 4.3 Alignment Pattern
-- 固定座標 (19,19) の前提：カーソルをこの座標に合わせてから5×5パターンを描きます。
-- 理由：QRの右下コーナー近傍に置かれるAlignmentパターンという仕様を教材向けに固定したものです。
-- 将来の汎化方向：実運用では `ctx` から動的に中心座標を計算する仕組みに差し替えることが考えられます。
+- 固定座樁E(19,19) の前提�E�カーソルをこの座標に合わせてから5ÁEパターンを描きます、E
+- 琁E���E�QRの右下コーナ�E近傍に置かれるAlignmentパターンとぁE��仕様を教材向けに固定したものです、E
+- 封E��の汎化方向：実運用では `ctx` から動的に中忁E��標を計算する仕絁E��に差し替えることが老E��られます、E
 
 ### 4.4 Dark Module Pattern
-- 固定座標 (18,9) の意味：QR仕様でタイミングパターン内かつ左上から7列目にある暗モジュールを反映しています。
-- 根拠：Dark Module は配置が決まっているため、現状の実装は `updateCursor(18,9,DIR_RIGHT)` でその位置に移動して置きます。
-- 教材上の補足：25×25固定を前提にしているので、版を変更すると位置が合わなくなります。
+- 固定座樁E(18,9) の意味�E�QR仕様でタイミングパターン冁E��つ左上かめE列目にある暗モジュールを反映してぁE��す、E
+- 根拠�E�Dark Module は配置が決まってぁE��ため、現状の実裁E�E `updateCursor(18,9,DIR_RIGHT)` でそ�E位置に移動して置きます、E
+- 教材上�E補足�E�E5ÁE5固定を前提にしてぁE��ので、版を変更すると位置が合わなくなります、E
 
 ### 4.5 Format Pattern
-- フォーマット情報は上下それぞれ15セルずつのラインに並んでおり、この `coordsA/coordsB` リストがその軌道を定義しています。
-- 15セル×2ラインという前提はQR仕様に基づくものですが、現状はコード内にハードコードされているため、将来的には `ctx.FORMAT_COORDS` などから導出する方向での汎化が想定されています。
+- フォーマット情報は上下それぞめE5セルずつのラインに並んでおり、この `coordsA/coordsB` リストがそ�E軌道を定義してぁE��す、E
+- 15セルÁEラインとぁE��前提はQR仕様に基づくものですが、現状はコード�Eにハ�EドコードされてぁE��ため、封E��皁E��は `ctx.FORMAT_COORDS` などから導�Eする方向での汎化が想定されてぁE��す、E
 
-## 5. データ処理の流れ（概要）
-- ユーザーからの入力文字列は `core/dataEncodingService` などでビット系列に変換されます。
-- `core/basePatternService` → `legacyFunctionalPatterns` → `core/patterns/*` という流れで機能パターンを描画し、盤面の枠組みを整えます。
-- 機能パターンの後に `core/dataPlacementService` がデータ部を埋め、`app/qrLegacyDrawers` のマスク処理が続きます。
-- 詳細なアルゴリズムや最適化は教材用に分離し、ここでは「順番」を追うことを重視します。
+## 5. チE�Eタ処琁E�E流れ�E�概要E��E
+- ユーザーからの入力文字�Eは `core/data-encoding-service` などでビット系列に変換されます、E
+- `core/base-pattern-service` ↁE`legacyFunctionalPatterns` ↁE`core/patterns/*` とぁE��流れで機�Eパターンを描画し、盤面の枠絁E��を整えます、E
+- 機�Eパターンの後に `core/data-placement-service` がデータ部を埋め、`app/qrLegacyDrawers` のマスク処琁E��続きます、E
+- 詳細なアルゴリズムめE��適化�E教材用に刁E��し、ここでは「頁E��」を追ぁE��とを重視します、E
 
-## 6. UI・URL連携の考え方
-- UI操作は `app/main.js` 経由で `ui/` の制御関数（トグル/ステップ/デバッグ）に伝わり、`state/` モジュールがURLや履歴と同期します。
-- `state/urlState.js` は `buildStateUrl`/`apply*FromParam` 系でクエリを組み立て、URLを再読み込みした際に同じ状態を復元します。
-- debug関連のUIは `ui/debug.js`（旧debugView/debugSync）にまとまり、UIトグルと同期しながら状態を見せつつも描画ロジックには影響しない構成です。
+## 6. UI・URL連携の老E��方
+- UI操作�E `app/main.js` 経由で `ui/` の制御関数�E�トグル/スチE��チEチE��チE���E�に伝わり、`state/` モジュールがURLめE��歴と同期します、E
+- `state/urlState.js` は `buildStateUrl`/`apply*FromParam` 系でクエリを絁E��立て、URLを�E読み込みした際に同じ状態を復允E��ます、E
+- debug関連のUIは `ui/debug.js`�E�旧debugView/debugSync�E�にまとまり、UIトグルと同期しながら状態を見せつつも描画ロジチE��には影響しなぁE���Eです、E
 
 ## 7. 教材としての設計意図
-- サイズと座標を固定することで、学習者が描画位置やループの流れを追いやすくしています。
-- 一部をハードコードしているのは、QR仕様の複雑さよりも「描画順とコントロール」を理解することを優先しているためです。
-- 追うべき順序は `core/patterns/*` → `core/executionControl.js` → `app/main.js` → `app/bootstrap.js` のように機能単位で辿ると、全体像がつかみやすくなります。
+- サイズと座標を固定することで、学習老E��描画位置めE��ープ�E流れを追ぁE��すくしてぁE��す、E
+- 一部をハードコードしてぁE��のは、QR仕様�E褁E��さよりも「描画頁E��コントロール」を琁E��することを優先してぁE��ためです、E
+- 追ぁE��き頁E���E `core/patterns/*` ↁE`core/execution-control.js` ↁE`app/main.js` ↁE`app/bootstrap.js` のように機�E単位で辿ると、�E体像がつかみめE��くなります、E
 
-## 8. 今後の拡張ポイント（設計上の余地）
-- QRバージョンやサイズをパラメータ化し、`ctx` や `domain/qrParams` から座標を計算するようにすれば汎化できます。
-- 現在のスクリプト直読み構成をES Modulesに移行することでテスト性と依存性の明示性が高まりますが、その際は読み込み順と `window.__deferredWindowApi` の再設計が必要です。
-- `core/patterns` の機能をさらに細分化することで、各パターンの再利用性と教材内での説明の粒度をあげられます。
+## 8. 今後�E拡張ポイント（設計上�E余地�E�E
+- QRバ�EジョンめE��イズをパラメータ化し、`ctx` めE`domain/qrParams` から座標を計算するよぁE��すれば汎化できます、E
+- 現在のスクリプト直読み構�EをES Modulesに移行することでチE��ト性と依存性の明示性が高まりますが、その際�E読み込み頁E�� `window.__deferredWindowApi` の再設計が忁E��です、E
+- `core/patterns` の機�Eをさらに細刁E��することで、各パターンの再利用性と教材冁E��の説明�E粒度をあげられます、E
