@@ -485,39 +485,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   window.getNextData = getNextData;
   // Update board matrix directly: row/col 1-based, encoded value (encodeBit)
   window.invertCell = invertCell;
-    const callApplyMask = (...args) => {
-    const drawer = window.qrLegacyDrawers;
-      if(!ctx) return false;
-      if(drawer && typeof drawer.applyMask === "function"){
-        return drawer.applyMask(ctx, ...args);
-      }
-      return false;
-    };
-    const callDrawBasePatterns = (...args) => {
-      const drawerInstance = window.qrLegacyDrawers;
-      if(!ctx) return false;
-      if(drawerInstance && typeof drawerInstance.drawBasePatterns === "function"){
-        return drawerInstance.drawBasePatterns(ctx, ...args);
-      }
-      return false;
-    };
-    const callDrawBasePatternsStepped = (...args) => {
-      const drawerInstance = window.qrLegacyDrawers;
-      if(!ctx) return { ok: false, fastForwarded: false };
-      if(drawerInstance && typeof drawerInstance.drawBasePatternsStepped === "function"){
-        return drawerInstance.drawBasePatternsStepped(ctx, ...args);
-      }
-      return { ok: false, fastForwarded: false };
-    };
-    const deferredWindowApi = {
-      applyMask: callApplyMask,
-      drawBasePatterns: callDrawBasePatterns,
-      drawBasePatternsStepped: callDrawBasePatternsStepped,
-      makeStepThenable,
-      shouldStepFunctions,
-      qrLegacyDrawers: window.qrLegacyDrawers,
-    };
-    window.__deferredWindowApi = Object.assign(window.__deferredWindowApi || {}, deferredWindowApi);
   const wrapDrawApi = (name, fn, description) => {
     const wrapped = async function(...args){
       const mainArg = args[0] ?? "";
@@ -527,85 +494,225 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return wrapped;
   };
   const callPutFinderCells = (...args) => {
-    const drawerInstance = window.qrLegacyDrawers;
     if(!ctx) return false;
-    if(drawerInstance && typeof drawerInstance.putFinderCells === "function"){
-      return drawerInstance.putFinderCells(ctx, ...args);
+    const pattern = window.finderPattern;
+    if(pattern && typeof pattern.putFinderCells === "function"){
+      return pattern.putFinderCells(ctx, ...args);
     }
     return false;
   };
   const callDrawFinderPatterns = (...args) => {
-    const drawerInstance = window.qrLegacyDrawers;
     if(!ctx) return false;
-    if(drawerInstance && typeof drawerInstance.drawFinderPatterns === "function"){
-      return drawerInstance.drawFinderPatterns(ctx, ...args);
+    const pattern = window.finderPattern;
+    if(pattern && typeof pattern.drawFinderPatterns === "function"){
+      return pattern.drawFinderPatterns(ctx, ...args);
     }
     return false;
   };
   const callPutAlignmentCells = (...args) => {
-    const drawerInstance = window.qrLegacyDrawers;
     if(!ctx) return false;
-    if(drawerInstance && typeof drawerInstance.putAlignmentCells === "function"){
-      return drawerInstance.putAlignmentCells(ctx, ...args);
+    const pattern = window.alignmentPattern;
+    if(pattern && typeof pattern.putAlignmentCells === "function"){
+      return pattern.putAlignmentCells(ctx, ...args);
     }
     return false;
   };
   const callDrawAlignmentPatterns = (...args) => {
-    const drawerInstance = window.qrLegacyDrawers;
     if(!ctx) return false;
-    if(drawerInstance && typeof drawerInstance.drawAlignmentPatterns === "function"){
-      return drawerInstance.drawAlignmentPatterns(ctx, ...args);
+    const pattern = window.alignmentPattern;
+    if(pattern && typeof pattern.drawAlignmentPatterns === "function"){
+      return pattern.drawAlignmentPatterns(ctx, ...args);
     }
     return false;
   };
   const callPutTimingCells = (...args) => {
-    const drawerInstance = window.qrLegacyDrawers;
     if(!ctx) return false;
-    if(drawerInstance && typeof drawerInstance.putTimingCells === "function"){
-      return drawerInstance.putTimingCells(ctx, ...args);
+    const pattern = window.timingPattern;
+    if(pattern && typeof pattern.putTimingCells === "function"){
+      return pattern.putTimingCells(ctx, ...args);
     }
     return false;
   };
   const callDrawTimingPatterns = (...args) => {
-    const drawerInstance = window.qrLegacyDrawers;
     if(!ctx) return false;
-    if(drawerInstance && typeof drawerInstance.drawTimingPatterns === "function"){
-      return drawerInstance.drawTimingPatterns(ctx, ...args);
+    const pattern = window.timingPattern;
+    if(pattern && typeof pattern.drawTimingPatterns === "function"){
+      return pattern.drawTimingPatterns(ctx, ...args);
     }
     return false;
   };
   const callPutDarkModuleCells = (...args) => {
-    const drawerInstance = window.qrLegacyDrawers;
     if(!ctx) return false;
-    if(drawerInstance && typeof drawerInstance.putDarkModuleCells === "function"){
-      return drawerInstance.putDarkModuleCells(ctx, ...args);
+    const pattern = window.darkModulePattern;
+    if(pattern && typeof pattern.putDarkModuleCells === "function"){
+      return pattern.putDarkModuleCells(ctx, ...args);
     }
     return false;
   };
   const callDrawDarkModulePatterns = (...args) => {
-    const drawerInstance = window.qrLegacyDrawers;
     if(!ctx) return false;
-    if(drawerInstance && typeof drawerInstance.drawDarkModulePatterns === "function"){
-      return drawerInstance.drawDarkModulePatterns(ctx, ...args);
+    const pattern = window.darkModulePattern;
+    if(pattern && typeof pattern.drawDarkModulePatterns === "function"){
+      return pattern.drawDarkModulePatterns(ctx, ...args);
     }
     return false;
   };
   const callPutFormatCells = (...args) => {
-    const drawerInstance = window.qrLegacyDrawers;
     if(!ctx) return false;
-    if(drawerInstance && typeof drawerInstance.putFormatCells === "function"){
-      return drawerInstance.putFormatCells(ctx, ...args);
+    const pattern = window.formatPattern;
+    if(pattern && typeof pattern.putFormatCells === "function"){
+      return pattern.putFormatCells(ctx, ...args);
     }
     return false;
   };
   const callDrawFormatPatterns = (...args) => {
-    const drawerInstance = window.qrLegacyDrawers;
     if(!ctx) return false;
-    if(drawerInstance && typeof drawerInstance.drawFormatPatterns === "function"){
-      return drawerInstance.drawFormatPatterns(ctx, ...args);
+    const pattern = window.formatPattern;
+    if(pattern && typeof pattern.drawFormatPatterns === "function"){
+      return pattern.drawFormatPatterns(ctx, ...args);
     }
     return false;
   };
+
+  async function applyMask(maskIndex = 0){
+    if(!ctx) return false;
+    const {
+      isStepModeOn,
+      stepSkipFunctions,
+      getStepDelay,
+      setRenderMode,
+      requestRender,
+      resetCursor,
+      MASK_FUNCTIONS,
+      isFunctionalKind,
+    } = ctx;
+    const modeSetter = typeof setRenderMode === "function"
+      ? setRenderMode
+      : (mode) => {
+        if(typeof window.setRenderMode === "function"){
+          window.setRenderMode(mode);
+        }
+      };
+    const baseRun = ctx.runId;
+    const currentMaskRun = ++ctx.maskRunId;
+    let idx = (maskIndex === undefined) ? 0 : Number(maskIndex);
+    if(!Number.isFinite(idx)){
+      idx = 0;
+    }
+    if(idx < 0 || idx > 7){
+      window.logEvent("applyMask", maskIndex ?? "", "繝槭せ繧ｯ繧､繝ｳ繝・ャ繧ｯ繧ｹ縺檎┌蜉ｹ");
+      return false;
+    }
+    window.logEvent("applyMask", idx, `繝槭せ繧ｯ${idx}繧帝←逕ｨ`);
+    const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[idx] === "function") ? MASK_FUNCTIONS[idx] : null;
+    if(!maskFn) return false;
+    const stepMask = (typeof isStepModeOn === "function" ? isStepModeOn() : false)
+      && !(stepSkipFunctions && stepSkipFunctions.checked);
+    const shouldAbort = () => executionControl.shouldAbort(baseRun, ctx, () => currentMaskRun !== ctx.maskRunId);
+    const updateCursorSafe = (row, col, dir = DIR_RIGHT) => executionControl.updateCursorSafe(
+      baseRun,
+      ctx,
+      row,
+      col,
+      dir,
+      () => currentMaskRun !== ctx.maskRunId,
+    );
+    const prevCursor = { row: cursorPos.row, col: cursorPos.col, dir: cursorPos.dir };
+    const maskCursorDir = stepMask ? DIR_RIGHT : prevCursor.dir;
+    const prevRender = ctx.renderMode;
+    modeSetter(stepMask ? RENDER_IMMEDIATE : RENDER_BUFFERED);
+    const maybeDelay = async () => {
+      if(!stepMask) return true;
+      if(shouldAbort()) return false;
+      const delay = (typeof getStepDelay === "function") ? getStepDelay() : 0;
+      if(delay > 0){
+        await sleep(delay);
+      }else{
+        await new Promise(requestAnimationFrame);
+      }
+      return !shouldAbort();
+    };
+    for(let row = 1; row <= 25; row++){
+      for(let col = 1; col <= 25; col++){
+        if(shouldAbort()) break;
+        const encoded = window.getCell(row, col);
+        if(typeof encoded !== "number") continue;
+        const kind = (typeof window.bitKind === "function") ? window.bitKind(encoded) : Math.abs(encoded);
+        if(typeof isFunctionalKind === "function" && isFunctionalKind(kind)) continue;
+        if(!maskFn(row - 1, col - 1)) continue;
+        if(stepMask){
+          updateCursorSafe(row, col, maskCursorDir);
+        }
+        invertCell(row, col);
+        const ok = await maybeDelay();
+        if(!ok) break;
+      }
+      if(shouldAbort()) break;
+    }
+    const completed = !shouldAbort();
+    if(completed && hasFormatPattern){
+      await callDrawFormatPatterns(idx, true);
+    }
+    if(ctx.renderMode === RENDER_BUFFERED && typeof requestRender === "function"){
+      requestRender("applyMask");
+    }
+    modeSetter(prevRender);
+    if(stepMask){
+      updateCursorSafe(prevCursor.row, prevCursor.col, maskCursorDir);
+    }
+    if(typeof resetCursor === "function"){
+      resetCursor();
+    }
+    return completed;
+  }
+  const callApplyMask = (...args) => {
+    if(!ctx) return false;
+    return applyMask(...args);
+  };
+  async function drawBasePatterns(ctx, { deferFlush = false, currentRun, resetDelay = false } = {}){
+    if(!ctx) return false;
+    const { setRenderMode, resetCursor, requestRender, RESET_DELAY_MS, RENDER_BUFFERED, RENDER_IMMEDIATE } = ctx;
+    const prevRender = ctx.renderMode;
+    setRenderMode(RENDER_BUFFERED);
+    resetCursor();
+    if(resetDelay){
+      await ctx.helpers?.sleep?.(RESET_DELAY_MS ?? 0);
+    }
+    const opts = { overwrite: false, currentRun };
+    await callDrawFinderPatterns(ctx, opts.overwrite, opts.currentRun);
+    await callDrawTimingPatterns(ctx, opts.overwrite, opts.currentRun);
+    await callDrawAlignmentPatterns(ctx, opts.overwrite, opts.currentRun);
+    await callDrawDarkModulePatterns(ctx, opts.overwrite, opts.currentRun);
+    await callDrawFormatPatterns(ctx, undefined, opts.overwrite, opts.currentRun);
+    if(!deferFlush){
+      requestRender("drawBasePatterns");
+      setRenderMode(RENDER_IMMEDIATE);
+    }else{
+      setRenderMode(prevRender);
+    }
+    resetCursor();
+    return true;
+  }
+  async function drawBasePatternsStepped(ctx, { currentRun } = {}){
+    const ok = await drawBasePatterns(ctx, { currentRun, resetDelay: true });
+    return { ok: Boolean(ok), fastForwarded: false };
+  }
+  const callDrawBasePatterns = (...args) => {
+    if(!ctx) return false;
+    return drawBasePatterns(ctx, ...args);
+  };
+  const callDrawBasePatternsStepped = (...args) => {
+    if(!ctx) return { ok: false, fastForwarded: false };
+    return drawBasePatternsStepped(ctx, ...args);
+  };
+  const deferredWindowApi = {
+    applyMask: callApplyMask,
+    drawBasePatterns: callDrawBasePatterns,
+    drawBasePatternsStepped: callDrawBasePatternsStepped,
+    makeStepThenable,
+    shouldStepFunctions,
+  };
+  window.__deferredWindowApi = Object.assign(window.__deferredWindowApi || {}, deferredWindowApi);
   const drawFinderPatterns = wrapDrawApi("drawFinderPatterns", callDrawFinderPatterns, "ファインダーパターンを描画");
   const drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", callDrawAlignmentPatterns, "配置パターンを描画");
   const drawDarkModulePatterns = wrapDrawApi("drawDarkModulePatterns", callDrawDarkModulePatterns, "ダークモジュールを描画");
@@ -746,7 +853,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(!maskSpecified){
       return true;
     }
-      const maskOk = await window.qrLegacyDrawers.applyMask(ctx, idx);
+      const maskOk = await callApplyMask(idx);
     if(currentRun !== runId || !maskOk) return false;
     return true;
   }

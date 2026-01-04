@@ -38,9 +38,6 @@
     if(Array.isArray(api.toggleInputs)){
       win.toggleInputs = api.toggleInputs;
     }
-    if(api.qrLegacyDrawers && typeof api.qrLegacyDrawers === "object"){
-      win.qrLegacyDrawers = api.qrLegacyDrawers;
-    }
   };
   window.publishWindowApi = publishWindowApi;
   if(typeof runMainApp !== "function") return;
