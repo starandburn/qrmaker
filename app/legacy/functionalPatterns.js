@@ -191,6 +191,10 @@
   }
 
   async function putAlignmentCells(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+    const bridge = window.alignmentPattern;
+    if(bridge && typeof bridge.putAlignmentCells === "function"){
+      return bridge.putAlignmentCells(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
+    }
     if(!ctx) return false;
     const H = ensureHelpers(ctx);
     const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
@@ -263,6 +267,10 @@
   }
 
   async function drawAlignmentPatterns(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
+    const bridge = window.alignmentPattern;
+    if(bridge && typeof bridge.drawAlignmentPatterns === "function"){
+      return bridge.drawAlignmentPatterns(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
+    }
     if(!ctx) return false;
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runVal = (typeof currentRun === "number") ? currentRun : ctx.runId;
