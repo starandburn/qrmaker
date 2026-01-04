@@ -679,11 +679,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       await ctx.helpers?.sleep?.(RESET_DELAY_MS ?? 0);
     }
     const opts = { overwrite: false, currentRun };
-    await callDrawFinderPatterns(ctx, opts.overwrite, opts.currentRun);
-    await callDrawTimingPatterns(ctx, opts.overwrite, opts.currentRun);
-    await callDrawAlignmentPatterns(ctx, opts.overwrite, opts.currentRun);
-    await callDrawDarkModulePatterns(ctx, opts.overwrite, opts.currentRun);
-    await callDrawFormatPatterns(ctx, undefined, opts.overwrite, opts.currentRun);
+    await callDrawFinderPatterns(opts.overwrite, opts.currentRun);
+    await callDrawTimingPatterns(opts.overwrite, opts.currentRun);
+    await callDrawAlignmentPatterns(opts.overwrite, opts.currentRun);
+    await callDrawDarkModulePatterns(opts.overwrite, opts.currentRun);
+    await callDrawFormatPatterns(undefined, opts.overwrite, opts.currentRun);
     if(!deferFlush){
       requestRender("drawBasePatterns");
       setRenderMode(RENDER_IMMEDIATE);

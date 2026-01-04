@@ -59,6 +59,11 @@
       const prevRender = ctx.renderMode;
       ctx.setRenderMode(ctx.RENDER_BUFFERED);
       if(dirVal === TIMING_HORIZONTAL){
+        timingRowIndex = pos;
+      }else{
+        timingColIndex = pos;
+      }
+      if(dirVal === TIMING_HORIZONTAL){
         for(let c = 1; c <= 25; c++){
           const bit = (c % 2 === 1) ? 1 : 0;
           if(!canWriteTimingCell(pos, c)) continue;
@@ -90,6 +95,7 @@
       ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
       if(dirVal === TIMING_HORIZONTAL){
         let col = 1;
+        timingRowIndex = pos;
         while(col <= 25){
           if(shouldAbort()) return false;
           if(!ctx.helpers || !ctx.helpers.shouldStepFunctions() && !ctx.helpers.isStepModeOn()){
@@ -106,6 +112,7 @@
           col++;
         }
       }else{
+        timingColIndex = pos;
         let row = 1;
         while(row <= 25){
           if(shouldAbort()) return false;
@@ -144,4 +151,3 @@
     drawTimingPatterns,
   });
 })(typeof window !== "undefined" ? window : globalThis);
-
