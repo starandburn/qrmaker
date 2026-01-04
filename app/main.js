@@ -600,10 +600,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       idx = 0;
     }
     if(idx < 0 || idx > 7){
-      window.logEvent("applyMask", maskIndex ?? "", "繝槭せ繧ｯ繧､繝ｳ繝・ャ繧ｯ繧ｹ縺檎┌蜉ｹ");
+      window.logEvent("applyMask", maskIndex ?? "", "マスク指定が不正です");
       return false;
     }
-    window.logEvent("applyMask", idx, `繝槭せ繧ｯ${idx}繧帝←逕ｨ`);
+    window.logEvent("applyMask", idx, `マスク${idx}を適用`);
     const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[idx] === "function") ? MASK_FUNCTIONS[idx] : null;
     if(!maskFn) return false;
     const stepMask = (typeof isStepModeOn === "function" ? isStepModeOn() : false)

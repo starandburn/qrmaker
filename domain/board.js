@@ -157,6 +157,7 @@ function moveCursor(...args){
   let targetCol = cursorPos.col;
   let finalDir = cursorPos.dir;
   let logLabel = null;
+  let logPositionOnly = false;
   const stepOnce = (dirVal) => {
     const norm = normalizeDir(dirVal);
     if(!norm) return false;
@@ -196,7 +197,7 @@ function moveCursor(...args){
 
   const recordStraightMove = () => {
     logLabel = "カーソル直移動";
-    shouldLog = true;
+    logPositionOnly = true;
   };
   const recordRelativeMove = (key) => {
     logLabel = describeMove(key);
@@ -286,7 +287,7 @@ function moveCursor(...args){
     lastMoveBlocked = true;
     return false;
   }
-  if(logLabel){
+  if(logLabel && logPositionOnly){
     const payload = {
       args,
       target: { row: targetRow, col: targetCol },
