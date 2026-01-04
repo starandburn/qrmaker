@@ -33,7 +33,7 @@
     const H = ensureHelpers(ctx);
     const { overwrite, stepEnabled: resolvedStep, currentRun } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runToken = (typeof currentRun === "number") ? currentRun : ctx.runId;
-    const shouldAbort = () => runToken !== ctx.runId;
+    const shouldAbort = () => executionControl.shouldAbort(runToken, ctx);
     const stepInitial = !!resolvedStep;
     const baseRow = cursorPos.row;
     const baseCol = cursorPos.col;
@@ -50,10 +50,7 @@
     const prevRender = ctx.renderMode;
     const allowOverwrite = overwrite !== false;
     const shouldDrawCell = (row, col) => shouldPlaceCell(row, col, allowOverwrite);
-    const updateCursorSafe = (row, col, dir = DIR_RIGHT) => {
-      if(runToken !== ctx.runId) return false;
-      return updateCursor(row, col, dir);
-    };
+    const updateCursorSafe = (row, col, dir = DIR_RIGHT) => executionControl.updateCursorSafe(runToken, ctx, row, col, dir);
     let lastCursorRow = null;
     let lastCursorCol = null;
     const drawSync = () => {
@@ -100,7 +97,12 @@
     if(!stepInitial){
       return finishSync();
     }
-    const stepActive = () => H.shouldStepFunctions ? H.shouldStepFunctions() : false;
+    const stepActive = () => executionControl.stepActive({
+      helpers: H,
+      ctx,
+      runToken,
+      stepEnabled: !!resolvedStep,
+    });
     const delay = async () => {
       return H.stepDelayAbort ? H.stepDelayAbort(runToken) : Promise.resolve();
     };
@@ -343,7 +345,11 @@
       ctx.setRenderMode(prevRender);
       return true;
     }
-    const stepActive = () => (H.shouldStepFunctions ? H.shouldStepFunctions() : false) && runToken === ctx.runId;
+    const stepActive = () => executionControl.stepActive({
+      helpers: H,
+      ctx,
+      runToken,
+    });
     const delay = async () => {
       return H.stepDelayAbort ? H.stepDelayAbort(runToken) : Promise.resolve();
     };

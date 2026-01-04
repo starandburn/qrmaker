@@ -46,11 +46,15 @@ function debugLog(...args){
     const stepMask = (typeof isStepModeOn === "function" ? isStepModeOn() : false)
       && !(stepSkipFunctions && stepSkipFunctions.checked);
     const prevRender = ctx.renderMode;
-    const shouldAbort = () => (baseRun !== ctx.runId) || (currentMaskRun !== ctx.maskRunId);
-    const updateCursorSafe = (row, col, dir = DIR_RIGHT) => {
-      if(shouldAbort()) return false;
-      return updateCursor(row, col, dir);
-    };
+    const shouldAbort = () => executionControl.shouldAbort(baseRun, ctx, () => currentMaskRun !== ctx.maskRunId);
+    const updateCursorSafe = (row, col, dir = DIR_RIGHT) => executionControl.updateCursorSafe(
+      baseRun,
+      ctx,
+      row,
+      col,
+      dir,
+      () => currentMaskRun !== ctx.maskRunId,
+    );
     const prevCursor = { row: cursorPos.row, col: cursorPos.col, dir: cursorPos.dir };
     const maskCursorDir = stepMask ? DIR_RIGHT : prevCursor.dir;
     modeSetter(stepMask ? RENDER_IMMEDIATE : RENDER_BUFFERED);
@@ -166,8 +170,13 @@ function debugLog(...args){
     H.updateCursorIfRun(runToken, 1, 1, DIR_DOWN);
     let stepEnabled = H.isStepModeOn();
     let fastForwarded = false;
-    const stepActive = () => stepEnabled && H.isStepModeOn();
-    const shouldAbort = () => runToken !== ctx.runId;
+    const stepActive = () => executionControl.stepActive({
+      helpers: H,
+      ctx,
+      runToken,
+      stepEnabled,
+    });
+    const shouldAbort = () => executionControl.shouldAbort(runToken, ctx);
     const shouldSkipFunctions = () => {
       if(runToken !== ctx.runId) return false;
       return !!(stepSkipFunctions && stepSkipFunctions.checked && H.isStepModeOn());
