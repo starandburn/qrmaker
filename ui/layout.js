@@ -37,6 +37,9 @@ const toggleInputs = [toggleCursor, toggleGuide, toggleGrid, toggleEmpty, toggle
 window.toggleInputs = toggleInputs;
 const userCodeTextarea = document.getElementById("userCode");
 const dataInputStatus = document.getElementById("dataInputStatus");
+const sampleDropdown = document.getElementById("sampleDropdown");
+const sampleDropdownToggle = document.getElementById("btnSampleDropdown");
+const sampleDropdownMenu = document.getElementById("sampleDropdownMenu");
 const DATA_INPUT_MAX_LENGTH = Number(txtInput?.getAttribute("maxlength")) || 32;
 const FULLWIDTH_CHAR_REGEX = /[^\u0000-\u007F]/;
 
@@ -63,6 +66,41 @@ function updateDataStatus(){
   const remaining = Math.max(0, DATA_INPUT_MAX_LENGTH - length);
   const baseText = `現在${length}文字（あと${remaining}文字）`;
   dataInputStatus.textContent = baseText;
+}
+
+function setInputValue(value){
+  if(!txtInput) return;
+  txtInput.value = value;
+  if(typeof window.stopCurrentRun === "function"){
+    window.stopCurrentRun({ resetCursor: false, clear: false });
+  }
+  refreshPattern();
+  updateDataStatus();
+  txtInput.focus();
+}
+
+function closeSampleDropdown(){
+  if(!sampleDropdown) return;
+  sampleDropdown.classList.remove("is-open");
+  if(sampleDropdownToggle){
+    sampleDropdownToggle.setAttribute("aria-expanded", "false");
+  }
+}
+
+function openSampleDropdown(){
+  if(!sampleDropdown) return;
+  sampleDropdown.classList.add("is-open");
+  if(sampleDropdownToggle){
+    sampleDropdownToggle.setAttribute("aria-expanded", "true");
+  }
+}
+
+function toggleSampleDropdown(){
+  if(sampleDropdown?.classList.contains("is-open")){
+    closeSampleDropdown();
+  }else{
+    openSampleDropdown();
+  }
 }
 
 function getKindColor(kind){
@@ -335,6 +373,26 @@ if(btnClear){
     updateDataStatus();
   });
 }
+
+if(sampleDropdownToggle){
+  sampleDropdownToggle.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    toggleSampleDropdown();
+  });
+}
+if(sampleDropdownMenu){
+  sampleDropdownMenu.addEventListener("click", (ev) => {
+    const option = ev.target.closest("[data-sample-value]");
+    if(!option) return;
+    const value = option.getAttribute("data-sample-value") ?? "";
+    setInputValue(value);
+    closeSampleDropdown();
+  });
+}
+document.addEventListener("click", () => {
+  closeSampleDropdown();
+});
 
 const userCode = document.getElementById("userCode");
 if(userCode){

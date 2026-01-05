@@ -330,6 +330,50 @@ main.layout{
   gap:8px;
   align-items:center;
 }
+.input-row .input-actions{
+  display:flex;
+  gap:4px;
+  align-items:center;
+}
+.sample-dropdown{
+  position:relative;
+}
+.sample-dropdown button{
+  padding:4px 8px;
+  font-size:16px;
+  line-height:1;
+  min-width:34px;
+  border-radius:6px;
+}
+.sample-dropdown ul{
+  position:absolute;
+  top:100%;
+  right:0;
+  margin:6px 0 0;
+  padding:4px 0;
+  width:260px;
+  background:#fff;
+  border:1px solid rgba(0,0,0,0.15);
+  border-radius:6px;
+  box-shadow:0 6px 12px rgba(0,0,0,0.12);
+  list-style:none;
+  z-index:100;
+  display:none;
+}
+.sample-dropdown.is-open ul{
+  display:block;
+}
+.sample-dropdown li{
+  padding:6px 12px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-size:14px;
+  cursor:pointer;
+}
+.sample-dropdown li:hover{
+  background:#f0f6ff;
+}
 .data-status{
   margin:0;
   font-size:13px;
