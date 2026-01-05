@@ -161,7 +161,7 @@ function requestCursorColorRender(reason = "cursor-color-change"){
 }
 
 const STEP_HIGHLIGHT_MIN_MS = 80;
-const STEP_ANIMATION_DURATION_MS = 500;
+const STEP_ANIMATION_DURATION_MS = 220;
 let stepHighlightExpiresAt = 0;
 let pendingResetTimer = null;
 let cursorHighlightActive = false;
