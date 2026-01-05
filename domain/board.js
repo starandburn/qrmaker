@@ -161,6 +161,7 @@ function requestCursorColorRender(reason = "cursor-color-change"){
 }
 
 const STEP_HIGHLIGHT_MIN_MS = 80;
+const STEP_ANIMATION_DURATION_MS = 500;
 let stepHighlightExpiresAt = 0;
 let pendingResetTimer = null;
 let cursorHighlightActive = false;
@@ -235,6 +236,15 @@ function applyStepPlacementAnimation(row, col){
   cell.classList.remove("cell-step-put");
   void cell.offsetWidth;
   cell.classList.add("cell-step-put");
+  cell.style.zIndex = "999";
+  if(cell.dataset.stepZResetTimer){
+    clearTimeout(Number(cell.dataset.stepZResetTimer));
+  }
+  const timer = setTimeout(() => {
+    cell.style.removeProperty("z-index");
+    delete cell.dataset.stepZResetTimer;
+  }, STEP_ANIMATION_DURATION_MS);
+  cell.dataset.stepZResetTimer = String(timer);
   return cell;
 }
 

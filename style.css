@@ -1281,15 +1281,20 @@ textarea{
   background:inherit;
   transform-origin:center;
   pointer-events:none;
-  animation: cell-step-put 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  animation: cell-step-put 500ms cubic-bezier(0.4, 0, 0.2, 1);
   animation-fill-mode:forwards;
   border:1px solid rgba(0,0,0,0.65);
   box-sizing:border-box;
+  z-index:10;
+}
+
+.qr-cells .cell-step-put{
+  z-index:5;
 }
 
 @keyframes cell-step-put{
   0%{
-    transform:scale(3);
+    transform:scale(2);
     opacity:0.5;
   }
   100%{
