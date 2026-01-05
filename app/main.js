@@ -227,15 +227,21 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const match = text.match(/(?:不明なコマンド|Unknown command)[:：]?\s*([^\s,、。.]+)/i);
     return match ? match[1] : "";
   };
-  const buildExecutionStatusText = (state, message) => {
+  const buildExecutionStatusText = (state, message, detail) => {
     const label = executionStatusLabels[state] || "";
-    if(state !== "error") return label;
-    const token = extractUnknownCommandWord(message);
-    return token ? `${label} (${token})` : label;
+    if(state === "error"){
+      const token = extractUnknownCommandWord(message);
+      return token ? `${label} (${token})` : label;
+    }
+    const base = label;
+    if(detail){
+      return `${base}（${detail}）`;
+    }
+    return base;
   };
-  const setExecutionStatus = (state, message) => {
+  const setExecutionStatus = (state, message, detail) => {
     if(!executionStatusEl) return;
-    executionStatusEl.textContent = buildExecutionStatusText(state, message);
+    executionStatusEl.textContent = buildExecutionStatusText(state, message, detail);
     executionStatusEl.className = `execution-status status-${state}`;
   };
   setExecutionStatus("stopped");
@@ -1006,9 +1012,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
 
   const logVerificationOutcome = () => {
     const verifyService = globalThis.qrVerifyService;
-    if(!verifyService || typeof verifyService.verifyBoard !== "function") return;
+    if(!verifyService || typeof verifyService.verifyBoard !== "function") return null;
     const result = verifyService.verifyBoard();
-    if(!result) return;
+    if(!result) return null;
     const inputValue = document.getElementById("txtInput")?.value ?? "";
     const match = result.text === inputValue;
     const payload = {
@@ -1019,6 +1025,21 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       stats: result.stats,
     };
     window.logEvent("qrVerify", JSON.stringify(payload), match ? "入力と一致" : "入力と不一致");
+    return Object.assign({ ok: result.ok }, payload);
+  };
+
+  const buildVerificationErrorMessage = (payload) => {
+    if(!payload) return "検証できませんでした";
+    switch(payload.reason){
+      case "rs_mismatch":
+        return "検証に失敗しました（RSチェック不一致）";
+      case "decode_error":
+        return "検証に失敗しました（デコードエラー）";
+      default:
+        return payload.reason
+          ? `検証に失敗しました（${payload.reason}）`
+          : "検証に失敗しました";
+    }
   };
 
   btnGenerate.addEventListener("click", async () => {
@@ -1026,17 +1047,21 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
     setExecutionStatus("running");
     let runOk = false;
+    let verificationOutcome = null;
     try{
       runOk = await runUserCodeWithStep();
+    }finally{
+      verificationOutcome = logVerificationOutcome();
       if(runOk){
-        setExecutionStatus("finished");
+        const verificationDetail = verificationOutcome
+          ? (verificationOutcome.match ? "正しいQRコードを生成" : "読み取れないQRコード")
+          : "";
+        setExecutionStatus("finished", undefined, verificationDetail);
       }else if(lastExecutionError){
         setExecutionStatus("error", lastExecutionError);
       }else{
         setExecutionStatus("stopped");
       }
-    }finally{
-      logVerificationOutcome();
       historyController.finalizeRunHistoryEntry(runOk);
     }
   });
