@@ -24,6 +24,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   function isStepModeOn(){
     return !!(stepMode && stepMode.checked);
   }
+  if(typeof window !== "undefined"){
+    window.isStepModeOn = isStepModeOn;
+  }
   const toggleDebugValues = document.getElementById("toggleDebugValues");
   const titleIcon = document.querySelector(".title-icon");
   const toggleCursor = document.getElementById("toggleCursor");
@@ -344,6 +347,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       makeStepThenable: () => true,
       shouldStepFunctions: () => false,
     };
+  if(typeof window !== "undefined"){
+    window.shouldStepFunctions = shouldStepFunctions;
+  }
   function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false } = {}){
     ctx.runId++;
     ctx.isStepFillRunning = false;

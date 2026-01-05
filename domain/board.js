@@ -65,6 +65,8 @@ let lastMoveBlocked = false;
 const BOARD_ROWS = 25;
 const BOARD_COLS = 25;
 const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+const DEFAULT_CURSOR_COLOR = "#e60000";
+const STEP_CURSOR_COLOR = "#1a73e8";
 const boardMatrix = Array.from({ length: BOARD_ROWS }, () => Array(BOARD_COLS).fill(UNPLACED_KIND));
 
 const LOOP_ITER_LIMIT = BOARD_ROWS * BOARD_COLS;
@@ -104,6 +106,67 @@ function setCursorColor(color){
   if(!cursor) return;
   cursor.style.setProperty("--cursor-color", color);
   cursor.style.borderColor = color;
+}
+
+// Helpers for keeping cursor coloring in sync when stepping through cells.
+function isStepModeActive(){
+  if(typeof window === "undefined") return false;
+  if(typeof window.isStepModeOn === "function" && window.isStepModeOn()){
+    return true;
+  }
+  if(typeof window.shouldStepFunctions === "function"){
+    return window.shouldStepFunctions();
+  }
+  return false;
+}
+
+function requestCursorColorRender(reason = "cursor-color-change"){
+  if(typeof window === "undefined") return;
+  const cycle = window.renderCycle;
+  if(cycle && typeof cycle.requestRender === "function"){
+    cycle.requestRender(reason);
+    return;
+  }
+  flushRender();
+}
+
+const STEP_HIGHLIGHT_MIN_MS = 80;
+let stepHighlightExpiresAt = 0;
+let pendingResetTimer = null;
+
+function executeCursorReset(){
+  pendingResetTimer = null;
+  setCursorColor(DEFAULT_CURSOR_COLOR);
+  requestCursorColorRender("cursor-step-reset");
+}
+
+function scheduleCursorReset(delayMs = 0){
+  if(pendingResetTimer !== null){
+    clearTimeout(pendingResetTimer);
+    pendingResetTimer = null;
+  }
+  if(delayMs <= 0){
+    executeCursorReset();
+    return;
+  }
+  pendingResetTimer = setTimeout(executeCursorReset, delayMs);
+}
+
+function highlightCursorForStepPutCell(){
+  if(!isStepModeActive()) return;
+  flushRender();
+  const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+  stepHighlightExpiresAt = now + STEP_HIGHLIGHT_MIN_MS;
+  setCursorColor(STEP_CURSOR_COLOR);
+  requestCursorColorRender("cursor-step-highlight");
+  scheduleCursorReset(STEP_HIGHLIGHT_MIN_MS);
+}
+
+function resetCursorColorAfterStepMove(){
+  if(!isStepModeActive()) return;
+  const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
+  const remaining = Math.max(0, stepHighlightExpiresAt - now);
+  scheduleCursorReset(remaining);
 }
 
 function applyCursor(row, col, dir){
@@ -302,6 +365,7 @@ function moveCursor(...args){
       window.logEvent("moveCursor", JSON.stringify(payload), description);
     }
   }
+  resetCursorColorAfterStepMove();
   lastMoveBlocked = false;
   return callMakeStepThenable();
 }
@@ -397,7 +461,7 @@ function applySetCell(row, col, encodedValue, color = "black"){
   const cursor = document.querySelector(".qr-cursor");
   if(cursor){
     cursor.classList.add("is-set");
-    setCursorColor("#e60000");
+    setCursorColor(DEFAULT_CURSOR_COLOR);
   }
 }
 
@@ -675,6 +739,9 @@ function putCell(encodedValue){
   const ok = window.updateCell(cursorPos.row, cursorPos.col, val);
   if(!ok && usedAuto && dataSeqIndex > 0){
     dataSeqIndex = Math.max(0, dataSeqIndex - 1);
+  }
+  if(ok){
+    highlightCursorForStepPutCell();
   }
   return ok;
 }
