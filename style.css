@@ -281,10 +281,17 @@ main.layout{
   gap:8px;
 }
 
+.panel.pastel-1#dataPanel{
+  padding-top:0;
+}
+.panel.pastel-1#dataPanel .row:first-child{
+  margin-top:0;
+}
+
 .data-input-header{
   display:flex;
   justify-content:space-between;
-  align-items:flex-start;
+  align-items:flex-end;
   gap:12px;
   width:100%;
 }
@@ -327,13 +334,19 @@ main.layout{
 
 .input-row{
   display:flex;
-  gap:8px;
-  align-items:center;
+  gap:4px;
+  align-items:stretch;
 }
 .input-row .input-actions{
   display:flex;
-  gap:4px;
-  align-items:center;
+  gap:10px;
+  align-items:stretch;
+}
+.panel.pastel-1 > details.pattern-panel{
+  margin-top:10px;
+}
+.input-row .input-actions{
+  align-items:stretch;
 }
 .sample-dropdown{
   position:relative;
@@ -344,6 +357,10 @@ main.layout{
   line-height:1;
   min-width:34px;
   border-radius:6px;
+  height:100%;
+}
+.input-row .input-actions button{
+  height:100%;
 }
 .sample-dropdown ul{
   position:absolute;
@@ -378,7 +395,10 @@ main.layout{
   margin:0;
   font-size:13px;
   color:#1f2f4a;
-  min-height:1em;
+  min-height:32px;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
 }
 .data-status .data-status-warning{
   display:block;

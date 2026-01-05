@@ -333,6 +333,9 @@ if(txtInput){
     refreshPattern();
     updateDataStatus();
   });
+  txtInput.addEventListener("focus", () => {
+    txtInput.select();
+  });
 }
 // Enhanced typing helpers for the script textarea
 if(userCodeTextarea){
