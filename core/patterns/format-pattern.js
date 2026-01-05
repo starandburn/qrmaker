@@ -127,7 +127,7 @@
     }
     const bits15 = maskIsSpecified && ctx.FORMAT_L && ctx.FORMAT_L[idx]
       ? ctx.FORMAT_L[idx]
-      : 0;
+      : 0xffff;
     /*
      * [前提] Format patterns live in the standard two 15-cell lines around the top-left & top-right corners.
      * [理由] QR format info is conventionally stored along these fixed paths on a 25x25 grid.
