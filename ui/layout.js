@@ -36,6 +36,34 @@ const toggleDebugValues = document.getElementById("toggleDebugValues");
 const toggleInputs = [toggleCursor, toggleGuide, toggleGrid, toggleEmpty, toggleColor, toggleDebugValues].filter(Boolean);
 window.toggleInputs = toggleInputs;
 const userCodeTextarea = document.getElementById("userCode");
+const dataInputStatus = document.getElementById("dataInputStatus");
+const DATA_INPUT_MAX_LENGTH = Number(txtInput?.getAttribute("maxlength")) || 32;
+const FULLWIDTH_CHAR_REGEX = /[^\u0000-\u007F]/;
+
+function updateDataStatus(){
+  if(!txtInput || !dataInputStatus) return;
+  const value = txtInput.value ?? "";
+  const length = value.length;
+  const errors = [];
+  if(length === 0){
+    errors.push("何か入力してください。");
+  }
+  if(length > DATA_INPUT_MAX_LENGTH){
+    errors.push(`文字数が${DATA_INPUT_MAX_LENGTH}文字を超えています。`);
+  }
+  if(FULLWIDTH_CHAR_REGEX.test(value)){
+    errors.push("全角文字が含まれています。");
+  }
+
+  if(errors.length){
+    dataInputStatus.innerHTML = errors.map((msg) => `<span class="data-status-warning">${msg}</span>`).join("");
+    return;
+  }
+
+  const remaining = Math.max(0, DATA_INPUT_MAX_LENGTH - length);
+  const baseText = `現在${length}文字（あと${remaining}文字）`;
+  dataInputStatus.textContent = baseText;
+}
 
 function getKindColor(kind){
   if(typeof window.colorsForKind === "function"){
@@ -265,6 +293,7 @@ if(txtInput){
       window.stopCurrentRun({ resetCursor: false, clear: false });
     }
     refreshPattern();
+    updateDataStatus();
   });
 }
 // Enhanced typing helpers for the script textarea
@@ -303,6 +332,7 @@ if(btnClear){
     txtInput.value = "";
     refreshPattern();
     txtInput.focus();
+    updateDataStatus();
   });
 }
 
@@ -316,6 +346,7 @@ if(userCode){
 }
 
 refreshPattern();
+updateDataStatus();
 
 function fitSquare(){
   window.logEvent("fitSquare", "", "描画領域にフィット");
