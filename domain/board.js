@@ -487,7 +487,7 @@ function turnCursor(dirArg){
       result: targetDir,
     };
     if(typeof window.logEvent === "function"){
-      window.logEvent("turnCursor", JSON.stringify(logPayload), "回転");
+      // window.logEvent("turnCursor", JSON.stringify(logPayload), "回転");
     }
     return callMakeStepThenable();
   }
@@ -519,7 +519,7 @@ function turnCursor(dirArg){
     result: targetDir,
   };
   if(typeof window.logEvent === "function"){
-    window.logEvent("turnCursor", JSON.stringify(logPayload), "回転");
+    // window.logEvent("turnCursor", JSON.stringify(logPayload), "回転");
   }
   return callMakeStepThenable();
 }

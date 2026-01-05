@@ -1004,6 +1004,23 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     });
   }
 
+  const logVerificationOutcome = () => {
+    const verifyService = globalThis.qrVerifyService;
+    if(!verifyService || typeof verifyService.verifyBoard !== "function") return;
+    const result = verifyService.verifyBoard();
+    if(!result) return;
+    const inputValue = document.getElementById("txtInput")?.value ?? "";
+    const match = result.text === inputValue;
+    const payload = {
+      reason: result.reason || (result.ok ? "ok" : "rs_mismatch"),
+      maskIndex: result.maskIndex,
+      decoded: result.text,
+      match,
+      stats: result.stats,
+    };
+    window.logEvent("qrVerify", JSON.stringify(payload), match ? "入力と一致" : "入力と不一致");
+  };
+
   btnGenerate.addEventListener("click", async () => {
     historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
@@ -1019,6 +1036,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         setExecutionStatus("stopped");
       }
     }finally{
+      logVerificationOutcome();
       historyController.finalizeRunHistoryEntry(runOk);
     }
   });
