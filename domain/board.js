@@ -67,7 +67,26 @@ const BOARD_COLS = 25;
 const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
 const DEFAULT_CURSOR_COLOR = "#e60000";
 const STEP_CURSOR_COLOR = "#1a73e8";
+const MASK_KIND = (typeof window !== "undefined" && typeof window.BIT_MASK === "number") ? window.BIT_MASK : null;
 const boardMatrix = Array.from({ length: BOARD_ROWS }, () => Array(BOARD_COLS).fill(UNPLACED_KIND));
+
+const FUNCTION_KINDS = [
+  (typeof window !== "undefined" && typeof window.BIT_FUNC_FINDER === "number") ? window.BIT_FUNC_FINDER : null,
+  (typeof window !== "undefined" && typeof window.BIT_FUNC_ALIGNMENT === "number") ? window.BIT_FUNC_ALIGNMENT : null,
+  (typeof window !== "undefined" && typeof window.BIT_FUNC_TIMING === "number") ? window.BIT_FUNC_TIMING : null,
+  (typeof window !== "undefined" && typeof window.BIT_FUNC_DARK === "number") ? window.BIT_FUNC_DARK : null,
+  (typeof window !== "undefined" && typeof window.BIT_FUNC_FORMAT === "number") ? window.BIT_FUNC_FORMAT : null,
+  (typeof window !== "undefined" && typeof window.BIT_FUNC_VERSION === "number") ? window.BIT_FUNC_VERSION : null,
+].filter((v) => typeof v === "number");
+const isFunctionalKind = (kind) => FUNCTION_KINDS.includes(kind);
+const isMaskKind = (kind) => typeof kind === "number" && MASK_KIND !== null && kind === MASK_KIND;
+function isDataKind(kind){
+  if(typeof kind !== "number") return false;
+  if(isMaskKind(kind)){
+    return false;
+  }
+  return !isFunctionalKind(kind);
+}
 
 const LOOP_ITER_LIMIT = BOARD_ROWS * BOARD_COLS;
 let loopGuardCounter = 0;
@@ -109,12 +128,23 @@ function setCursorColor(color){
 }
 
 // Helpers for keeping cursor coloring in sync when stepping through cells.
+function isMaskApplying(){
+  return typeof window !== "undefined" && Boolean(window.maskApplying);
+}
+
+function isStepModeEnabled(){
+  return typeof window !== "undefined" && typeof window.isStepModeOn === "function" && window.isStepModeOn();
+}
+
+function isStepModeDataOnly(){
+  if(!isStepModeEnabled()) return false;
+  if(typeof window.shouldStepFunctions !== "function") return false;
+  return !window.shouldStepFunctions();
+}
+
 function isStepModeActive(){
-  if(typeof window === "undefined") return false;
-  if(typeof window.isStepModeOn === "function" && window.isStepModeOn()){
-    return true;
-  }
-  if(typeof window.shouldStepFunctions === "function"){
+  if(isStepModeEnabled()) return true;
+  if(typeof window !== "undefined" && typeof window.shouldStepFunctions === "function"){
     return window.shouldStepFunctions();
   }
   return false;
@@ -133,9 +163,11 @@ function requestCursorColorRender(reason = "cursor-color-change"){
 const STEP_HIGHLIGHT_MIN_MS = 80;
 let stepHighlightExpiresAt = 0;
 let pendingResetTimer = null;
+let cursorHighlightActive = false;
 
 function executeCursorReset(){
   pendingResetTimer = null;
+  cursorHighlightActive = false;
   setCursorColor(DEFAULT_CURSOR_COLOR);
   requestCursorColorRender("cursor-step-reset");
 }
@@ -152,21 +184,44 @@ function scheduleCursorReset(delayMs = 0){
   pendingResetTimer = setTimeout(executeCursorReset, delayMs);
 }
 
-function highlightCursorForStepPutCell(){
-  if(!isStepModeActive()) return;
+function shouldAnimatePlacement(kind){
+  if(!isStepModeActive()) return false;
+  if(isMaskApplying() && (!isStepModeEnabled() || isStepModeDataOnly())){
+    return false;
+  }
+  if(isStepModeDataOnly()){
+    if(typeof kind === "number"){
+      return isDataKind(kind);
+    }
+    return false;
+  }
+  return true;
+}
+
+function highlightCursorForStepPutCell(kind){
+  if(!shouldAnimatePlacement(kind)) return;
   flushRender();
   const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
   stepHighlightExpiresAt = now + STEP_HIGHLIGHT_MIN_MS;
+  cursorHighlightActive = true;
   setCursorColor(STEP_CURSOR_COLOR);
   requestCursorColorRender("cursor-step-highlight");
   scheduleCursorReset(STEP_HIGHLIGHT_MIN_MS);
 }
 
 function resetCursorColorAfterStepMove(){
-  if(!isStepModeActive()) return;
+  if(!cursorHighlightActive) return;
   const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
   const remaining = Math.max(0, stepHighlightExpiresAt - now);
   scheduleCursorReset(remaining);
+}
+
+function applyStepPlacementAnimation(cell, kind){
+  if(!shouldAnimatePlacement(kind)) return;
+  if(!cell) return;
+  cell.classList.remove("cell-step-put");
+  void cell.offsetWidth;
+  cell.classList.add("cell-step-put");
 }
 
 function applyCursor(row, col, dir){
@@ -458,6 +513,7 @@ function applySetCell(row, col, encodedValue, color = "black"){
   if(boardMatrix[r - 1] && boardMatrix[r - 1][c - 1] !== undefined){
     boardMatrix[r - 1][c - 1] = encodedValue;
   }
+  applyStepPlacementAnimation(cell, kind);
   const cursor = document.querySelector(".qr-cursor");
   if(cursor){
     cursor.classList.add("is-set");
@@ -736,12 +792,13 @@ function putCell(encodedValue){
     return false;
   }
   if(!Number.isFinite(val)) return false;
+  const valKind = (typeof window.bitKind === "function") ? window.bitKind(val) : Math.abs(val);
   const ok = window.updateCell(cursorPos.row, cursorPos.col, val);
   if(!ok && usedAuto && dataSeqIndex > 0){
     dataSeqIndex = Math.max(0, dataSeqIndex - 1);
   }
   if(ok){
-    highlightCursorForStepPutCell();
+    highlightCursorForStepPutCell(valKind);
   }
   return ok;
 }
@@ -825,17 +882,6 @@ function isSkipZone(){
   if(timingColIndex > 0 && col === timingColIndex) return true;
   return false;
 }
-
-const FUNCTION_KINDS = [
-  (typeof window !== "undefined" && typeof window.BIT_FUNC_FINDER === "number") ? window.BIT_FUNC_FINDER : null,
-  (typeof window !== "undefined" && typeof window.BIT_FUNC_ALIGNMENT === "number") ? window.BIT_FUNC_ALIGNMENT : null,
-  (typeof window !== "undefined" && typeof window.BIT_FUNC_TIMING === "number") ? window.BIT_FUNC_TIMING : null,
-  (typeof window !== "undefined" && typeof window.BIT_FUNC_DARK === "number") ? window.BIT_FUNC_DARK : null,
-  (typeof window !== "undefined" && typeof window.BIT_FUNC_FORMAT === "number") ? window.BIT_FUNC_FORMAT : null,
-  (typeof window !== "undefined" && typeof window.BIT_FUNC_VERSION === "number") ? window.BIT_FUNC_VERSION : null,
-].filter((v) => typeof v === "number");
-const isFunctionalKind = (kind) => FUNCTION_KINDS.includes(kind);
-
 function isFunctionalCell(){
   const { row, col } = cursorPos;
   if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;

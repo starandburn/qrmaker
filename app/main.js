@@ -627,6 +627,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const maskCursorDir = stepMask ? DIR_RIGHT : prevCursor.dir;
     const prevRender = ctx.renderMode;
     modeSetter(stepMask ? RENDER_IMMEDIATE : RENDER_BUFFERED);
+    const setMaskApplying = (value) => {
+      if(typeof window === "undefined") return;
+      window.maskApplying = Boolean(value);
+    };
     const maybeDelay = async () => {
       if(!stepMask) return true;
       if(shouldAbort()) return false;
@@ -638,26 +642,32 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
       return !shouldAbort();
     };
-    for(let row = 1; row <= 25; row++){
-      for(let col = 1; col <= 25; col++){
-        if(shouldAbort()) break;
-        const encoded = window.getCell(row, col);
-        if(typeof encoded !== "number") continue;
-        const kind = (typeof window.bitKind === "function") ? window.bitKind(encoded) : Math.abs(encoded);
-        if(typeof isFunctionalKind === "function" && isFunctionalKind(kind)) continue;
-        if(!maskFn(row - 1, col - 1)) continue;
-        if(stepMask){
-          updateCursorSafe(row, col, maskCursorDir);
+    let completed = false;
+    setMaskApplying(true);
+    try{
+      for(let row = 1; row <= 25; row++){
+        for(let col = 1; col <= 25; col++){
+          if(shouldAbort()) break;
+          const encoded = window.getCell(row, col);
+          if(typeof encoded !== "number") continue;
+          const kind = (typeof window.bitKind === "function") ? window.bitKind(encoded) : Math.abs(encoded);
+          if(typeof isFunctionalKind === "function" && isFunctionalKind(kind)) continue;
+          if(!maskFn(row - 1, col - 1)) continue;
+          if(stepMask){
+            updateCursorSafe(row, col, maskCursorDir);
+          }
+          invertCell(row, col);
+          const ok = await maybeDelay();
+          if(!ok) break;
         }
-        invertCell(row, col);
-        const ok = await maybeDelay();
-        if(!ok) break;
+        if(shouldAbort()) break;
       }
-      if(shouldAbort()) break;
-    }
-    const completed = !shouldAbort();
-    if(completed && hasFormatPattern){
-      await callDrawFormatPatterns(idx, true);
+      completed = !shouldAbort();
+      if(completed && hasFormatPattern){
+        await callDrawFormatPatterns(idx, true);
+      }
+    }finally{
+      setMaskApplying(false);
     }
     if(ctx.renderMode === RENDER_BUFFERED && typeof requestRender === "function"){
       requestRender("applyMask");
