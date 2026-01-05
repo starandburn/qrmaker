@@ -41,10 +41,20 @@
       return Math.max(0, Math.min(120, val));
     }
 
-    function stepDelayAbort(runToken){
+    function stepDelayAbort(runToken, options = {}){
       const token = (typeof runToken === "number") ? runToken : runIdAccessor.get();
       const d = getStepDelay();
-      const wait = d > 0 ? sleep(d) : new Promise(requestAnimationFrame);
+      const scale = (typeof options.scale === "number") ? options.scale : 1;
+      const minDelay = (typeof options.minDelay === "number") ? options.minDelay : 0;
+      const maxDelay = (typeof options.maxDelay === "number") ? options.maxDelay : null;
+      let computed = Number.isFinite(d) ? Math.round(d * scale) : 0;
+      if(computed < minDelay){
+        computed = minDelay;
+      }
+      if(maxDelay !== null && computed > maxDelay){
+        computed = maxDelay;
+      }
+      const wait = computed > 0 ? sleep(computed) : new Promise(requestAnimationFrame);
       return wait.then(() => {
         if(token !== runIdAccessor.get()){
           throw ABORT_ERR;

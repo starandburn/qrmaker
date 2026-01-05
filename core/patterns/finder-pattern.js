@@ -10,6 +10,7 @@
   if(!global) return;
 
   const ensureHelpers = (ctx) => (ctx && ctx.helpers) ? ctx.helpers : {};
+  const PATTERN_STEP_SCALE = 0.35;
 
   function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     const baseRun = ctx ? ctx.runId : 0;
@@ -118,7 +119,9 @@
       ? executionControl.stepActive({ helpers: H, ctx, runToken, stepEnabled: !!resolvedStep })
       : (H.shouldStepFunctions ? H.shouldStepFunctions() : false);
     const delay = async () => {
-      return H.stepDelayAbort ? H.stepDelayAbort(runToken) : Promise.resolve();
+      return H.stepDelayAbort
+        ? H.stepDelayAbort(runToken, { scale: PATTERN_STEP_SCALE })
+        : Promise.resolve();
     };
     const drawStep = async () => {
       for(let r = 0; r < 7; r++){

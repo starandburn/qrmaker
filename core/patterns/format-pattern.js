@@ -10,6 +10,7 @@
   if(!global) return;
 
   const ensureHelpers = (ctx) => (ctx && ctx.helpers) ? ctx.helpers : {};
+  const PATTERN_STEP_SCALE = 0.35;
 
   function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     const baseRun = ctx ? ctx.runId : 0;
@@ -69,6 +70,9 @@
         if(typeof window.updateCell === "function"){
           const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
           window.updateCell(row, col, enc);
+          if(typeof window.animateCellPlacement === "function"){
+            window.animateCellPlacement(row, col, BIT_FUNC_FORMAT);
+          }
         }
       }
       hasFormatPattern = true;
@@ -77,7 +81,9 @@
       return true;
     }
     const delay = async () => {
-      return H.stepDelayAbort ? H.stepDelayAbort(runToken) : Promise.resolve();
+      return H.stepDelayAbort
+        ? H.stepDelayAbort(runToken, { scale: PATTERN_STEP_SCALE })
+        : Promise.resolve();
     };
     const prevRender = ctx.renderMode;
     ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
@@ -94,6 +100,9 @@
       if(typeof window.updateCell === "function"){
         const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
         window.updateCell(row, col, enc);
+        if(typeof window.animateCellPlacement === "function"){
+          window.animateCellPlacement(row, col, BIT_FUNC_FORMAT);
+        }
       }
       updateCursorSafe(runToken, ctx, row, col, DIR_RIGHT);
       await delay();

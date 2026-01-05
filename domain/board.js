@@ -164,6 +164,18 @@ const STEP_HIGHLIGHT_MIN_MS = 80;
 let stepHighlightExpiresAt = 0;
 let pendingResetTimer = null;
 let cursorHighlightActive = false;
+let suppressStepPlacementAnimation = false;
+
+function withStepPlacementSuppressed(fn){
+  if(!fn) return;
+  const prev = suppressStepPlacementAnimation;
+  suppressStepPlacementAnimation = true;
+  try{
+    return fn();
+  }finally{
+    suppressStepPlacementAnimation = prev;
+  }
+}
 
 function executeCursorReset(){
   pendingResetTimer = null;
@@ -216,12 +228,32 @@ function resetCursorColorAfterStepMove(){
   scheduleCursorReset(remaining);
 }
 
-function applyStepPlacementAnimation(cell, kind){
-  if(!shouldAnimatePlacement(kind)) return;
-  if(!cell) return;
+function applyStepPlacementAnimation(row, col){
+  if(suppressStepPlacementAnimation) return null;
+  const cell = getCellElement(row, col);
+  if(!cell) return null;
   cell.classList.remove("cell-step-put");
   void cell.offsetWidth;
   cell.classList.add("cell-step-put");
+  return cell;
+}
+
+function getCellElement(row, col){
+  if(!Number.isInteger(row) || !Number.isInteger(col)) return null;
+  if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return null;
+  const cells = document.querySelectorAll(".qr-cells .cell");
+  if(!cells || cells.length === 0) return null;
+  const idx = (row - 1) * BOARD_COLS + (col - 1);
+  return cells[idx] || null;
+}
+
+function animateCellPlacementAt(row, col, kind){
+  if(!shouldAnimatePlacement(kind)) return;
+  applyStepPlacementAnimation(row, col);
+}
+
+if(typeof window !== "undefined"){
+  window.animateCellPlacement = animateCellPlacementAt;
 }
 
 function applyCursor(row, col, dir){
@@ -513,7 +545,7 @@ function applySetCell(row, col, encodedValue, color = "black"){
   if(boardMatrix[r - 1] && boardMatrix[r - 1][c - 1] !== undefined){
     boardMatrix[r - 1][c - 1] = encodedValue;
   }
-  applyStepPlacementAnimation(cell, kind);
+  animateCellPlacementAt(r, c, kind);
   const cursor = document.querySelector(".qr-cursor");
   if(cursor){
     cursor.classList.add("is-set");
@@ -634,9 +666,11 @@ function getNextData(){
 
 function reapplyCellColors(){
   if(cellStates.size === 0) return;
-  for(const { row, col, value, color } of cellStates.values()){
-    applySetCell(row, col, value, color);
-  }
+  withStepPlacementSuppressed(() => {
+    for(const { row, col, value, color } of cellStates.values()){
+      applySetCell(row, col, value, color);
+    }
+  });
   timingRowIndex = 0;
   timingColIndex = 0;
 }
