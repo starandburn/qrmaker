@@ -10,6 +10,36 @@
   if(!global) return;
 
   const ensureHelpers = (ctx) => (ctx && ctx.helpers) ? ctx.helpers : {};
+  const spiralCoordinates = (rows, cols, rowOffset = 0, colOffset = 0) => {
+    const coords = [];
+    let top = 0;
+    let bottom = rows - 1;
+    let left = 0;
+    let right = cols - 1;
+    while(top <= bottom && left <= right){
+      for(let col = left; col <= right; col++){
+        coords.push([top + rowOffset, col + colOffset]);
+      }
+      top++;
+      for(let row = top; row <= bottom; row++){
+        coords.push([row + rowOffset, right + colOffset]);
+      }
+      right--;
+      if(top <= bottom){
+        for(let col = right; col >= left; col--){
+          coords.push([bottom + rowOffset, col + colOffset]);
+        }
+        bottom--;
+      }
+      if(left <= right){
+        for(let row = bottom; row >= top; row--){
+          coords.push([row + rowOffset, left + colOffset]);
+        }
+        left++;
+      }
+    }
+    return coords;
+  };
   const PATTERN_STEP_SCALE = 0.35;
 
   function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
@@ -70,18 +100,17 @@
     const startCol = baseCol - 2;
     const allowOverwrite = overwrite !== false;
     const shouldDrawCell = (row, col) => shouldPlaceCell(row, col, allowOverwrite);
+    const patternCoords = spiralCoordinates(5, 5, startRow, startCol);
     if(!step){
       const prevRender = ctx.renderMode;
       ctx.setRenderMode(ctx.RENDER_BUFFERED);
-      for(let r = 0; r < 5; r++){
-        for(let c = 0; c < 5; c++){
-          const row = startRow + r;
-          const col = startCol + c;
-          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-          const bit = pattern[r][c];
-          if(!shouldDrawCell(row, col)) continue;
-          window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
-        }
+      for(const [row, col] of patternCoords){
+        if(row < 1 || row > 25 || col < 1 || col > 25) continue;
+        const relRow = row - startRow;
+        const relCol = col - startCol;
+        const bit = pattern[relRow][relCol];
+        if(!shouldDrawCell(row, col)) continue;
+        window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
       }
       ctx.requestRender("putAlignmentCells");
       ctx.setRenderMode(prevRender);
@@ -100,25 +129,23 @@
     return (async () => {
       const prevRender = ctx.renderMode;
       ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
-      for(let r = 0; r < 5; r++){
-        for(let c = 0; c < 5; c++){
-          if(shouldAbort(runToken, ctx)) return false;
-          if(!stepActive()){
-            ctx.setRenderMode(prevRender);
-            return putAlignmentCells(ctx, overwrite, { stepEnabled: false, currentRun: runToken });
-          }
-          const row = startRow + r;
-          const col = startCol + c;
-          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-          const bit = pattern[r][c];
-          if(!shouldDrawCell(row, col)) continue;
-          window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
-          if(H.updateCursorIfRun){
-            H.updateCursorIfRun(runToken, row, col, DIR_RIGHT);
-          }
-          updateCursorSafe(runToken, ctx, row, col, DIR_RIGHT);
-          await delay();
+      for(const [row, col] of patternCoords){
+        if(shouldAbort(runToken, ctx)) return false;
+        if(!stepActive()){
+          ctx.setRenderMode(prevRender);
+          return putAlignmentCells(ctx, overwrite, { stepEnabled: false, currentRun: runToken });
         }
+        if(row < 1 || row > 25 || col < 1 || col > 25) continue;
+        const relRow = row - startRow;
+        const relCol = col - startCol;
+        const bit = pattern[relRow][relCol];
+        if(!shouldDrawCell(row, col)) continue;
+        window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
+        if(H.updateCursorIfRun){
+          H.updateCursorIfRun(runToken, row, col, DIR_RIGHT);
+        }
+        updateCursorSafe(runToken, ctx, row, col, DIR_RIGHT);
+        await delay();
       }
       ctx.setRenderMode(prevRender);
       return true;
