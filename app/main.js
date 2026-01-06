@@ -13,6 +13,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const codePanel = document.querySelector(".code-panel");
   const userCodeParsed = document.getElementById("userCodeParsed");
   const footerCopy = document.querySelector(".page-footer p:first-child");
+  const versionInfo = document.getElementById("appVersionInfo");
   const userCodeInput = document.getElementById("userCode");
   const btnToggleHistory = document.getElementById("btnToggleHistory");
   const btnPruneHistory = document.getElementById("btnPruneHistory");
@@ -1531,4 +1532,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   setupFooterDebugToggle();
+  if(versionInfo && typeof window.appVersionString === "string"){
+    versionInfo.textContent = `v${window.appVersionString}`;
+  }
 }

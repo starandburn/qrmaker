@@ -39,6 +39,9 @@
 ### A.2 データテンプレート
 - `settings.js` の `defaults.dataTemplates` に並べたオブジェクト（`label`/`value`）で `#sampleDropdownMenu` の項目が再構築され、選んだ文字列が `#txtInput` に入ります（設定がないと空リストになります）。
 
+### A.3 バージョン表示
+- `version.js` で定義した `window.appVersionString` をヘッダー内 `.title` の横に置いた `#appVersionInfo` に表示します。minor/revision 運用は `node scripts/bump-revision.js`。
+
 ## B. window へ公開する API
 ### B.1 実装 `app/main.js`
 - `window.__deferredWindowApi` 経由で `applyMask` 〜 `buildQRCode`/`draw*` 系を公開し、`publishWindowApi()` で `window` にコピーされます。
@@ -57,3 +60,4 @@
 
 ## D. 契約補足
 - このファイルは UI との契約をまとめたもので、`index.html` の `<script>` 順序や `settings.js` の構造を変更したらあわせて更新してください。
+- バージョン番号は `version.js` で管理します。軽微な修正のたびに `node scripts/bump-revision.js` を実行すれば `revision` の値だけ書き換わるので、他ファイルを触らずに差分を限定できます。必要に応じて `major`/`minor` を直接書き換えてください。
