@@ -343,11 +343,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const label = executionStatusLabels[state] || "";
     if(state === "error"){
       const token = extractUnknownCommandWord(message);
-      return token ? `${label} (${token})` : label;
+      return token ? `${label}：${token}` : label;
     }
     const base = label;
     if(detail){
-      return `${base}（${detail}）`;
+      return `${base}：${detail}`;
     }
     return base;
   };
@@ -357,6 +357,53 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     executionStatusEl.className = `execution-status status-${state}`;
   };
   setExecutionStatus("stopped");
+
+  const API_STATUS_DESCRIPTIONS = {
+    resetCommand: "盤面をリセット",
+    drawQRCode: "QRコードを描画中",
+    drawBasePatterns: "基本パターンを描画中",
+    drawDataPatterns: "データパターンを描画中",
+    drawFinderPatterns: "ファインダーパターンを描画中",
+    drawTimingPatterns: "タイミングパターンを描画中",
+    drawAlignmentPatterns: "配置パターンを描画中",
+    drawDarkModulePatterns: "ダークモジュールを描画中",
+    drawFormatPatterns: "フォーマットパターンを描画中",
+    verify: "入力と出力を検証中",
+    applyMask: (maskIndex) => `${maskIndex}番マスクを適用中`,
+  };
+  const DATA_PATTERN_STAGE_MESSAGES = {
+    [window.BIT_INFO_MODE]: "種別パターンを描画中",
+    [window.BIT_INFO_LENGTH]: "長さパターンを描画中",
+    [window.BIT_INFO_CHAR]: "文字パターンを描画中",
+    [window.BIT_INFO_TERMINATOR]: "終端パターンを描画中",
+    [window.BIT_INFO_PADDING]: "パディングパターンを描画中",
+    [window.BIT_INFO_PARITY]: "パリティパターンを描画中",
+  };
+  let currentDataPatternStage = null;
+  const updateDataPatternStatus = (kind) => {
+    const message = DATA_PATTERN_STAGE_MESSAGES[kind];
+    if(!message) return false;
+    if(currentDataPatternStage === message) return false;
+    currentDataPatternStage = message;
+    setExecutionStatus("running", undefined, message);
+    return true;
+  };
+
+  const describeApiStatus = (name, payload) => {
+    const entry = API_STATUS_DESCRIPTIONS[name];
+    if(typeof entry === "function"){
+      return entry(payload);
+    }
+    return entry || null;
+  };
+
+  const showApiStatus = (name, payload) => {
+    const detail = describeApiStatus(name, payload);
+    if(detail){
+      setExecutionStatus("running", undefined, detail);
+    }
+    return detail;
+  };
 
   // Prevent accidental text selection or drag on buttons
   const allButtons = document.querySelectorAll("button");
@@ -525,7 +572,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   ctx.resetCursor = resetCursor;
 
   async function resetCommand(){
-    window.logEvent("resetCommand", "", "コマンドをリセット");
+    window.logEvent("resetCommand", "", "盤面をリセット");
+    showApiStatus("resetCommand");
     resetQRCode();
     await sleep(RESET_DELAY_MS);
   }
@@ -611,6 +659,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   window.invertCell = invertCell;
   const wrapDrawApi = (name, fn, description) => {
     const wrapped = async function(...args){
+      showApiStatus(name);
       const mainArg = args[0] ?? "";
       window.logEvent(name, mainArg, description);
       return fn.apply(this, args);
@@ -723,11 +772,12 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(!Number.isFinite(idx)){
       idx = defaultMaskIndex;
     }
-      if(idx < 0 || idx > 7){
-        window.logEvent("applyMask", maskIndex ?? "", "マスク指定が不正です");
-        return false;
-      }
-    window.logEvent("applyMask", idx, `マスク${idx}を適用`);
+    if(idx < 0 || idx > 7){
+      window.logEvent("applyMask", maskIndex ?? "", "マスク指定が不正です");
+      return false;
+    }
+    window.logEvent("applyMask", idx, `${idx}番マスクを適用中`);
+    showApiStatus("applyMask", idx);
     const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[idx] === "function") ? MASK_FUNCTIONS[idx] : null;
     if(!maskFn) return false;
     const stepMask = (typeof isStepModeOn === "function" ? isStepModeOn() : false)
@@ -782,7 +832,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
       completed = !shouldAbort();
       if(completed && hasFormatPattern){
+        showApiStatus("drawFormatPatterns");
         await callDrawFormatPatterns(idx, true);
+        showApiStatus("applyMask", idx);
       }
     }finally{
       setMaskApplying(false);
@@ -805,6 +857,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   async function drawBasePatterns(ctx, { deferFlush = false, currentRun, resetDelay = false } = {}){
     if(!ctx) return false;
+    window.logEvent("drawBasePatterns", currentRun ?? "", "基本パターンを描画中");
+    showApiStatus("drawBasePatterns");
     const { setRenderMode, resetCursor, requestRender, RESET_DELAY_MS, RENDER_BUFFERED, RENDER_IMMEDIATE } = ctx;
     const prevRender = ctx.renderMode;
     setRenderMode(RENDER_BUFFERED);
@@ -813,11 +867,18 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       await ctx.helpers?.sleep?.(RESET_DELAY_MS ?? 0);
     }
     const opts = { overwrite: false, currentRun };
-    await callDrawFinderPatterns(opts.overwrite, opts.currentRun);
-    await callDrawTimingPatterns(opts.overwrite, opts.currentRun);
-    await callDrawAlignmentPatterns(opts.overwrite, opts.currentRun);
-    await callDrawDarkModulePatterns(opts.overwrite, opts.currentRun);
-    await callDrawFormatPatterns(undefined, opts.overwrite, opts.currentRun);
+    const showBaseStatus = () => showApiStatus("drawBasePatterns");
+    const runFunctionalPattern = async (name, fn, ...fnArgs) => {
+      showApiStatus(name);
+      const result = await fn(...fnArgs);
+      showBaseStatus();
+      return result;
+    };
+    await runFunctionalPattern("drawFinderPatterns", callDrawFinderPatterns, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern("drawTimingPatterns", callDrawTimingPatterns, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern("drawAlignmentPatterns", callDrawAlignmentPatterns, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern("drawDarkModulePatterns", callDrawDarkModulePatterns, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern("drawFormatPatterns", callDrawFormatPatterns, undefined, opts.overwrite, opts.currentRun);
     if(!deferFlush){
       requestRender("drawBasePatterns");
       setRenderMode(RENDER_IMMEDIATE);
@@ -947,23 +1008,43 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     });
   }
   async function drawDataPatterns({ currentRun } = {}){
-    window.logEvent("drawDataPatterns", currentRun ?? "", "データパターンを描画");
+    window.logEvent("drawDataPatterns", currentRun ?? "", "データパターンを描画中");
+    showApiStatus("drawDataPatterns");
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     const shouldAbort = () => runToken !== runId;
-    resetLoopGuard();
-    resetData();
-    updateCursor(BOARD_ROWS, BOARD_COLS, DIR_UP);
-    while(hasMoreData()){
-      if(shouldAbort()) throw ABORT_ERR;
-      if(!canContinueLoop()) return false;
-      await putNextCell();
-      if(shouldAbort()) throw ABORT_ERR;
+    let dataPatternStageDirty = false;
+    const markDataPatternStage = (kind) => {
+      if(updateDataPatternStatus(kind)){
+        dataPatternStageDirty = true;
+      }
+    };
+    const finalizeStage = () => {
+      if(dataPatternStageDirty){
+        currentDataPatternStage = null;
+        showApiStatus("drawDataPatterns");
+      }
+    };
+    try{
+      resetLoopGuard();
+      resetData();
+      updateCursor(BOARD_ROWS, BOARD_COLS, DIR_UP);
+      while(hasMoreData()){
+        if(shouldAbort()) throw ABORT_ERR;
+        if(!canContinueLoop()) return false;
+        const nextKind = (typeof window.getNextDataKind === "function") ? window.getNextDataKind() : null;
+        markDataPatternStage(nextKind);
+        await putNextCell();
+        if(shouldAbort()) throw ABORT_ERR;
+      }
+      return runToken === runId;
+    }finally{
+      finalizeStage();
     }
-    return runToken === runId;
   }
   async function drawQRCode(arg){
     resetQRCode({ abortRun: false, forceImmediate: true, stopStep: true });
-    window.logEvent("drawQRCode", arg ?? "", "QRコードを描画");
+    window.logEvent("drawQRCode", arg ?? "", "QRコードを描画中");
+    showApiStatus("drawQRCode");
     let maskIndex;
     if(arg === undefined){
       maskIndex = defaultMaskIndex;
@@ -1125,6 +1206,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const logVerificationOutcome = () => {
     const verifyService = globalThis.qrVerifyService;
     if(!verifyService || typeof verifyService.verifyBoard !== "function") return null;
+    window.logEvent("verify", "", "入力と出力を検証中");
+    showApiStatus("verify");
     const result = verifyService.verifyBoard();
     if(!result) return null;
     const inputValue = document.getElementById("txtInput")?.value ?? "";

@@ -462,6 +462,12 @@
         throw new Error(`不明なコマンド: ${fn}`);
       }
     }
+    if(fn.toLowerCase() === "move"){
+      const hasNumericArg = parts.some((arg) => /^[-+]?\d+(?:\.\d+)?$/.test(arg));
+      if(hasNumericArg){
+        throw new Error("move コマンドは数値指定に対応していません");
+      }
+    }
     const truthyKeywords = new Set(["true","ok","yes"]);
     const falseyKeywords = new Set(["false","ng","no"]);
     const args = parts.map((arg) => {

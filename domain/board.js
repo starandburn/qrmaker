@@ -724,9 +724,9 @@ function colorsForKind(kind){
 
 function buildBitSequence(){
   if(!Array.isArray(window.patternBits) || window.patternBits.length === 0) return [];
-  const seq = [];
-  for(const v of window.patternBits){
-    const kind = (typeof window.bitKind === "function") ? window.bitKind(v) : Math.abs(v);
+const seq = [];
+for(const v of window.patternBits){
+  const kind = (typeof window.bitKind === "function") ? window.bitKind(v) : Math.abs(v);
     const isBlk = (typeof window.isBlackBit === "function") ? window.isBlackBit(v) : v > 0;
     const bit = isBlk ? 1 : 0;
     const color = (() => {
@@ -776,6 +776,13 @@ function getNextData(){
   const entry = dataSeq[dataSeqIndex++];
   if(!entry || typeof entry.kind !== "number" || typeof entry.bit !== "number") return null;
   return encodeBitPair(entry.kind, entry.bit);
+}
+
+function getNextDataKind(){
+  if(!Array.isArray(dataSeq) || dataSeqIndex >= dataSeq.length) return null;
+  const entry = dataSeq[dataSeqIndex];
+  if(!entry || typeof entry.kind !== "number") return null;
+  return entry.kind;
 }
 
 function reapplyCellColors(){
@@ -1081,6 +1088,7 @@ window.resetData = resetData;
 window.isDataEnd = isDataEnd;
 window.hasMoreData = hasMoreData;
 window.getNextData = getNextData;
+window.getNextDataKind = getNextDataKind;
 window.resetLoopGuard = resetLoopGuard;
 window.canContinueLoop = canContinueLoop;
 window.renderFrameAndWait = pauseRunning;
