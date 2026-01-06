@@ -250,6 +250,17 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const defaultAutoAvoidTiming = (typeof configDefaults.autoAvoidTiming === "boolean")
     ? configDefaults.autoAvoidTiming
     : false;
+  const resolveMaskIndex = (value, fallback = 0) => {
+    const numeric = Number(value);
+    if(Number.isFinite(numeric)){
+      const truncated = Math.trunc(numeric);
+      if(truncated >= 0 && truncated <= 7){
+        return truncated;
+      }
+    }
+    return fallback;
+  };
+  const defaultMaskIndex = resolveMaskIndex(configDefaults.defaultMask, 0);
   const skipExistingFromParam = urlParams.has(SKIP_EXISTING_PARAM_KEY)
     ? urlState.stringifyBool(urlParams.get(SKIP_EXISTING_PARAM_KEY))
     : null;
@@ -687,7 +698,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return false;
   };
 
-  async function applyMask(maskIndex = 0){
+  async function applyMask(maskIndex = defaultMaskIndex){
     if(!ctx) return false;
     const {
       isStepModeOn,
@@ -708,14 +719,14 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       };
     const baseRun = ctx.runId;
     const currentMaskRun = ++ctx.maskRunId;
-    let idx = (maskIndex === undefined) ? 0 : Number(maskIndex);
+    let idx = Number(maskIndex);
     if(!Number.isFinite(idx)){
-      idx = 0;
+      idx = defaultMaskIndex;
     }
-    if(idx < 0 || idx > 7){
-      window.logEvent("applyMask", maskIndex ?? "", "マスク指定が不正です");
-      return false;
-    }
+      if(idx < 0 || idx > 7){
+        window.logEvent("applyMask", maskIndex ?? "", "マスク指定が不正です");
+        return false;
+      }
     window.logEvent("applyMask", idx, `マスク${idx}を適用`);
     const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[idx] === "function") ? MASK_FUNCTIONS[idx] : null;
     if(!maskFn) return false;
@@ -955,7 +966,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     window.logEvent("drawQRCode", arg ?? "", "QRコードを描画");
     let maskIndex;
     if(arg === undefined){
-      maskIndex = 0;
+      maskIndex = defaultMaskIndex;
     }else if(typeof arg === "object" && arg !== null){
       maskIndex = arg.maskIndex;
     }else{
@@ -977,7 +988,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(!maskSpecified){
       return true;
     }
-      const maskOk = await callApplyMask(idx);
+    const maskOk = await callApplyMask(idx);
     if(currentRun !== runId || !maskOk) return false;
     return true;
   }
