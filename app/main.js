@@ -36,6 +36,29 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const toggleColor = document.getElementById("toggleColor");
   const txtInput = document.getElementById("txtInput");
   const configDefaults = (settings && typeof settings === "object") ? settings.defaults || {} : {};
+  const resolvedDataTemplates = Array.isArray(configDefaults.dataTemplates)
+    ? configDefaults.dataTemplates
+    : [];
+  const sampleDropdownMenu = document.getElementById("sampleDropdownMenu");
+  if(sampleDropdownMenu){
+    sampleDropdownMenu.innerHTML = "";
+    resolvedDataTemplates.forEach((entry, index) => {
+      const li = document.createElement("li");
+      li.setAttribute("role", "option");
+      let label = "";
+      if(typeof entry.label === "string" && entry.label.trim().length){
+        label = entry.label;
+      }else if(typeof entry.value === "string" && entry.value.trim().length){
+        label = entry.value;
+      }else{
+        label = `テンプレート ${index + 1}`;
+      }
+      const value = (typeof entry.value === "string") ? entry.value : "";
+      li.setAttribute("data-sample-value", value);
+      li.textContent = label;
+      sampleDropdownMenu.append(li);
+    });
+  }
   const flagOverrides = configDefaults.toggleFlags || {};
   const toggleOverridePairs = [
     { key: "toggleCursor", element: toggleCursor },

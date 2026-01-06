@@ -18,6 +18,12 @@ window.appSettingsFromScript = {
       "stepMode": false,
       "stepSkipFunctions": true
     },
+    "dataTemplates": [
+      { "value": "Hello, World!" },
+      { "value": "https://www.nkk.ac.jp/" },
+      { "value": "Cwm fjord-bank glyphs vext quiz." },
+      { "value": "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU" }
+    ],
     "codeSamples": [
       {
         "label": "1",

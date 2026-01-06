@@ -36,6 +36,9 @@
 ### A.1 サンプルコードの定義
 - `settings.js` の `defaults.codeSamples` に並べた文字列だけサンプルボタンが `code-debug-toolbar` に追加されます。
 
+### A.2 データテンプレート
+- `settings.js` の `defaults.dataTemplates` に並べたオブジェクト（`label`/`value`）で `#sampleDropdownMenu` の項目が再構築され、選んだ文字列が `#txtInput` に入ります（設定がないと空リストになります）。
+
 ## B. window へ公開する API
 ### B.1 実装 `app/main.js`
 - `window.__deferredWindowApi` 経由で `applyMask` 〜 `buildQRCode`/`draw*` 系を公開し、`publishWindowApi()` で `window` にコピーされます。
