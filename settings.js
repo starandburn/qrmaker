@@ -7,6 +7,9 @@ window.appSettingsFromScript = {
     "debugVisible": false,
     "stepMode": false,
     "stepSkipFunctions": true,
+    "skipExistingCells": false,
+    "autoAvoidTiming": false,
+    "defaultMask": 0,
     "stepSpeed": 60,
     "toggleFlags": {
       "toggleCursor": true,
@@ -53,20 +56,22 @@ mask`
       {
         "label": "4",
         "code": `reset
+base
+move end
+turn left
 repeat
-\tput
-\tmove
-\tif block
-\t\tturn right
-\telse
-\t\tif used
-\t\t\tturn
-\t\t\tmove
-\t\t\tturn left
-\t\t\tmove
-\t\tend
-\tend
-end`
+    put
+    move left
+    put
+    move
+    block?
+        turn
+        move left
+     else
+        move right
+    end
+end
+mask`
       },
       {
         "label": "5",

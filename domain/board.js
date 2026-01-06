@@ -318,6 +318,9 @@ function moveCursor(...args){
   let finalDir = cursorPos.dir;
   let logLabel = null;
   let logPositionOnly = false;
+  let relativeStepDir = null;
+  let relativeMoveCount = 1;
+  let isRelativeMove = false;
   const stepOnce = (dirVal) => {
     const norm = normalizeDir(dirVal);
     if(!norm) return false;
@@ -348,11 +351,11 @@ function moveCursor(...args){
       back: "後",
       left: "左",
       right: "右",
-      up: "上",
-      down: "下",
+      up: "丁",
+      down: "丁",
     };
     const word = directionWords[key] ?? key;
-    return `カーソル${word}移動`;
+    return "カーソル" + word + "移動";
   };
 
   const recordStraightMove = () => {
@@ -362,45 +365,107 @@ function moveCursor(...args){
   const recordRelativeMove = (key) => {
     logLabel = describeMove(key);
   };
+  const scheduleRelativeMove = (dirVal) => {
+    const norm = normalizeDir(dirVal);
+    if(!norm) return false;
+    relativeStepDir = norm;
+    relativeMoveCount = 1;
+    isRelativeMove = true;
+    return true;
+  };
+  const handleAutoAvoidStep = (dirVal) => {
+    const autoAvoidTiming = Boolean(window.autoAvoidTiming);
+    if(!autoAvoidTiming || !dirVal) return;
+    const isVertical = (dirVal === DIR_UP || dirVal === DIR_DOWN);
+    const isHorizontal = (dirVal === DIR_LEFT || dirVal === DIR_RIGHT);
+    const row = cursorPos.row;
+    const col = cursorPos.col;
+    const hitTimingRow = isVertical && timingRowIndex > 0 && row === timingRowIndex;
+    const hitTimingCol = isHorizontal && timingColIndex > 0 && col === timingColIndex;
+    if(!hitTimingRow && !hitTimingCol) return;
+    const rowDelta = isVertical ? ((dirVal === DIR_DOWN) ? 1 : -1) : 0;
+    const colDelta = isHorizontal ? ((dirVal === DIR_RIGHT) ? 1 : -1) : 0;
+    const nextRow = row + rowDelta;
+    const nextCol = col + colDelta;
+    if(nextRow < 1 || nextRow > BOARD_ROWS || nextCol < 1 || nextCol > BOARD_COLS) return;
+    const movedAgain = updateCursor(nextRow, nextCol, finalDir);
+    if(movedAgain){
+      targetRow = nextRow;
+      targetCol = nextCol;
+    }
+  };
+  const performRelativeMoves = () => {
+    if(!isRelativeMove){
+      return true;
+    }
+    if(relativeMoveCount <= 0){
+      targetRow = cursorPos.row;
+      targetCol = cursorPos.col;
+      return true;
+    }
+    for(let i = 0; i < relativeMoveCount; i++){
+      targetRow = cursorPos.row;
+      targetCol = cursorPos.col;
+      if(!stepOnce(relativeStepDir)){
+        return false;
+      }
+      if(targetRow < 1 || targetRow > BOARD_ROWS || targetCol < 1 || targetCol > BOARD_COLS){
+        lastMoveBlocked = true;
+        return false;
+      }
+      const ok = updateCursor(targetRow, targetCol, finalDir);
+      if(!ok){
+        lastMoveBlocked = true;
+        return false;
+      }
+      handleAutoAvoidStep(relativeStepDir);
+    }
+    targetRow = cursorPos.row;
+    targetCol = cursorPos.col;
+    return true;
+  };
 
   if(args.length === 0){
     recordRelativeMove("front");
-    stepOnce(cursorPos.dir);
+    scheduleRelativeMove(cursorPos.dir);
   }else if(args.length === 1){
     const v = args[0];
+    if(typeof v === "number" && Number.isFinite(v)){
+      return false;
+    }
     if(typeof v === "string"){
       const aliasCoord = resolveCoordinateAlias(v);
-        if(aliasCoord){
-          targetRow = aliasCoord.row;
-          targetCol = aliasCoord.col;
+      if(aliasCoord){
+        targetRow = aliasCoord.row;
+        targetCol = aliasCoord.col;
+        recordStraightMove();
+      }else{
+        const parsed = parseCellRef(v);
+        if(parsed){
+          targetRow = parsed.row;
+          targetCol = parsed.col;
           recordStraightMove();
         }else{
-          const parsed = parseCellRef(v);
-          if(parsed){
-            targetRow = parsed.row;
-            targetCol = parsed.col;
-            recordStraightMove();
-          }else{
           const lower = v.toLowerCase();
           if(lower === DIR_FRONT){
             recordRelativeMove("front");
-            stepOnce(cursorPos.dir);
+            scheduleRelativeMove(cursorPos.dir);
           }else if(lower === DIR_BACK){
             recordRelativeMove("back");
-            stepOnce(rotateDir(cursorPos.dir, 2));
+            scheduleRelativeMove(rotateDir(cursorPos.dir, 2));
           }else{
             const dirAbs = normalizeDir(v);
-            if(!dirAbs) return;
+            if(!dirAbs) return false;
             recordRelativeMove(dirAbs);
-            stepOnce(dirAbs);
+            scheduleRelativeMove(dirAbs);
           }
         }
       }
     }else{
       const dirAbs = normalizeDir(v);
-      if(!dirAbs) return;
+      if(!dirAbs) return false;
       recordRelativeMove(dirAbs);
-      stepOnce(dirAbs);
+      scheduleRelativeMove(dirAbs);
     }
   }else if(args.length >= 2){
     const [first, second, third] = args;
@@ -414,17 +479,50 @@ function moveCursor(...args){
         targetRow = aliasCoord.row;
         targetCol = aliasCoord.col;
         recordStraightMove();
+        if(third !== undefined){
+          maybeDir(third);
+        }else if(typeof second === "string"){
+          maybeDir(second);
+        }
       }else{
         const parsed = parseCellRef(first);
-        if(!parsed) return;
-        targetRow = parsed.row;
-        targetCol = parsed.col;
-        recordStraightMove();
-      }
-      if(third !== undefined){
-        maybeDir(third);
-      }else if(typeof second === "string"){
-        maybeDir(second);
+        if(parsed){
+          targetRow = parsed.row;
+          targetCol = parsed.col;
+          recordStraightMove();
+          if(third !== undefined){
+            maybeDir(third);
+          }else if(typeof second === "string"){
+            maybeDir(second);
+          }
+        }else{
+          const dirAbs = normalizeDir(first);
+          if(!dirAbs) return false;
+          if(typeof second === "number" && Number.isFinite(second)){
+            return false;
+          }
+          if(typeof third === "number" && Number.isFinite(third)){
+            return false;
+          }
+          let orientation = null;
+          if(typeof second === "string"){
+            const normalized = normalizeDir(second);
+            if(normalized){
+              orientation = second;
+            }
+          }
+          if(!orientation && typeof third === "string"){
+            const normalized = normalizeDir(third);
+            if(normalized){
+              orientation = third;
+            }
+          }
+          if(!scheduleRelativeMove(dirAbs)) return false;
+          recordRelativeMove(dirAbs);
+          if(orientation){
+            maybeDir(orientation);
+          }
+        }
       }
     }else if(Number.isFinite(first) && Number.isFinite(second)){
       targetRow = first;
@@ -434,18 +532,24 @@ function moveCursor(...args){
         maybeDir(third);
       }
     }else{
-      return;
+      return false;
     }
   }
 
-  if(targetRow < 1 || targetRow > BOARD_ROWS || targetCol < 1 || targetCol > BOARD_COLS){
-    lastMoveBlocked = true;
-    return false;
-  }
-  const ok = updateCursor(targetRow, targetCol, finalDir);
-  if(!ok){
-    lastMoveBlocked = true;
-    return false;
+  if(isRelativeMove){
+    if(!performRelativeMoves()){
+      return false;
+    }
+  }else{
+    if(targetRow < 1 || targetRow > BOARD_ROWS || targetCol < 1 || targetCol > BOARD_COLS){
+      lastMoveBlocked = true;
+      return false;
+    }
+    const ok = updateCursor(targetRow, targetCol, finalDir);
+    if(!ok){
+      lastMoveBlocked = true;
+      return false;
+    }
   }
   if(logLabel && logPositionOnly){
     const payload = {
@@ -455,10 +559,10 @@ function moveCursor(...args){
     };
     if(typeof window.logEvent === "function"){
       const cellRef = cellRefFromRowCol(targetRow, targetCol);
-      const refLabel = cellRef ? `@${cellRef}` : "";
-      const coordsLabel = `(${targetRow}, ${targetCol})`;
+      const refLabel = cellRef ? ("@" + cellRef) : "";
+      const coordsLabel = "(" + targetRow + ", " + targetCol + ")";
       const orientationLabel = getOrientationLabel(finalDir);
-      const description = `${logLabel}${refLabel}${coordsLabel} / ${orientationLabel}`;
+      const description = logLabel + refLabel + coordsLabel + " / " + orientationLabel;
       window.logEvent("moveCursor", JSON.stringify(payload), description);
     }
   }
@@ -620,9 +724,9 @@ function colorsForKind(kind){
 
 function buildBitSequence(){
   if(!Array.isArray(window.patternBits) || window.patternBits.length === 0) return [];
-  const seq = [];
-  for(const v of window.patternBits){
-    const kind = (typeof window.bitKind === "function") ? window.bitKind(v) : Math.abs(v);
+const seq = [];
+for(const v of window.patternBits){
+  const kind = (typeof window.bitKind === "function") ? window.bitKind(v) : Math.abs(v);
     const isBlk = (typeof window.isBlackBit === "function") ? window.isBlackBit(v) : v > 0;
     const bit = isBlk ? 1 : 0;
     const color = (() => {
@@ -672,6 +776,13 @@ function getNextData(){
   const entry = dataSeq[dataSeqIndex++];
   if(!entry || typeof entry.kind !== "number" || typeof entry.bit !== "number") return null;
   return encodeBitPair(entry.kind, entry.bit);
+}
+
+function getNextDataKind(){
+  if(!Array.isArray(dataSeq) || dataSeqIndex >= dataSeq.length) return null;
+  const entry = dataSeq[dataSeqIndex];
+  if(!entry || typeof entry.kind !== "number") return null;
+  return entry.kind;
 }
 
 function reapplyCellColors(){
@@ -827,12 +938,11 @@ function putCell(encodedValue){
     val = getNextData();
     usedAuto = true;
   }
-  if(window.isFunctionalCell && window.isFunctionalCell()){
-    if(usedAuto && dataSeqIndex > 0) dataSeqIndex = Math.max(0, dataSeqIndex - 1);
-    return false;
-  }
-  if(window.isSkipZone && window.isSkipZone()){
-    if(usedAuto && dataSeqIndex > 0) dataSeqIndex = Math.max(0, dataSeqIndex - 1);
+  const skipExisting = Boolean(window.skipExistingCells);
+  if(skipExisting && typeof window.isEmpty === "function" && !window.isEmpty()){
+    if(usedAuto && dataSeqIndex > 0){
+      dataSeqIndex = Math.max(0, dataSeqIndex - 1);
+    }
     return false;
   }
   if(!Number.isFinite(val)) return false;
@@ -978,6 +1088,7 @@ window.resetData = resetData;
 window.isDataEnd = isDataEnd;
 window.hasMoreData = hasMoreData;
 window.getNextData = getNextData;
+window.getNextDataKind = getNextDataKind;
 window.resetLoopGuard = resetLoopGuard;
 window.canContinueLoop = canContinueLoop;
 window.renderFrameAndWait = pauseRunning;
@@ -1005,3 +1116,4 @@ window.u = DIR_UP;
 window.r = DIR_RIGHT;
 window.d = DIR_DOWN;
 window.l = DIR_LEFT;
+
