@@ -1,65 +1,56 @@
 # 外部契約ドキュメント
 
 ## A. `index.html` の `<script>` 読み込み順
-1. `script` `type="text/plain"` `id="codeSample1"`
-2. `script` `type="text/plain"` `id="codeSample2"`
-3. `script` `type="text/plain"` `id="codeSample3"`
-4. `script` `type="text/plain"` `id="codeSample4"`
-5. `script` `type="text/plain"` `id="codeSample5"`
-6. `script src="domain/qrcode.js"`
-7. `script src="domain/board.js"`
-8. `script src="domain/util.js"`
-9. `script src="domain/qr-params.js"`
-10. `script src="core/render-cycle.js"`
-11. `script src="ui/layout.js"`
-12. `script src="ui/debug.js"`
-13. `script src="state/url-state.js"`
-14. `script src="state/history-store.js"`
-15. `script src="io/script-parser.js"`
-16. `script src="ui/ui-controls.js"`
-17. `script src="state/app-state.js"`
-18. `script src="core/patterns/finder-pattern.js"`
-19. `script src="core/patterns/timing-pattern.js"`
-20. `script src="core/patterns/alignment-pattern.js"`
-21. `script src="core/patterns/dark-module-pattern.js"`
-22. `script src="core/patterns/format-pattern.js"`
-23. `script src="core/base-pattern-service.js"`
-24. `script src="core/data-encoding-service.js"`
-25. `script src="core/data-placement-service.js"`
-26. `script src="core/execution-coordinator-service.js"`
-27. `script src="core/qr-build-service.js"`
-28. `script src="core/execution-control.js"`
-29. `script src="ui/event-bindings.js"`
-30. `script src="app/step-control.js"`
-31. `script src="app/user-code-runner.js"`
-32. `script src="app/self-check.js"`
-33. `script src="app/main.js"`
-34. `script src="app/bootstrap.js"`
+1. `script src="domain/qrcode.js"`
+2. `script src="domain/board.js"`
+3. `script src="domain/util.js"`
+4. `script src="domain/qr-params.js"`
+5. `script src="core/render-cycle.js"`
+6. `script src="ui/layout.js"`
+7. `script src="ui/debug.js"`
+8. `script src="state/url-state.js"`
+9. `script src="state/history-store.js"`
+10. `script src="io/script-parser.js"`
+11. `script src="ui/ui-controls.js"`
+12. `script src="state/app-state.js"`
+13. `script src="core/patterns/finder-pattern.js"`
+14. `script src="core/patterns/timing-pattern.js"`
+15. `script src="core/patterns/alignment-pattern.js"`
+16. `script src="core/patterns/dark-module-pattern.js"`
+17. `script src="core/patterns/format-pattern.js"`
+18. `script src="core/base-pattern-service.js"`
+19. `script src="core/data-encoding-service.js"`
+20. `script src="core/data-placement-service.js"`
+21. `script src="core/execution-coordinator-service.js"`
+22. `script src="core/qr-build-service.js"`
+23. `script src="core/qr-verify-service.js"`
+24. `script src="core/execution-control.js"`
+25. `script src="ui/event-bindings.js"`
+26. `script src="app/step-control.js"`
+27. `script src="app/user-code-runner.js"`
+28. `script src="app/self-check.js"`
+29. `script src="app/main.js"`
+30. `script src="settings.js"`
+31. `script src="app/bootstrap.js"`
 
-## B. window に公開される API
-### B.1 起点は `app/main.js`
-- `window.__deferredWindowApi` には、UI 周りや描画機能などがまとめて登録されている。`app/bootstrap.js` が `publishWindowApi()` で `window` に展開する。
-- 公開名の一覧（現状確認できるもの）
-  - `applyMask`（現在は `callApplyMask` を経由し、マスク描画処理を提供）
-  - `drawQRCode`, `buildQRCode`, `drawDataPatterns`, `drawFunctionalPatterns`, `initializeQRCode`, `resetQRCode`, `resetCommand`, `stopCurrentRun`
-  - `drawFormatPatterns`, `drawFinderPatterns`, `drawAlignmentPatterns`, `drawDarkModulePatterns`, `drawTimingPatterns`
-  - `putFinderCells`, `putAlignmentCells`, `putTimingCells`, `putDarkModuleCells`, `putFormatCells`
-  - `syncViewToggles`, `toggleInputs`
-- 本ドキュメントでは上記が外部契約とみなし、由来は現行コードから確認できる範囲の説明にとどめる。
+### A.1 サンプルコードの定義
+- `settings.js` の `defaults.codeSamples` に並べた文字列だけサンプルボタンが `code-debug-toolbar` に追加されます。
 
-## C. URL パラメータ（`state/url-state.js`）
-1. `d` … `#txtInput` に入力されたデータ（空は `_`）で、`defaultDataValue` と異なるときにクエリに含まれる。`encodeDataParamValue`/`decodeDataParamValue` でエスケープ処理。
-2. `v` … 表示系トグル `toggleCursor`/`toggleGuide`/`toggleGrid`/`toggleEmpty`/`toggleColor`/`toggleDebugValues`/`stepMode`/`stepSkipFunctions` を並べたフラグ文字列。`defaultFlagString` に一致するならクエリから省略。
-3. `g` … デバッグパネル表示。`applyDebugFromParam()` が `debugPanel` を開閉し、既定値と異なるときのみ `g=1`/`g=0` を出力。
-4. `p` … `dataPatternPanel` の `open` 属性。真偽は `stringifyBool` によって生成される。初期状態は `false`。
-5. `s` … ステップモード。`parseCombinedStepParam()` で `enabled`/`speed`/`skipFunctions` に分解。`buildCombinedStepParamValue()` はスキップOFFで `0`、ON で `speed+1`、かつスキップOFFで `+1000` を付与。
-6. `h` … 履歴パネルの表示。`historyController.setHistoryVisibility()` を通じてコントロールし、`h=1/true` で表示、`h=0/false` で非表示。
-7. `m` … サンプル表示。`applySampleParam()` で `.code-panel` に `show-samples` クラスをトグル。
+## B. window へ公開する API
+### B.1 実装 `app/main.js`
+- `window.__deferredWindowApi` 経由で `applyMask` 〜 `buildQRCode`/`draw*` 系を公開し、`publishWindowApi()` で `window` にコピーされます。
+- `putFinderCells`/`putAlignmentCells`/`putTimingCells`/`putDarkModuleCells`/`putFormatCells` も同様。
+- `syncViewToggles` や `toggleInputs` も公開され、UI 側から状態を同期できるようになっています。
+- `app/bootstrap.js` が `runMainApp` を起動し、必要な依存（`layoutUI`, `urlState`, `debugUI`, `settings`）を渡します。
 
-補足: `applyUrlControlStates()` は `PARAM_KEYS` を使ってキー名を集中管理するため、更新の際はそちらも併せて調整する。
+## C. URL で指定できる制御パラメータ
+1. `d`：`#txtInput` の値を `encodeDataParamValue`/`decodeDataParamValue` で圧縮・展開します。
+2. `v`：`toggleCursor` 〜 `stepSkipFunctions` を `applyUrlControlStates` で切り替えるフラグ文字列です。
+3. `g`：`applyDebugFromParam` でデバッグパネルの表示をオン／オフします。
+4. `p`：`dataPatternPanel.open` の状態を `stringifyBool` で URL パラメータに保存／復元します。
+5. `s`：`stepMode`/`stepSpeed`/`stepSkipFunctions` を `buildCombinedStepParamValue`/`parseCombinedStepParam` で１つの値にまとめたものです。
+6. `h`：`historyController.setHistoryVisibility()` を通じて履歴パネル表示を切り替えます。
+7. `m`：`.code-panel` の `show-samples` クラスを付けることでサンプル一覧表示を制御します。
 
-## D. 手動動作確認チェックリスト
-- docs/contracts.md の差分以外にファイル変更がないことを確認
-- 通常起動で UI が表示され、エラーが発生しないこと
-- QR 生成／リセット／ステップ／トグル操作／履歴表示／URL 初期化が従来どおり動くこと
-- 旧 API や legacy ファイルを参照する箇所が残っていないこと
+## D. 契約補足
+- このファイルは UI との契約をまとめたもので、`index.html` の `<script>` 順序や `settings.js` の構造を変更したらあわせて更新してください。

@@ -1374,30 +1374,43 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     });
   }
   historyController.pushHistorySnapshot("初期状態");
-  const sampleButtons = document.querySelectorAll(".code-debug-btn");
-  sampleButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const sampleId = btn.dataset.sample;
-      const template = sampleId ? document.getElementById(sampleId) : null;
-      if(!template) return;
-      const raw = template.textContent || "";
-      const lines = raw.replace(/\r/g, "").split("\n");
-      while(lines.length && lines[0].trim() === ""){
-        lines.shift();
-      }
-      while(lines.length && lines[lines.length - 1].trim() === ""){
-        lines.pop();
-      }
-      const normalized = lines.join("\n");
-      if(userCodeInput){
-        userCodeInput.value = normalized;
-        userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
-        userCodeInput.scrollTop = 0;
-        userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
-        historyController.commitPendingHistory("サンプル");
-      }
+  const normalizeSampleText = (raw) => {
+    const source = typeof raw === "string" ? raw : "";
+    const lines = source.replace(/\r/g, "").split("\n");
+    while(lines.length && lines[0].trim() === ""){
+      lines.shift();
+    }
+    while(lines.length && lines[lines.length - 1].trim() === ""){
+      lines.pop();
+    }
+    return lines.join("\n");
+  };
+  const applySampleCode = (code) => {
+    const normalized = normalizeSampleText(code);
+    if(!userCodeInput) return;
+    userCodeInput.value = normalized;
+    userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
+    userCodeInput.scrollTop = 0;
+    userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+    historyController.commitPendingHistory("サンプル");
+  };
+  const sampleToolbar = document.getElementById("codeSampleToolbar")
+    || document.querySelector(".code-debug-toolbar");
+  const configuredSamples = Array.isArray(configDefaults.codeSamples) ? configDefaults.codeSamples : [];
+  if(sampleToolbar && configuredSamples.length > 0){
+    sampleToolbar.innerHTML = "";
+    configuredSamples.forEach((sample, index) => {
+      const label = (typeof sample.label === "string") ? sample.label : String(index + 1);
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "code-debug-btn";
+      button.textContent = label;
+      button.addEventListener("click", () => {
+        applySampleCode(sample.code);
+      });
+      sampleToolbar.append(button);
     });
-  });
+  }
   if(btnPruneHistory){
     btnPruneHistory.addEventListener("click", historyController.pruneHistoryEntries);
   }
