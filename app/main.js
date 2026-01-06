@@ -225,6 +225,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     SAMPLES: SAMPLES_PARAM_KEY = "m",
     PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY = "p",
     SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY = "x",
+    AUTO_AVOID_TIMING: TIMING_AUTO_PARAM_KEY = "t",
   } = PARAM_KEYS;
   const initialDebugParamPresent = urlParams.has(DEBUG_PARAM_KEY);
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
@@ -246,6 +247,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const defaultSkipExistingCells = (typeof configDefaults.skipExistingCells === "boolean")
     ? configDefaults.skipExistingCells
     : false;
+  const defaultAutoAvoidTiming = (typeof configDefaults.autoAvoidTiming === "boolean")
+    ? configDefaults.autoAvoidTiming
+    : false;
   const skipExistingFromParam = urlParams.has(SKIP_EXISTING_PARAM_KEY)
     ? urlState.stringifyBool(urlParams.get(SKIP_EXISTING_PARAM_KEY))
     : null;
@@ -253,6 +257,13 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     ? skipExistingFromParam
     : defaultSkipExistingCells;
   window.skipExistingCells = skipExistingCells;
+  const autoAvoidTimingFromParam = urlParams.has(TIMING_AUTO_PARAM_KEY)
+    ? urlState.stringifyBool(urlParams.get(TIMING_AUTO_PARAM_KEY))
+    : null;
+  const autoAvoidTiming = (autoAvoidTimingFromParam !== null)
+    ? autoAvoidTimingFromParam
+    : defaultAutoAvoidTiming;
+  window.autoAvoidTiming = autoAvoidTiming;
   const ensureUserCodeCaretVisible = () => {
     if(!userCodeInput) return;
     const pos = typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : 0;
@@ -1523,6 +1534,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         defaultStepSpeed,
         skipExistingCells,
         defaultSkipExistingCells,
+        autoAvoidTiming,
+        defaultAutoAvoidTiming,
         initialDebugParamPresent,
         codePanel,
       });

@@ -318,9 +318,11 @@ function moveCursor(...args){
   let finalDir = cursorPos.dir;
   let logLabel = null;
   let logPositionOnly = false;
+  let relativeDir = null;
   const stepOnce = (dirVal) => {
     const norm = normalizeDir(dirVal);
     if(!norm) return false;
+    relativeDir = norm;
     if(norm === DIR_UP){
       targetRow -= 1;
     }else if(norm === DIR_RIGHT){
@@ -446,6 +448,30 @@ function moveCursor(...args){
   if(!ok){
     lastMoveBlocked = true;
     return false;
+  }
+  const autoAvoidTiming = Boolean(window.autoAvoidTiming);
+  if(autoAvoidTiming && relativeDir){
+    const isVertical = (relativeDir === DIR_UP || relativeDir === DIR_DOWN);
+    const isHorizontal = (relativeDir === DIR_LEFT || relativeDir === DIR_RIGHT);
+    const hitTimingRow = isVertical && timingRowIndex > 0 && targetRow === timingRowIndex;
+    const hitTimingCol = isHorizontal && timingColIndex > 0 && targetCol === timingColIndex;
+    if(hitTimingRow || hitTimingCol){
+      const rowDelta = isVertical
+        ? (relativeDir === DIR_DOWN ? 1 : -1)
+        : 0;
+      const colDelta = isHorizontal
+        ? (relativeDir === DIR_RIGHT ? 1 : -1)
+        : 0;
+      const nextRow = targetRow + rowDelta;
+      const nextCol = targetCol + colDelta;
+      if(nextRow >= 1 && nextRow <= BOARD_ROWS && nextCol >= 1 && nextCol <= BOARD_COLS){
+        const movedAgain = updateCursor(nextRow, nextCol, finalDir);
+        if(movedAgain){
+          targetRow = nextRow;
+          targetCol = nextCol;
+        }
+      }
+    }
   }
   if(logLabel && logPositionOnly){
     const payload = {

@@ -11,6 +11,7 @@
   const DATA_EMPTY_TOKEN = "_";
   const HISTORY_PARAM_KEY = "h";
   const SAMPLES_PARAM_KEY = "m";
+  const TIMING_AUTO_PARAM_KEY = "t";
   const SKIP_EXISTING_PARAM_KEY = "x";
 
   const lookupParam = (primary) => {
@@ -254,6 +255,8 @@
     defaultStepSpeed = "",
     skipExistingCells,
     defaultSkipExistingCells = false,
+    autoAvoidTiming,
+    defaultAutoAvoidTiming = false,
     initialDebugParamPresent = false,
     codePanel,
   } = {}) => {
@@ -317,6 +320,11 @@
     if(normalizedSkipExisting !== normalizedSkipDefault){
       stateParams.set(SKIP_EXISTING_PARAM_KEY, normalizedSkipExisting ? "1" : "0");
     }
+    const normalizedAutoAvoid = Boolean(autoAvoidTiming);
+    const normalizedAutoDefault = Boolean(defaultAutoAvoidTiming);
+    if(normalizedAutoAvoid !== normalizedAutoDefault){
+      stateParams.set(TIMING_AUTO_PARAM_KEY, normalizedAutoAvoid ? "1" : "0");
+    }
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
     const query = stateParams.toString();
     return query ? `${baseUrl}?${query}` : baseUrl;
@@ -344,6 +352,7 @@
       DATA: DATA_PARAM_KEY,
       HISTORY: HISTORY_PARAM_KEY,
       SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY,
+      TIMING_AUTO: TIMING_AUTO_PARAM_KEY,
     },
   };
 
