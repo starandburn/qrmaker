@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>プログラミング体験教材 / QRコード作成</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="app-loading">
+
+<header class="page-head">
+  <div class="head-flex">
+    <div class="title-row">
+      <img class="title-icon" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAAZAQAAAADskrjOAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAIGNIUk0AAHolAACAgwAA+f8AAIDpAAB1MAAA6mAAADqYAAAXb5JfxUYAAACKSURBVHjaAH0Agv8AATRAfwB9Qt9/AEUUUX8ARYxRfwBFXdF/AH0+X38AAVVAfwD/EP//ANxLnf8Ac84ffwAAO0R/AINo+/8ATfMefwDHo95/AHmnmn8Ah/Ku/wBVKwL/AP8Kcv8AAT5SfwB9SXN/AEUxBn8ARYLz/wBFZWV/AH1wdv8AAWUWfwMAYckvc7Da2TIAAAAASUVORK5CYII=" alt="QRコードアイコン">
+      <div class="title-text">
+        <p class="subtitle">プログラミング体験学習</p>
+        <p class="title">
+          QRコードを作成してみよう
+          <span id="appVersionInfo" class="header-version" aria-label="アプリバージョン"></span>
+        </p>
+      </div>
+    </div>
+    <div class="school-block">
+      <a class="school-link" href="https://www.nkk.ac.jp/" target="_blank" rel="noopener noreferrer">
+      <img class="school-logo" src="data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhLS0gR2VuZXJhdG9yOiBBZG9iZSBJbGx1c3RyYXRvciAxNS4xLjAsIFNWRyBFeHBvcnQgUGx1Zy1JbiAgLS0+DQo8IURPQ1RZUEUgc3ZnIFBVQkxJQyAiLS8vVzNDLy9EVEQgU1ZHIDEuMS8vRU4iICJodHRwOi8vd3d3LnczLm9yZy9HcmFwaGljcy9TVkcvMS4xL0RURC9zdmcxMS5kdGQiIFsNCgk8IUVOVElUWSBuc19mbG93cyAiaHR0cDovL25zLmFkb2JlLmNvbS9GbG93cy8xLjAvIj4NCl0+DQo8c3ZnIHZlcnNpb249IjEuMSINCgkgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgeG1sbnM6YT0iaHR0cDovL25zLmFkb2JlLmNvbS9BZG9iZVNWR1ZpZXdlckV4dGVuc2lvbnMvMy4wLyINCgkgeD0iMHB4IiB5PSIwcHgiIHdpZHRoPSIxMDBweCIgaGVpZ2h0PSIxMTNweCIgdmlld0JveD0iMCAwIDEwMCAxMTMiIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDEwMCAxMTMiIHhtbDpzcGFjZT0icHJlc2VydmUiPg0KPGRlZnM+DQo8L2RlZnM+DQo8cGF0aCBmaWxsPSIjMDBBMEU5IiBkPSJNOTQuNSwxMDkuNEwxMy44LDI4Ljd2ODQuN0gwVjMuM0MwLDAuNCwzLjYtMS4xLDUuNiwxbDQ0LjQsNDQuNEw5NC41LDFjMi4xLTIuMSw1LjYtMC42LDUuNiwyLjN2MTAzLjgNCglDMTAwLjIsMTEwLDk2LjYsMTExLjUsOTQuNSwxMDkuNCBNNTkuOSw1NS4ybDI2LjUsMjYuNXYtNTNMNTkuOSw1NS4yeiIvPg0KPC9zdmc+DQo=" alt="学校ロゴ">
+      <div class="school-text">
+        <p class="school-ja">日本国際工科専門学校</p>
+        <p class="school-en">Japan International Institute of Cybernetics</p>
+      </div>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main class="layout">
+  <section class="left-col">
+    <div class="panel pastel-1" id="dataPanel">
+    <div class="row" id="dataInputArea">
+      <div class="data-input-header">
+        <div class="label">QRコードにしたいデータ（半角英数字で32文字まで）</div>
+        <div class="data-status" id="dataInputStatus" role="status" aria-live="polite"></div>
+      </div>
+      <div class="input-row">
+        <input id="txtInput" type="text" value="Hello, World!" maxlength="32" inputmode="latin" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <div class="input-actions">
+          <div class="sample-dropdown" id="sampleDropdown">
+            <button id="btnSampleDropdown" type="button" aria-haspopup="listbox" aria-expanded="false">▼</button>
+            <ul id="sampleDropdownMenu" role="listbox" tabindex="-1">
+              <!-- options populated from settings.js -->
+            </ul>
+          </div>
+          <button id="btnClear" type="button">クリア</button>
+        </div>
+      </div>
+    </div>
+
+      <details class="pattern-panel" id="dataPatternPanel">
+        <summary class="pattern-summary">
+          <span class="summary-title"><span id="patternToggleText">コードパターンを表示</span></span>
+          <a href="#" id="asciiLink" class="ascii-link">文字とパターンの対応表</a>
+        </summary>
+        <div id="patternBox" class="pattern-box">
+          <div class="pattern-section section-a">
+            <div class="pattern-title">
+              <span class="pattern-title-main">Ａ. 構成情報のコードパターン</span>
+              <span class="pattern-title-note">（種別は4のバイトモード固定）</span>
+            </div>
+            <div id="patternRowA" class="pattern-row"></div>
+          </div>
+          <div class="pattern-section section-b">
+            <div class="pattern-title">
+              <span class="pattern-title-main">Ｂ. 各文字に対応したコードパターン</span>
+              <span class="pattern-title-note">（1文字8桁・終端のみ4桁、不足分は固定パターンで埋める）</span>
+            </div>
+            <div id="patternRowB" class="pattern-row"></div>
+          </div>
+          <div class="pattern-section section-c">
+            <div class="pattern-title">
+              <span class="pattern-title-main">Ｃ. AとBに一定の計算をして作ったコードパターン</span>
+              <span class="pattern-title-note">（読み取りミスを減らすためのしくみ）</span>
+            </div>
+            <div id="patternRowC" class="pattern-row"></div>
+          </div>
+        </div>
+      </details>
+    </div>
+
+    <div class="panel pastel-3 code-panel">
+      <div class="panel-title-row">
+        <div class="panel-title">QRコードを作成するプログラム</div>
+        <div class="code-debug-toolbar" id="codeSampleToolbar"></div>
+        <div class="code-action-toolbar">
+          <button id="btnCopyCode" type="button" class="code-action-btn">コピー</button>
+          <button id="btnPasteCode" type="button" class="code-action-btn">貼り付け</button>
+          <button id="btnClearCode" type="button" class="code-action-btn">クリア</button>
+          <button id="btnToggleHistory" type="button" class="code-action-btn code-history-toggle" aria-pressed="false">履歴</button>
+        </div>
+      </div>
+      <div class="code-columns">
+        <div class="code-editor-pane code-editor-main">
+          <textarea id="userCode" spellcheck="false" autocorrect="off" autocomplete="off" autocapitalize="off">
+</textarea>
+        </div>
+        <div class="code-editor-pane code-editor-parsed">
+          <textarea id="userCodeParsed" class="parsed-code" spellcheck="false" readonly></textarea>
+        </div>
+        <div class="code-history-pane" id="codeHistoryPane">
+          <div class="history-header">
+            <span>履歴</span>
+            <div class="history-header-actions">
+              <span id="historyCount" class="history-count" aria-live="polite">0</span>
+              <button id="btnPruneHistory" type="button" class="history-action-btn">整理</button>
+            </div>
+          </div>
+          <ul id="codeHistoryList" class="history-list" role="list"></ul>
+        </div>
+      </div>
+    </div>
+    <div class="panel pastel-4 debug-panel" id="debugPanel">
+      <div id="debugLog" class="debug-log" role="listbox" aria-live="polite" aria-label="ログ"></div>
+    </div>
+  </section>
+
+  <section class="right-col">
+    <div class="panel pastel-5 control-panel">
+      <div class="qr-head">
+        <button id="btnInit" type="button">リセット</button>
+        <button id="btnGenerate" type="button">作成実行</button>
+        <div class="step-controls">
+        <div class="step-toggle-row">
+          <label class="step-mode"><input type="checkbox" id="stepMode"> ステップ実行</label>
+          <label class="step-skip"><input type="checkbox" id="stepSkipFunctions" checked> データ部のみ</label>
+        </div>
+        <label class="step-speed"><span>速</span><input type="range" id="stepSpeed" min="0" max="120" value="60" disabled><span>遅</span></label>
+        </div>
+      </div>
+      <div class="execution-status status-stopped" id="executionStatus" role="status" aria-live="polite">停止中</div>
+    </div>
+
+    <div class="panel qr-panel view-panel">
+      <div class="qr-controls">
+        <label><input type="checkbox" id="toggleCursor" checked> カーソル</label>
+        <label><input type="checkbox" id="toggleGuide" checked> ガイド</label>
+        <label><input type="checkbox" id="toggleGrid" checked> グリッド</label>
+        <label><input type="checkbox" id="toggleEmpty" checked> 未配置セル</label>
+        <label><input type="checkbox" id="toggleColor" checked> 色指定</label>
+        <label class="debug-only" style="display:none;"><input type="checkbox" id="toggleDebugValues" checked> セルの値</label>
+        <button type="button" id="btnSelectAllToggles">全選択</button>
+        <button type="button" id="btnClearAllToggles">全解除</button>
+      </div>
+      <div class="view-area">
+        <div class="qr-stage">
+          <div class="square">
+            <div class="qr-board">
+              <div class="guide-corner">A1</div>
+              <div class="guide-col">
+                <span>A</span><span>B</span><span>C</span><span>D</span><span>E</span>
+                <span>F</span><span>G</span><span>H</span><span>I</span><span>J</span>
+                <span>K</span><span>L</span><span>M</span><span>N</span><span>O</span>
+                <span>P</span><span>Q</span><span>R</span><span>S</span><span>T</span>
+                <span>U</span><span>V</span><span>W</span><span>X</span><span>Y</span>
+              </div>
+              <div class="guide-row">
+                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+                <span>6</span><span>7</span><span>8</span><span>9</span><span>10</span>
+                <span>11</span><span>12</span><span>13</span><span>14</span><span>15</span>
+                <span>16</span><span>17</span><span>18</span><span>19</span><span>20</span>
+                <span>21</span><span>22</span><span>23</span><span>24</span><span>25</span>
+              </div>
+              <div class="grid-area">
+                <div class="qr-cells"></div>
+                <div class="qr-cursor"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div id="asciiModal" class="ascii-modal hidden" role="dialog" aria-modal="true">
+  <div class="ascii-modal-content">
+    <div class="ascii-modal-head">
+      <span>文字とパターンの対応表</span>
+      <button type="button" id="asciiClose" class="ascii-modal-close">閉じる</button>
+    </div>
+    <div class="ascii-modal-body">
+      <div id="asciiTable" class="ascii-table"></div>
+    </div>
+  </div>
+</div>
+
+<footer class="page-footer">
+<p>&copy; 2025 - <span id="currentYear">????</span> Japan International Institute of Cybernetics. All Rights Reserved.</p>
+  <p>QRコードは<a href="https://www.denso-wave.com/ja/system/qr/" target="_blank" rel="noopener noreferrer">株式会社デンソーウェーブ</a>の登録商標です。</p>
+</footer>
+
+<script src="domain/qrcode.js"></script>
+<script src="domain/board.js"></script>
+<script src="domain/util.js"></script>
+<script src="domain/qr-params.js"></script>
+<script src="core/render-cycle.js"></script>
+<script src="ui/layout.js"></script>
+<script src="ui/debug.js"></script>
+<script src="state/url-state.js"></script>
+<script src="state/history-store.js"></script>
+<script src="io/script-parser.js"></script>
+<script src="ui/ui-controls.js"></script>
+<script src="state/app-state.js"></script>
+<script src="core/patterns/finder-pattern.js"></script>
+<script src="core/patterns/timing-pattern.js"></script>
+<script src="core/patterns/alignment-pattern.js"></script>
+<script src="core/patterns/dark-module-pattern.js"></script>
+<script src="core/patterns/format-pattern.js"></script>
+<script src="core/base-pattern-service.js"></script>
+<script src="core/data-encoding-service.js"></script>
+<script src="core/data-placement-service.js"></script>
+<script src="core/execution-coordinator-service.js"></script>
+<script src="core/qr-build-service.js"></script>
+<script src="core/qr-verify-service.js"></script>
+<script src="core/execution-control.js"></script>
+<script src="ui/event-bindings.js"></script>
+<script src="app/step-control.js"></script>
+<script src="app/user-code-runner.js"></script>
+<script src="app/self-check.js"></script>
+<script src="app/main.js"></script>
+<script src="settings.js"></script>
+<script src="version.js"></script>
+<script src="app/bootstrap.js"></script>
+</body>
+</html>
