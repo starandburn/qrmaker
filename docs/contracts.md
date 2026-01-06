@@ -42,6 +42,9 @@
 ### A.3 バージョン表示
 - `version.js` で定義した `window.appVersionString` をヘッダー内 `.title` の横に置いた `#appVersionInfo` に表示します。minor/revision 運用は `node scripts/bump-revision.js`。
 
+### A.4 データ描画と既存セル制御
+- `settings.js` の `defaults.skipExistingCells` を `true` にすると、すでに値が入っているマスには `put` 系の命令を書き込みません（デフォルト `false`＝常に上書き）。教材側で空きチェックしてから命令を出すときはこちらを設定してください。
+- URL パラメータ `x` は `true`/`1` で配置済セルを避け、`false`/`0` で常に上書きを許可します。
 ## B. window へ公開する API
 ### B.1 実装 `app/main.js`
 - `window.__deferredWindowApi` 経由で `applyMask` 〜 `buildQRCode`/`draw*` 系を公開し、`publishWindowApi()` で `window` にコピーされます。
@@ -51,12 +54,13 @@
 
 ## C. URL で指定できる制御パラメータ
 1. `d`：`#txtInput` の値を `encodeDataParamValue`/`decodeDataParamValue` で圧縮・展開します。
-2. `v`：`toggleCursor` 〜 `stepSkipFunctions` を `applyUrlControlStates` で切り替えるフラグ文字列です。
+2. `v`：`toggleCursor` や `stepSkipFunctions` を `applyUrlControlStates` で切り替えるためのフラグ文字列です。
 3. `g`：`applyDebugFromParam` でデバッグパネルの表示をオン／オフします。
 4. `p`：`dataPatternPanel.open` の状態を `stringifyBool` で URL パラメータに保存／復元します。
 5. `s`：`stepMode`/`stepSpeed`/`stepSkipFunctions` を `buildCombinedStepParamValue`/`parseCombinedStepParam` で１つの値にまとめたものです。
 6. `h`：`historyController.setHistoryVisibility()` を通じて履歴パネル表示を切り替えます。
 7. `m`：`.code-panel` の `show-samples` クラスを付けることでサンプル一覧表示を制御します。
+8. `x`：`skipExistingCells` のフラグで、`true`/`1` なら配置済セルを避け、`false`/`0` なら常に上書きを許可します。
 
 ## D. 契約補足
 - このファイルは UI との契約をまとめたもので、`index.html` の `<script>` 順序や `settings.js` の構造を変更したらあわせて更新してください。

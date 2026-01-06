@@ -11,6 +11,7 @@
   const DATA_EMPTY_TOKEN = "_";
   const HISTORY_PARAM_KEY = "h";
   const SAMPLES_PARAM_KEY = "m";
+  const SKIP_EXISTING_PARAM_KEY = "x";
 
   const lookupParam = (primary) => {
     if(primary && params.has(primary)) return params.get(primary);
@@ -251,6 +252,8 @@
     defaultStepMode = false,
     defaultStepSkipFunctions = false,
     defaultStepSpeed = "",
+    skipExistingCells,
+    defaultSkipExistingCells = false,
     initialDebugParamPresent = false,
     codePanel,
   } = {}) => {
@@ -309,6 +312,11 @@
     if(historyVisible !== Boolean(defaultHistoryVisible)){
       stateParams.set(HISTORY_PARAM_KEY, historyVisible ? "1" : "0");
     }
+    const normalizedSkipExisting = Boolean(skipExistingCells);
+    const normalizedSkipDefault = Boolean(defaultSkipExistingCells);
+    if(normalizedSkipExisting !== normalizedSkipDefault){
+      stateParams.set(SKIP_EXISTING_PARAM_KEY, normalizedSkipExisting ? "1" : "0");
+    }
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
     const query = stateParams.toString();
     return query ? `${baseUrl}?${query}` : baseUrl;
@@ -335,6 +343,7 @@
       SAMPLES: SAMPLES_PARAM_KEY,
       DATA: DATA_PARAM_KEY,
       HISTORY: HISTORY_PARAM_KEY,
+      SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY,
     },
   };
 

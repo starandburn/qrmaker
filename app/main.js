@@ -224,6 +224,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     DEBUG: DEBUG_PARAM_KEY = "g",
     SAMPLES: SAMPLES_PARAM_KEY = "m",
     PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY = "p",
+    SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY = "x",
   } = PARAM_KEYS;
   const initialDebugParamPresent = urlParams.has(DEBUG_PARAM_KEY);
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
@@ -242,6 +243,16 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     ? configDefaults.stepSkipFunctions
     : (stepSkipFunctions ? (typeof stepSkipFunctions.defaultChecked === "boolean" ? stepSkipFunctions.defaultChecked : Boolean(stepSkipFunctions.checked)) : false);
   const defaultStepSpeed = normalizedStepSpeedOverride ?? (stepSpeed ? (stepSpeed.defaultValue ?? stepSpeed.value ?? "") : "");
+  const defaultSkipExistingCells = (typeof configDefaults.skipExistingCells === "boolean")
+    ? configDefaults.skipExistingCells
+    : false;
+  const skipExistingFromParam = urlParams.has(SKIP_EXISTING_PARAM_KEY)
+    ? urlState.stringifyBool(urlParams.get(SKIP_EXISTING_PARAM_KEY))
+    : null;
+  const skipExistingCells = (skipExistingFromParam !== null)
+    ? skipExistingFromParam
+    : defaultSkipExistingCells;
+  window.skipExistingCells = skipExistingCells;
   const ensureUserCodeCaretVisible = () => {
     if(!userCodeInput) return;
     const pos = typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : 0;
@@ -1510,6 +1521,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         defaultStepMode,
         defaultStepSkipFunctions,
         defaultStepSpeed,
+        skipExistingCells,
+        defaultSkipExistingCells,
         initialDebugParamPresent,
         codePanel,
       });

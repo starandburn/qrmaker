@@ -7,6 +7,7 @@ window.appSettingsFromScript = {
     "debugVisible": false,
     "stepMode": false,
     "stepSkipFunctions": true,
+    "skipExistingCells": false,
     "stepSpeed": 60,
     "toggleFlags": {
       "toggleCursor": true,

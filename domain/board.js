@@ -827,12 +827,11 @@ function putCell(encodedValue){
     val = getNextData();
     usedAuto = true;
   }
-  if(window.isFunctionalCell && window.isFunctionalCell()){
-    if(usedAuto && dataSeqIndex > 0) dataSeqIndex = Math.max(0, dataSeqIndex - 1);
-    return false;
-  }
-  if(window.isSkipZone && window.isSkipZone()){
-    if(usedAuto && dataSeqIndex > 0) dataSeqIndex = Math.max(0, dataSeqIndex - 1);
+  const skipExisting = Boolean(window.skipExistingCells);
+  if(skipExisting && typeof window.isEmpty === "function" && !window.isEmpty()){
+    if(usedAuto && dataSeqIndex > 0){
+      dataSeqIndex = Math.max(0, dataSeqIndex - 1);
+    }
     return false;
   }
   if(!Number.isFinite(val)) return false;
