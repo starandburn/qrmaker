@@ -2,7 +2,7 @@
 /**
  * 実行環境を初期化し、UI/状態/描画APIの依存を束ねるメイン関数。
  */
-function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layoutUI || {}, debugUI = window.debugUI || {} } = {}){
+function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layoutUI || {}, debugUI = window.debugUI || {}, settings = {} } = {}){
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");
   const btnClearCode = document.getElementById("btnClearCode");
@@ -35,6 +35,42 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const toggleEmpty = document.getElementById("toggleEmpty");
   const toggleColor = document.getElementById("toggleColor");
   const txtInput = document.getElementById("txtInput");
+  const configDefaults = (settings && typeof settings === "object") ? settings.defaults || {} : {};
+  const flagOverrides = configDefaults.toggleFlags || {};
+  const toggleOverridePairs = [
+    { key: "toggleCursor", element: toggleCursor },
+    { key: "toggleGuide", element: toggleGuide },
+    { key: "toggleGrid", element: toggleGrid },
+    { key: "toggleEmpty", element: toggleEmpty },
+    { key: "toggleColor", element: toggleColor },
+    { key: "toggleDebugValues", element: toggleDebugValues },
+    { key: "stepMode", element: stepMode },
+    { key: "stepSkipFunctions", element: stepSkipFunctions },
+  ];
+  toggleOverridePairs.forEach(({ element, key }) => {
+    if(!element) return;
+    const overrideValue = flagOverrides[key];
+    if(typeof overrideValue !== "boolean") return;
+    element.checked = overrideValue;
+  });
+  const configuredQrData = (typeof configDefaults.qrData === "string") ? configDefaults.qrData : null;
+  if(txtInput && configuredQrData !== null){
+    txtInput.value = configuredQrData;
+  }
+  const DATA_DEFAULT_TEXT = configuredQrData !== null
+    ? configuredQrData
+    : (txtInput?.value ?? "Hello, World!");
+  if(userCodeInput){
+    userCodeInput.value = (typeof configDefaults.userCode === "string") ? configDefaults.userCode : "qrcode";
+  }
+  const rawStepSpeedOverride = configDefaults.stepSpeed;
+  const normalizedStepSpeedOverride = (typeof rawStepSpeedOverride === "number" || typeof rawStepSpeedOverride === "string")
+    ? String(rawStepSpeedOverride)
+    : null;
+  if(stepSpeed && normalizedStepSpeedOverride !== null){
+    stepSpeed.value = normalizedStepSpeedOverride;
+    stepSpeed.defaultValue = normalizedStepSpeedOverride;
+  }
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
   const store = (window.appState && typeof window.appState.getStore === "function")
     ? window.appState.getStore({ historyVisible: false, patternPanelOpen: false, debugVisible: false })
@@ -163,15 +199,25 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     HISTORY: HISTORY_PARAM_KEY = "h",
     DEBUG: DEBUG_PARAM_KEY = "g",
     SAMPLES: SAMPLES_PARAM_KEY = "m",
+    PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY = "p",
   } = PARAM_KEYS;
-  const DATA_DEFAULT_TEXT = "Hello, World!";
   const initialDebugParamPresent = urlParams.has(DEBUG_PARAM_KEY);
-  const defaultHistoryVisible = getHistoryVisible();
-  let defaultDebugVisible = isDebugVisible();
-  const defaultPatternOpen = getPatternPanelOpen();
-  const defaultStepMode = stepMode ? (typeof stepMode.defaultChecked === "boolean" ? stepMode.defaultChecked : Boolean(stepMode.checked)) : false;
-  const defaultStepSkipFunctions = stepSkipFunctions ? (typeof stepSkipFunctions.defaultChecked === "boolean" ? stepSkipFunctions.defaultChecked : Boolean(stepSkipFunctions.checked)) : false;
-  const defaultStepSpeed = stepSpeed ? (stepSpeed.defaultValue ?? stepSpeed.value ?? "") : "";
+  const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
+    ? configDefaults.historyVisible
+    : getHistoryVisible();
+  let defaultDebugVisible = (typeof configDefaults.debugVisible === "boolean")
+    ? configDefaults.debugVisible
+    : isDebugVisible();
+  const defaultPatternOpen = (typeof configDefaults.patternPanelOpen === "boolean")
+    ? configDefaults.patternPanelOpen
+    : getPatternPanelOpen();
+  const defaultStepMode = (typeof configDefaults.stepMode === "boolean")
+    ? configDefaults.stepMode
+    : (stepMode ? (typeof stepMode.defaultChecked === "boolean" ? stepMode.defaultChecked : Boolean(stepMode.checked)) : false);
+  const defaultStepSkipFunctions = (typeof configDefaults.stepSkipFunctions === "boolean")
+    ? configDefaults.stepSkipFunctions
+    : (stepSkipFunctions ? (typeof stepSkipFunctions.defaultChecked === "boolean" ? stepSkipFunctions.defaultChecked : Boolean(stepSkipFunctions.checked)) : false);
+  const defaultStepSpeed = normalizedStepSpeedOverride ?? (stepSpeed ? (stepSpeed.defaultValue ?? stepSpeed.value ?? "") : "");
   const ensureUserCodeCaretVisible = () => {
     if(!userCodeInput) return;
     const pos = typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : 0;
@@ -211,6 +257,15 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   applyDebugFromParam({ debugPanel: getDebugPanel(), setDebugVisible });
   applyHistoryFromParam({ codePanel, setHistoryVisibility });
   applySampleParam({ codePanel });
+  if(!urlParams.has(PATTERN_PANEL_PARAM_KEY)){
+    setPatternPanelOpen(defaultPatternOpen);
+  }
+  if(!urlParams.has(DEBUG_PARAM_KEY)){
+    setDebugVisible(defaultDebugVisible);
+  }
+  if(!urlParams.has(HISTORY_PARAM_KEY)){
+    setHistoryVisibility(defaultHistoryVisible);
+  }
   if(!btnGenerate || !btnInit) return;
   const executionStatusEl = document.getElementById("executionStatus");
   const executionStatusLabels = {
@@ -1317,9 +1372,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
       historyController.commitPendingHistory("修正");
     });
-  }
-  if(!urlParams.has(HISTORY_PARAM_KEY)){
-    setHistoryVisibility(false);
   }
   historyController.pushHistorySnapshot("初期状態");
   const sampleButtons = document.querySelectorAll(".code-debug-btn");

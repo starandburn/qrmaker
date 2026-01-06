@@ -44,9 +44,22 @@
   const layoutUI = window.layoutUI || {};
   const urlState = window.urlState || {};
   const debugUI = window.debugUI || {};
-  runMainApp({ layoutUI, urlState, debugUI });
-  publishWindowApi();
-  if(typeof window.__qrmakerSelfCheck === "function"){
-    window.__qrmakerSelfCheck();
-  }
+  const loadSettings = async () => {
+    if(typeof window.appSettingsFromScript === "object" && window.appSettingsFromScript !== null){
+      return window.appSettingsFromScript;
+    }
+    return null;
+  };
+
+  const startApp = (settings) => {
+    const safeSettings = (settings && typeof settings === "object") ? settings : {};
+    window.appSettings = safeSettings;
+    runMainApp({ layoutUI, urlState, debugUI, settings: safeSettings });
+    publishWindowApi();
+    if(typeof window.__qrmakerSelfCheck === "function"){
+      window.__qrmakerSelfCheck();
+    }
+  };
+
+  loadSettings().then(startApp).catch(() => startApp({}));
 })();
