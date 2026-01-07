@@ -40,19 +40,22 @@
         <div class="label">QRコードにしたいデータ（半角英数字で32文字まで）</div>
         <div class="data-status" id="dataInputStatus" role="status" aria-live="polite"></div>
       </div>
-      <div class="input-row">
-        <input id="txtInput" type="text" value="Hello, World!" maxlength="32" inputmode="latin" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false">
-        <div class="input-actions">
-          <div class="sample-dropdown" id="sampleDropdown">
-            <button id="btnSampleDropdown" type="button" aria-haspopup="listbox" aria-expanded="false">▼</button>
-            <ul id="sampleDropdownMenu" role="listbox" tabindex="-1">
-              <!-- options populated from settings.js -->
-            </ul>
+        <div class="input-row">
+          <input id="txtInput" type="text" value="Hello, World!" maxlength="32" inputmode="latin" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <div class="input-actions">
+            <div class="sample-dropdown" id="sampleDropdown">
+              <button id="btnSampleDropdown" type="button" aria-haspopup="listbox" aria-expanded="false">▼</button>
+              <ul id="sampleDropdownMenu" role="listbox" tabindex="-1">
+                <!-- options populated from settings.js -->
+              </ul>
+            </div>
+            <div class="input-meta">
+              <span class="data-count" id="dataCount"></span>
+              <button id="btnClear" type="button">クリア</button>
+            </div>
           </div>
-          <button id="btnClear" type="button">クリア</button>
         </div>
       </div>
-    </div>
 
       <details class="pattern-panel" id="dataPatternPanel">
         <summary class="pattern-summary">
@@ -63,7 +66,7 @@
           <div class="pattern-section section-a">
             <div class="pattern-title">
               <span class="pattern-title-main">Ａ. 構成情報のコードパターン</span>
-              <span class="pattern-title-note">（種別は4のバイトモード固定）</span>
+              <span class="pattern-title-note">（種別は半角英数字で固定）</span>
             </div>
             <div id="patternRowA" class="pattern-row"></div>
           </div>

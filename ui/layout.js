@@ -3,8 +3,8 @@ const CHAR_TERMINATE = "終端";
 const CHAR_COLON = "：";
 const CHAR_PADDING = "パディング";
 
-const TYPE_MODE = "モード";
-const TYPE_LENGTH = "長さ";
+const TYPE_MODE = "種別";
+const TYPE_LENGTH = "文字数";
 
 const CAPTION_CODEPATTERN = "コードパターン";
 const CAPTION_SHOWCODEPATTERN = `${CAPTION_CODEPATTERN}を表示`;
@@ -37,6 +37,7 @@ const toggleInputs = [toggleCursor, toggleGuide, toggleGrid, toggleEmpty, toggle
 window.toggleInputs = toggleInputs;
 const userCodeTextarea = document.getElementById("userCode");
 const dataInputStatus = document.getElementById("dataInputStatus");
+const dataCount = document.getElementById("dataCount");
 const sampleDropdown = document.getElementById("sampleDropdown");
 const sampleDropdownToggle = document.getElementById("btnSampleDropdown");
 const sampleDropdownMenu = document.getElementById("sampleDropdownMenu");
@@ -58,14 +59,16 @@ function updateDataStatus(){
     errors.push("全角文字が含まれています。");
   }
 
+  const baseText = `${length}/${DATA_INPUT_MAX_LENGTH}文字`;
+  if(dataCount){
+    dataCount.textContent = baseText;
+  }
   if(errors.length){
-    dataInputStatus.innerHTML = errors.map((msg) => `<span class="data-status-warning">${msg}</span>`).join("");
+    const errorText = errors.map((msg) => `<span class="data-status-warning">※${msg}</span>`).join("");
+    dataInputStatus.innerHTML = errorText;
     return;
   }
-
-  const remaining = Math.max(0, DATA_INPUT_MAX_LENGTH - length);
-  const baseText = `現在${length}文字（あと${remaining}文字）`;
-  dataInputStatus.textContent = baseText;
+  dataInputStatus.textContent = "";
 }
 
 function setInputValue(value){

@@ -373,7 +373,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   const DATA_PATTERN_STAGE_MESSAGES = {
     [window.BIT_INFO_MODE]: "種別パターンを描画中",
-    [window.BIT_INFO_LENGTH]: "長さパターンを描画中",
+    [window.BIT_INFO_LENGTH]: "文字数パターンを描画中",
     [window.BIT_INFO_CHAR]: "文字パターンを描画中",
     [window.BIT_INFO_TERMINATOR]: "終端パターンを描画中",
     [window.BIT_INFO_PADDING]: "パディングパターンを描画中",
