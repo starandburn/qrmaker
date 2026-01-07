@@ -451,6 +451,7 @@ window.fitSquare = fitSquare;
 
 function syncViewToggles(){
   window.logEvent("syncViewToggles", "", "表示トグルの状態を同期");
+  updateToggleButtons();
   const area = document.querySelector(".view-area");
   if(!area) return;
   area.classList.toggle("hide-guide", toggleGuide && !toggleGuide.checked);
@@ -458,7 +459,61 @@ function syncViewToggles(){
   area.classList.toggle("hide-empty", toggleEmpty && !toggleEmpty.checked);
   area.classList.toggle("hide-cursor", toggleCursor && !toggleCursor.checked);
 }
+function updateToggleButtons(){
+  if(!btnSelectAllToggles && !btnClearAllToggles) return;
+  const allChecked = toggleInputs.length > 0 && toggleInputs.every((el) => el.checked);
+  const allUnchecked = toggleInputs.length > 0 && toggleInputs.every((el) => !el.checked);
+  if(btnSelectAllToggles) btnSelectAllToggles.disabled = allChecked;
+  if(btnClearAllToggles) btnClearAllToggles.disabled = allUnchecked;
+}
+function closeViewToggleDrawer(){
+  const drawer = document.querySelector(".qr-controls-drawer");
+  if(!drawer) return;
+  drawer.classList.add("force-close");
+  if(document.activeElement instanceof HTMLElement){
+    document.activeElement.blur();
+  }
+  if(drawer.dataset.forceCloseListening === "1") return;
+  drawer.dataset.forceCloseListening = "1";
+  const onPointerMove = (ev) => {
+    if(!drawer.contains(ev.target)){
+      drawer.classList.remove("force-close");
+      delete drawer.dataset.forceCloseListening;
+      document.removeEventListener("pointermove", onPointerMove, true);
+    }
+  };
+  document.addEventListener("pointermove", onPointerMove, true);
+}
 window.syncViewToggles = syncViewToggles;
+updateToggleButtons();
+
+function canHandleToggleShortcut(active){
+  if(!active || !(active instanceof HTMLElement)) return true;
+  if(active.closest(".qr-controls-drawer")) return true;
+  const tag = active.tagName ? active.tagName.toUpperCase() : "";
+  if(tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return false;
+  if(active.isContentEditable) return false;
+  return true;
+}
+function toggleAllViewToggles(){
+  const allChecked = toggleInputs.length > 0 && toggleInputs.every((el) => el.checked);
+  const next = !allChecked;
+  for(const el of toggleInputs){
+    el.checked = next;
+  }
+  syncViewToggles();
+  for(const el of toggleInputs){
+    el.dispatchEvent(new Event("change"));
+  }
+  closeViewToggleDrawer();
+}
+window.addEventListener("keydown", (ev) => {
+  if(ev.key !== " ") return;
+  if(ev.ctrlKey || ev.altKey || ev.metaKey) return;
+  if(!canHandleToggleShortcut(document.activeElement)) return;
+  ev.preventDefault();
+  toggleAllViewToggles();
+});
 
 if(toggleGuide){
   toggleGuide.addEventListener("change", syncViewToggles);
@@ -482,6 +537,7 @@ if(btnSelectAllToggles){
     for(const el of toggleInputs){
       el.dispatchEvent(new Event("change"));
     }
+    closeViewToggleDrawer();
   });
 }
 if(btnClearAllToggles){
@@ -493,6 +549,7 @@ if(btnClearAllToggles){
     for(const el of toggleInputs){
       el.dispatchEvent(new Event("change"));
     }
+    closeViewToggleDrawer();
   });
 }
 

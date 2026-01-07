@@ -141,15 +141,20 @@
     </div>
 
     <div class="panel qr-panel view-panel">
-      <div class="qr-controls">
+      <div class="qr-controls-drawer">
+        <button type="button" class="qr-controls-handle" aria-label="表示切替">
+          ▾
+        </button>
+        <div class="qr-controls">
         <label><input type="checkbox" id="toggleCursor" checked> カーソル</label>
         <label><input type="checkbox" id="toggleGuide" checked> ガイド</label>
         <label><input type="checkbox" id="toggleGrid" checked> グリッド</label>
         <label><input type="checkbox" id="toggleEmpty" checked> 未配置セル</label>
-        <label><input type="checkbox" id="toggleColor" checked> 色指定</label>
+        <label><input type="checkbox" id="toggleColor" checked> 色分け</label>
         <label class="debug-only" style="display:none;"><input type="checkbox" id="toggleDebugValues" checked> セルの値</label>
         <button type="button" id="btnSelectAllToggles">全選択</button>
         <button type="button" id="btnClearAllToggles">全解除</button>
+        </div>
       </div>
       <div class="view-area">
         <div class="qr-stage">
