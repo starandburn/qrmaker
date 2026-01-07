@@ -484,6 +484,27 @@ button:active{
   background:#dce8ff;
   border-color:#94a6ca;
 }
+  #btnGenerate{
+    background: linear-gradient(180deg, #ffba00, #ff7a18);
+    color:#1f1f1f;
+    border-color:#ff9800;
+    font-size:1rem;
+    font-weight:700;
+    box-shadow:0 2px 6px rgba(0,0,0,0.08);
+    transition: transform 0.15s ease, box-shadow 0.25s ease;
+    padding:6px 16px;
+    min-height:0;
+    line-height:1.2;
+    height:auto;
+  }
+#btnGenerate:hover{
+  background: linear-gradient(180deg, #ffc842, #ff8a34);
+  border-color:#ff7a18;
+}
+#btnGenerate:active{
+  transform: translateY(1px) scale(0.99);
+  box-shadow:0 1px 4px rgba(0,0,0,0.12);
+}
 details.pattern-panel{
   border:1px solid #cfd6df;
   border-radius:8px;
