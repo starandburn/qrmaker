@@ -329,7 +329,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     stopped: "停止中",
     running: "実行中",
     finished: "実行終了",
-    error: "入力したスクリプトにエラーがあるので実行できません",
+    error: "エラー",
   };
   let lastExecutionError = null;
   const extractUnknownCommandWord = (message) => {
@@ -339,17 +339,29 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const match = text.match(/(?:不明なコマンド|Unknown command)[:：]?\s*([^\s,、。.]+)/i);
     return match ? match[1] : "";
   };
+  const normalizeStatusDetail = (detail) => {
+    if(!detail || typeof detail !== "object") return null;
+    const l2 = (typeof detail.l2 === "string") ? detail.l2 : "";
+    const l3 = (typeof detail.l3 === "string") ? detail.l3 : "";
+    if(!l2) return null;
+    return { l2, l3 };
+  };
   const buildExecutionStatusText = (state, message, detail) => {
     const label = executionStatusLabels[state] || "";
     if(state === "error"){
       const token = extractUnknownCommandWord(message);
-      return token ? `${label}：${token}` : label;
+      const resolved = token || (message ? String(message).trim() : "");
+      return resolved ? `${label}：${resolved}` : label;
     }
-    const base = label;
+    const normalized = normalizeStatusDetail(detail);
+    if(normalized){
+      const resolvedL3 = normalized.l3 || "実行中";
+      return `${normalized.l2}：${resolvedL3}`;
+    }
     if(detail){
-      return `${base}：${detail}`;
+      return `${label}：${detail}`;
     }
-    return base;
+    return label;
   };
   const setExecutionStatus = (state, message, detail) => {
     if(!executionStatusEl) return;
@@ -359,28 +371,29 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   setExecutionStatus("stopped");
 
   const API_STATUS_DESCRIPTIONS = {
-    resetCommand: "盤面をリセット",
-    drawQRCode: "QRコードを描画中",
-    drawBasePatterns: "基本パターンを描画中",
-    drawDataPatterns: "データパターンを描画中",
-    drawFinderPatterns: "ファインダーパターンを描画中",
-    drawTimingPatterns: "タイミングパターンを描画中",
-    drawAlignmentPatterns: "配置パターンを描画中",
-    drawDarkModulePatterns: "ダークモジュールを描画中",
-    drawFormatPatterns: "フォーマットパターンを描画中",
-    verify: "入力と出力を検証中",
-    applyMask: (maskIndex) => `${maskIndex}番マスクを適用中`,
+    resetCommand: { l2: "リセット", l3: "盤面" },
+    drawQRCode: { l2: "QRコード描画", l3: "" },
+    drawBasePatterns: { l2: "基本パターン", l3: "実行中" },
+    drawDataPatterns: { l2: "データパターン", l3: "実行中" },
+    drawFinderPatterns: { l2: "基本パターン", l3: "ファインダーパターン" },
+    drawTimingPatterns: { l2: "基本パターン", l3: "タイミングパターン" },
+    drawAlignmentPatterns: { l2: "基本パターン", l3: "アライメントパターン" },
+    drawDarkModulePatterns: { l2: "基本パターン", l3: "ダークモジュール" },
+    drawFormatPatterns: { l2: "基本パターン", l3: "フォーマットパターン" },
+    verify: { l2: "QRコード検証", l3: "実行中" },
+    applyMask: (maskIndex) => ({ l2: "マスク", l3: `${maskIndex}番` }),
   };
   const DATA_PATTERN_STAGE_MESSAGES = {
-    [window.BIT_INFO_MODE]: "種別パターンを描画中",
-    [window.BIT_INFO_LENGTH]: "文字数パターンを描画中",
-    [window.BIT_INFO_CHAR]: "文字パターンを描画中",
-    [window.BIT_INFO_TERMINATOR]: "終端パターンを描画中",
-    [window.BIT_INFO_PADDING]: "パディングパターンを描画中",
-    [window.BIT_INFO_PARITY]: "パリティパターンを描画中",
+    [window.BIT_INFO_MODE]: { l2: "データパターン", l3: "種別" },
+    [window.BIT_INFO_LENGTH]: { l2: "データパターン", l3: "文字数" },
+    [window.BIT_INFO_CHAR]: { l2: "データパターン", l3: "文字コード" },
+    [window.BIT_INFO_TERMINATOR]: { l2: "データパターン", l3: "終端" },
+    [window.BIT_INFO_PADDING]: { l2: "データパターン", l3: "パディング" },
+    [window.BIT_INFO_PARITY]: { l2: "データパターン", l3: "パリティ" },
   };
   let currentDataPatternStage = null;
   const updateDataPatternStatus = (kind) => {
+    if(typeof isStepModeOn !== "function" || !isStepModeOn()) return false;
     const message = DATA_PATTERN_STAGE_MESSAGES[kind];
     if(!message) return false;
     if(currentDataPatternStage === message) return false;
@@ -397,7 +410,35 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return entry || null;
   };
 
+  const BASIC_PATTERN_STATUS_NAMES = new Set([
+    "drawBasePatterns",
+    "drawFinderPatterns",
+    "drawTimingPatterns",
+    "drawAlignmentPatterns",
+    "drawDarkModulePatterns",
+    "drawFormatPatterns",
+  ]);
+  const STEP_STATUS_NAMES = new Set([
+    "drawQRCode",
+    "drawBasePatterns",
+    "drawDataPatterns",
+    "drawFinderPatterns",
+    "drawTimingPatterns",
+    "drawAlignmentPatterns",
+    "drawDarkModulePatterns",
+    "drawFormatPatterns",
+    "applyMask",
+  ]);
+  const shouldShowStepStatus = (name) => {
+    if(typeof isStepModeOn !== "function" || !isStepModeOn()) return false;
+    if(!STEP_STATUS_NAMES.has(name)) return false;
+    if(stepSkipFunctions && stepSkipFunctions.checked && BASIC_PATTERN_STATUS_NAMES.has(name)){
+      return false;
+    }
+    return true;
+  };
   const showApiStatus = (name, payload) => {
+    if(!shouldShowStepStatus(name)) return null;
     const detail = describeApiStatus(name, payload);
     if(detail){
       setExecutionStatus("running", undefined, detail);
