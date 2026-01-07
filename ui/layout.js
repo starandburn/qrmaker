@@ -6,9 +6,9 @@ const CHAR_PADDING = "パディング";
 const TYPE_MODE = "種別";
 const TYPE_LENGTH = "文字数";
 
-const CAPTION_CODEPATTERN = "コードパターン";
-const CAPTION_SHOWCODEPATTERN = `${CAPTION_CODEPATTERN}を表示`;
-const CAPTION_HIDECODEPATTERN = `${CAPTION_CODEPATTERN}を非表示`;
+const CAPTION_DATA_PATTERN = "データパターン";
+const CAPTION_SHOW_DATA_PATTERN = `${CAPTION_DATA_PATTERN}を表示`;
+const CAPTION_HIDE_DATA_PATTERN = `${CAPTION_DATA_PATTERN}を非表示`;
 
 const txtInput = document.getElementById("txtInput");
 const patternBox = document.getElementById("patternBox");
@@ -590,7 +590,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
 function updatePatternToggleText(){
   if(patternToggleText && dataPatternPanel){
-    patternToggleText.textContent = dataPatternPanel.open ? CAPTION_HIDECODEPATTERN : CAPTION_SHOWCODEPATTERN;
+    patternToggleText.textContent = dataPatternPanel.open ? CAPTION_HIDE_DATA_PATTERN : CAPTION_SHOW_DATA_PATTERN;
   }
 }
 if(dataPatternPanel){

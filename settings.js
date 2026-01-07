@@ -5,22 +5,21 @@ window.appSettingsFromScript = {
     "historyVisible": false,
     "patternPanelOpen": false,
     "debugVisible": false,
-    "stepMode": false,
-    "stepSkipFunctions": true,
     "skipExistingCells": false,
     "autoAvoidTiming": false,
     "defaultMask": 0,
     "stepSpeed": 30,
-    "toggleFlags": {
-      "toggleCursor": true,
-      "toggleGuide": true,
-      "toggleGrid": true,
-      "toggleEmpty": true,
-      "toggleColor": true,
-      "toggleDebugValues": true,
-      "stepMode": false,
-      "stepSkipFunctions": true
+    "skipMode": false,
+    "stepSkipDataOnly": true,
+    "viewFlags": {
+      "viewCursor": false,
+      "viewGuide": false,
+      "viewGrid": false,
+      "viewEmpty": false,
+      "viewColor": false,
+      "viewDebugValues": false
     },
+    "homeCursorDirection": "right",
     "dataTemplates": [
       { "value": "Hello, World!" },
       { "value": "https://www.nkk.ac.jp/" },
@@ -34,14 +33,14 @@ window.appSettingsFromScript = {
       },
       {
         "label": "2",
-        "code": `reset
+        "code": `clear
 base
 data
 mask`
       },
       {
         "label": "3",
-        "code": `reset
+        "code": `clear
 finders
 timings
 alignments
@@ -55,7 +54,7 @@ mask`
       },
       {
         "label": "4",
-        "code": `reset
+        "code": `clear
 base
 move end
 turn left
@@ -75,7 +74,7 @@ mask`
       },
       {
         "label": "5",
-        "code": `reset
+        "code": `clear
 base
 move end
 turn left

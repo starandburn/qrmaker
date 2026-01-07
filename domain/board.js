@@ -40,10 +40,11 @@ const rotateDir = (baseDir, delta) => {
   return next;
 };
 
+const HOME_CURSOR = { row: 1, col: 1, dir: DIR_RIGHT };
 const cursorPos = {
-  row: 1,
-  col: 1,
-  dir: DIR_RIGHT,
+  row: HOME_CURSOR.row,
+  col: HOME_CURSOR.col,
+  dir: HOME_CURSOR.dir,
 };
 const pendingCells = new Map();
 const cellStates = new Map(); // key: "r-c", value: { row, col, value, color }
@@ -97,8 +98,6 @@ function canContinueLoop(){
   loopGuardCounter++;
   return loopGuardCounter <= LOOP_ITER_LIMIT;
 }
-
-const HOME_CURSOR = { row: 1, col: 1, dir: DIR_RIGHT };
 
 function ensureCells(){
   const gridArea = document.querySelector(".grid-area");
@@ -308,6 +307,19 @@ function updateCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.
 
 function resetCursor(){
   return updateCursor(HOME_CURSOR.row, HOME_CURSOR.col, HOME_CURSOR.dir);
+}
+
+function setHomeCursor({ row, col, dir } = {}){
+  if(typeof row === "number" && Number.isFinite(row) && row > 0){
+    HOME_CURSOR.row = row;
+  }
+  if(typeof col === "number" && Number.isFinite(col) && col > 0){
+    HOME_CURSOR.col = col;
+  }
+  const normalized = typeof dir === "string" ? normalizeDir(dir) : null;
+  if(normalized){
+    HOME_CURSOR.dir = normalized;
+  }
 }
 
 function moveCursor(...args){
@@ -1118,4 +1130,5 @@ window.u = DIR_UP;
 window.r = DIR_RIGHT;
 window.d = DIR_DOWN;
 window.l = DIR_LEFT;
+window.setHomeCursor = setHomeCursor;
 

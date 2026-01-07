@@ -10,7 +10,7 @@
   const ALIAS_MAP = {
     move: "moveCursor",
     turn: "turnCursor",
-    reset: "resetCommand",
+    reset: "resetQRCode",
     base: "drawBasePatterns",
     mask: "applyMask",
     data: "drawDataPatterns",
@@ -34,6 +34,7 @@
     next: "getNextData",
     pause: "pauseRunning",
     advance: "putNextCell",
+    clear: "clearBoard",
   };
   const ALIAS_PATTERN = new RegExp(
     `\\b(${Object.keys(ALIAS_MAP).map(escapeRegExp).join("|")})\\b`,

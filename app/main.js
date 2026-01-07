@@ -60,23 +60,36 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       sampleDropdownMenu.append(li);
     });
   }
-  const flagOverrides = configDefaults.toggleFlags || {};
-  const toggleOverridePairs = [
-    { key: "toggleCursor", element: toggleCursor },
-    { key: "toggleGuide", element: toggleGuide },
-    { key: "toggleGrid", element: toggleGrid },
-    { key: "toggleEmpty", element: toggleEmpty },
-    { key: "toggleColor", element: toggleColor },
-    { key: "toggleDebugValues", element: toggleDebugValues },
-    { key: "stepMode", element: stepMode },
-    { key: "stepSkipFunctions", element: stepSkipFunctions },
+  const viewOverrides = configDefaults.viewFlags || {};
+  const viewOverridePairs = [
+    { key: "viewCursor", element: toggleCursor },
+    { key: "viewGuide", element: toggleGuide },
+    { key: "viewGrid", element: toggleGrid },
+    { key: "viewEmpty", element: toggleEmpty },
+    { key: "viewColor", element: toggleColor },
+    { key: "viewDebugValues", element: toggleDebugValues },
   ];
-  toggleOverridePairs.forEach(({ element, key }) => {
+  viewOverridePairs.forEach(({ element, key }) => {
     if(!element) return;
-    const overrideValue = flagOverrides[key];
+    const overrideValue = viewOverrides[key];
     if(typeof overrideValue !== "boolean") return;
     element.checked = overrideValue;
+    if(typeof element.defaultChecked === "boolean"){
+      element.defaultChecked = overrideValue;
+    }
+    if(key === "toggleColor" && typeof isColorEnabled !== "undefined"){
+      isColorEnabled = overrideValue;
+    }
   });
+  if(typeof window !== "undefined" && typeof window.syncViewToggles === "function"){
+    window.syncViewToggles();
+  }
+  const homeCursorDirectionOverride = (typeof configDefaults.homeCursorDirection === "string")
+    ? configDefaults.homeCursorDirection
+    : null;
+  if(homeCursorDirectionOverride && typeof window.setHomeCursor === "function"){
+    window.setHomeCursor({ dir: homeCursorDirectionOverride });
+  }
   const configuredQrData = (typeof configDefaults.qrData === "string") ? configDefaults.qrData : null;
   if(txtInput && configuredQrData !== null){
     txtInput.value = configuredQrData;
@@ -214,6 +227,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     applyHistoryFromParam,
     applySampleParam,
     applyCombinedStepParam,
+    applyStepSpeedParam,
     applyUrlControlStates,
     buildStateUrl: buildStateUrlFromState,
     PARAM_KEYS = {},
@@ -224,6 +238,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     DEBUG: DEBUG_PARAM_KEY = "g",
     SAMPLES: SAMPLES_PARAM_KEY = "m",
     PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY = "p",
+    STEP_SPEED: STEP_SPEED_PARAM_KEY = "e",
+    STEP_FLAGS: STEP_FLAGS_PARAM_KEY = "s",
     SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY = "x",
     AUTO_AVOID_TIMING: TIMING_AUTO_PARAM_KEY = "t",
   } = PARAM_KEYS;
@@ -237,13 +253,25 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const defaultPatternOpen = (typeof configDefaults.patternPanelOpen === "boolean")
     ? configDefaults.patternPanelOpen
     : getPatternPanelOpen();
-  const defaultStepMode = (typeof configDefaults.stepMode === "boolean")
-    ? configDefaults.stepMode
+  const defaultStepMode = (typeof configDefaults.skipMode === "boolean")
+    ? configDefaults.skipMode
     : (stepMode ? (typeof stepMode.defaultChecked === "boolean" ? stepMode.defaultChecked : Boolean(stepMode.checked)) : false);
-  const defaultStepSkipFunctions = (typeof configDefaults.stepSkipFunctions === "boolean")
-    ? configDefaults.stepSkipFunctions
+  const defaultStepSkipFunctions = (typeof configDefaults.stepSkipDataOnly === "boolean")
+    ? configDefaults.stepSkipDataOnly
     : (stepSkipFunctions ? (typeof stepSkipFunctions.defaultChecked === "boolean" ? stepSkipFunctions.defaultChecked : Boolean(stepSkipFunctions.checked)) : false);
   const defaultStepSpeed = normalizedStepSpeedOverride ?? (stepSpeed ? (stepSpeed.defaultValue ?? stepSpeed.value ?? "") : "");
+  if(stepMode){
+    stepMode.checked = defaultStepMode;
+    if(typeof stepMode.defaultChecked === "boolean"){
+      stepMode.defaultChecked = defaultStepMode;
+    }
+  }
+  if(stepSkipFunctions){
+    stepSkipFunctions.checked = defaultStepSkipFunctions;
+    if(typeof stepSkipFunctions.defaultChecked === "boolean"){
+      stepSkipFunctions.defaultChecked = defaultStepSkipFunctions;
+    }
+  }
   const defaultSkipExistingCells = (typeof configDefaults.skipExistingCells === "boolean")
     ? configDefaults.skipExistingCells
     : false;
@@ -394,12 +422,12 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     applyMask: (maskIndex) => ({ l2: "マスク", l3: `${maskIndex}番を適用しています。` }),
   };
   const DATA_PATTERN_STAGE_MESSAGES = {
-    [window.BIT_INFO_MODE]: { l2: "データパターン", l3: "種別コードを描画しています。" },
-    [window.BIT_INFO_LENGTH]: { l2: "データパターン", l3: "文字数情報を描画しています。" },
-    [window.BIT_INFO_CHAR]: { l2: "データパターン", l3: "文字コードを描画しています。" },
-    [window.BIT_INFO_TERMINATOR]: { l2: "データパターン", l3: "終端コードを描画しています。" },
-    [window.BIT_INFO_PADDING]: { l2: "データパターン", l3: "パディングコードを描画しています。" },
-    [window.BIT_INFO_PARITY]: { l2: "データパターン", l3: "パリティコードを描画しています。" },
+    [window.BIT_INFO_MODE]: { l2: "データパターン", l3: "種別パターンを描画しています。" },
+    [window.BIT_INFO_LENGTH]: { l2: "データパターン", l3: "文字数パターンを描画しています。" },
+    [window.BIT_INFO_CHAR]: { l2: "データパターン", l3: "文字パターンを描画しています。" },
+    [window.BIT_INFO_TERMINATOR]: { l2: "データパターン", l3: "終端パターンを描画しています。" },
+    [window.BIT_INFO_PADDING]: { l2: "データパターン", l3: "パディングパターンを描画しています。" },
+    [window.BIT_INFO_PARITY]: { l2: "データパターン", l3: "パリティパターンを描画しています。" },
   };
   let currentDataPatternStage = null;
   const updateDataPatternStatus = (kind) => {
@@ -571,7 +599,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     ctx.runId++;
     ctx.isStepFillRunning = false;
     if(clear){
-      resetQRCode();
+      resetBoardState();
     }
     if(resetCursorFlag){
       resetCursor();
@@ -580,25 +608,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   let cellsInitialized = false;
-  function resetQRCode(options = {}){
-    const {
-      abortRun = true,
-      forceImmediate = abortRun,
-      stopStep = abortRun,
-    } = options;
-    window.logEvent("resetQRCode", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, "QRコード描画をリセット");
-    if(abortRun){
-      ctx.runId++;
-      ctx.maskRunId++;
-    }
-    if(stopStep){
-      ctx.isStepFillRunning = false;
-    }
-    if(forceImmediate){
-      setRenderMode(RENDER_IMMEDIATE);
-    }
+  function clearBoardSurface(){
     const cells = document.querySelectorAll(".qr-cells .cell");
-    if(!cells || cells.length === 0) return;
+    if(!cells || cells.length === 0) return false;
     for(const cell of cells){
       cell.className = "cell";
       cell.dataset.debugVal = "0";
@@ -617,16 +629,53 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(typeof resetData === "function"){
       resetData();
     }
+    return true;
+  }
+
+  function clearBoard(){
+    window.logEvent("clearBoard", "", "盤面をクリア");
+    return clearBoardSurface();
+  }
+
+  function resetBoardState(options = {}){
+    const {
+      abortRun = true,
+      forceImmediate = abortRun,
+      stopStep = abortRun,
+    } = options;
+    window.logEvent("resetQRCode", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, "QRコード描画をリセット");
+    if(abortRun){
+      ctx.runId++;
+      ctx.maskRunId++;
+    }
+    if(stopStep){
+      ctx.isStepFillRunning = false;
+    }
+    if(forceImmediate){
+      setRenderMode(RENDER_IMMEDIATE);
+    }
+    if(!clearBoardSurface()){
+      return;
+    }
     resetCursor();
     pendingCursor = null;
+  }
+
+  function resetQRCode(){
+    if(!clearBoardSurface()){
+      return false;
+    }
+    resetCursor();
+    pendingCursor = null;
+    return true;
   }
   ctx.resetQRCode = resetQRCode;
   ctx.resetCursor = resetCursor;
 
-  async function resetCommand(){
+  async function resetCommand(options = {}){
     window.logEvent("resetCommand", "", "盤面をリセット");
     showApiStatus("resetCommand");
-    resetQRCode();
+    resetBoardState(options);
     await sleep(RESET_DELAY_MS);
   }
 
@@ -1043,6 +1092,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       drawFunctionalPatterns,
       initializeQRCode,
       resetQRCode,
+      clearBoard,
       resetCommand,
       stopCurrentRun,
       drawFormatPatterns,
@@ -1094,7 +1144,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
   }
   async function drawQRCode(arg){
-    resetQRCode({ abortRun: false, forceImmediate: true, stopStep: true });
+    resetBoardState({ abortRun: false, forceImmediate: true, stopStep: true });
     window.logEvent("drawQRCode", arg ?? "", "QRコードを描画中");
     showApiStatus("drawQRCode");
     let maskIndex;
@@ -1209,15 +1259,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   btnInit.addEventListener("click", () => {
     window.logEvent("btnInit", "", "初期化ボタン押下");
     stopCurrentRun({ resetCursor: true, clear: true });
-    if(Array.isArray(window.toggleInputs)){
-      for(const el of window.toggleInputs){
-        el.checked = true;
-        try{ el.dispatchEvent(new Event("change")); }catch(_e){}
-      }
-    if(typeof window.syncViewToggles === "function"){
-      window.syncViewToggles();
-    }
-    }
     if(userCodeInput){
       const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
       btnGenerate.disabled = !codeText;
@@ -1375,7 +1416,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   syncStepControls();
 
   ensureCells();
-  resetQRCode({ abortRun: false });
+  resetBoardState({ abortRun: false });
   updateCursor(cursorPos.row, cursorPos.col, cursorPos.dir);
   syncDebugOverlay();
 
@@ -1419,6 +1460,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     syncDebugOverlay,
     syncStepControls,
   });
+  applyStepSpeedParam({ stepSpeed });
   syncDebugPanelLayout();
   syncParsedCode();
   if(dataPatternPanel){

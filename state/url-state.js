@@ -3,16 +3,17 @@
  */
 (function(){
   const params = new URLSearchParams(window.location.search || "");
-  const FLAG_PARAM_KEY = "v";
+  const VIEW_FLAGS_PARAM_KEY = "v";
   const DEBUG_PARAM_KEY = "g";
   const PATTERN_PANEL_PARAM_KEY = "p";
-  const COMBINED_STEP_PARAM_KEY = "s";
   const DATA_PARAM_KEY = "d";
   const DATA_EMPTY_TOKEN = "_";
   const HISTORY_PARAM_KEY = "h";
   const SAMPLES_PARAM_KEY = "m";
   const TIMING_AUTO_PARAM_KEY = "t";
   const SKIP_EXISTING_PARAM_KEY = "x";
+  const STEP_SPEED_PARAM_KEY = "e";
+  const STEP_FLAGS_PARAM_KEY = "s";
 
   const lookupParam = (primary) => {
     if(primary && params.has(primary)) return params.get(primary);
@@ -102,66 +103,62 @@
     return true;
   };
 
-  const parseCombinedStepParam = () => {
-    if(!params.has(COMBINED_STEP_PARAM_KEY)) return null;
-    const rawValue = params.get(COMBINED_STEP_PARAM_KEY);
-    if(rawValue === null) return null;
-    const numeric = Number(rawValue);
-    if(!Number.isFinite(numeric)) return null;
-    const skipOff = numeric >= 1000;
-    const baseValue = skipOff ? numeric - 1000 : numeric;
+  const parseStepFlagsParam = () => {
+    if(!params.has(STEP_FLAGS_PARAM_KEY)) return null;
+    const spec = params.get(STEP_FLAGS_PARAM_KEY);
+    if(typeof spec !== "string" || !/^[01]{2}$/.test(spec)) return null;
     return {
-      enabled: baseValue >= 1,
-      speedSource: Math.max(0, baseValue),
-      skipFunctions: !skipOff,
+      enabled: spec[0] === "1",
+      dataOnly: spec[1] === "1",
     };
   };
- 
-  const buildCombinedStepParamValue = ({
+
+  const parseStepSpeedParam = () => {
+    if(!params.has(STEP_SPEED_PARAM_KEY)) return null;
+    const raw = params.get(STEP_SPEED_PARAM_KEY);
+    if(raw === null) return null;
+    const numeric = Number(raw);
+    if(!Number.isFinite(numeric)){
+      return null;
+    }
+    const clamped = Math.max(0, Math.min(120, numeric));
+    return String(Math.round(clamped));
+  };
+
+  const buildStepFlagsParamValue = ({
     stepMode,
-    stepSpeed,
     stepSkipFunctions,
   } = {}) => {
     const modeEnabled = stepMode && typeof stepMode.checked === "boolean" ? stepMode.checked : false;
-    if(!modeEnabled){
-      return "0";
-    }
-    const rawSpeed = stepSpeed ? Number(stepSpeed.value ?? stepSpeed.defaultValue ?? "") : NaN;
-    const numericSpeed = Number.isFinite(rawSpeed) ? rawSpeed : 0;
-    const minVal = Number(stepSpeed?.min ?? 0);
-    const maxVal = Number(stepSpeed?.max ?? 120);
-    const clampedLower = Number.isFinite(minVal) ? minVal : 0;
-    const clampedUpper = Number.isFinite(maxVal) ? maxVal : clampedLower || 120;
-    const clampedSpeed = Math.max(clampedLower, Math.min(clampedUpper, numericSpeed));
-    const baseValue = Math.max(0, clampedSpeed) + 1;
-    const skipOff = stepSkipFunctions && typeof stepSkipFunctions.checked === "boolean" ? !stepSkipFunctions.checked : false;
-    const combined = baseValue + (skipOff ? 1000 : 0);
-    return String(Math.round(combined));
+    const dataOnly = stepSkipFunctions && typeof stepSkipFunctions.checked === "boolean"
+      ? stepSkipFunctions.checked
+      : false;
+    return `${modeEnabled ? "1" : "0"}${dataOnly ? "1" : "0"}`;
   };
 
   const applyCombinedStepParam = ({
     stepMode,
-    stepSpeed,
     stepSkipFunctions,
   } = {}) => {
-    if(!stepMode && !stepSpeed && !stepSkipFunctions) return false;
-    const spec = parseCombinedStepParam();
+    if(!stepMode && !stepSkipFunctions) return false;
+    const spec = parseStepFlagsParam();
     if(!spec) return false;
 
     if(stepMode && typeof stepMode.checked === "boolean"){
       stepMode.checked = spec.enabled;
     }
-    if(spec.enabled && stepSpeed){
-      const minVal = Number(stepSpeed.min);
-      const maxVal = Number(stepSpeed.max);
-      const clampedLower = Number.isFinite(minVal) ? minVal : 0;
-      const clampedUpper = Number.isFinite(maxVal) ? maxVal : clampedLower || 120;
-      const targetValue = Math.max(clampedLower, Math.min(clampedUpper, spec.speedSource - 1));
-      stepSpeed.value = String(targetValue);
-    }
     if(stepSkipFunctions && typeof stepSkipFunctions.checked === "boolean"){
-      stepSkipFunctions.checked = spec.skipFunctions;
+      stepSkipFunctions.checked = spec.dataOnly;
     }
+    return true;
+  };
+
+  const applyStepSpeedParam = ({ stepSpeed } = {}) => {
+    if(!stepSpeed) return false;
+    const parsed = parseStepSpeedParam();
+    if(parsed === null) return false;
+    stepSpeed.value = parsed;
+    stepSpeed.defaultValue = parsed;
     return true;
   };
 
@@ -176,7 +173,7 @@
     syncDebugOverlay,
     syncStepControls,
   } = {}) => {
-    const flagValue = params.get(FLAG_PARAM_KEY);
+    const flagValue = params.get(VIEW_FLAGS_PARAM_KEY);
     let flagHandled = false;
     if(flagValue && typeof applyToggleFlags === "function"){
       const result = applyToggleFlags(flagValue);
@@ -272,7 +269,7 @@
     if(typeof flagString === "string" && flagString.length){
       const flagDefault = typeof defaultFlagString === "string" && defaultFlagString.length ? defaultFlagString : "";
       if(flagString !== flagDefault){
-        stateParams.set(FLAG_PARAM_KEY, flagString);
+        stateParams.set(VIEW_FLAGS_PARAM_KEY, flagString);
       }
     }
     if(debugPanel && typeof isDebugVisible === "function"){
@@ -294,23 +291,20 @@
         stateParams.set(SAMPLES_PARAM_KEY, "1");
       }
     }
-    const combinedStepValue = buildCombinedStepParamValue({ stepMode, stepSpeed, stepSkipFunctions });
-    const defaultCombinedStepValue = buildCombinedStepParamValue({
+    const currentSpeed = stepSpeed
+      ? String(stepSpeed.value ?? stepSpeed.defaultValue ?? "")
+      : "";
+    const normalizedDefaultSpeed = String(defaultStepSpeed ?? (stepSpeed ? (stepSpeed.defaultValue ?? "") : ""));
+    if(currentSpeed !== normalizedDefaultSpeed){
+      stateParams.set(STEP_SPEED_PARAM_KEY, currentSpeed);
+    }
+    const flagsValue = buildStepFlagsParamValue({ stepMode, stepSkipFunctions });
+    const defaultFlagsValue = buildStepFlagsParamValue({
       stepMode: { checked: Boolean(defaultStepMode) },
-      stepSpeed: stepSpeed
-        ? {
-            value: defaultStepSpeed ?? stepSpeed.defaultValue ?? "",
-            defaultValue: defaultStepSpeed ?? stepSpeed.defaultValue ?? "",
-            min: stepSpeed.min,
-            max: stepSpeed.max,
-          }
-        : undefined,
       stepSkipFunctions: { checked: Boolean(defaultStepSkipFunctions) },
     });
-    if(typeof combinedStepValue === "string"){
-      if(combinedStepValue !== defaultCombinedStepValue){
-        stateParams.set(COMBINED_STEP_PARAM_KEY, combinedStepValue);
-      }
+    if(flagsValue !== defaultFlagsValue){
+      stateParams.set(STEP_FLAGS_PARAM_KEY, flagsValue);
     }
     if(historyVisible !== Boolean(defaultHistoryVisible)){
       stateParams.set(HISTORY_PARAM_KEY, historyVisible ? "1" : "0");
@@ -341,13 +335,15 @@
     applyHistoryFromParam,
     applySampleParam,
     applyCombinedStepParam,
+    applyStepSpeedParam,
     applyUrlControlStates,
     buildStateUrl,
     PARAM_KEYS: {
-      FLAG: FLAG_PARAM_KEY,
+      VIEW_FLAGS: VIEW_FLAGS_PARAM_KEY,
       DEBUG: DEBUG_PARAM_KEY,
       PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY,
-      COMBINED_STEP: COMBINED_STEP_PARAM_KEY,
+      STEP_SPEED: STEP_SPEED_PARAM_KEY,
+      STEP_FLAGS: STEP_FLAGS_PARAM_KEY,
       SAMPLES: SAMPLES_PARAM_KEY,
       DATA: DATA_PARAM_KEY,
       HISTORY: HISTORY_PARAM_KEY,

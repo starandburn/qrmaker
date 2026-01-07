@@ -59,27 +59,27 @@
 
       <details class="pattern-panel" id="dataPatternPanel">
         <summary class="pattern-summary">
-          <span class="summary-title"><span id="patternToggleText">コードパターンを表示</span></span>
+          <span class="summary-title"><span id="patternToggleText">データパターンを表示</span></span>
           <a href="#" id="asciiLink" class="ascii-link">文字とパターンの対応表</a>
         </summary>
         <div id="patternBox" class="pattern-box">
           <div class="pattern-section section-a">
             <div class="pattern-title">
-              <span class="pattern-title-main">A. 構成情報のコードパターン</span>
+              <span class="pattern-title-main">A. 構成情報のパターン</span>
               <span class="pattern-title-note">（種別は半角英数字で固定）</span>
             </div>
             <div id="patternRowA" class="pattern-row"></div>
           </div>
           <div class="pattern-section section-b">
             <div class="pattern-title">
-              <span class="pattern-title-main">B. 各文字に対応したコードパターン</span>
+              <span class="pattern-title-main">B. 各文字に対応したパターン</span>
               <span class="pattern-title-note">（1文字8桁・終端のみ4桁、32文字に満たない分は『パディング』で埋める）</span>
             </div>
             <div id="patternRowB" class="pattern-row"></div>
           </div>
           <div class="pattern-section section-c">
             <div class="pattern-title">
-              <span class="pattern-title-main">C. AとBに一定の計算をして作ったコードパターン</span>
+              <span class="pattern-title-main">C. AとBに一定の計算をして作ったパターン</span>
               <span class="pattern-title-note">（読み取りミスを減らすための『パリティ』というしくみ）</span>
             </div>
             <div id="patternRowC" class="pattern-row"></div>
@@ -128,11 +128,11 @@
     <div class="panel pastel-5 control-panel">
       <div class="qr-head">
         <button id="btnInit" type="button">リセット</button>
-        <button id="btnGenerate" type="button">作成実行</button>
+        <button id="btnGenerate" type="button">QRコードを作成</button>
         <div class="step-controls">
         <div class="step-toggle-row">
           <label class="step-mode"><input type="checkbox" id="stepMode"> ステップ実行</label>
-          <label class="step-skip"><input type="checkbox" id="stepSkipFunctions" checked> データ部のみ</label>
+        <label class="step-skip"><input type="checkbox" id="stepSkipFunctions" checked> データパターンのみ</label>
         </div>
         <label class="step-speed"><span>速</span><input type="range" id="stepSpeed" min="0" max="120" value="60" disabled><span>遅</span></label>
         </div>
