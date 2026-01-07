@@ -1106,9 +1106,9 @@ textarea{
   min-height:1.4em;
 }
 .execution-status.status-running{
-  background:#fff5f5;
-  border-color:#f5c2c2;
-  color:#a40d0d;
+  background:#eef4ff;
+  border-color:#bcd3ff;
+  color:#1f4a85;
 }
 .execution-status.status-finished{
   background:#f0fff4;

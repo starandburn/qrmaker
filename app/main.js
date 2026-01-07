@@ -326,9 +326,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   if(!btnGenerate || !btnInit) return;
   const executionStatusEl = document.getElementById("executionStatus");
   const executionStatusLabels = {
-    stopped: "停止中",
+    stopped: "待機中",
     running: "実行中",
-    finished: "実行終了",
+    finished: "実行完了",
     error: "エラー",
   };
   let lastExecutionError = null;
@@ -350,8 +350,14 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const label = executionStatusLabels[state] || "";
     if(state === "error"){
       const token = extractUnknownCommandWord(message);
-      const resolved = token || (message ? String(message).trim() : "");
+      if(token){
+        return `${token}はコマンドとして認識できませんでした。`;
+      }
+      const resolved = message ? String(message).trim() : "";
       return resolved ? `${label}：${resolved}` : label;
+    }
+    if(state === "stopped" && !detail){
+      return `${label}：実行できます。`;
     }
     const normalized = normalizeStatusDetail(detail);
     if(normalized){
@@ -369,27 +375,31 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     executionStatusEl.className = `execution-status status-${state}`;
   };
   setExecutionStatus("stopped");
+  if(userCodeInput){
+    const initialCode = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
+    btnGenerate.disabled = !initialCode;
+  }
 
   const API_STATUS_DESCRIPTIONS = {
     resetCommand: { l2: "リセット", l3: "盤面" },
-    drawQRCode: { l2: "QRコード描画", l3: "" },
-    drawBasePatterns: { l2: "基本パターン", l3: "実行中" },
-    drawDataPatterns: { l2: "データパターン", l3: "実行中" },
-    drawFinderPatterns: { l2: "基本パターン", l3: "ファインダーパターン" },
-    drawTimingPatterns: { l2: "基本パターン", l3: "タイミングパターン" },
-    drawAlignmentPatterns: { l2: "基本パターン", l3: "アライメントパターン" },
-    drawDarkModulePatterns: { l2: "基本パターン", l3: "ダークモジュール" },
-    drawFormatPatterns: { l2: "基本パターン", l3: "フォーマットパターン" },
+    drawQRCode: { l2: "QRコード描画", l3: "QRコードを描画しています。" },
+    drawBasePatterns: { l2: "基本パターン", l3: "基本パターンを描画しています。" },
+    drawDataPatterns: { l2: "データパターン", l3: "データパターンを描画しています。" },
+    drawFinderPatterns: { l2: "基本パターン", l3: "ファインダーパターンを描画しています。" },
+    drawTimingPatterns: { l2: "基本パターン", l3: "タイミングパターンを描画しています。" },
+    drawAlignmentPatterns: { l2: "基本パターン", l3: "アライメントパターンを描画しています。" },
+    drawDarkModulePatterns: { l2: "基本パターン", l3: "ダークモジュールを描画しています。" },
+    drawFormatPatterns: { l2: "基本パターン", l3: "フォーマットパターンを描画しています。" },
     verify: { l2: "QRコード検証", l3: "実行中" },
-    applyMask: (maskIndex) => ({ l2: "マスク", l3: `${maskIndex}番` }),
+    applyMask: (maskIndex) => ({ l2: "マスク", l3: `${maskIndex}番を適用しています。` }),
   };
   const DATA_PATTERN_STAGE_MESSAGES = {
-    [window.BIT_INFO_MODE]: { l2: "データパターン", l3: "種別" },
-    [window.BIT_INFO_LENGTH]: { l2: "データパターン", l3: "文字数" },
-    [window.BIT_INFO_CHAR]: { l2: "データパターン", l3: "文字コード" },
-    [window.BIT_INFO_TERMINATOR]: { l2: "データパターン", l3: "終端" },
-    [window.BIT_INFO_PADDING]: { l2: "データパターン", l3: "パディング" },
-    [window.BIT_INFO_PARITY]: { l2: "データパターン", l3: "パリティ" },
+    [window.BIT_INFO_MODE]: { l2: "データパターン", l3: "種別コードを描画しています。" },
+    [window.BIT_INFO_LENGTH]: { l2: "データパターン", l3: "文字数情報を描画しています。" },
+    [window.BIT_INFO_CHAR]: { l2: "データパターン", l3: "文字コードを描画しています。" },
+    [window.BIT_INFO_TERMINATOR]: { l2: "データパターン", l3: "終端コードを描画しています。" },
+    [window.BIT_INFO_PADDING]: { l2: "データパターン", l3: "パディングコードを描画しています。" },
+    [window.BIT_INFO_PARITY]: { l2: "データパターン", l3: "パリティコードを描画しています。" },
   };
   let currentDataPatternStage = null;
   const updateDataPatternStatus = (kind) => {
@@ -401,6 +411,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     setExecutionStatus("running", undefined, message);
     return true;
   };
+  window.updateDataPatternStatus = updateDataPatternStatus;
 
   const describeApiStatus = (name, payload) => {
     const entry = API_STATUS_DESCRIPTIONS[name];
@@ -1203,15 +1214,23 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         el.checked = true;
         try{ el.dispatchEvent(new Event("change")); }catch(_e){}
       }
-      if(typeof window.syncViewToggles === "function"){
-        window.syncViewToggles();
+    if(typeof window.syncViewToggles === "function"){
+      window.syncViewToggles();
+    }
+    }
+    if(userCodeInput){
+      const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
+      btnGenerate.disabled = !codeText;
+      if(!codeText){
+        setExecutionStatus("stopped", undefined, "実行できるプログラムがありません。");
       }
     }
-    btnGenerate.disabled = false;
     btnInit.disabled = false;
     setRenderMode(RENDER_IMMEDIATE);
     lastExecutionError = null;
-    setExecutionStatus("stopped");
+    if(!userCodeInput || (typeof userCodeInput.value === "string" && userCodeInput.value.trim())){
+      setExecutionStatus("stopped");
+    }
   });
 
   async function runGenerateLegacy(){
@@ -1281,6 +1300,13 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   btnGenerate.addEventListener("click", async () => {
     historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
+    const codeText = (userCodeInput && typeof userCodeInput.value === "string")
+      ? userCodeInput.value.trim()
+      : "";
+    if(!codeText){
+      setExecutionStatus("stopped", undefined, "実行できるプログラムがありません。");
+      return;
+    }
     setExecutionStatus("running");
     let runOk = false;
     let verificationOutcome = null;
@@ -1289,9 +1315,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }finally{
       verificationOutcome = logVerificationOutcome();
       if(runOk){
-        const verificationDetail = verificationOutcome
-          ? (verificationOutcome.match ? "正しいQRコードを生成" : "読み取れないQRコード")
-          : "";
+          const verificationDetail = verificationOutcome
+            ? (verificationOutcome.match ? "正しいQRコードが生成されました。" : "この盤面はQRコードとして読み取れません。")
+            : "";
         setExecutionStatus("finished", undefined, verificationDetail);
       }else if(lastExecutionError){
         setExecutionStatus("error", lastExecutionError);
@@ -1408,6 +1434,18 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     userCodeInput.addEventListener("input", (ev) => {
       syncParsedCode();
       ensureUserCodeCaretVisible();
+      if(executionStatusEl && !executionStatusEl.classList.contains("status-running")){
+        const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
+        if(!codeText){
+          setExecutionStatus("stopped", undefined, "実行できるプログラムがありません。");
+        }else{
+          setExecutionStatus("stopped");
+        }
+      }
+      if(btnGenerate){
+        const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
+        btnGenerate.disabled = !codeText;
+      }
       if(!ev.isComposing){
         const type = ev.inputType || "";
         if(/insert(LineBreak|Paragraph)/i.test(type)){

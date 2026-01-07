@@ -952,6 +952,9 @@ function putCell(encodedValue){
   }
   if(ok){
     highlightCursorForStepPutCell(valKind);
+    if(isDataKind(valKind) && typeof window !== "undefined" && typeof window.updateDataPatternStatus === "function"){
+      window.updateDataPatternStatus(valKind);
+    }
   }
   return ok;
 }
