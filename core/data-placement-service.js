@@ -69,6 +69,23 @@
           const moved = moveCursor(row, cTarget);
           if(!moved) continue;
           if(typeof isEmpty === "function" && !isEmpty()){
+            if(stepEnabled){
+              const delay = typeof getStepDelay === "function" ? getStepDelay() : 0;
+              const skipDelay = Math.max(0, Math.round(delay / 2));
+              if(skipDelay > 0){
+                await sleep(skipDelay);
+                if(currentRun !== runIdAccessor.get()){
+                  aborted = true;
+                  break;
+                }
+                if(typeof isStepModeOn === "function" && !isStepModeOn()){
+                  stepEnabled = false;
+                  if(typeof setRenderMode === "function"){
+                    setRenderMode(renderModeBuffered);
+                  }
+                }
+              }
+            }
             continue;
           }
           const { bit, kind } = seq[bitIdx];

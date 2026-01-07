@@ -217,7 +217,6 @@ function highlightCursorForStepPutCell(kind){
   const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
   stepHighlightExpiresAt = now + STEP_HIGHLIGHT_MIN_MS;
   cursorHighlightActive = true;
-  setCursorColor(STEP_CURSOR_COLOR);
   requestCursorColorRender("cursor-step-highlight");
   scheduleCursorReset(STEP_HIGHLIGHT_MIN_MS);
 }

@@ -10,7 +10,8 @@
   if(!global) return;
 
   const ensureHelpers = (ctx) => (ctx && ctx.helpers) ? ctx.helpers : {};
-  const PATTERN_STEP_SCALE = 0.35;
+  const PATTERN_STEP_SCALE = 1;
+  const resolveStepDir = (dirVal) => (dirVal === TIMING_HORIZONTAL ? DIR_RIGHT : DIR_DOWN);
 
   function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     const baseRun = ctx ? ctx.runId : 0;
@@ -106,10 +107,11 @@
             return putTimingCells(ctx, direction, index, overwrite, { stepEnabled: false, currentRun: runToken });
           }
           const bit = (col % 2 === 1) ? 1 : 0;
-          if(canWriteTimingCell(pos, col)){
+          const canDraw = canWriteTimingCell(pos, col);
+          if(canDraw){
             window.updateCell(pos, col, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
-            updateCursorSafe(pos, col, DIR_RIGHT);
           }
+          updateCursorSafe(pos, col, resolveStepDir(dirVal));
           const md = await delay();
           if(md === false) return false;
           col++;
@@ -124,10 +126,11 @@
             return putTimingCells(ctx, direction, index, overwrite, { stepEnabled: false, currentRun: runToken });
           }
           const bit = (row % 2 === 1) ? 1 : 0;
-          if(canWriteTimingCell(row, pos)){
+          const canDraw = canWriteTimingCell(row, pos);
+          if(canDraw){
             window.updateCell(row, pos, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
-            updateCursorSafe(row, pos, DIR_RIGHT);
           }
+          updateCursorSafe(row, pos, resolveStepDir(dirVal));
           const md = await delay();
           if(md === false) return false;
           row++;

@@ -40,7 +40,14 @@
     }
     return coords;
   };
-  const PATTERN_STEP_SCALE = 0.35;
+  const resolveStepDir = (fromRow, fromCol, toRow, toCol) => {
+    if(toRow < fromRow) return DIR_UP;
+    if(toRow > fromRow) return DIR_DOWN;
+    if(toCol < fromCol) return DIR_LEFT;
+    if(toCol > fromCol) return DIR_RIGHT;
+    return DIR_RIGHT;
+  };
+  const PATTERN_STEP_SCALE = 1;
 
   function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     const baseRun = ctx ? ctx.runId : 0;
@@ -129,7 +136,10 @@
     return (async () => {
       const prevRender = ctx.renderMode;
       ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
-      for(const [row, col] of patternCoords){
+      for(let idx = 0; idx < patternCoords.length; idx++){
+        const [row, col] = patternCoords[idx];
+        const [nextRow, nextCol] = patternCoords[idx + 1] || [row, col];
+        const stepDir = resolveStepDir(row, col, nextRow, nextCol);
         if(shouldAbort(runToken, ctx)) return false;
         if(!stepActive()){
           ctx.setRenderMode(prevRender);
@@ -139,12 +149,14 @@
         const relRow = row - startRow;
         const relCol = col - startCol;
         const bit = pattern[relRow][relCol];
-        if(!shouldDrawCell(row, col)) continue;
-        window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
-        if(H.updateCursorIfRun){
-          H.updateCursorIfRun(runToken, row, col, DIR_RIGHT);
+        const canDraw = shouldDrawCell(row, col);
+        if(canDraw){
+          window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
         }
-        updateCursorSafe(runToken, ctx, row, col, DIR_RIGHT);
+        if(H.updateCursorIfRun){
+          H.updateCursorIfRun(runToken, row, col, stepDir);
+        }
+        updateCursorSafe(runToken, ctx, row, col, stepDir);
         await delay();
       }
       ctx.setRenderMode(prevRender);

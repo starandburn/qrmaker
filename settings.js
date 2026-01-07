@@ -10,7 +10,7 @@ window.appSettingsFromScript = {
     "skipExistingCells": false,
     "autoAvoidTiming": false,
     "defaultMask": 0,
-    "stepSpeed": 60,
+    "stepSpeed": 30,
     "toggleFlags": {
       "toggleCursor": true,
       "toggleGuide": true,
