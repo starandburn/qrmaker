@@ -132,10 +132,14 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const stepAnimationDurationMs = normalizeNumberSetting(configDefaults.stepAnimationDurationMs);
   const stepAnimationStartOpacity = normalizeNumberSetting(configDefaults.stepAnimationStartOpacity);
   const stepAnimationStartScale = normalizeNumberSetting(configDefaults.stepAnimationStartScale);
+  const maskFadeDurationMs = normalizeNumberSetting(configDefaults.maskFadeDurationMs);
   if(typeof window !== "undefined"){
     window.stepAnimationEnabled = stepAnimationEnabledOverride;
     if(stepAnimationDurationMs !== null){
       window.stepAnimationDurationMs = Math.max(0, stepAnimationDurationMs);
+    }
+    if(maskFadeDurationMs !== null){
+      window.maskFadeDurationMs = Math.max(0, maskFadeDurationMs);
     }
   }
   const rootStyle = document.documentElement?.style;
@@ -946,6 +950,114 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       if(typeof window === "undefined") return;
       window.maskApplying = Boolean(value);
     };
+    const ensureMaskOverlay = () => {
+      if(ctx.maskOverlayEl && ctx.maskOverlayEl.isConnected){
+        return ctx.maskOverlayEl;
+      }
+      const gridArea = document.querySelector(".grid-area");
+      if(!gridArea) return null;
+      const overlay = document.createElement("div");
+      overlay.className = "mask-overlay";
+      const frag = document.createDocumentFragment();
+      for(let i = 0; i < 25 * 25; i++){
+        const cell = document.createElement("div");
+        cell.className = "mask-cell";
+        frag.appendChild(cell);
+      }
+      overlay.appendChild(frag);
+      gridArea.appendChild(overlay);
+      ctx.maskOverlayEl = overlay;
+      return overlay;
+    };
+    const applyMaskOverlayColor = (overlay) => {
+      if(!overlay) return;
+      const maskKind = (typeof window.BIT_MASK === "number") ? window.BIT_MASK : 30;
+      const colorName = (typeof window.colorsForKind === "function")
+        ? window.colorsForKind(maskKind)
+        : "gray";
+      if(typeof window.isColorEnabled !== "undefined" && !window.isColorEnabled){
+        overlay.style.setProperty("--mask-overlay-color", "#000");
+        return;
+      }
+      switch(colorName){
+        case "gray":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-gray-dark)");
+          break;
+        case "red":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-red-dark)");
+          break;
+        case "blue":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-blue-dark)");
+          break;
+        case "green":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-green-dark)");
+          break;
+        case "yellow":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-yellow-dark)");
+          break;
+        case "purple":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-purple-dark)");
+          break;
+        case "orange":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-orange-dark)");
+          break;
+        case "format":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-format-blue-dark)");
+          break;
+        default:
+          overlay.style.setProperty("--mask-overlay-color", "#000");
+          break;
+      }
+    };
+    const updateMaskOverlay = (overlay) => {
+      if(!overlay) return;
+      const cells = overlay.children;
+      let idx = 0;
+      for(let row = 1; row <= 25; row++){
+        for(let col = 1; col <= 25; col++){
+          const cellEl = cells[idx++];
+          if(!cellEl) continue;
+          const encoded = window.getCell(row, col);
+          if(typeof encoded !== "number"){
+            cellEl.classList.remove("is-on");
+            continue;
+          }
+          const kind = (typeof window.bitKind === "function") ? window.bitKind(encoded) : Math.abs(encoded);
+          if(typeof isFunctionalKind === "function" && isFunctionalKind(kind)){
+            cellEl.classList.remove("is-on");
+            continue;
+          }
+          if(maskFn(row - 1, col - 1)){
+            cellEl.classList.add("is-on");
+          }else{
+            cellEl.classList.remove("is-on");
+          }
+        }
+      }
+    };
+    const setOverlayState = (overlay, state) => {
+      if(!overlay) return;
+      overlay.classList.toggle("is-half", state === "half");
+      overlay.classList.toggle("is-full", state === "full");
+      if(state === "clear"){
+        overlay.classList.remove("is-half");
+        overlay.classList.remove("is-full");
+      }
+    };
+    const applyMaskBatch = () => {
+      for(let row = 1; row <= 25; row++){
+        for(let col = 1; col <= 25; col++){
+          if(shouldAbort()) return false;
+          const encoded = window.getCell(row, col);
+          if(typeof encoded !== "number") continue;
+          const kind = (typeof window.bitKind === "function") ? window.bitKind(encoded) : Math.abs(encoded);
+          if(typeof isFunctionalKind === "function" && isFunctionalKind(kind)) continue;
+          if(!maskFn(row - 1, col - 1)) continue;
+          invertCell(row, col);
+        }
+      }
+      return !shouldAbort();
+    };
     const maybeDelay = async () => {
       if(!stepMask) return true;
       if(shouldAbort()) return false;
@@ -958,8 +1070,60 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       return !shouldAbort();
     };
     let completed = false;
-    setMaskApplying(true);
+    let prevStepAnim;
+    let restoreStepAnim = false;
+    let maskApplyingActive = false;
     try{
+      if(hasFormatPattern){
+        showApiStatus("drawFormatPatterns");
+        await callDrawFormatPatterns(idx, true);
+        showApiStatus("applyMask", idx);
+      }
+      setMaskApplying(true);
+      maskApplyingActive = true;
+      if(stepMask){
+        prevStepAnim = (typeof window.stepAnimationEnabled === "boolean")
+          ? window.stepAnimationEnabled
+          : undefined;
+        restoreStepAnim = true;
+        window.stepAnimationEnabled = false;
+        const overlay = ensureMaskOverlay();
+        applyMaskOverlayColor(overlay);
+        updateMaskOverlay(overlay);
+        const stepDelay = (typeof getStepDelay === "function") ? getStepDelay() : 0;
+        const fadeMs = (typeof window.maskFadeDurationMs === "number")
+          ? Math.max(0, window.maskFadeDurationMs)
+          : 250;
+        const holdMs = Math.max(100, stepDelay * 10);
+        if(overlay){
+          overlay.style.transition = `opacity ${fadeMs}ms linear`;
+          overlay.style.opacity = "0";
+          await new Promise(requestAnimationFrame);
+          await new Promise(requestAnimationFrame);
+          overlay.style.opacity = "1";
+          await sleep(fadeMs);
+        }else{
+          await sleep(fadeMs);
+        }
+        if(shouldAbort()) return false;
+        completed = applyMaskBatch();
+        if(!completed) return false;
+        if(holdMs > 0){
+          await sleep(holdMs);
+        }
+        if(overlay){
+          overlay.style.transition = `opacity ${fadeMs}ms linear`;
+          overlay.style.opacity = "1";
+          await new Promise(requestAnimationFrame);
+          await new Promise(requestAnimationFrame);
+          overlay.style.opacity = "0";
+          await sleep(fadeMs);
+          overlay.style.transition = "";
+          overlay.style.opacity = "";
+          overlay.offsetHeight;
+        }
+        completed = !shouldAbort();
+      }else{
       for(let row = 1; row <= 25; row++){
         for(let col = 1; col <= 25; col++){
           if(shouldAbort()) break;
@@ -978,13 +1142,18 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         if(shouldAbort()) break;
       }
       completed = !shouldAbort();
-      if(completed && hasFormatPattern){
-        showApiStatus("drawFormatPatterns");
-        await callDrawFormatPatterns(idx, true);
-        showApiStatus("applyMask", idx);
       }
     }finally{
-      setMaskApplying(false);
+      if(maskApplyingActive){
+        setMaskApplying(false);
+      }
+      if(restoreStepAnim){
+        if(prevStepAnim === undefined){
+          delete window.stepAnimationEnabled;
+        }else{
+          window.stepAnimationEnabled = prevStepAnim;
+        }
+      }
     }
     if(ctx.renderMode === RENDER_BUFFERED && typeof requestRender === "function"){
       requestRender("applyMask");
@@ -1417,10 +1586,16 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   if(btnGenerate){
     window.addEventListener("keydown", (ev) => {
       const active = document.activeElement;
-      if(active && active.id === "userCode"){
-        return; // let textarea handler manage shortcuts
+      if(active){
+        const tag = active.tagName ? active.tagName.toUpperCase() : "";
+        if(active.id === "userCode" || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || active.isContentEditable){
+          return; // let input handler manage shortcuts
+        }
       }
-      if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter"){
+      if(
+        (!ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter")
+        || (ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter")
+      ){
         ev.preventDefault();
         btnGenerate.click();
       }

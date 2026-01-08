@@ -214,9 +214,7 @@ function scheduleCursorReset(delayMs = 0){
 function shouldAnimatePlacement(kind){
   if(!isStepModeActive()) return false;
   if(!isStepPlacementAnimationEnabled()) return false;
-  if(isMaskApplying() && (!isStepModeEnabled() || isStepModeDataOnly())){
-    return false;
-  }
+  if(isMaskApplying()) return false;
   if(isStepModeDataOnly()){
     if(typeof kind === "number"){
       return isDataKind(kind);

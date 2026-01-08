@@ -1427,6 +1427,30 @@ textarea{
   z-index:3; /* keep grid lines visible over filled cells */
 }
 
+.mask-overlay{
+  position:absolute;
+  inset:0;
+  display:grid;
+  grid-template-columns: repeat(25, 1fr);
+  grid-template-rows: repeat(25, 1fr);
+  pointer-events:none;
+  opacity:0;
+  transition: opacity var(--mask-step-fade-duration, 240ms) linear;
+  z-index:6;
+}
+.mask-overlay.is-half{
+  opacity:0.5;
+}
+.mask-overlay.is-full{
+  opacity:1;
+}
+.mask-overlay .mask-cell{
+  background:transparent;
+}
+.mask-overlay .mask-cell.is-on{
+  background: var(--mask-overlay-color, #000);
+}
+
 .qr-cursor{
   --cursor-color: #e60000;
   position:absolute;

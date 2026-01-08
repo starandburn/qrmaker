@@ -32,6 +32,8 @@ window.appSettingsFromScript = {
     "stepAnimationStartScale": 2.0,
     // putアニメーションの枠表示
     "stepAnimationShowBorder": true,
+    // マスクフェードの時間(ms)
+    "maskFadeDurationMs": 250,
     // 表示のON/OFF初期値
     "viewFlags": {
       // カーソル表示
