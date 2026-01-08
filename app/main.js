@@ -1743,6 +1743,16 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
     });
   }
+  document.addEventListener("contextmenu", (ev) => {
+    const target = ev.target;
+    if(target && typeof target.closest === "function"){
+      const allowed = target.closest("input, textarea");
+      if(allowed){
+        return;
+      }
+    }
+    ev.preventDefault();
+  });
 
   if(btnClearCode){
     btnClearCode.addEventListener("click", () => {
