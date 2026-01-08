@@ -858,13 +858,15 @@ function getNextDataInfo(){
 
 function reapplyCellColors(){
   if(cellStates.size === 0) return;
+  const prevTimingRow = timingRowIndex;
+  const prevTimingCol = timingColIndex;
   withStepPlacementSuppressed(() => {
     for(const { row, col, value, color } of cellStates.values()){
       applySetCell(row, col, value, color);
     }
   });
-  timingRowIndex = 0;
-  timingColIndex = 0;
+  timingRowIndex = prevTimingRow;
+  timingColIndex = prevTimingCol;
 }
 
 function parseCellRef(ref){
