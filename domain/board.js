@@ -254,6 +254,7 @@ function applyStepPlacementAnimation(row, col){
   }
   const timer = setTimeout(() => {
     cell.style.removeProperty("z-index");
+    cell.classList.remove("cell-step-put");
     delete cell.dataset.stepZResetTimer;
   }, getStepAnimationDurationMs());
   cell.dataset.stepZResetTimer = String(timer);

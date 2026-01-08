@@ -1408,7 +1408,7 @@ textarea{
   grid-row:2 / span 25;
   position:relative;
   background:rgba(0,0,0,0.05);
-  border:1px solid #cfd3da;
+  border:none;
   overflow:visible;
   z-index:5;
 }
@@ -1425,6 +1425,14 @@ textarea{
   pointer-events:none;
   opacity:1;
   z-index:3; /* keep grid lines visible over filled cells */
+}
+.grid-area::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border:1px solid #cfd3da;
+  pointer-events:none;
+  z-index:4;
 }
 
 .mask-overlay{

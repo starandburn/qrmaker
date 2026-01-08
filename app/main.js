@@ -77,7 +77,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(typeof element.defaultChecked === "boolean"){
       element.defaultChecked = overrideValue;
     }
-    if(key === "toggleColor" && typeof isColorEnabled !== "undefined"){
+    if(key === "viewColor" && typeof isColorEnabled !== "undefined"){
       isColorEnabled = overrideValue;
     }
   });
@@ -1074,11 +1074,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     let restoreStepAnim = false;
     let maskApplyingActive = false;
     try{
-      if(hasFormatPattern){
-        showApiStatus("drawFormatPatterns");
-        await callDrawFormatPatterns(idx, true);
-        showApiStatus("applyMask", idx);
-      }
       setMaskApplying(true);
       maskApplyingActive = true;
       if(stepMask){
@@ -1142,6 +1137,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         if(shouldAbort()) break;
       }
       completed = !shouldAbort();
+      }
+      if(completed && hasFormatPattern){
+        showApiStatus("drawFormatPatterns");
+        await callDrawFormatPatterns(idx, true);
+        showApiStatus("applyMask", idx);
       }
     }finally{
       if(maskApplyingActive){

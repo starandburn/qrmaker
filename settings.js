@@ -41,7 +41,7 @@ window.appSettingsFromScript = {
       // ガイド表示
       "viewGuide": false,
       // グリッド表示
-      "viewGrid": false,
+      "viewGrid": true,
       // 空セル表示
       "viewEmpty": false,
       // 色分け表示

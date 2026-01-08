@@ -429,9 +429,10 @@ function fitSquare(){
     (window.innerHeight > window.innerWidth) ||
     window.innerWidth <= 1100
   );
-  const size = isSingleColumn
+  const rawSize = isSingleColumn
     ? Math.max(60, Math.floor(w)) // single-column/tall: base strictly on available width
     : Math.max(60, Math.floor(Math.min(w, h))); // two-column: fit both axes
+  const size = Math.max(60, rawSize - (rawSize % 25));
 
   // Hide guide text if the available width is too narrow
   const guideCompact = w < 420 || h < 420 || size < 280;
