@@ -1161,12 +1161,13 @@ textarea{
   white-space: pre;
 }
 .execution-status-cell{
-  width:1em;
-  height:1em;
-  border:1px solid #999;
+  width:1.2em;
+  height:1.2em;
   border-radius:2px;
   box-sizing:border-box;
   background:#fff;
+  position:relative;
+  border:1px solid #999;
 }
 .execution-status-next-label{
   white-space: pre;
@@ -1178,6 +1179,52 @@ textarea{
   border-radius:2px;
   box-sizing:border-box;
   background:#fff;
+}
+.execution-status-visual-cursor{
+  position:absolute;
+  inset:0;
+  border:2px solid #e60000;
+  border-radius:4px;
+  box-sizing:border-box;
+  pointer-events:none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  transform:scale(1.1);
+  transform-origin:center;
+}
+.execution-status-visual-cursor::after{
+  content: attr(data-arrow);
+  position:absolute;
+  font-size:16px;
+  font-weight:700;
+  color:#e60000;
+  line-height:1;
+  text-shadow:
+    -1px 0 #fff,
+    1px 0 #fff,
+    0 -1px #fff,
+    0 1px #fff;
+}
+.execution-status-visual-cursor[data-dir="up"]::after{
+  top:6%;
+  left:50%;
+  transform:translate(-50%, -50%) translateY(-0.1em);
+}
+.execution-status-visual-cursor[data-dir="down"]::after{
+  bottom:6%;
+  left:50%;
+  transform:translate(-50%, 50%) translateY(0.1em);
+}
+.execution-status-visual-cursor[data-dir="left"]::after{
+  left:6%;
+  top:50%;
+  transform:translate(-50%, -50%) translateX(-0.1em);
+}
+.execution-status-visual-cursor[data-dir="right"]::after{
+  right:6%;
+  top:50%;
+  transform:translate(50%, -50%) translateX(0.1em);
 }
 .execution-status.status-running{
   background:#eef4ff;
@@ -1351,6 +1398,23 @@ textarea{
   border:none;
   position:relative;
 }
+.noise-mode-hint{
+  position:absolute;
+  bottom:4px;
+  right:4px;
+  font-size:11px;
+  color:rgba(17,17,17,0.55);
+  padding:4px 8px;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity 160ms ease;
+  z-index:10;
+  white-space:nowrap;
+  background:transparent;
+}
+.noise-mode-hint.visible{
+  opacity:0.45;
+}
 
 .square{
   width:200px;
@@ -1475,6 +1539,17 @@ textarea{
   border:none;
   overflow:visible;
   z-index:5;
+}
+.noise-layer{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:7;
+}
+.noise-dot{
+  position:absolute;
+  border-radius:50%;
+  opacity:0.85;
 }
 .grid-area::before{
   content:"";
@@ -1698,6 +1773,12 @@ textarea{
   display:none;
 }
 .view-area.hide-grid .grid-area::before{
+  opacity:0;
+}
+
+.view-area.hide-grid .grid-area::after,
+.view-area.hide-empty .grid-area::after,
+.view-area.hide-guide .grid-area::after{
   opacity:0;
 }
 

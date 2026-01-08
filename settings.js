@@ -3,7 +3,7 @@ window.appSettingsFromScript = {
     // QR入力欄の初期値
     "qrData": "Hello, World!",
     // ユーザーコード欄の初期値
-    "userCode": "qrcode",
+    "userCode": "QRCode",
     // 履歴パネルの初期表示
     "historyVisible": false,
     // パターン詳細パネルの初期表示
@@ -41,7 +41,7 @@ window.appSettingsFromScript = {
       // ガイド表示
       "viewGuide": false,
       // グリッド表示
-      "viewGrid": true,
+      "viewGrid": false,
       // 空セル表示
       "viewEmpty": false,
       // 色分け表示

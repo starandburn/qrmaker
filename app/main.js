@@ -549,6 +549,12 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       nextCellEl.className = "execution-status-next-cell";
       executionStatusCursorEl.append(nextCellEl);
     }
+    let cursorVisualEl = cursorCellEl.querySelector(".execution-status-visual-cursor");
+    if(!cursorVisualEl){
+      cursorVisualEl = document.createElement("span");
+      cursorVisualEl.className = "execution-status-visual-cursor";
+      cursorCellEl.append(cursorVisualEl);
+    }
     const colorMap = {
       red: ["var(--col-red-light)", "var(--col-red-dark)"],
       blue: ["var(--col-blue-light)", "var(--col-blue-dark)"],
@@ -572,10 +578,22 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         case DIR_DOWN: return "▼";
         case DIR_LEFT: return "◀";
         default: return "▲";
-        }
-      })();
+      }
+    })();
+    const dirName = (() => {
+      switch(cursorPos.dir){
+        case DIR_UP: return "up";
+        case DIR_RIGHT: return "right";
+        case DIR_DOWN: return "down";
+        case DIR_LEFT: return "left";
+        default: return "up";
+      }
+    })();
     cursorLabelEl.textContent = "Cursor";
-    cursorTextEl.textContent = `${ref}(${rowText},${colText}) ${dirSymbol}`;
+    cursorTextEl.textContent = `${ref}(${rowText},${colText})`;
+    cursorVisualEl.setAttribute("data-arrow", dirSymbol);
+    cursorVisualEl.setAttribute("data-dir", dirName);
+    cursorVisualEl.style.setProperty("--cursor-color", "#e60000");
     const guideCol = document.querySelector(".guide-col");
     if(guideCol){
       const spans = guideCol.querySelectorAll("span");
@@ -616,23 +634,130 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       cursorCellEl.style.boxShadow = "";
     }
     nextLabelEl.textContent = "Next";
-    const nextInfo = (typeof window.getNextDataInfo === "function") ? window.getNextDataInfo() : null;
-    const nextKind = nextInfo ? nextInfo.kind : null;
-    const nextBit = nextInfo ? nextInfo.bit : null;
-    const colName = (typeof window.colorsForKind === "function")
-      ? window.colorsForKind(nextKind)
-      : "black";
-    const resolved = colorMap[colName] || colorMap.black;
-    const bitIsBlack = nextBit === 1;
-    const nextFill = bitIsBlack ? resolved[1] : resolved[0];
-    const nextBorder = bitIsBlack ? resolved[0] : resolved[1];
-    nextCellEl.style.backgroundColor = nextFill;
-    nextCellEl.style.borderColor = nextBorder;
-    nextCellEl.style.boxShadow = "";
+    const basePatternActive = Boolean(window.isDrawingBasePattern);
+    if(basePatternActive && typeof window.lastBasePatternColorName === "string" && window.lastBasePatternColorName){
+      const baseColorName = window.lastBasePatternColorName;
+      const baseResolved = colorMap[baseColorName] || colorMap.black;
+      const baseBitIsBlack = Boolean(window.lastBasePatternBitIsBlack);
+      const baseFill = baseBitIsBlack ? baseResolved[1] : baseResolved[0];
+      const baseBorder = baseBitIsBlack ? baseResolved[0] : baseResolved[1];
+      nextCellEl.style.backgroundColor = baseFill;
+      nextCellEl.style.borderColor = baseBorder;
+      nextCellEl.style.boxShadow = "";
+    }else{
+      const nextInfo = (typeof window.getNextDataInfo === "function") ? window.getNextDataInfo() : null;
+      const nextKind = nextInfo ? nextInfo.kind : null;
+      const nextBit = nextInfo ? nextInfo.bit : null;
+      const colName = (typeof window.colorsForKind === "function")
+        ? window.colorsForKind(nextKind)
+        : "black";
+      const resolved = colorMap[colName] || colorMap.black;
+      const bitIsBlack = nextBit === 1;
+      const nextFill = bitIsBlack ? resolved[1] : resolved[0];
+      const nextBorder = bitIsBlack ? resolved[0] : resolved[1];
+      nextCellEl.style.backgroundColor = nextFill;
+      nextCellEl.style.borderColor = nextBorder;
+      nextCellEl.style.boxShadow = "";
+    }
   };
   if(typeof window !== "undefined"){
     window.updateExecutionStatusCursor = updateExecutionStatusCursor;
+    window.isDrawingBasePattern = false;
+    window.lastBasePatternColorName = null;
+    window.lastBasePatternBitIsBlack = false;
+    window.lastBasePatternKind = null;
   }
+
+  let clearNoiseLayer = () => {};
+  let isQRCodeReadable = false;
+  let noiseSingleClickEnabled = false;
+  const noiseModeHintEl = document.getElementById("noiseModeHint");
+  const shouldShowNoiseHint = () => isQRCodeReadable && noiseSingleClickEnabled;
+  const updateNoiseModeHint = () => {
+    if(!noiseModeHintEl) return;
+    noiseModeHintEl.classList.toggle("visible", shouldShowNoiseHint());
+  };
+  const setQRCodeReadable = (value) => {
+    isQRCodeReadable = Boolean(value);
+    noiseSingleClickEnabled = false;
+    updateNoiseModeHint();
+  };
+  const setupNoiseScatter = () => {
+    const gridArea = document.querySelector(".grid-area");
+    if(!gridArea) return;
+    let noiseLayer = gridArea.querySelector(".noise-layer");
+    if(!noiseLayer){
+      noiseLayer = document.createElement("div");
+      noiseLayer.className = "noise-layer";
+      gridArea.append(noiseLayer);
+    }
+    const palette = ["#ff3b30", "#ff9500", "#ffcc00", "#34c759", "#5ac8fa", "#007aff", "#af52de", "#ff2d55"];
+    const MAX_DOTS = 320;
+    clearNoiseLayer = () => {
+      noiseLayer.textContent = "";
+    };
+    const addNoiseDot = (x, y, size, color) => {
+      const dot = document.createElement("span");
+      dot.className = "noise-dot";
+      dot.style.width = `${size}px`;
+      dot.style.height = `${size}px`;
+      dot.style.left = `${x - size / 2}px`;
+      dot.style.top = `${y - size / 2}px`;
+      dot.style.backgroundColor = color;
+      noiseLayer.append(dot);
+      while(noiseLayer.childElementCount > MAX_DOTS){
+        noiseLayer.removeChild(noiseLayer.firstElementChild);
+      }
+    };
+    const shootNoiseAt = (ev) => {
+      if(!isQRCodeReadable) return false;
+      const rect = gridArea.getBoundingClientRect();
+      const width = rect.width || 0;
+      const height = rect.height || 0;
+      if(width <= 0 || height <= 0) return false;
+      const centerX = ev.clientX - rect.left;
+      const centerY = ev.clientY - rect.top;
+      const minDimension = Math.min(width, height);
+      const maxGridRadius = Math.min((minDimension / 25) * 6, 260);
+      const radius = Math.max(24, Math.min(maxGridRadius, minDimension * 0.15));
+      const count = Math.max(8, Math.min(24, Math.round((width * height) / 36000)));
+      const minSize = Math.max(3, Math.round(minDimension * 0.02));
+      const maxSize = Math.max(minSize + 4, Math.round(minDimension * 0.12));
+      for(let i = 0; i < count; i++){
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * radius;
+        let x = centerX + Math.cos(angle) * dist;
+        let y = centerY + Math.sin(angle) * dist;
+        const size = minSize + Math.random() * (maxSize - minSize);
+        x = Math.max(0, Math.min(width, x));
+        y = Math.max(0, Math.min(height, y));
+        const color = palette[Math.floor(Math.random() * palette.length)];
+        addNoiseDot(x, y, size, color);
+      }
+      return true;
+    };
+    const handleDoubleClick = (ev) => {
+      if(ev.shiftKey){
+        clearNoiseLayer();
+        return;
+      }
+      if(shootNoiseAt(ev)){
+        noiseSingleClickEnabled = true;
+        updateNoiseModeHint();
+      }
+    };
+    gridArea.addEventListener("dblclick", handleDoubleClick);
+    gridArea.addEventListener("click", (ev) => {
+      if(ev.shiftKey){
+        clearNoiseLayer();
+        return;
+      }
+      if(isQRCodeReadable && noiseSingleClickEnabled){
+        shootNoiseAt(ev);
+      }
+    });
+  };
+  setupNoiseScatter();
 
   const describeApiStatus = (name, payload) => {
     const entry = API_STATUS_DESCRIPTIONS[name];
@@ -802,6 +927,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
 
   let cellsInitialized = false;
   function clearBoardSurface(){
+    setQRCodeReadable(false);
+    clearNoiseLayer();
     const cells = document.querySelectorAll(".qr-cells .cell");
     if(!cells || cells.length === 0) return false;
     for(const cell of cells){
@@ -825,10 +952,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return true;
   }
 
-  function clearBoard(){
-    window.logEvent("clearBoard", "", "盤面をクリア");
-    return clearBoardSurface();
-  }
+    function clearBoard(){
+      window.logEvent("clearBoard", "", "盤面をクリア");
+      clearNoiseLayer();
+      return clearBoardSurface();
+    }
 
   function resetBoardState(options = {}){
     const {
@@ -1329,9 +1457,18 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const showBaseStatus = () => showApiStatus("drawBasePatterns");
     const runFunctionalPattern = async (name, fn, ...fnArgs) => {
       showApiStatus(name);
-      const result = await fn(...fnArgs);
-      showBaseStatus();
-      return result;
+      if(typeof window !== "undefined"){
+        window.isDrawingBasePattern = true;
+      }
+      try{
+        const result = await fn(...fnArgs);
+        return result;
+      }finally{
+        if(typeof window !== "undefined"){
+          window.isDrawingBasePattern = false;
+        }
+        showBaseStatus();
+      }
     };
     await runFunctionalPattern("drawFinderPatterns", callDrawFinderPatterns, opts.overwrite, opts.currentRun);
     await runFunctionalPattern("drawTimingPatterns", callDrawTimingPatterns, opts.overwrite, opts.currentRun);
@@ -1659,6 +1796,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     window.logEvent("verify", "", "入力と出力を検証中");
     showApiStatus("verify");
     const result = verifyService.verifyBoard();
+    setQRCodeReadable(Boolean(result?.ok));
     if(!result) return null;
     const inputValue = document.getElementById("txtInput")?.value ?? "";
     const match = result.text === inputValue;
@@ -1705,6 +1843,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     let runOk = false;
     let verificationOutcome = null;
     try{
+      setQRCodeReadable(false);
       runOk = await runUserCodeWithStep();
     }finally{
       verificationOutcome = logVerificationOutcome();
