@@ -1143,6 +1143,41 @@ textarea{
   flex:0 0 auto;
   text-align:right;
   font-size:1rem;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.execution-status-chip{
+  font-size:0.72em;
+  line-height:1;
+  padding:2px 6px;
+  border-radius:999px;
+  background:#eef2f6;
+  color:#4a4a4a;
+  letter-spacing:0.02em;
+  text-transform:none;
+}
+.execution-status-cursor-text{
+  white-space: pre;
+}
+.execution-status-cell{
+  width:1em;
+  height:1em;
+  border:1px solid #999;
+  border-radius:2px;
+  box-sizing:border-box;
+  background:#fff;
+}
+.execution-status-next-label{
+  white-space: pre;
+}
+.execution-status-next-cell{
+  width:1em;
+  height:1em;
+  border:1px solid #999;
+  border-radius:2px;
+  box-sizing:border-box;
+  background:#fff;
 }
 .execution-status.status-running{
   background:#eef4ff;
@@ -1153,6 +1188,11 @@ textarea{
   background:#f0fff4;
   border-color:#b6e4c1;
   color:#1f6930;
+}
+.execution-status.status-warning{
+  background:#fff9e6;
+  border-color:#f2d999;
+  color:#8a6d3b;
 }
 .execution-status.status-error{
   background:#fff1f1;

@@ -849,6 +849,13 @@ function getNextDataKind(){
   return entry.kind;
 }
 
+function getNextDataInfo(){
+  if(!Array.isArray(dataSeq) || dataSeqIndex >= dataSeq.length) return null;
+  const entry = dataSeq[dataSeqIndex];
+  if(!entry || typeof entry.kind !== "number" || typeof entry.bit !== "number") return null;
+  return { kind: entry.kind, bit: entry.bit };
+}
+
 function reapplyCellColors(){
   if(cellStates.size === 0) return;
   withStepPlacementSuppressed(() => {
@@ -1143,6 +1150,7 @@ window.isDataEnd = isDataEnd;
 window.hasMoreData = hasMoreData;
 window.getNextData = getNextData;
 window.getNextDataKind = getNextDataKind;
+window.getNextDataInfo = getNextDataInfo;
 window.resetLoopGuard = resetLoopGuard;
 window.canContinueLoop = canContinueLoop;
 window.pauseRunning = pauseRunning;

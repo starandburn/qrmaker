@@ -410,6 +410,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     running: "実行中",
     finished: "実行完了",
     error: "エラー",
+    warning: "警告",
   };
   let lastExecutionError = null;
   const extractUnknownCommandWord = (message) => {
@@ -517,6 +518,48 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   window.updateDataPatternStatus = updateDataPatternStatus;
   const updateExecutionStatusCursor = () => {
     if(!executionStatusCursorEl) return;
+    let cursorTextEl = executionStatusCursorEl.querySelector(".execution-status-cursor-text");
+    let cursorCellEl = executionStatusCursorEl.querySelector(".execution-status-cell");
+    let cursorLabelEl = executionStatusCursorEl.querySelector(".execution-status-cursor-label");
+    let nextLabelEl = executionStatusCursorEl.querySelector(".execution-status-next-label");
+    let nextCellEl = executionStatusCursorEl.querySelector(".execution-status-next-cell");
+    if(!cursorTextEl){
+      cursorTextEl = document.createElement("span");
+      cursorTextEl.className = "execution-status-cursor-text";
+      executionStatusCursorEl.textContent = "";
+      executionStatusCursorEl.append(cursorTextEl);
+    }
+    if(!cursorCellEl){
+      cursorCellEl = document.createElement("span");
+      cursorCellEl.className = "execution-status-cell";
+      executionStatusCursorEl.append(cursorCellEl);
+    }
+    if(!cursorLabelEl){
+      cursorLabelEl = document.createElement("span");
+      cursorLabelEl.className = "execution-status-cursor-label execution-status-chip";
+      executionStatusCursorEl.append(cursorLabelEl);
+    }
+    if(!nextLabelEl){
+      nextLabelEl = document.createElement("span");
+      nextLabelEl.className = "execution-status-next-label execution-status-chip";
+      executionStatusCursorEl.append(nextLabelEl);
+    }
+    if(!nextCellEl){
+      nextCellEl = document.createElement("span");
+      nextCellEl.className = "execution-status-next-cell";
+      executionStatusCursorEl.append(nextCellEl);
+    }
+    const colorMap = {
+      red: ["var(--col-red-light)", "var(--col-red-dark)"],
+      blue: ["var(--col-blue-light)", "var(--col-blue-dark)"],
+      green: ["var(--col-green-light)", "var(--col-green-dark)"],
+      yellow: ["var(--col-yellow-light)", "var(--col-yellow-dark)"],
+      purple: ["var(--col-purple-light)", "var(--col-purple-dark)"],
+      orange: ["var(--col-orange-light)", "var(--col-orange-dark)"],
+      gray: ["var(--col-gray-light)", "var(--col-gray-dark)"],
+      format: ["var(--col-format-blue-light)", "var(--col-format-blue-dark)"],
+      black: ["var(--col-black-light)", "var(--col-black-dark)"],
+    };
     const ref = (typeof window.cellRefFromRowCol === "function")
       ? window.cellRefFromRowCol(cursorPos.row, cursorPos.col)
       : "";
@@ -529,9 +572,49 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         case DIR_DOWN: return "▼";
         case DIR_LEFT: return "◀";
         default: return "▲";
-      }
-    })();
-    executionStatusCursorEl.textContent = `${ref}(${rowText},${colText}) ${dirSymbol}`;
+        }
+      })();
+    cursorLabelEl.textContent = "Cursor";
+    cursorTextEl.textContent = `${ref}(${rowText},${colText}) ${dirSymbol}`;
+    const currentValue = (typeof window.getCell === "function")
+      ? window.getCell(cursorPos.row, cursorPos.col)
+      : null;
+    const currentKind = (typeof window.bitKind === "function" && typeof currentValue === "number")
+      ? window.bitKind(currentValue)
+      : (typeof currentValue === "number" ? Math.abs(currentValue) : null);
+    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+    if(typeof currentKind === "number" && currentKind !== unplacedKind){
+      const currentColor = (typeof window.colorsForKind === "function")
+        ? window.colorsForKind(currentKind)
+        : "black";
+      const resolved = colorMap[currentColor] || colorMap.black;
+      const bitIsBlack = (typeof window.isBlackBit === "function")
+        ? window.isBlackBit(currentValue)
+        : currentValue > 0;
+      const fill = bitIsBlack ? resolved[1] : resolved[0];
+      const border = bitIsBlack ? resolved[0] : resolved[1];
+      cursorCellEl.style.backgroundColor = fill;
+      cursorCellEl.style.borderColor = border;
+      cursorCellEl.style.boxShadow = "";
+    }else{
+      cursorCellEl.style.backgroundColor = "#ffffff";
+      cursorCellEl.style.borderColor = "#999999";
+      cursorCellEl.style.boxShadow = "";
+    }
+    nextLabelEl.textContent = "Next";
+    const nextInfo = (typeof window.getNextDataInfo === "function") ? window.getNextDataInfo() : null;
+    const nextKind = nextInfo ? nextInfo.kind : null;
+    const nextBit = nextInfo ? nextInfo.bit : null;
+    const colName = (typeof window.colorsForKind === "function")
+      ? window.colorsForKind(nextKind)
+      : "black";
+    const resolved = colorMap[colName] || colorMap.black;
+    const bitIsBlack = nextBit === 1;
+    const nextFill = bitIsBlack ? resolved[1] : resolved[0];
+    const nextBorder = bitIsBlack ? resolved[0] : resolved[1];
+    nextCellEl.style.backgroundColor = nextFill;
+    nextCellEl.style.borderColor = nextBorder;
+    nextCellEl.style.boxShadow = "";
   };
   if(typeof window !== "undefined"){
     window.updateExecutionStatusCursor = updateExecutionStatusCursor;
@@ -1615,7 +1698,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
           const verificationDetail = verificationOutcome
             ? (verificationOutcome.match ? "正しいQRコードが生成されました。" : "この盤面はQRコードとして読み取れません。")
             : "";
-        setExecutionStatus("finished", undefined, verificationDetail);
+          if(verificationOutcome && !verificationOutcome.match){
+            setExecutionStatus("warning", undefined, verificationDetail);
+          }else{
+            setExecutionStatus("finished", undefined, verificationDetail);
+          }
       }else if(lastExecutionError){
         setExecutionStatus("error", lastExecutionError);
       }else{
