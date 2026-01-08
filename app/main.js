@@ -1276,7 +1276,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const drawTimingPatterns = wrapDrawApi("drawTimingPatterns", callDrawTimingPatterns, "タイミングパターンを描画");
   const drawFormatPatterns = wrapDrawApi("drawFormatPatterns", callDrawFormatPatterns, "フォーマットパターンを描画");
   ctx.drawFormatPatterns = drawFormatPatterns;
-  window.putNextCell = putNextCell;
   window.buildFunctionSet = buildFunctionSet;
   window.parseCellRef = parseCellRef;
   window.cellRefFromRowCol = cellRefFromRowCol;
@@ -1396,7 +1395,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         if(!canContinueLoop()) return false;
         const nextKind = (typeof window.getNextDataKind === "function") ? window.getNextDataKind() : null;
         markDataPatternStage(nextKind);
-        await putNextCell();
+        await advanceCommand();
         if(shouldAbort()) throw ABORT_ERR;
       }
       return runToken === runId;
@@ -1436,14 +1435,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(currentRun !== runId || !maskOk) return false;
     return true;
   }
-  window.up = DIR_UP;
-  window.right = DIR_RIGHT;
-  window.down = DIR_DOWN;
-  window.left = DIR_LEFT;
-  window.u = DIR_UP;
-  window.r = DIR_RIGHT;
-  window.d = DIR_DOWN;
-  window.l = DIR_LEFT;
 
   const dirs = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
   const FUNCTION_KINDS = [

@@ -63,6 +63,7 @@ let timingRowIndex = 0;
 let timingColIndex = 0;
 let hasFormatPattern = false;
 let lastMoveBlocked = false;
+let moveNextCounter = 0;
 const BOARD_ROWS = 25;
 const BOARD_COLS = 25;
 const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
@@ -327,6 +328,7 @@ function updateCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.
 }
 
 function resetCursor(){
+  moveNextCounter = 0;
   return updateCursor(HOME_CURSOR.row, HOME_CURSOR.col, HOME_CURSOR.dir);
 }
 
@@ -343,16 +345,17 @@ function setHomeCursor({ row, col, dir } = {}){
   }
 }
 
-function moveCursor(...args){
-  lastMoveBlocked = false;
-  let targetRow = cursorPos.row;
-  let targetCol = cursorPos.col;
-  let finalDir = cursorPos.dir;
-  let logLabel = null;
-  let logPositionOnly = false;
-  let relativeStepDir = null;
-  let relativeMoveCount = 1;
-  let isRelativeMove = false;
+  function moveCursor(...args){
+    lastMoveBlocked = false;
+    let targetRow = cursorPos.row;
+    let targetCol = cursorPos.col;
+    let finalDir = cursorPos.dir;
+    let logLabel = null;
+    let logPositionOnly = false;
+    let shouldResetMoveNext = false;
+    let relativeStepDir = null;
+    let relativeMoveCount = 1;
+    let isRelativeMove = false;
   const stepOnce = (dirVal) => {
     const norm = normalizeDir(dirVal);
     if(!norm) return false;
@@ -390,10 +393,11 @@ function moveCursor(...args){
     return "カーソル" + word + "移動";
   };
 
-  const recordStraightMove = () => {
-    logLabel = "カーソル直移動";
-    logPositionOnly = true;
-  };
+    const recordStraightMove = () => {
+      logLabel = "カーソル直移動";
+      logPositionOnly = true;
+      shouldResetMoveNext = true;
+    };
   const recordRelativeMove = (key) => {
     logLabel = describeMove(key);
   };
@@ -568,21 +572,24 @@ function moveCursor(...args){
     }
   }
 
-  if(isRelativeMove){
-    if(!performRelativeMoves()){
-      return false;
+    if(isRelativeMove){
+      if(!performRelativeMoves()){
+        return false;
+      }
+    }else{
+      if(targetRow < 1 || targetRow > BOARD_ROWS || targetCol < 1 || targetCol > BOARD_COLS){
+        lastMoveBlocked = true;
+        return false;
+      }
+      const ok = updateCursor(targetRow, targetCol, finalDir);
+      if(!ok){
+        lastMoveBlocked = true;
+        return false;
+      }
+      if(shouldResetMoveNext){
+        moveNextCounter = 0;
+      }
     }
-  }else{
-    if(targetRow < 1 || targetRow > BOARD_ROWS || targetCol < 1 || targetCol > BOARD_COLS){
-      lastMoveBlocked = true;
-      return false;
-    }
-    const ok = updateCursor(targetRow, targetCol, finalDir);
-    if(!ok){
-      lastMoveBlocked = true;
-      return false;
-    }
-  }
   if(logLabel && logPositionOnly){
     const payload = {
       args,
@@ -601,6 +608,31 @@ function moveCursor(...args){
   resetCursorColorAfterStepMove();
   lastMoveBlocked = false;
   return callMakeStepThenable();
+}
+
+async function moveNext(){
+  const isLeftStep = (moveNextCounter % 2) === 0;
+  moveNextCounter += 1;
+  if(isLeftStep){
+    return await moveCursor("left");
+  }
+  const forwardOk = await moveCursor();
+  if(typeof window.isMoveBlocked === "function" && window.isMoveBlocked()){
+    return forwardOk;
+  }
+  return await moveCursor("right");
+}
+
+async function moveAdvance(){
+  await moveNext();
+  if(typeof window.isMoveBlocked === "function" && window.isMoveBlocked()){
+    await turnCursor();
+    await moveCursor("left");
+    if(typeof window.isSkipZone === "function" && window.isSkipZone()){
+      await moveCursor("left");
+    }
+  }
+  return true;
 }
 
 function callMakeStepThenable(){
@@ -1084,24 +1116,11 @@ function isMoveBlocked(){
   return lastMoveBlocked;
 }
 
-async function putNextCell(){
+async function advanceCommand(){
   if(window.isEmpty && window.isEmpty()){
     await putCell();
   }
-  await moveCursor("left");
-  if(window.isEmpty && window.isEmpty()){
-    await putCell();
-  }
-  await moveCursor();
-  if(window.isMoveBlocked && window.isMoveBlocked()){
-    await turnCursor();
-    await moveCursor("left");
-    if(window.isSkipZone && window.isSkipZone()){
-      await moveCursor("left");
-    }
-  }else{
-    await moveCursor("right");
-  }
+  await moveAdvance();
   return true;
 }
 
@@ -1126,7 +1145,6 @@ window.getNextData = getNextData;
 window.getNextDataKind = getNextDataKind;
 window.resetLoopGuard = resetLoopGuard;
 window.canContinueLoop = canContinueLoop;
-window.renderFrameAndWait = pauseRunning;
 window.pauseRunning = pauseRunning;
 window.updateCell = updateCell;
 window.putCell = putCell;
@@ -1134,22 +1152,16 @@ window.getCell = getCell;
 window.invertCell = invertCell;
 window.isEmpty = isEmpty;
 window.isUsed = isUsed;
-window.isSkipZone = isSkipZone;
-window.isFunctionalCell = isFunctionalCell;
-window.isMoveBlocked = isMoveBlocked;
-window.putNextCell = putNextCell;
-window.shouldPlaceCell = shouldPlaceCell;
-window.moveCursor = moveCursor;
+  window.isSkipZone = isSkipZone;
+  window.isFunctionalCell = isFunctionalCell;
+  window.isMoveBlocked = isMoveBlocked;
+  window.advanceCommand = advanceCommand;
+  window.moveAdvance = moveAdvance;
+  window.moveNext = moveNext;
+  window.shouldPlaceCell = shouldPlaceCell;
+  window.moveCursor = moveCursor;
 window.turnCursor = turnCursor;
 window.updateCursor = updateCursor;
 window.resetCursor = resetCursor;
-window.up = DIR_UP;
-window.right = DIR_RIGHT;
-window.down = DIR_DOWN;
-window.left = DIR_LEFT;
-window.u = DIR_UP;
-window.r = DIR_RIGHT;
-window.d = DIR_DOWN;
-window.l = DIR_LEFT;
 window.setHomeCursor = setHomeCursor;
 

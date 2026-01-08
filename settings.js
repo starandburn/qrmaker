@@ -81,7 +81,13 @@ darkmodules
 formats
 move end up
 repeat
-\tadvance
+	empty? put
+	move next
+	block?
+		turn
+		move left
+		skip? move left
+	endif
 end
 mask`
       },
