@@ -403,6 +403,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
   if(!btnGenerate || !btnInit) return;
   const executionStatusEl = document.getElementById("executionStatus");
+  const executionStatusTextEl = document.getElementById("executionStatusText");
+  const executionStatusCursorEl = document.getElementById("executionStatusCursor");
   const executionStatusLabels = {
     stopped: "待機中",
     running: "実行中",
@@ -449,7 +451,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   const setExecutionStatus = (state, message, detail) => {
     if(!executionStatusEl) return;
-    executionStatusEl.textContent = buildExecutionStatusText(state, message, detail);
+    const target = executionStatusTextEl || executionStatusEl;
+    target.textContent = buildExecutionStatusText(state, message, detail);
     executionStatusEl.className = `execution-status status-${state}`;
   };
   setExecutionStatus("stopped");
@@ -490,6 +493,27 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return true;
   };
   window.updateDataPatternStatus = updateDataPatternStatus;
+  const updateExecutionStatusCursor = () => {
+    if(!executionStatusCursorEl) return;
+    const ref = (typeof window.cellRefFromRowCol === "function")
+      ? window.cellRefFromRowCol(cursorPos.row, cursorPos.col)
+      : "";
+    const rowText = String(cursorPos.row).padStart(2, " ");
+    const colText = String(cursorPos.col).padStart(2, " ");
+    const dirSymbol = (() => {
+      switch(cursorPos.dir){
+        case DIR_UP: return "▲";
+        case DIR_RIGHT: return "▶";
+        case DIR_DOWN: return "▼";
+        case DIR_LEFT: return "◀";
+        default: return "▲";
+      }
+    })();
+    executionStatusCursorEl.textContent = `${ref}(${rowText},${colText}) ${dirSymbol}`;
+  };
+  if(typeof window !== "undefined"){
+    window.updateExecutionStatusCursor = updateExecutionStatusCursor;
+  }
 
   const describeApiStatus = (name, payload) => {
     const entry = API_STATUS_DESCRIPTIONS[name];

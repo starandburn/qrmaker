@@ -314,9 +314,15 @@ function updateCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.
   cursorPos.dir = dir;
   if(renderMode === RENDER_BUFFERED){
     pendingCursor = { row: r, col: c, dir };
+    if(typeof window.updateExecutionStatusCursor === "function"){
+      window.updateExecutionStatusCursor();
+    }
     return true;
   }
   applyCursor(r, c, dir);
+  if(typeof window.updateExecutionStatusCursor === "function"){
+    window.updateExecutionStatusCursor();
+  }
   return true;
 }
 
