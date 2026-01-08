@@ -1431,6 +1431,11 @@ textarea{
   color:#8b919a;
   border-left:1px solid #cfd3da;
 }
+.guide-col span.is-active{
+  background:#e8f0ff;
+  color:#1f4a85;
+  font-weight:600;
+}
 
 .guide-row{
   grid-column:1;
@@ -1452,6 +1457,11 @@ textarea{
   font-size:clamp(10px, 1.1vw, 12px);
   color:#8b919a;
   border-top:1px solid #cfd3da;
+}
+.guide-row span.is-active{
+  background:#e8f0ff;
+  color:#1f4a85;
+  font-weight:600;
 }
 .guide-row span:last-child{
   border-bottom:1px solid #cfd3da;

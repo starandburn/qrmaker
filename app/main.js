@@ -576,6 +576,20 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       })();
     cursorLabelEl.textContent = "Cursor";
     cursorTextEl.textContent = `${ref}(${rowText},${colText}) ${dirSymbol}`;
+    const guideCol = document.querySelector(".guide-col");
+    if(guideCol){
+      const spans = guideCol.querySelectorAll("span");
+      spans.forEach((span, index) => {
+        span.classList.toggle("is-active", index === cursorPos.col - 1);
+      });
+    }
+    const guideRow = document.querySelector(".guide-row");
+    if(guideRow){
+      const spans = guideRow.querySelectorAll("span");
+      spans.forEach((span, index) => {
+        span.classList.toggle("is-active", index === cursorPos.row - 1);
+      });
+    }
     const currentValue = (typeof window.getCell === "function")
       ? window.getCell(cursorPos.row, cursorPos.col)
       : null;
