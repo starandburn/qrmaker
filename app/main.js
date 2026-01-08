@@ -108,6 +108,52 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     stepSpeed.value = normalizedStepSpeedOverride;
     stepSpeed.defaultValue = normalizedStepSpeedOverride;
   }
+  const normalizeNumberSetting = (value) => {
+    if(typeof value === "number" && Number.isFinite(value)){
+      return value;
+    }
+    if(typeof value === "string"){
+      const trimmed = value.trim();
+      if(trimmed.length){
+        const parsed = Number(trimmed);
+        if(Number.isFinite(parsed)){
+          return parsed;
+        }
+      }
+    }
+    return null;
+  };
+  const stepAnimationEnabledOverride = (typeof configDefaults.stepAnimationEnabled === "boolean")
+    ? configDefaults.stepAnimationEnabled
+    : true;
+  const stepAnimationShowBorder = (typeof configDefaults.stepAnimationShowBorder === "boolean")
+    ? configDefaults.stepAnimationShowBorder
+    : true;
+  const stepAnimationDurationMs = normalizeNumberSetting(configDefaults.stepAnimationDurationMs);
+  const stepAnimationStartOpacity = normalizeNumberSetting(configDefaults.stepAnimationStartOpacity);
+  const stepAnimationStartScale = normalizeNumberSetting(configDefaults.stepAnimationStartScale);
+  if(typeof window !== "undefined"){
+    window.stepAnimationEnabled = stepAnimationEnabledOverride;
+    if(stepAnimationDurationMs !== null){
+      window.stepAnimationDurationMs = Math.max(0, stepAnimationDurationMs);
+    }
+  }
+  const rootStyle = document.documentElement?.style;
+  if(rootStyle){
+    const stepBorderValue = stepAnimationShowBorder
+      ? "1px solid rgba(0,0,0,0.65)"
+      : "0 solid transparent";
+    rootStyle.setProperty("--cell-step-animation-border", stepBorderValue);
+    if(stepAnimationDurationMs !== null){
+      rootStyle.setProperty("--cell-step-animation-duration", `${Math.max(0, stepAnimationDurationMs)}ms`);
+    }
+    if(stepAnimationStartOpacity !== null){
+      rootStyle.setProperty("--cell-step-animation-start-opacity", String(stepAnimationStartOpacity));
+    }
+    if(stepAnimationStartScale !== null){
+      rootStyle.setProperty("--cell-step-animation-start-scale", String(stepAnimationStartScale));
+    }
+  }
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
   const store = (window.appState && typeof window.appState.getStore === "function")
     ? window.appState.getStore({ historyVisible: false, patternPanelOpen: false, debugVisible: false })

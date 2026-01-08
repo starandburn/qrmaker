@@ -160,11 +160,26 @@ function requestCursorColorRender(reason = "cursor-color-change"){
 }
 
 const STEP_HIGHLIGHT_MIN_MS = 80;
-const STEP_ANIMATION_DURATION_MS = 220;
+const DEFAULT_STEP_ANIMATION_DURATION_MS = 250;
 let stepHighlightExpiresAt = 0;
 let pendingResetTimer = null;
 let cursorHighlightActive = false;
 let suppressStepPlacementAnimation = false;
+function isStepPlacementAnimationEnabled(){
+  if(typeof window !== "undefined" && typeof window.stepAnimationEnabled === "boolean"){
+    return window.stepAnimationEnabled;
+  }
+  return true;
+}
+function getStepAnimationDurationMs(){
+  if(typeof window !== "undefined"){
+    const raw = window.stepAnimationDurationMs;
+    if(typeof raw === "number" && Number.isFinite(raw)){
+      return Math.max(0, raw);
+    }
+  }
+  return DEFAULT_STEP_ANIMATION_DURATION_MS;
+}
 
 function withStepPlacementSuppressed(fn){
   if(!fn) return;
@@ -198,6 +213,7 @@ function scheduleCursorReset(delayMs = 0){
 
 function shouldAnimatePlacement(kind){
   if(!isStepModeActive()) return false;
+  if(!isStepPlacementAnimationEnabled()) return false;
   if(isMaskApplying() && (!isStepModeEnabled() || isStepModeDataOnly())){
     return false;
   }
@@ -241,7 +257,7 @@ function applyStepPlacementAnimation(row, col){
   const timer = setTimeout(() => {
     cell.style.removeProperty("z-index");
     delete cell.dataset.stepZResetTimer;
-  }, STEP_ANIMATION_DURATION_MS);
+  }, getStepAnimationDurationMs());
   cell.dataset.stepZResetTimer = String(timer);
   return cell;
 }
