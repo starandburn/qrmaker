@@ -455,6 +455,28 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     target.textContent = buildExecutionStatusText(state, message, detail);
     executionStatusEl.className = `execution-status status-${state}`;
   };
+  const INPUT_MAX_LENGTH = Number(txtInput?.getAttribute("maxlength")) || 32;
+  const NON_ASCII_REGEX = /[^\u0000-\u007F]/;
+  const normalizeInputBeforeRun = () => {
+    if(!txtInput) return { ok: true };
+    let value = (typeof txtInput.value === "string") ? txtInput.value : "";
+    if(value.length > INPUT_MAX_LENGTH){
+      value = value.slice(0, INPUT_MAX_LENGTH);
+      txtInput.value = value;
+      try{
+        txtInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }catch(_err){
+        // ignore environments without Event
+      }
+    }
+    if(NON_ASCII_REGEX.test(value)){
+      const message = "半角英数字以外が含まれています。";
+      lastExecutionError = message;
+      setExecutionStatus("error", message);
+      return { ok: false };
+    }
+    return { ok: true };
+  };
   setExecutionStatus("stopped");
   if(userCodeInput){
     const initialCode = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
@@ -1585,6 +1607,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       : "";
     if(!codeText){
       setExecutionStatus("stopped", undefined, "実行できるプログラムがありません。");
+      return;
+    }
+    const inputCheck = normalizeInputBeforeRun();
+    if(!inputCheck.ok){
       return;
     }
     setExecutionStatus("running");

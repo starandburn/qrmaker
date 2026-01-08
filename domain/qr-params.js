@@ -38,7 +38,10 @@
     if(!urlParams.has(DATA_PARAM_KEY)) return false;
     const rawValue = urlParams.get(DATA_PARAM_KEY);
     if(rawValue === null) return false;
-    const nextValue = typeof decodeDataParamValue === "function" ? decodeDataParamValue(rawValue) : rawValue;
+    const maxLength = Number(txtInput.getAttribute("maxlength")) || 32;
+    const decodedValue = typeof decodeDataParamValue === "function" ? decodeDataParamValue(rawValue) : rawValue;
+    const safeValue = (typeof decodedValue === "string") ? decodedValue : String(decodedValue ?? "");
+    const nextValue = safeValue.length > maxLength ? safeValue.slice(0, maxLength) : safeValue;
     if(txtInput.value !== nextValue){
       txtInput.value = nextValue;
       try{
