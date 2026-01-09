@@ -693,10 +693,14 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
     const palette = ["#ff3b30", "#ff9500", "#ffcc00", "#34c759", "#5ac8fa", "#007aff", "#af52de", "#ff2d55"];
     const MAX_DOTS = 320;
+    const noiseShotStack = [];
+    let noiseDotCount = 0;
     clearNoiseLayer = () => {
       noiseLayer.textContent = "";
+      noiseShotStack.length = 0;
+      noiseDotCount = 0;
     };
-    const addNoiseDot = (x, y, size, color) => {
+    const addNoiseDot = (container, x, y, size, color) => {
       const dot = document.createElement("span");
       dot.className = "noise-dot";
       dot.style.width = `${size}px`;
@@ -704,10 +708,22 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       dot.style.left = `${x - size / 2}px`;
       dot.style.top = `${y - size / 2}px`;
       dot.style.backgroundColor = color;
-      noiseLayer.append(dot);
-      while(noiseLayer.childElementCount > MAX_DOTS){
-        noiseLayer.removeChild(noiseLayer.firstElementChild);
+      container.append(dot);
+    };
+    const trimNoiseShots = () => {
+      while(noiseDotCount > MAX_DOTS && noiseShotStack.length){
+        const oldest = noiseShotStack.shift();
+        const removedCount = Number(oldest?.dataset?.count) || 0;
+        noiseDotCount = Math.max(0, noiseDotCount - removedCount);
+        oldest.remove();
       }
+    };
+    const removeLastNoiseShot = () => {
+      const last = noiseShotStack.pop();
+      if(!last) return;
+      const removedCount = Number(last.dataset.count) || 0;
+      noiseDotCount = Math.max(0, noiseDotCount - removedCount);
+      last.remove();
     };
     const shootNoiseAt = (ev) => {
       if(!isQRCodeReadable) return false;
@@ -723,6 +739,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       const count = Math.max(8, Math.min(24, Math.round((width * height) / 36000)));
       const minSize = Math.max(3, Math.round(minDimension * 0.02));
       const maxSize = Math.max(minSize + 4, Math.round(minDimension * 0.12));
+      const shotGroup = document.createElement("span");
+      shotGroup.className = "noise-shot";
+      noiseLayer.append(shotGroup);
+      let shotCount = 0;
       for(let i = 0; i < count; i++){
         const angle = Math.random() * Math.PI * 2;
         const dist = Math.random() * radius;
@@ -732,26 +752,27 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         x = Math.max(0, Math.min(width, x));
         y = Math.max(0, Math.min(height, y));
         const color = palette[Math.floor(Math.random() * palette.length)];
-        addNoiseDot(x, y, size, color);
+        addNoiseDot(shotGroup, x, y, size, color);
+        shotCount += 1;
       }
+      shotGroup.dataset.count = String(shotCount);
+      noiseShotStack.push(shotGroup);
+      noiseDotCount += shotCount;
+      trimNoiseShots();
       return true;
     };
     const handleDoubleClick = (ev) => {
-      if(ev.shiftKey){
-        clearNoiseLayer();
-        return;
-      }
       if(shootNoiseAt(ev)){
         noiseSingleClickEnabled = true;
         updateNoiseModeHint();
       }
     };
     gridArea.addEventListener("dblclick", handleDoubleClick);
+    gridArea.addEventListener("contextmenu", (ev) => {
+      ev.preventDefault();
+      removeLastNoiseShot();
+    });
     gridArea.addEventListener("click", (ev) => {
-      if(ev.shiftKey){
-        clearNoiseLayer();
-        return;
-      }
       if(isQRCodeReadable && noiseSingleClickEnabled){
         shootNoiseAt(ev);
       }
