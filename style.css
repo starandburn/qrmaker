@@ -54,6 +54,18 @@ body{
 input, textarea, select, option, .debug-log{
   user-select:text;
 }
+input:disabled,
+textarea:disabled{
+  background:#f2f3f5;
+  color:#9aa3b0;
+  border-color:#d5dbe5;
+}
+input[readonly],
+textarea[readonly]{
+  background:#f1f2f4;
+  color:#2f343a;
+  border-color:#d1d7e0;
+}
 
 body.app-loading .page-head,
 body.app-loading main.layout,
@@ -1310,6 +1322,13 @@ textarea:focus{
 .step-controls label:hover{
   background:rgba(27,102,255,0.12);
 }
+.step-controls label.disabled{
+  color:#9aa3b0;
+  cursor:default;
+}
+.step-controls label.disabled:hover{
+  background:transparent;
+}
 .step-mode,
 .step-speed{
   display:flex;
@@ -1684,6 +1703,16 @@ textarea:focus{
 }
 
 .view-area.hide-cursor .qr-cursor{
+  display:none;
+}
+.view-area.hide-cursor.step-mode-on .qr-cursor{
+  display:flex;
+  border:1px solid rgba(0,0,0,0.35);
+  border-radius:1px;
+  box-shadow:none;
+}
+.view-area.hide-cursor.step-mode-on .qr-cursor::before,
+.view-area.hide-cursor.step-mode-on .qr-cursor::after{
   display:none;
 }
 

@@ -43,6 +43,8 @@ const sampleDropdownToggle = document.getElementById("btnSampleDropdown");
 const sampleDropdownMenu = document.getElementById("sampleDropdownMenu");
 const DATA_INPUT_MAX_LENGTH = Number(txtInput?.getAttribute("maxlength")) || 32;
 const FULLWIDTH_CHAR_REGEX = /[^\u0000-\u007F]/;
+const STOP_REASON_DATA = "データが変更されたので停止しました。";
+const STOP_REASON_CODE = "プログラムが変更されたので停止しました。";
 
 function updateDataStatus(){
   if(!txtInput || !dataInputStatus) return;
@@ -75,7 +77,7 @@ function setInputValue(value){
   if(!txtInput) return;
   txtInput.value = value;
   if(typeof window.stopCurrentRun === "function"){
-    window.stopCurrentRun({ resetCursor: false, clear: false });
+    window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
   }
   refreshPattern();
   updateDataStatus();
@@ -331,7 +333,7 @@ function refreshGuide(){
 if(txtInput){
   txtInput.addEventListener("input", () => {
     if(typeof window.stopCurrentRun === "function"){
-      window.stopCurrentRun({ resetCursor: false, clear: false });
+      window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
     }
     refreshPattern();
     updateDataStatus();
@@ -371,7 +373,7 @@ if(userCodeTextarea){
 if(btnClear){
   btnClear.addEventListener("click", () => {
     if(typeof window.stopCurrentRun === "function"){
-      window.stopCurrentRun({ resetCursor: false, clear: false });
+      window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
     }
     txtInput.value = "";
     refreshPattern();
@@ -404,7 +406,7 @@ const userCode = document.getElementById("userCode");
 if(userCode){
   userCode.addEventListener("input", () => {
     if(typeof window.stopCurrentRun === "function"){
-      window.stopCurrentRun({ resetCursor: false, clear: false });
+      window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_CODE });
     }
   });
 }

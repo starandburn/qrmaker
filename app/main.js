@@ -8,6 +8,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const btnClearCode = document.getElementById("btnClearCode");
   const btnCopyCode = document.getElementById("btnCopyCode");
   const btnPasteCode = document.getElementById("btnPasteCode");
+  const btnClear = document.getElementById("btnClear");
+  const btnSampleDropdown = document.getElementById("btnSampleDropdown");
   const debugLog = document.getElementById("debugLog");
   const dataPatternPanel = document.getElementById("dataPatternPanel") || document.getElementById("patternDetails");
   const codePanel = document.querySelector(".code-panel");
@@ -413,6 +415,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     warning: "警告",
   };
   let lastExecutionError = null;
+  let pendingStopReason = null;
+  let stopReasonLocked = false;
   const extractUnknownCommandWord = (message) => {
     if(!message) return "";
     const text = String(message).trim();
@@ -452,6 +456,16 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   const setExecutionStatus = (state, message, detail) => {
     if(!executionStatusEl) return;
+    if(state !== "stopped"){
+      pendingStopReason = null;
+      stopReasonLocked = false;
+    }else if(detail){
+      if(!stopReasonLocked || detail === pendingStopReason){
+        pendingStopReason = detail;
+      }
+    }else if(pendingStopReason){
+      detail = pendingStopReason;
+    }
     const target = executionStatusTextEl || executionStatusEl;
     target.textContent = buildExecutionStatusText(state, message, detail);
     executionStatusEl.className = `execution-status status-${state}`;
@@ -479,6 +493,28 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return { ok: true };
   };
   setExecutionStatus("stopped");
+  let inputLocked = false;
+  const setInputLock = (locked) => {
+    inputLocked = locked;
+    if(txtInput) txtInput.readOnly = locked;
+    if(userCodeInput) userCodeInput.readOnly = locked;
+    if(btnClear) btnClear.disabled = locked;
+    if(btnClearCode) btnClearCode.disabled = locked;
+    if(btnCopyCode) btnCopyCode.disabled = locked;
+    if(btnPasteCode) btnPasteCode.disabled = locked;
+    if(btnSampleDropdown) btnSampleDropdown.disabled = locked;
+    const sampleButtons = document.querySelectorAll(".code-debug-btn");
+    sampleButtons.forEach((btn) => {
+      btn.disabled = locked;
+    });
+    const sampleDropdown = document.getElementById("sampleDropdown");
+    if(locked && sampleDropdown){
+      sampleDropdown.classList.remove("is-open");
+    }
+    if(codeHistoryList){
+      codeHistoryList.classList.toggle("is-disabled", locked);
+    }
+  };
   if(userCodeInput){
     const initialCode = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
     btnGenerate.disabled = !initialCode;
@@ -965,9 +1001,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   if(typeof window !== "undefined"){
     window.shouldStepFunctions = shouldStepFunctions;
   }
-  function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false } = {}){
+  function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false, reason = "" } = {}){
     ctx.runId++;
     ctx.isStepFillRunning = false;
+    setInputLock(false);
     if(clear){
       resetBoardState();
     }
@@ -975,6 +1012,14 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       resetCursor();
     }
     setRenderMode(RENDER_IMMEDIATE);
+    if(reason){
+      pendingStopReason = reason;
+      stopReasonLocked = true;
+      setExecutionStatus("stopped", undefined, reason);
+    }else if(clear){
+      pendingStopReason = null;
+      stopReasonLocked = false;
+    }
   }
 
   let cellsInitialized = false;
@@ -1800,7 +1845,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return set;
   }
 
-  btnInit.addEventListener("click", () => {
+  const handleResetAction = () => {
     window.logEvent("btnInit", "", "初期化ボタン押下");
     stopCurrentRun({ resetCursor: true, clear: true });
     if(userCodeInput){
@@ -1816,6 +1861,27 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(!userCodeInput || (typeof userCodeInput.value === "string" && userCodeInput.value.trim())){
       setExecutionStatus("stopped");
     }
+  };
+  const isEditableTarget = (target) => {
+    if(!target || typeof target !== "object") return false;
+    if(target.isContentEditable) return true;
+    const tag = target.tagName ? target.tagName.toLowerCase() : "";
+    if(tag === "input"){
+      const type = String(target.type || "").toLowerCase();
+      return type !== "checkbox" && type !== "button" && type !== "submit" && type !== "reset";
+    }
+    return tag === "textarea" || tag === "select";
+  };
+  btnInit.addEventListener("click", handleResetAction);
+  document.addEventListener("keydown", (ev) => {
+    if(ev.key !== "Escape") return;
+    if(ev.repeat) return;
+    const active = (typeof document !== "undefined") ? document.activeElement : null;
+    if(isEditableTarget(active)) return;
+    const asciiModal = document.getElementById("asciiModal");
+    if(asciiModal && !asciiModal.classList.contains("hidden")) return;
+    handleResetAction();
+    ev.preventDefault();
   });
 
   async function runGenerateLegacy(){
@@ -1898,12 +1964,14 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       return;
     }
     setExecutionStatus("running");
+    setInputLock(true);
     let runOk = false;
     let verificationOutcome = null;
     try{
       setQRCodeReadable(false);
       runOk = await runUserCodeWithStep();
     }finally{
+      setInputLock(false);
       verificationOutcome = logVerificationOutcome();
       if(runOk){
           const verificationDetail = verificationOutcome
@@ -2247,6 +2315,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
   if(codeHistoryList){
     codeHistoryList.addEventListener("click", (ev) => {
+      if(inputLocked) return;
       const target = (typeof Element !== "undefined" && ev.target instanceof Element) ? ev.target : null;
       const item = target ? target.closest("li[data-index]") : null;
       if(!item) return;
