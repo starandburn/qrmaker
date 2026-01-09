@@ -272,6 +272,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   historyController.setValueGetter(getCurrentCodeValue);
   const urlParams = urlState.params || new URLSearchParams(window.location.search || "");
+  const presentationMode = urlParams.get("z") === "1";
   const {
     decodeDataParamValue,
     applyPatternOpenFromParam,
@@ -2015,6 +2016,19 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
     });
   }
+  const spawnPointerRing = (x, y) => {
+    if(!document || !document.body) return;
+    const ring = document.createElement("span");
+    ring.className = "pointer-ring";
+    ring.style.left = `${x}px`;
+    ring.style.top = `${y}px`;
+    document.body.append(ring);
+    const cleanup = () => {
+      ring.remove();
+    };
+    ring.addEventListener("animationend", cleanup, { once: true });
+    setTimeout(cleanup, 900);
+  };
   document.addEventListener("contextmenu", (ev) => {
     const target = ev.target;
     if(target && typeof target.closest === "function"){
@@ -2024,6 +2038,16 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
     }
     ev.preventDefault();
+    if(presentationMode){
+      spawnPointerRing(ev.clientX, ev.clientY);
+    }
+  });
+  document.addEventListener("mousedown", (ev) => {
+    if(ev.button !== 1) return;
+    ev.preventDefault();
+    if(presentationMode){
+      spawnPointerRing(ev.clientX, ev.clientY);
+    }
   });
 
   if(btnClearCode){

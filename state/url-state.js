@@ -319,6 +319,9 @@
     if(normalizedAutoAvoid !== normalizedAutoDefault){
       stateParams.set(TIMING_AUTO_PARAM_KEY, normalizedAutoAvoid ? "1" : "0");
     }
+    if(params.get("z") === "1"){
+      stateParams.set("z", "1");
+    }
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
     const query = stateParams.toString();
     return query ? `${baseUrl}?${query}` : baseUrl;
