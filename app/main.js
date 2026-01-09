@@ -610,32 +610,27 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     let cursorLabelEl = executionStatusCursorEl.querySelector(".execution-status-cursor-label");
     let nextLabelEl = executionStatusCursorEl.querySelector(".execution-status-next-label");
     let nextListEl = executionStatusCursorEl.querySelector(".execution-status-next-list");
+    let cursorBodyEl = executionStatusCursorEl.querySelector(".execution-status-cursor-body");
     if(!cursorTextEl){
       cursorTextEl = document.createElement("span");
       cursorTextEl.className = "execution-status-cursor-text";
-      executionStatusCursorEl.textContent = "";
-      executionStatusCursorEl.append(cursorTextEl);
     }
     if(!cursorCellEl){
       cursorCellEl = document.createElement("span");
       cursorCellEl.className = "execution-status-cell";
-      executionStatusCursorEl.append(cursorCellEl);
     }
     if(!cursorLabelEl){
       cursorLabelEl = document.createElement("span");
       cursorLabelEl.className = "execution-status-cursor-label execution-status-chip";
-      executionStatusCursorEl.append(cursorLabelEl);
     }
     if(!nextLabelEl){
       nextLabelEl = document.createElement("span");
       nextLabelEl.className = "execution-status-next-label execution-status-chip";
-      executionStatusCursorEl.append(nextLabelEl);
     }
     const NEXT_CELL_COUNT = 4;
     if(!nextListEl){
       nextListEl = document.createElement("span");
       nextListEl.className = "execution-status-next-list";
-      executionStatusCursorEl.append(nextListEl);
     }
     if(nextListEl.childElementCount !== NEXT_CELL_COUNT){
       nextListEl.textContent = "";
@@ -646,6 +641,21 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
     }
     const nextCells = Array.from(nextListEl.children);
+    if(!cursorBodyEl){
+      cursorBodyEl = document.createElement("span");
+      cursorBodyEl.className = "execution-status-cursor-body";
+    }
+    const cursorLabelText = "Cursor";
+    cursorLabelEl.textContent = cursorLabelText;
+    cursorBodyEl.textContent = "";
+    cursorBodyEl.append(
+      cursorTextEl,
+      cursorCellEl,
+      nextLabelEl,
+      nextListEl,
+    );
+    executionStatusCursorEl.textContent = "";
+    executionStatusCursorEl.append(cursorLabelEl, cursorBodyEl);
     let cursorVisualEl = cursorCellEl.querySelector(".execution-status-visual-cursor");
     if(!cursorVisualEl){
       cursorVisualEl = document.createElement("span");
