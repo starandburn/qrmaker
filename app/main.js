@@ -2275,10 +2275,18 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       if(!ev.ctrlKey) return;
       ev.preventDefault();
       const fontSize = parseFloat(window.getComputedStyle(userCodeInput).fontSize) || 16;
-      const delta = ev.deltaY < 0 ? 1 : -1;
-      const next = Math.min(120, Math.max(12, fontSize + delta));
+      const delta = ev.deltaY < 0 ? 4 : -4;
+      const next = Math.min(200, Math.max(12, fontSize + delta));
+      const lineHeight = Math.max(16, Math.min(next * 1.2, next + 8));
       userCodeInput.style.fontSize = `${next}px`;
+      userCodeInput.style.lineHeight = `${lineHeight}px`;
     }, { passive: false });
+    userCodeInput.addEventListener("mousedown", (ev) => {
+      if(!ev.ctrlKey || ev.button !== 1) return;
+      ev.preventDefault();
+      userCodeInput.style.fontSize = "";
+      userCodeInput.style.lineHeight = "";
+    });
     userCodeInput.addEventListener("blur", (ev) => {
       const related = ev.relatedTarget || document.activeElement;
       if(btnGenerate && related === btnGenerate){
