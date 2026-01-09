@@ -10,7 +10,25 @@
   if(!global) return;
 
   const ensureHelpers = (ctx) => (ctx && ctx.helpers) ? ctx.helpers : {};
-  const PATTERN_STEP_SCALE = 0.35;
+  const PATTERN_STEP_SCALE = 1;
+  const resolveStepDir = (dirVal) => (dirVal === TIMING_HORIZONTAL ? DIR_RIGHT : DIR_DOWN);
+  const setBasePatternLookahead = (infos) => {
+    if(typeof global.setBasePatternLookahead === "function"){
+      global.setBasePatternLookahead(infos);
+    }else{
+      global.basePatternLookahead = Array.isArray(infos) ? infos : [];
+    }
+  };
+  const buildTimingLookahead = (dirVal, startPos) => {
+    const infos = [];
+    for(let i = 1; i <= 4; i++){
+      const nextPos = startPos + i;
+      if(nextPos < 1 || nextPos > 25) break;
+      const bit = (nextPos % 2 === 1) ? 1 : 0;
+      infos.push({ kind: BIT_FUNC_TIMING, bit });
+    }
+    return infos;
+  };
 
   function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     const baseRun = ctx ? ctx.runId : 0;
@@ -106,10 +124,12 @@
             return putTimingCells(ctx, direction, index, overwrite, { stepEnabled: false, currentRun: runToken });
           }
           const bit = (col % 2 === 1) ? 1 : 0;
-          if(canWriteTimingCell(pos, col)){
+          const canDraw = canWriteTimingCell(pos, col);
+          if(canDraw){
             window.updateCell(pos, col, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
-            updateCursorSafe(pos, col, DIR_RIGHT);
           }
+          setBasePatternLookahead(buildTimingLookahead(dirVal, col));
+          updateCursorSafe(pos, col, resolveStepDir(dirVal));
           const md = await delay();
           if(md === false) return false;
           col++;
@@ -124,10 +144,12 @@
             return putTimingCells(ctx, direction, index, overwrite, { stepEnabled: false, currentRun: runToken });
           }
           const bit = (row % 2 === 1) ? 1 : 0;
-          if(canWriteTimingCell(row, pos)){
+          const canDraw = canWriteTimingCell(row, pos);
+          if(canDraw){
             window.updateCell(row, pos, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
-            updateCursorSafe(row, pos, DIR_RIGHT);
           }
+          setBasePatternLookahead(buildTimingLookahead(dirVal, row));
+          updateCursorSafe(row, pos, resolveStepDir(dirVal));
           const md = await delay();
           if(md === false) return false;
           row++;

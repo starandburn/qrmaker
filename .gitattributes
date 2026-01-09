@@ -1,0 +1,18 @@
+# すべてのテキストをLFに統一
+* text=auto eol=lf
+
+# 明示的にLFにしたい代表例
+*.cs   text eol=lf
+*.js   text eol=lf
+*.ts   text eol=lf
+*.html text eol=lf
+*.css  text eol=lf
+*.json text eol=lf
+*.md   text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+
+# バイナリは改行変換しない
+*.png  binary
+*.jpg  binary
+*.zip  binary

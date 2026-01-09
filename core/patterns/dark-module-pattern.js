@@ -10,7 +10,14 @@
   if(!global) return;
 
   const ensureHelpers = (ctx) => (ctx && ctx.helpers) ? ctx.helpers : {};
-  const PATTERN_STEP_SCALE = 0.35;
+  const PATTERN_STEP_SCALE = 1;
+  const setBasePatternLookahead = (infos) => {
+    if(typeof global.setBasePatternLookahead === "function"){
+      global.setBasePatternLookahead(infos);
+    }else{
+      global.basePatternLookahead = Array.isArray(infos) ? infos : [];
+    }
+  };
 
   function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     const baseRun = ctx ? ctx.runId : 0;
@@ -58,23 +65,33 @@
     const step = !!resolvedStep;
     const baseRow = cursorPos.row;
     const baseCol = cursorPos.col;
-    if(!shouldPlaceCell(baseRow, baseCol, overwrite !== false)) return true;
+    const delay = async () => {
+      return H.stepDelayAbort
+        ? H.stepDelayAbort(runToken, { scale: PATTERN_STEP_SCALE })
+        : Promise.resolve();
+    };
+    const canDraw = shouldPlaceCell(baseRow, baseCol, overwrite !== false);
+    if(!canDraw){
+      if(!step) return true;
+      if(shouldAbort(runToken, ctx)) return false;
+      ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
+      setBasePatternLookahead([]);
+      updateCursorSafe(runToken, ctx, baseRow, baseCol, DIR_RIGHT);
+      await delay();
+      return true;
+    }
     if(!step){
       if(typeof window.updateCell === "function"){
         window.updateCell(baseRow, baseCol, window.encodeBit(BIT_FUNC_DARK, true));
       }
       return true;
     }
-    const delay = async () => {
-      return H.stepDelayAbort
-        ? H.stepDelayAbort(runToken, { scale: PATTERN_STEP_SCALE })
-        : Promise.resolve();
-    };
     if(shouldAbort(runToken, ctx)) return false;
     ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
     if(typeof window.updateCell === "function"){
       window.updateCell(baseRow, baseCol, window.encodeBit(BIT_FUNC_DARK, true));
     }
+    setBasePatternLookahead([]);
     updateCursorSafe(runToken, ctx, baseRow, baseCol, DIR_RIGHT);
     await delay();
     return true;

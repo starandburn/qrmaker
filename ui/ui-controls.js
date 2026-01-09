@@ -30,8 +30,6 @@
       toggleEmpty,
       toggleColor,
       toggleDebugValues,
-      stepMode,
-      stepSkipFunctions,
     ];
 
     const readToggleDefault = (target) => {

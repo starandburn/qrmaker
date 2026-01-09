@@ -3,12 +3,12 @@ const CHAR_TERMINATE = "終端";
 const CHAR_COLON = "：";
 const CHAR_PADDING = "パディング";
 
-const TYPE_MODE = "モード";
-const TYPE_LENGTH = "長さ";
+const TYPE_MODE = "種別";
+const TYPE_LENGTH = "文字数";
 
-const CAPTION_CODEPATTERN = "コードパターン";
-const CAPTION_SHOWCODEPATTERN = `${CAPTION_CODEPATTERN}を表示`;
-const CAPTION_HIDECODEPATTERN = `${CAPTION_CODEPATTERN}を非表示`;
+const CAPTION_DATA_PATTERN = "データパターン";
+const CAPTION_SHOW_DATA_PATTERN = `${CAPTION_DATA_PATTERN}を表示`;
+const CAPTION_HIDE_DATA_PATTERN = `${CAPTION_DATA_PATTERN}を非表示`;
 
 const txtInput = document.getElementById("txtInput");
 const patternBox = document.getElementById("patternBox");
@@ -37,11 +37,14 @@ const toggleInputs = [toggleCursor, toggleGuide, toggleGrid, toggleEmpty, toggle
 window.toggleInputs = toggleInputs;
 const userCodeTextarea = document.getElementById("userCode");
 const dataInputStatus = document.getElementById("dataInputStatus");
+const dataCount = document.getElementById("dataCount");
 const sampleDropdown = document.getElementById("sampleDropdown");
 const sampleDropdownToggle = document.getElementById("btnSampleDropdown");
 const sampleDropdownMenu = document.getElementById("sampleDropdownMenu");
 const DATA_INPUT_MAX_LENGTH = Number(txtInput?.getAttribute("maxlength")) || 32;
 const FULLWIDTH_CHAR_REGEX = /[^\u0000-\u007F]/;
+const STOP_REASON_DATA = "データが変更されたので停止しました。";
+const STOP_REASON_CODE = "プログラムが変更されたので停止しました。";
 
 function updateDataStatus(){
   if(!txtInput || !dataInputStatus) return;
@@ -58,21 +61,23 @@ function updateDataStatus(){
     errors.push("全角文字が含まれています。");
   }
 
+  const baseText = `${length}/${DATA_INPUT_MAX_LENGTH}文字`;
+  if(dataCount){
+    dataCount.textContent = baseText;
+  }
   if(errors.length){
-    dataInputStatus.innerHTML = errors.map((msg) => `<span class="data-status-warning">${msg}</span>`).join("");
+    const errorText = errors.map((msg) => `<span class="data-status-warning">※${msg}</span>`).join("");
+    dataInputStatus.innerHTML = errorText;
     return;
   }
-
-  const remaining = Math.max(0, DATA_INPUT_MAX_LENGTH - length);
-  const baseText = `現在${length}文字（あと${remaining}文字）`;
-  dataInputStatus.textContent = baseText;
+  dataInputStatus.textContent = "";
 }
 
 function setInputValue(value){
   if(!txtInput) return;
   txtInput.value = value;
   if(typeof window.stopCurrentRun === "function"){
-    window.stopCurrentRun({ resetCursor: false, clear: false });
+    window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
   }
   refreshPattern();
   updateDataStatus();
@@ -328,7 +333,7 @@ function refreshGuide(){
 if(txtInput){
   txtInput.addEventListener("input", () => {
     if(typeof window.stopCurrentRun === "function"){
-      window.stopCurrentRun({ resetCursor: false, clear: false });
+      window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
     }
     refreshPattern();
     updateDataStatus();
@@ -368,7 +373,7 @@ if(userCodeTextarea){
 if(btnClear){
   btnClear.addEventListener("click", () => {
     if(typeof window.stopCurrentRun === "function"){
-      window.stopCurrentRun({ resetCursor: false, clear: false });
+      window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
     }
     txtInput.value = "";
     refreshPattern();
@@ -401,7 +406,7 @@ const userCode = document.getElementById("userCode");
 if(userCode){
   userCode.addEventListener("input", () => {
     if(typeof window.stopCurrentRun === "function"){
-      window.stopCurrentRun({ resetCursor: false, clear: false });
+      window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_CODE });
     }
   });
 }
@@ -426,9 +431,10 @@ function fitSquare(){
     (window.innerHeight > window.innerWidth) ||
     window.innerWidth <= 1100
   );
-  const size = isSingleColumn
+  const rawSize = isSingleColumn
     ? Math.max(60, Math.floor(w)) // single-column/tall: base strictly on available width
     : Math.max(60, Math.floor(Math.min(w, h))); // two-column: fit both axes
+  const size = Math.max(60, rawSize - (rawSize % 25));
 
   // Hide guide text if the available width is too narrow
   const guideCompact = w < 420 || h < 420 || size < 280;
@@ -448,6 +454,7 @@ window.fitSquare = fitSquare;
 
 function syncViewToggles(){
   window.logEvent("syncViewToggles", "", "表示トグルの状態を同期");
+  updateToggleButtons();
   const area = document.querySelector(".view-area");
   if(!area) return;
   area.classList.toggle("hide-guide", toggleGuide && !toggleGuide.checked);
@@ -455,7 +462,61 @@ function syncViewToggles(){
   area.classList.toggle("hide-empty", toggleEmpty && !toggleEmpty.checked);
   area.classList.toggle("hide-cursor", toggleCursor && !toggleCursor.checked);
 }
+function updateToggleButtons(){
+  if(!btnSelectAllToggles && !btnClearAllToggles) return;
+  const allChecked = toggleInputs.length > 0 && toggleInputs.every((el) => el.checked);
+  const allUnchecked = toggleInputs.length > 0 && toggleInputs.every((el) => !el.checked);
+  if(btnSelectAllToggles) btnSelectAllToggles.disabled = allChecked;
+  if(btnClearAllToggles) btnClearAllToggles.disabled = allUnchecked;
+}
+function closeViewToggleDrawer(){
+  const drawer = document.querySelector(".qr-controls-drawer");
+  if(!drawer) return;
+  drawer.classList.add("force-close");
+  if(document.activeElement instanceof HTMLElement){
+    document.activeElement.blur();
+  }
+  if(drawer.dataset.forceCloseListening === "1") return;
+  drawer.dataset.forceCloseListening = "1";
+  const onPointerMove = (ev) => {
+    if(!drawer.contains(ev.target)){
+      drawer.classList.remove("force-close");
+      delete drawer.dataset.forceCloseListening;
+      document.removeEventListener("pointermove", onPointerMove, true);
+    }
+  };
+  document.addEventListener("pointermove", onPointerMove, true);
+}
 window.syncViewToggles = syncViewToggles;
+updateToggleButtons();
+
+function canHandleToggleShortcut(active){
+  if(!active || !(active instanceof HTMLElement)) return true;
+  if(active.closest(".qr-controls-drawer")) return true;
+  const tag = active.tagName ? active.tagName.toUpperCase() : "";
+  if(tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return false;
+  if(active.isContentEditable) return false;
+  return true;
+}
+function toggleAllViewToggles(){
+  const allChecked = toggleInputs.length > 0 && toggleInputs.every((el) => el.checked);
+  const next = !allChecked;
+  for(const el of toggleInputs){
+    el.checked = next;
+  }
+  syncViewToggles();
+  for(const el of toggleInputs){
+    el.dispatchEvent(new Event("change"));
+  }
+  closeViewToggleDrawer();
+}
+window.addEventListener("keydown", (ev) => {
+  if(ev.key !== " ") return;
+  if(ev.ctrlKey || ev.altKey || ev.metaKey) return;
+  if(!canHandleToggleShortcut(document.activeElement)) return;
+  ev.preventDefault();
+  toggleAllViewToggles();
+});
 
 if(toggleGuide){
   toggleGuide.addEventListener("change", syncViewToggles);
@@ -479,6 +540,7 @@ if(btnSelectAllToggles){
     for(const el of toggleInputs){
       el.dispatchEvent(new Event("change"));
     }
+    closeViewToggleDrawer();
   });
 }
 if(btnClearAllToggles){
@@ -490,6 +552,7 @@ if(btnClearAllToggles){
     for(const el of toggleInputs){
       el.dispatchEvent(new Event("change"));
     }
+    closeViewToggleDrawer();
   });
 }
 
@@ -530,7 +593,7 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
 function updatePatternToggleText(){
   if(patternToggleText && dataPatternPanel){
-    patternToggleText.textContent = dataPatternPanel.open ? CAPTION_HIDECODEPATTERN : CAPTION_SHOWCODEPATTERN;
+    patternToggleText.textContent = dataPatternPanel.open ? CAPTION_HIDE_DATA_PATTERN : CAPTION_SHOW_DATA_PATTERN;
   }
 }
 if(dataPatternPanel){

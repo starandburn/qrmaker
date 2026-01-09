@@ -22,6 +22,10 @@
       if(!stepSpeed) return;
       const on = isStepModeOn();
       stepSpeed.disabled = !on;
+      const viewArea = (typeof document !== "undefined") ? document.querySelector(".view-area") : null;
+      if(viewArea){
+        viewArea.classList.toggle("step-mode-on", on);
+      }
       if(stepSpeedLabel){
         stepSpeedLabel.classList.toggle("disabled", stepSpeed.disabled);
       }
@@ -94,6 +98,70 @@
 
     function shouldStepFunctions(){
       return isStepModeOn() && !(stepSkipFunctions && stepSkipFunctions.checked);
+    }
+
+    const scheduleBlur = (el) => {
+      if(!el || typeof el.blur !== "function") return;
+      setTimeout(() => {
+        if(typeof document !== "undefined" && document.activeElement === el){
+          el.blur();
+        }
+      }, 0);
+    };
+    const bindAutoBlur = (el) => {
+      if(!el || typeof el.addEventListener !== "function") return;
+      el.addEventListener("change", () => scheduleBlur(el));
+      el.addEventListener("pointerup", () => scheduleBlur(el));
+      el.addEventListener("keyup", (ev) => {
+        if(ev.key === " " || ev.key === "Enter"){
+          scheduleBlur(el);
+        }
+      });
+    };
+    bindAutoBlur(stepMode);
+    bindAutoBlur(stepSkipFunctions);
+    bindAutoBlur(stepSpeed);
+
+    const isEditableTarget = (target) => {
+      if(!target || typeof target !== "object") return false;
+      if(target.isContentEditable) return true;
+      const tag = target.tagName ? target.tagName.toLowerCase() : "";
+      if(tag === "input"){
+        const type = String(target.type || "").toLowerCase();
+        return type !== "range";
+      }
+      return tag === "textarea" || tag === "select";
+    };
+    const getRangeStep = () => {
+      if(!stepSpeed) return 1;
+      return 10;
+    };
+    const clampRangeValue = (value) => {
+      if(!stepSpeed) return value;
+      const min = Number(stepSpeed.min);
+      const max = Number(stepSpeed.max);
+      let next = value;
+      if(Number.isFinite(min)) next = Math.max(min, next);
+      if(Number.isFinite(max)) next = Math.min(max, next);
+      return next;
+    };
+    const handleStepSpeedKey = (ev) => {
+      if(!stepSpeed || stepSpeed.disabled) return;
+      if(!isStepModeOn()) return;
+      if(ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+      if(isEditableTarget(ev.target)) return;
+      const step = getRangeStep();
+      const current = Number(stepSpeed.value);
+      const base = Number.isFinite(current) ? current : defaultStepDelay;
+      const delta = (ev.key === "ArrowRight") ? step : -step;
+      const next = clampRangeValue(base + delta);
+      if(next === base) return;
+      stepSpeed.value = String(next);
+      stepSpeed.dispatchEvent(new Event("input", { bubbles: true }));
+      ev.preventDefault();
+    };
+    if(typeof document !== "undefined"){
+      document.addEventListener("keydown", handleStepSpeedKey);
     }
 
     return {

@@ -40,7 +40,21 @@
     }
     return coords;
   };
-  const PATTERN_STEP_SCALE = 0.35;
+  const resolveStepDir = (fromRow, fromCol, toRow, toCol) => {
+    if(toRow < fromRow) return DIR_UP;
+    if(toRow > fromRow) return DIR_DOWN;
+    if(toCol < fromCol) return DIR_LEFT;
+    if(toCol > fromCol) return DIR_RIGHT;
+    return DIR_RIGHT;
+  };
+  const PATTERN_STEP_SCALE = 1;
+  const setBasePatternLookahead = (infos) => {
+    if(typeof global.setBasePatternLookahead === "function"){
+      global.setBasePatternLookahead(infos);
+    }else{
+      global.basePatternLookahead = Array.isArray(infos) ? infos : [];
+    }
+  };
 
   function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     const baseRun = ctx ? ctx.runId : 0;
@@ -101,6 +115,21 @@
     const allowOverwrite = overwrite !== false;
     const shouldDrawCell = (row, col) => shouldPlaceCell(row, col, allowOverwrite);
     const patternCoords = spiralCoordinates(5, 5, startRow, startCol);
+    const patternSeq = patternCoords.map(([row, col]) => {
+      const relRow = row - startRow;
+      const relCol = col - startCol;
+      const bit = pattern[relRow][relCol];
+      return { row, col, bit };
+    });
+    const buildLookahead = (idx) => {
+      const infos = [];
+      for(let i = 1; i <= 4; i++){
+        const entry = patternSeq[idx + i];
+        if(!entry) break;
+        infos.push({ kind: BIT_FUNC_ALIGNMENT, bit: entry.bit });
+      }
+      return infos;
+    };
     if(!step){
       const prevRender = ctx.renderMode;
       ctx.setRenderMode(ctx.RENDER_BUFFERED);
@@ -129,22 +158,26 @@
     return (async () => {
       const prevRender = ctx.renderMode;
       ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
-      for(const [row, col] of patternCoords){
+      for(let idx = 0; idx < patternSeq.length; idx++){
+        const { row, col, bit } = patternSeq[idx];
+        const nextEntry = patternSeq[idx + 1] || patternSeq[idx];
+        const nextRow = nextEntry.row;
+        const nextCol = nextEntry.col;
+        const stepDir = resolveStepDir(row, col, nextRow, nextCol);
         if(shouldAbort(runToken, ctx)) return false;
         if(!stepActive()){
           ctx.setRenderMode(prevRender);
           return putAlignmentCells(ctx, overwrite, { stepEnabled: false, currentRun: runToken });
         }
-        if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-        const relRow = row - startRow;
-        const relCol = col - startCol;
-        const bit = pattern[relRow][relCol];
-        if(!shouldDrawCell(row, col)) continue;
-        window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
-        if(H.updateCursorIfRun){
-          H.updateCursorIfRun(runToken, row, col, DIR_RIGHT);
+        const canDraw = shouldDrawCell(row, col);
+        if(canDraw){
+          window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
         }
-        updateCursorSafe(runToken, ctx, row, col, DIR_RIGHT);
+        setBasePatternLookahead(buildLookahead(idx));
+        if(H.updateCursorIfRun){
+          H.updateCursorIfRun(runToken, row, col, stepDir);
+        }
+        updateCursorSafe(runToken, ctx, row, col, stepDir);
         await delay();
       }
       ctx.setRenderMode(prevRender);

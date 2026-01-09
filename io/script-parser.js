@@ -10,7 +10,7 @@
   const ALIAS_MAP = {
     move: "moveCursor",
     turn: "turnCursor",
-    reset: "resetCommand",
+    reset: "resetQRCode",
     base: "drawBasePatterns",
     mask: "applyMask",
     data: "drawDataPatterns",
@@ -33,7 +33,8 @@
     timings: "drawTimingPatterns",
     next: "getNextData",
     pause: "pauseRunning",
-    advance: "putNextCell",
+    advance: "advanceCommand",
+    clear: "clearBoard",
   };
   const ALIAS_PATTERN = new RegExp(
     `\\b(${Object.keys(ALIAS_MAP).map(escapeRegExp).join("|")})\\b`,
@@ -41,9 +42,46 @@
   );
   const applyAliasTransforms = (text) => {
     if(typeof text !== "string" || !text) return "";
-    return text.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
+    const normalized = text
+      .replace(/\bmove\s+next\b/gi, "moveNext")
+      .replace(/\bmove\s+advance\b/gi, "moveAdvance");
+    return normalized.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
   };
-  const KEYWORD_NUMBER_PATTERN = /\b(repeat|for|mask|pause|qrcode)(\d+)\b/gi;
+  const ALLOWED_COMMANDS = new Set(Object.keys(ALIAS_MAP));
+  const ALLOWED_CONTROL = new Set([
+    "if",
+    "when",
+    "else",
+    "while",
+    "until",
+    "repeat",
+    "loop",
+    "for",
+    "end",
+    "endif",
+    "endfor",
+    "endwhile",
+    "enduntil",
+    "endrepeat",
+    "endloop",
+  ]);
+  const validateAllowedCommands = (text) => {
+    if(typeof text !== "string") return;
+    const lines = text.replace(/\r/g, "").split("\n");
+    for(const rawLine of lines){
+      const trimmed = rawLine.trim();
+      if(!trimmed) continue;
+      const match = trimmed.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\b/);
+      if(!match){
+        throw new Error(`不明なコマンド: ${trimmed}`);
+      }
+      const head = match[1].toLowerCase();
+      if(ALLOWED_CONTROL.has(head)) continue;
+      if(ALLOWED_COMMANDS.has(head)) continue;
+      throw new Error(`不明なコマンド: ${match[1]}`);
+    }
+  };
+  const KEYWORD_NUMBER_PATTERN = /\b(repeat|loop|for|mask|pause|qrcode)(\d+)\b/gi;
   const applyKeywordSpacing = (text) => {
     if(typeof text !== "string" || !text) return "";
     return text.replace(KEYWORD_NUMBER_PATTERN, "$1 $2");
@@ -54,13 +92,13 @@
     return text.replace(DIRECTION_SUFFIX_PATTERN, "$1 $2");
   };
   const CONDITIONAL_KEYWORDS = ["block", "clash", "empty", "used", "timing", "skip"];
-  const CONDITIONAL_PATTERN = new RegExp(
-    `\\b(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(\\S.*)`,
-    "gi",
+  const CONDITIONAL_EXPLICIT_PATTERN = new RegExp(
+    `^\\s*(if|when)\\s+(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(.*)$`,
+    "i",
   );
-  const CONDITIONAL_LINE_PATTERN = new RegExp(
-    `^\\s*(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*$`,
-    "gim",
+  const CONDITIONAL_SHORTHAND_PATTERN = new RegExp(
+    `^\\s*(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(.*)$`,
+    "i",
   );
   const applyConditionalAliases = (text) => {
     if(typeof text !== "string" || !text) return "";
@@ -70,16 +108,27 @@
       if(lower === "timing" || lower === "skip") return "isSkipZone";
       return keyword;
     };
-    if(CONDITIONAL_LINE_PATTERN.test(text)){
-      text = text.replace(CONDITIONAL_LINE_PATTERN, (_match, keyword) => `if ${resolveConditionalKeyword(keyword)}`);
-    }
-    text = text.replace(
-      CONDITIONAL_PATTERN,
-      (_match, keyword, rest) => `if ${resolveConditionalKeyword(keyword)} ${rest}`,
-    );
-    text = text.replace(/\bif\s+timing\b/gi, (match) => match.replace(/timing/i, "isSkip"));
-    text = text.replace(/\bif\s*\(\s*timing\b/gi, (match) => match.replace(/timing/i, "isSkip"));
-    return text;
+    const lines = text.split(/\r?\n/);
+    const mapped = lines.map((line) => {
+      const explicitMatch = line.match(CONDITIONAL_EXPLICIT_PATTERN);
+      if(explicitMatch){
+        const prefix = explicitMatch[1];
+        const keyword = resolveConditionalKeyword(explicitMatch[2]);
+        const rest = (explicitMatch[3] || "").trim();
+        return rest ? `${prefix} ${keyword} ${rest}` : `${prefix} ${keyword}`;
+      }
+      const shorthandMatch = line.match(CONDITIONAL_SHORTHAND_PATTERN);
+      if(shorthandMatch){
+        const keyword = resolveConditionalKeyword(shorthandMatch[1]);
+        const rest = (shorthandMatch[2] || "").trim();
+        return rest ? `if ${keyword} ${rest}` : `if ${keyword}`;
+      }
+      return line;
+    });
+    let result = mapped.join("\n");
+    result = result.replace(/\bif\s+timing\b/gi, (match) => match.replace(/timing/i, "isSkip"));
+    result = result.replace(/\bif\s*\(\s*timing\b/gi, (match) => match.replace(/timing/i, "isSkip"));
+    return result;
   };
 
   const countBraceDelta = (line) => {
@@ -142,6 +191,21 @@
 
   function buildUserScript(rawText, { awaitCalls = true } = {}){
     let autoLoopCounter = 0;
+    const blockStack = [];
+    const popBlock = () => {
+      if(blockStack.length > 0){
+        blockStack.pop();
+      }
+    };
+    const popBlockExpected = (type, endLabel) => {
+      if(blockStack.length === 0 || blockStack[blockStack.length - 1] !== type){
+        throw new Error(`${endLabel} に対応する ${type} がありません`);
+      }
+      blockStack.pop();
+    };
+    const pushBlock = (type) => {
+      blockStack.push(type);
+    };
     const repeatDefaultConditionName = () => {
       if(typeof global !== "undefined" && typeof global.hasMoreMove === "function"){
         return "hasMoreMove";
@@ -243,6 +307,7 @@
     const spacedText = applyKeywordSpacing(stripLineComments(rawText || ""));
     const directionSpaced = applyCompoundDirectionSpacing(spacedText);
     const conditionalText = applyConditionalAliases(directionSpaced);
+    validateAllowedCommands(conditionalText);
     const codeRaw = applyAliasTransforms(conditionalText);
     if(!codeRaw.trim()) return "";
     const formattedLines = codeRaw.replace(/\r/g, "").split("\n");
@@ -251,16 +316,32 @@
     let pendingInlineIf = null;
     for(const raw of formattedLines){
       const trimmed = typeof raw === "string" ? raw.trim() : "";
+      const pendingEndMatch = trimmed.match(/^end\s*(for|while|until|repeat|loop|if)$/i);
+      if(pendingInlineIf && (trimmed === "end" || pendingEndMatch)){
+        combined.push(pendingInlineIf.singleLine);
+        blockDepth += countBraceDelta(pendingInlineIf.singleLine);
+        pendingInlineIf = null;
+      }
       if(trimmed === "end"){
         if(blockDepth > 0){
           combined.push("}");
           blockDepth--;
+          popBlock();
         }
         continue;
       }
       const line = trimmed.replace(/\s+$/g, "");
       const lineLower = line.toLowerCase();
       const indent = typeof raw === "string" ? raw.match(/^\s*/)[0] : "";
+      const endMatch = pendingEndMatch || line.match(/^end\s*(for|while|until|repeat|loop|if)$/i);
+      if(endMatch){
+        const kind = endMatch[1].toLowerCase();
+        const expected = kind === "loop" ? "repeat" : kind;
+        popBlockExpected(expected, `end${kind}`);
+        combined.push("}");
+        blockDepth = Math.max(0, blockDepth - 1);
+        continue;
+      }
       const elseMatch = line.match(/^else\b(.*)$/i);
       const elseRest = elseMatch ? (elseMatch[1] || "").trim() : "";
       let handledInlineElse = false;
@@ -288,9 +369,9 @@
         if(pendingInlineIf) continue;
         continue;
       }
-      const ifMatch = line.match(/^if\b(.*)$/i);
+      const ifMatch = line.match(/^(if|when)\b(.*)$/i);
       if(ifMatch){
-        const conditionRaw = (ifMatch[1] || "").trim();
+        const conditionRaw = (ifMatch[2] || "").trim();
         const singleLineInfo = (() => {
           if(!conditionRaw) return null;
           const firstSpaceIdx = conditionRaw.search(/\s/);
@@ -328,23 +409,28 @@
             if(buildLine){
               combined.push(buildLine);
               blockDepth += countBraceDelta(buildLine);
+              pushBlock("if");
               continue;
             }
           }
         }
       }
       if(elseMatch && !line.includes("{")){
-        const restIfMatch = elseRest.match(/^if\b(.*)$/i);
+        const restIfMatch = elseRest.match(/^(if|when)\b(.*)$/i);
         if(restIfMatch){
-            const nestedLine = buildConditionalLine("} else if", restIfMatch[1]);
+            const nestedLine = buildConditionalLine("} else if", restIfMatch[2]);
             if(nestedLine){
               combined.push(nestedLine);
               blockDepth += countBraceDelta(nestedLine);
+              popBlock();
+              pushBlock("if");
               continue;
             }
           }
         combined.push("} else {");
         blockDepth += countBraceDelta("} else {");
+        popBlock();
+        pushBlock("if");
         continue;
       }
       const whileMatch = line.match(/^while\b(.*)$/i);
@@ -356,6 +442,10 @@
           const guarded = guardWhileWithParen(line);
           if(guarded){
             combined.push(guarded);
+            blockDepth += countBraceDelta(guarded);
+            if(countBraceDelta(guarded) > 0){
+              pushBlock("while");
+            }
             continue;
           }
         }else if(conditionRaw){
@@ -363,6 +453,7 @@
           if(loopLine){
             combined.push(loopLine);
             blockDepth += countBraceDelta(loopLine);
+            pushBlock("while");
             continue;
           }
         }else if(actualCondition){
@@ -370,6 +461,7 @@
           if(loopLine){
             combined.push(loopLine);
             blockDepth += countBraceDelta(loopLine);
+            pushBlock("while");
             continue;
           }
         }
@@ -382,6 +474,10 @@
           const rewritten = rewriteUntilWithParen(line);
           if(rewritten){
             combined.push(rewritten);
+            blockDepth += countBraceDelta(rewritten);
+            if(countBraceDelta(rewritten) > 0){
+              pushBlock("until");
+            }
             continue;
           }
         }else if(conditionRaw){
@@ -389,6 +485,7 @@
           if(loopLine){
             combined.push(loopLine);
             blockDepth += countBraceDelta(loopLine);
+            pushBlock("until");
             continue;
           }
         }else if(actualCondition){
@@ -396,18 +493,39 @@
           if(loopLine){
             combined.push(loopLine);
             blockDepth += countBraceDelta(loopLine);
+            pushBlock("until");
             continue;
           }
         }
       }
+      const forMatch = line.match(/^for(?:\s+(\d+))?$/i);
+      if(forMatch){
+        const count = forMatch[1];
+        if(!count){
+          throw new Error("for は回数指定のみ対応しています");
+        }
+        const formattedFor = formatSimpleFor(count);
+        if(formattedFor){
+          combined.push(formattedFor);
+          blockDepth += countBraceDelta(formattedFor);
+          pushBlock("for");
+          continue;
+        }
+        throw new Error("for は回数指定のみ対応しています");
+      }
+      if(/^for\b/i.test(line)){
+        throw new Error("for は回数指定のみ対応しています");
+      }
       const repeatMatch = line.match(/^repeat(?:\s+(\d+))?$/i);
-      if(repeatMatch){
-        const count = repeatMatch[1];
+      const loopMatch = line.match(/^loop(?:\s+(\d+))?$/i);
+      if(repeatMatch || loopMatch){
+        const count = repeatMatch ? repeatMatch[1] : loopMatch[1];
         if(count){
           const formattedFor = formatSimpleFor(count);
           if(formattedFor){
             combined.push(formattedFor);
             blockDepth += countBraceDelta(formattedFor);
+            pushBlock("repeat");
             continue;
           }
         }else{
@@ -416,14 +534,22 @@
           const whileLine = `while (${guardCondition} && canContinueLoop()) {`;
           combined.push(whileLine);
           blockDepth += countBraceDelta(whileLine);
+          pushBlock("repeat");
           continue;
         }
       }
-      const isBlocky = /^(for|while|if|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(line)
+      const isBlocky = /^(for|while|if|when|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(line)
         || /[{;}]$/.test(line);
       if(isBlocky){
         combined.push(line);
         blockDepth += countBraceDelta(line);
+        const openDelta = countBraceDelta(line);
+        if(openDelta > 0){
+          const blockMatch = line.match(/^(if|while|until|repeat|for)\b/i);
+          if(blockMatch){
+            pushBlock(blockMatch[1].toLowerCase());
+          }
+        }
         continue;
       }
       const formatted = formatStudentCodeLine(line);
@@ -440,6 +566,7 @@
     while(blockDepth > 0){
       combined.push("}");
       blockDepth--;
+      popBlock();
     }
     return indentScriptLines(combined);
   }

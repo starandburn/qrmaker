@@ -10,7 +10,21 @@
   if(!global) return;
 
   const ensureHelpers = (ctx) => (ctx && ctx.helpers) ? ctx.helpers : {};
-  const PATTERN_STEP_SCALE = 0.35;
+  const PATTERN_STEP_SCALE = 1;
+  const setBasePatternLookahead = (infos) => {
+    if(typeof global.setBasePatternLookahead === "function"){
+      global.setBasePatternLookahead(infos);
+    }else{
+      global.basePatternLookahead = Array.isArray(infos) ? infos : [];
+    }
+  };
+  const resolveStepDir = (fromRow, fromCol, toRow, toCol) => {
+    if(toRow < fromRow) return DIR_UP;
+    if(toRow > fromRow) return DIR_DOWN;
+    if(toCol < fromCol) return DIR_LEFT;
+    if(toCol > fromCol) return DIR_RIGHT;
+    return DIR_RIGHT;
+  };
 
   function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     const baseRun = ctx ? ctx.runId : 0;
@@ -85,6 +99,16 @@
         ? H.stepDelayAbort(runToken, { scale: PATTERN_STEP_SCALE })
         : Promise.resolve();
     };
+    const buildLookahead = (startIdx) => {
+      const infos = [];
+      for(let i = 1; i <= 4; i++){
+        const idx = startIdx + i;
+        if(idx >= coordsArr.length || idx >= 15) break;
+        const bit = (bits15 >>> idx) & 1;
+        infos.push({ kind: BIT_FUNC_FORMAT, bit });
+      }
+      return infos;
+    };
     const prevRender = ctx.renderMode;
     ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
     for(let i = 0; i < coordsArr.length && i < 15; i++){
@@ -94,17 +118,23 @@
       }
       const bit = (bits15 >>> i) & 1;
       const [r1, c1] = coordsArr[i];
+      const next = coordsArr[i + 1] || [r1, c1];
+      const [nextR, nextC] = next;
       const row = r1 + 1;
       const col = c1 + 1;
-      if(!shouldDrawCell(row, col)) continue;
-      if(typeof window.updateCell === "function"){
+      const nextRow = nextR + 1;
+      const nextCol = nextC + 1;
+      const stepDir = resolveStepDir(row, col, nextRow, nextCol);
+      const canDraw = shouldDrawCell(row, col);
+      if(canDraw && typeof window.updateCell === "function"){
         const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
         window.updateCell(row, col, enc);
         if(typeof window.animateCellPlacement === "function"){
           window.animateCellPlacement(row, col, BIT_FUNC_FORMAT);
         }
       }
-      updateCursorSafe(runToken, ctx, row, col, DIR_RIGHT);
+      setBasePatternLookahead(buildLookahead(i));
+      updateCursorSafe(runToken, ctx, row, col, stepDir);
       await delay();
     }
     hasFormatPattern = true;

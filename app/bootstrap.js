@@ -34,6 +34,7 @@
     assign("putTimingCells", api.putTimingCells);
     assign("putDarkModuleCells", api.putDarkModuleCells);
     assign("putFormatCells", api.putFormatCells);
+    assign("clearBoard", api.clearBoard);
     assign("syncViewToggles", api.syncViewToggles);
     if(Array.isArray(api.toggleInputs)){
       win.toggleInputs = api.toggleInputs;

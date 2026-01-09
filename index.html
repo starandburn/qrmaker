@@ -40,44 +40,47 @@
         <div class="label">QRコードにしたいデータ（半角英数字で32文字まで）</div>
         <div class="data-status" id="dataInputStatus" role="status" aria-live="polite"></div>
       </div>
-      <div class="input-row">
-        <input id="txtInput" type="text" value="Hello, World!" maxlength="32" inputmode="latin" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false">
-        <div class="input-actions">
-          <div class="sample-dropdown" id="sampleDropdown">
-            <button id="btnSampleDropdown" type="button" aria-haspopup="listbox" aria-expanded="false">▼</button>
-            <ul id="sampleDropdownMenu" role="listbox" tabindex="-1">
-              <!-- options populated from settings.js -->
-            </ul>
+        <div class="input-row">
+          <input id="txtInput" type="text" value="Hello, World!" maxlength="32" inputmode="latin" lang="en" autocorrect="off" autocapitalize="off" spellcheck="false">
+          <div class="input-actions">
+            <div class="sample-dropdown" id="sampleDropdown">
+              <button id="btnSampleDropdown" type="button" aria-haspopup="listbox" aria-expanded="false">▼</button>
+              <ul id="sampleDropdownMenu" role="listbox" tabindex="-1">
+                <!-- options populated from settings.js -->
+              </ul>
+            </div>
+            <div class="input-meta">
+              <span class="data-count" id="dataCount"></span>
+              <button id="btnClear" type="button">クリア</button>
+            </div>
           </div>
-          <button id="btnClear" type="button">クリア</button>
         </div>
       </div>
-    </div>
 
       <details class="pattern-panel" id="dataPatternPanel">
         <summary class="pattern-summary">
-          <span class="summary-title"><span id="patternToggleText">コードパターンを表示</span></span>
+          <span class="summary-title"><span id="patternToggleText">データパターンを表示</span></span>
           <a href="#" id="asciiLink" class="ascii-link">文字とパターンの対応表</a>
         </summary>
         <div id="patternBox" class="pattern-box">
           <div class="pattern-section section-a">
             <div class="pattern-title">
-              <span class="pattern-title-main">Ａ. 構成情報のコードパターン</span>
-              <span class="pattern-title-note">（種別は4のバイトモード固定）</span>
+              <span class="pattern-title-main">A. 構成情報のパターン</span>
+              <span class="pattern-title-note">（種別は半角英数字で固定）</span>
             </div>
             <div id="patternRowA" class="pattern-row"></div>
           </div>
           <div class="pattern-section section-b">
             <div class="pattern-title">
-              <span class="pattern-title-main">Ｂ. 各文字に対応したコードパターン</span>
-              <span class="pattern-title-note">（1文字8桁・終端のみ4桁、不足分は固定パターンで埋める）</span>
+              <span class="pattern-title-main">B. 各文字に対応したパターン</span>
+              <span class="pattern-title-note">（1文字8桁・終端のみ4桁、32文字に満たない分は『パディング』で埋める）</span>
             </div>
             <div id="patternRowB" class="pattern-row"></div>
           </div>
           <div class="pattern-section section-c">
             <div class="pattern-title">
-              <span class="pattern-title-main">Ｃ. AとBに一定の計算をして作ったコードパターン</span>
-              <span class="pattern-title-note">（読み取りミスを減らすためのしくみ）</span>
+              <span class="pattern-title-main">C. AとBに一定の計算をして作ったパターン</span>
+              <span class="pattern-title-note">（読み取りミスを減らすための『パリティ』というしくみ）</span>
             </div>
             <div id="patternRowC" class="pattern-row"></div>
           </div>
@@ -124,29 +127,37 @@
   <section class="right-col">
     <div class="panel pastel-5 control-panel">
       <div class="qr-head">
-        <button id="btnInit" type="button">リセット</button>
-        <button id="btnGenerate" type="button">作成実行</button>
+        <button id="btnInit" type="button">■</button>
+        <button id="btnGenerate" type="button">▶ QRコードを作成</button>
         <div class="step-controls">
         <div class="step-toggle-row">
-          <label class="step-mode"><input type="checkbox" id="stepMode"> ステップ実行</label>
-          <label class="step-skip"><input type="checkbox" id="stepSkipFunctions" checked> データ部のみ</label>
+          <label class="step-mode"><input type="checkbox" id="stepMode"> ステップ表示</label>
+        <label class="step-skip"><input type="checkbox" id="stepSkipFunctions" checked> データパターンのみ</label>
         </div>
         <label class="step-speed"><span>速</span><input type="range" id="stepSpeed" min="0" max="120" value="60" disabled><span>遅</span></label>
         </div>
       </div>
-      <div class="execution-status status-stopped" id="executionStatus" role="status" aria-live="polite">停止中</div>
+      <div class="execution-status status-stopped" id="executionStatus" role="status" aria-live="polite">
+        <span class="execution-status-text" id="executionStatusText">停止中</span>
+        <span class="execution-status-cursor" id="executionStatusCursor"></span>
+      </div>
     </div>
 
     <div class="panel qr-panel view-panel">
-      <div class="qr-controls">
+      <div class="qr-controls-drawer">
+        <button type="button" class="qr-controls-handle" aria-label="表示切替">
+          ▾
+        </button>
+        <div class="qr-controls">
         <label><input type="checkbox" id="toggleCursor" checked> カーソル</label>
         <label><input type="checkbox" id="toggleGuide" checked> ガイド</label>
         <label><input type="checkbox" id="toggleGrid" checked> グリッド</label>
         <label><input type="checkbox" id="toggleEmpty" checked> 未配置セル</label>
-        <label><input type="checkbox" id="toggleColor" checked> 色指定</label>
+        <label><input type="checkbox" id="toggleColor" checked> 色分け</label>
         <label class="debug-only" style="display:none;"><input type="checkbox" id="toggleDebugValues" checked> セルの値</label>
         <button type="button" id="btnSelectAllToggles">全選択</button>
         <button type="button" id="btnClearAllToggles">全解除</button>
+        </div>
       </div>
       <div class="view-area">
         <div class="qr-stage">
@@ -174,6 +185,7 @@
             </div>
           </div>
         </div>
+        <span class="noise-mode-hint" id="noiseModeHint">クリックでノイズ追加・右クリックで最後のノイズ消去</span>
       </div>
     </div>
   </section>

@@ -8,6 +8,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const btnClearCode = document.getElementById("btnClearCode");
   const btnCopyCode = document.getElementById("btnCopyCode");
   const btnPasteCode = document.getElementById("btnPasteCode");
+  const btnClear = document.getElementById("btnClear");
+  const btnSampleDropdown = document.getElementById("btnSampleDropdown");
   const debugLog = document.getElementById("debugLog");
   const dataPatternPanel = document.getElementById("dataPatternPanel") || document.getElementById("patternDetails");
   const codePanel = document.querySelector(".code-panel");
@@ -60,23 +62,36 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       sampleDropdownMenu.append(li);
     });
   }
-  const flagOverrides = configDefaults.toggleFlags || {};
-  const toggleOverridePairs = [
-    { key: "toggleCursor", element: toggleCursor },
-    { key: "toggleGuide", element: toggleGuide },
-    { key: "toggleGrid", element: toggleGrid },
-    { key: "toggleEmpty", element: toggleEmpty },
-    { key: "toggleColor", element: toggleColor },
-    { key: "toggleDebugValues", element: toggleDebugValues },
-    { key: "stepMode", element: stepMode },
-    { key: "stepSkipFunctions", element: stepSkipFunctions },
+  const viewOverrides = configDefaults.viewFlags || {};
+  const viewOverridePairs = [
+    { key: "viewCursor", element: toggleCursor },
+    { key: "viewGuide", element: toggleGuide },
+    { key: "viewGrid", element: toggleGrid },
+    { key: "viewEmpty", element: toggleEmpty },
+    { key: "viewColor", element: toggleColor },
+    { key: "viewDebugValues", element: toggleDebugValues },
   ];
-  toggleOverridePairs.forEach(({ element, key }) => {
+  viewOverridePairs.forEach(({ element, key }) => {
     if(!element) return;
-    const overrideValue = flagOverrides[key];
+    const overrideValue = viewOverrides[key];
     if(typeof overrideValue !== "boolean") return;
     element.checked = overrideValue;
+    if(typeof element.defaultChecked === "boolean"){
+      element.defaultChecked = overrideValue;
+    }
+    if(key === "viewColor" && typeof isColorEnabled !== "undefined"){
+      isColorEnabled = overrideValue;
+    }
   });
+  if(typeof window !== "undefined" && typeof window.syncViewToggles === "function"){
+    window.syncViewToggles();
+  }
+  const homeCursorDirectionOverride = (typeof configDefaults.homeCursorDirection === "string")
+    ? configDefaults.homeCursorDirection
+    : null;
+  if(homeCursorDirectionOverride && typeof window.setHomeCursor === "function"){
+    window.setHomeCursor({ dir: homeCursorDirectionOverride });
+  }
   const configuredQrData = (typeof configDefaults.qrData === "string") ? configDefaults.qrData : null;
   if(txtInput && configuredQrData !== null){
     txtInput.value = configuredQrData;
@@ -94,6 +109,104 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   if(stepSpeed && normalizedStepSpeedOverride !== null){
     stepSpeed.value = normalizedStepSpeedOverride;
     stepSpeed.defaultValue = normalizedStepSpeedOverride;
+  }
+  const normalizeNumberSetting = (value) => {
+    if(typeof value === "number" && Number.isFinite(value)){
+      return value;
+    }
+    if(typeof value === "string"){
+      const trimmed = value.trim();
+      if(trimmed.length){
+        const parsed = Number(trimmed);
+        if(Number.isFinite(parsed)){
+          return parsed;
+        }
+      }
+    }
+    return null;
+  };
+  const stepAnimationEnabledOverride = (typeof configDefaults.stepAnimationEnabled === "boolean")
+    ? configDefaults.stepAnimationEnabled
+    : true;
+  const stepAnimationShowBorder = (typeof configDefaults.stepAnimationShowBorder === "boolean")
+    ? configDefaults.stepAnimationShowBorder
+    : true;
+  const stepAnimationDurationMs = normalizeNumberSetting(configDefaults.stepAnimationDurationMs);
+  const stepAnimationStartOpacity = normalizeNumberSetting(configDefaults.stepAnimationStartOpacity);
+  const stepAnimationStartScale = normalizeNumberSetting(configDefaults.stepAnimationStartScale);
+  const maskFadeDurationMs = normalizeNumberSetting(configDefaults.maskFadeDurationMs);
+  const presentationRingEnabled = (typeof configDefaults.presentationPointerRingEnabled === "boolean")
+    ? configDefaults.presentationPointerRingEnabled
+    : true;
+  const presentationRingDurationMs = normalizeNumberSetting(configDefaults.presentationPointerRingDurationMs);
+  const presentationRingSize = normalizeNumberSetting(configDefaults.presentationPointerRingSize);
+  const presentationRingScaleStart = normalizeNumberSetting(configDefaults.presentationPointerRingScaleStart);
+  const presentationRingScaleEnd = normalizeNumberSetting(configDefaults.presentationPointerRingScaleEnd);
+  const presentationRingColor = (typeof configDefaults.presentationPointerRingColor === "string")
+    ? configDefaults.presentationPointerRingColor.trim()
+    : "";
+  const presentationRingShadowColor = (typeof configDefaults.presentationPointerRingShadowColor === "string")
+    ? configDefaults.presentationPointerRingShadowColor.trim()
+    : "";
+  const presentationRingEase = (typeof configDefaults.presentationPointerRingEase === "string")
+    ? configDefaults.presentationPointerRingEase.trim()
+    : "";
+  const presentationRingDuration = (presentationRingDurationMs !== null)
+    ? Math.max(0, presentationRingDurationMs)
+    : 400;
+  const codeZoomStepPx = normalizeNumberSetting(configDefaults.codeZoomStepPx);
+  const codeZoomMinPx = normalizeNumberSetting(configDefaults.codeZoomMinPx);
+  const codeZoomMaxPx = normalizeNumberSetting(configDefaults.codeZoomMaxPx);
+  const codeZoomHoldCount = normalizeNumberSetting(configDefaults.codeZoomHoldCount);
+  const codeZoomBasePx = normalizeNumberSetting(configDefaults.codeZoomBasePx);
+  const codeZoomLineHeightMinPx = normalizeNumberSetting(configDefaults.codeZoomLineHeightMinPx);
+  const codeZoomLineHeightRatio = normalizeNumberSetting(configDefaults.codeZoomLineHeightRatio);
+  const codeZoomLineHeightMaxOffsetPx = normalizeNumberSetting(configDefaults.codeZoomLineHeightMaxOffsetPx);
+  if(typeof window !== "undefined"){
+    window.stepAnimationEnabled = stepAnimationEnabledOverride;
+    if(stepAnimationDurationMs !== null){
+      window.stepAnimationDurationMs = Math.max(0, stepAnimationDurationMs);
+    }
+    if(maskFadeDurationMs !== null){
+      window.maskFadeDurationMs = Math.max(0, maskFadeDurationMs);
+    }
+  }
+  const rootStyle = document.documentElement?.style;
+  if(rootStyle){
+    const stepBorderValue = stepAnimationShowBorder
+      ? "1px solid rgba(0,0,0,0.65)"
+      : "0 solid transparent";
+    rootStyle.setProperty("--cell-step-animation-border", stepBorderValue);
+    if(stepAnimationDurationMs !== null){
+      rootStyle.setProperty("--cell-step-animation-duration", `${Math.max(0, stepAnimationDurationMs)}ms`);
+    }
+    if(stepAnimationStartOpacity !== null){
+      rootStyle.setProperty("--cell-step-animation-start-opacity", String(stepAnimationStartOpacity));
+    }
+    if(stepAnimationStartScale !== null){
+      rootStyle.setProperty("--cell-step-animation-start-scale", String(stepAnimationStartScale));
+    }
+    if(presentationRingDurationMs !== null){
+      rootStyle.setProperty("--presentation-ring-duration", `${Math.max(0, presentationRingDurationMs)}ms`);
+    }
+    if(presentationRingSize !== null){
+      rootStyle.setProperty("--presentation-ring-size", `${Math.max(0, presentationRingSize)}px`);
+    }
+    if(presentationRingScaleStart !== null){
+      rootStyle.setProperty("--presentation-ring-scale-start", String(presentationRingScaleStart));
+    }
+    if(presentationRingScaleEnd !== null){
+      rootStyle.setProperty("--presentation-ring-scale-end", String(presentationRingScaleEnd));
+    }
+    if(presentationRingColor){
+      rootStyle.setProperty("--presentation-ring-border", `3px solid ${presentationRingColor}`);
+    }
+    if(presentationRingShadowColor){
+      rootStyle.setProperty("--presentation-ring-shadow", `0 0 0 3px ${presentationRingShadowColor}`);
+    }
+    if(presentationRingEase){
+      rootStyle.setProperty("--presentation-ring-ease", presentationRingEase);
+    }
   }
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
   const store = (window.appState && typeof window.appState.getStore === "function")
@@ -207,6 +320,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   historyController.setValueGetter(getCurrentCodeValue);
   const urlParams = urlState.params || new URLSearchParams(window.location.search || "");
+  const presentationMode = urlParams.get("z") === "1";
   const {
     decodeDataParamValue,
     applyPatternOpenFromParam,
@@ -214,6 +328,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     applyHistoryFromParam,
     applySampleParam,
     applyCombinedStepParam,
+    applyStepSpeedParam,
     applyUrlControlStates,
     buildStateUrl: buildStateUrlFromState,
     PARAM_KEYS = {},
@@ -224,6 +339,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     DEBUG: DEBUG_PARAM_KEY = "g",
     SAMPLES: SAMPLES_PARAM_KEY = "m",
     PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY = "p",
+    STEP_SPEED: STEP_SPEED_PARAM_KEY = "e",
+    STEP_FLAGS: STEP_FLAGS_PARAM_KEY = "s",
     SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY = "x",
     AUTO_AVOID_TIMING: TIMING_AUTO_PARAM_KEY = "t",
   } = PARAM_KEYS;
@@ -237,13 +354,25 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const defaultPatternOpen = (typeof configDefaults.patternPanelOpen === "boolean")
     ? configDefaults.patternPanelOpen
     : getPatternPanelOpen();
-  const defaultStepMode = (typeof configDefaults.stepMode === "boolean")
-    ? configDefaults.stepMode
+  const defaultStepMode = (typeof configDefaults.skipMode === "boolean")
+    ? configDefaults.skipMode
     : (stepMode ? (typeof stepMode.defaultChecked === "boolean" ? stepMode.defaultChecked : Boolean(stepMode.checked)) : false);
-  const defaultStepSkipFunctions = (typeof configDefaults.stepSkipFunctions === "boolean")
-    ? configDefaults.stepSkipFunctions
+  const defaultStepSkipFunctions = (typeof configDefaults.stepSkipDataOnly === "boolean")
+    ? configDefaults.stepSkipDataOnly
     : (stepSkipFunctions ? (typeof stepSkipFunctions.defaultChecked === "boolean" ? stepSkipFunctions.defaultChecked : Boolean(stepSkipFunctions.checked)) : false);
   const defaultStepSpeed = normalizedStepSpeedOverride ?? (stepSpeed ? (stepSpeed.defaultValue ?? stepSpeed.value ?? "") : "");
+  if(stepMode){
+    stepMode.checked = defaultStepMode;
+    if(typeof stepMode.defaultChecked === "boolean"){
+      stepMode.defaultChecked = defaultStepMode;
+    }
+  }
+  if(stepSkipFunctions){
+    stepSkipFunctions.checked = defaultStepSkipFunctions;
+    if(typeof stepSkipFunctions.defaultChecked === "boolean"){
+      stepSkipFunctions.defaultChecked = defaultStepSkipFunctions;
+    }
+  }
   const defaultSkipExistingCells = (typeof configDefaults.skipExistingCells === "boolean")
     ? configDefaults.skipExistingCells
     : false;
@@ -325,13 +454,18 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
   if(!btnGenerate || !btnInit) return;
   const executionStatusEl = document.getElementById("executionStatus");
+  const executionStatusTextEl = document.getElementById("executionStatusText");
+  const executionStatusCursorEl = document.getElementById("executionStatusCursor");
   const executionStatusLabels = {
-    stopped: "停止中",
-    running: "実行中",
-    finished: "実行終了",
-    error: "入力したスクリプトにエラーがあるので実行できません",
+    stopped: "待機中",
+    running: "作成中",
+    finished: "作成完了",
+    error: "エラー",
+    warning: "警告",
   };
   let lastExecutionError = null;
+  let pendingStopReason = null;
+  let stopReasonLocked = false;
   const extractUnknownCommandWord = (message) => {
     if(!message) return "";
     const text = String(message).trim();
@@ -339,48 +473,127 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const match = text.match(/(?:不明なコマンド|Unknown command)[:：]?\s*([^\s,、。.]+)/i);
     return match ? match[1] : "";
   };
+  const normalizeStatusDetail = (detail) => {
+    if(!detail || typeof detail !== "object") return null;
+    const l2 = (typeof detail.l2 === "string") ? detail.l2 : "";
+    const l3 = (typeof detail.l3 === "string") ? detail.l3 : "";
+    if(!l2) return null;
+    return { l2, l3 };
+  };
   const buildExecutionStatusText = (state, message, detail) => {
     const label = executionStatusLabels[state] || "";
     if(state === "error"){
       const token = extractUnknownCommandWord(message);
-      return token ? `${label}：${token}` : label;
+      if(token){
+        return `${token}はコマンドとして認識できませんでした。`;
+      }
+      const resolved = message ? String(message).trim() : "";
+      return resolved ? `${label}：${resolved}` : label;
     }
-    const base = label;
+    if(state === "stopped" && !detail){
+      return `${label}：作成できます。`;
+    }
+    const normalized = normalizeStatusDetail(detail);
+    if(normalized){
+      const resolvedL3 = normalized.l3 || "作成中";
+      return `${normalized.l2}：${resolvedL3}`;
+    }
     if(detail){
-      return `${base}：${detail}`;
+      return `${label}：${detail}`;
     }
-    return base;
+    return label;
   };
   const setExecutionStatus = (state, message, detail) => {
     if(!executionStatusEl) return;
-    executionStatusEl.textContent = buildExecutionStatusText(state, message, detail);
+    if(state !== "stopped"){
+      pendingStopReason = null;
+      stopReasonLocked = false;
+    }else if(detail){
+      if(!stopReasonLocked || detail === pendingStopReason){
+        pendingStopReason = detail;
+      }
+    }else if(pendingStopReason){
+      detail = pendingStopReason;
+    }
+    const target = executionStatusTextEl || executionStatusEl;
+    target.textContent = buildExecutionStatusText(state, message, detail);
     executionStatusEl.className = `execution-status status-${state}`;
   };
+  const INPUT_MAX_LENGTH = Number(txtInput?.getAttribute("maxlength")) || 32;
+  const NON_ASCII_REGEX = /[^\u0000-\u007F]/;
+  const normalizeInputBeforeRun = () => {
+    if(!txtInput) return { ok: true };
+    let value = (typeof txtInput.value === "string") ? txtInput.value : "";
+    if(value.length > INPUT_MAX_LENGTH){
+      value = value.slice(0, INPUT_MAX_LENGTH);
+      txtInput.value = value;
+      try{
+        txtInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }catch(_err){
+        // ignore environments without Event
+      }
+    }
+    if(NON_ASCII_REGEX.test(value)){
+      const message = "半角英数字以外が含まれています。";
+      lastExecutionError = message;
+      setExecutionStatus("error", message);
+      return { ok: false };
+    }
+    return { ok: true };
+  };
   setExecutionStatus("stopped");
+  let inputLocked = false;
+  let inputLockToken = 0;
+  const setInputLock = (locked) => {
+    inputLocked = locked;
+    if(txtInput) txtInput.readOnly = locked;
+    if(userCodeInput) userCodeInput.readOnly = locked;
+    if(btnClear) btnClear.disabled = locked;
+    if(btnClearCode) btnClearCode.disabled = locked;
+    if(btnCopyCode) btnCopyCode.disabled = locked;
+    if(btnPasteCode) btnPasteCode.disabled = locked;
+    if(btnSampleDropdown) btnSampleDropdown.disabled = locked;
+    const sampleButtons = document.querySelectorAll(".code-debug-btn");
+    sampleButtons.forEach((btn) => {
+      btn.disabled = locked;
+    });
+    const sampleDropdown = document.getElementById("sampleDropdown");
+    if(locked && sampleDropdown){
+      sampleDropdown.classList.remove("is-open");
+    }
+    if(codeHistoryList){
+      codeHistoryList.classList.toggle("is-disabled", locked);
+    }
+  };
+  if(userCodeInput){
+    const initialCode = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
+    btnGenerate.disabled = !initialCode;
+  }
 
   const API_STATUS_DESCRIPTIONS = {
-    resetCommand: "盤面をリセット",
-    drawQRCode: "QRコードを描画中",
-    drawBasePatterns: "基本パターンを描画中",
-    drawDataPatterns: "データパターンを描画中",
-    drawFinderPatterns: "ファインダーパターンを描画中",
-    drawTimingPatterns: "タイミングパターンを描画中",
-    drawAlignmentPatterns: "配置パターンを描画中",
-    drawDarkModulePatterns: "ダークモジュールを描画中",
-    drawFormatPatterns: "フォーマットパターンを描画中",
-    verify: "入力と出力を検証中",
-    applyMask: (maskIndex) => `${maskIndex}番マスクを適用中`,
+    resetCommand: { l2: "リセット", l3: "盤面" },
+    drawQRCode: { l2: "QRコード描画", l3: "QRコードを描画しています。" },
+    drawBasePatterns: { l2: "基本パターン", l3: "基本パターンを描画しています。" },
+    drawDataPatterns: { l2: "データパターン", l3: "データパターンを描画しています。" },
+    drawFinderPatterns: { l2: "基本パターン", l3: "ファインダーパターンを描画しています。" },
+    drawTimingPatterns: { l2: "基本パターン", l3: "タイミングパターンを描画しています。" },
+    drawAlignmentPatterns: { l2: "基本パターン", l3: "アライメントパターンを描画しています。" },
+    drawDarkModulePatterns: { l2: "基本パターン", l3: "ダークモジュールを描画しています。" },
+    drawFormatPatterns: { l2: "基本パターン", l3: "フォーマットパターンを描画しています。" },
+    verify: { l2: "QRコード検証", l3: "作成中" },
+    applyMask: (maskIndex) => ({ l2: "マスク", l3: `${maskIndex}番を適用しています。` }),
   };
   const DATA_PATTERN_STAGE_MESSAGES = {
-    [window.BIT_INFO_MODE]: "種別パターンを描画中",
-    [window.BIT_INFO_LENGTH]: "長さパターンを描画中",
-    [window.BIT_INFO_CHAR]: "文字パターンを描画中",
-    [window.BIT_INFO_TERMINATOR]: "終端パターンを描画中",
-    [window.BIT_INFO_PADDING]: "パディングパターンを描画中",
-    [window.BIT_INFO_PARITY]: "パリティパターンを描画中",
+    [window.BIT_INFO_MODE]: { l2: "データパターン", l3: "種別パターンを描画しています。" },
+    [window.BIT_INFO_LENGTH]: { l2: "データパターン", l3: "文字数パターンを描画しています。" },
+    [window.BIT_INFO_CHAR]: { l2: "データパターン", l3: "文字パターンを描画しています。" },
+    [window.BIT_INFO_TERMINATOR]: { l2: "データパターン", l3: "終端パターンを描画しています。" },
+    [window.BIT_INFO_PADDING]: { l2: "データパターン", l3: "パディングパターンを描画しています。" },
+    [window.BIT_INFO_PARITY]: { l2: "データパターン", l3: "パリティパターンを描画しています。" },
   };
   let currentDataPatternStage = null;
   const updateDataPatternStatus = (kind) => {
+    if(typeof isStepModeOn !== "function" || !isStepModeOn()) return false;
     const message = DATA_PATTERN_STAGE_MESSAGES[kind];
     if(!message) return false;
     if(currentDataPatternStage === message) return false;
@@ -388,6 +601,301 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     setExecutionStatus("running", undefined, message);
     return true;
   };
+  window.updateDataPatternStatus = updateDataPatternStatus;
+  const updateExecutionStatusCursor = () => {
+    if(!executionStatusCursorEl) return;
+    let cursorTextEl = executionStatusCursorEl.querySelector(".execution-status-cursor-text");
+    let cursorCellEl = executionStatusCursorEl.querySelector(".execution-status-cell");
+    let cursorLabelEl = executionStatusCursorEl.querySelector(".execution-status-cursor-label");
+    let nextLabelEl = executionStatusCursorEl.querySelector(".execution-status-next-label");
+    let nextListEl = executionStatusCursorEl.querySelector(".execution-status-next-list");
+    if(!cursorTextEl){
+      cursorTextEl = document.createElement("span");
+      cursorTextEl.className = "execution-status-cursor-text";
+      executionStatusCursorEl.textContent = "";
+      executionStatusCursorEl.append(cursorTextEl);
+    }
+    if(!cursorCellEl){
+      cursorCellEl = document.createElement("span");
+      cursorCellEl.className = "execution-status-cell";
+      executionStatusCursorEl.append(cursorCellEl);
+    }
+    if(!cursorLabelEl){
+      cursorLabelEl = document.createElement("span");
+      cursorLabelEl.className = "execution-status-cursor-label execution-status-chip";
+      executionStatusCursorEl.append(cursorLabelEl);
+    }
+    if(!nextLabelEl){
+      nextLabelEl = document.createElement("span");
+      nextLabelEl.className = "execution-status-next-label execution-status-chip";
+      executionStatusCursorEl.append(nextLabelEl);
+    }
+    const NEXT_CELL_COUNT = 4;
+    if(!nextListEl){
+      nextListEl = document.createElement("span");
+      nextListEl.className = "execution-status-next-list";
+      executionStatusCursorEl.append(nextListEl);
+    }
+    if(nextListEl.childElementCount !== NEXT_CELL_COUNT){
+      nextListEl.textContent = "";
+      for(let i = 0; i < NEXT_CELL_COUNT; i++){
+        const cell = document.createElement("span");
+        cell.className = "execution-status-next-cell";
+        nextListEl.append(cell);
+      }
+    }
+    const nextCells = Array.from(nextListEl.children);
+    let cursorVisualEl = cursorCellEl.querySelector(".execution-status-visual-cursor");
+    if(!cursorVisualEl){
+      cursorVisualEl = document.createElement("span");
+      cursorVisualEl.className = "execution-status-visual-cursor";
+      cursorCellEl.append(cursorVisualEl);
+    }
+    const colorMap = {
+      red: ["var(--col-red-light)", "var(--col-red-dark)"],
+      blue: ["var(--col-blue-light)", "var(--col-blue-dark)"],
+      green: ["var(--col-green-light)", "var(--col-green-dark)"],
+      yellow: ["var(--col-yellow-light)", "var(--col-yellow-dark)"],
+      purple: ["var(--col-purple-light)", "var(--col-purple-dark)"],
+      orange: ["var(--col-orange-light)", "var(--col-orange-dark)"],
+      gray: ["var(--col-gray-light)", "var(--col-gray-dark)"],
+      format: ["var(--col-format-blue-light)", "var(--col-format-blue-dark)"],
+      black: ["var(--col-black-light)", "var(--col-black-dark)"],
+    };
+    const resetNextCell = (cellEl) => {
+      if(!cellEl) return;
+      cellEl.style.backgroundColor = "#ffffff";
+      cellEl.style.borderColor = "#999999";
+      cellEl.style.boxShadow = "";
+    };
+    const applyNextCellInfo = (cellEl, info) => {
+      if(!cellEl) return;
+      if(!info || typeof info.kind !== "number" || typeof info.bit !== "number"){
+        resetNextCell(cellEl);
+        return;
+      }
+      const colName = (typeof window.colorsForKind === "function")
+        ? window.colorsForKind(info.kind)
+        : "black";
+      const resolved = colorMap[colName] || colorMap.black;
+      const bitIsBlack = info.bit === 1;
+      const fill = bitIsBlack ? resolved[1] : resolved[0];
+      const border = bitIsBlack ? resolved[0] : resolved[1];
+      cellEl.style.backgroundColor = fill;
+      cellEl.style.borderColor = border;
+      cellEl.style.boxShadow = "";
+    };
+    const ref = (typeof window.cellRefFromRowCol === "function")
+      ? window.cellRefFromRowCol(cursorPos.row, cursorPos.col)
+      : "";
+    const rowText = String(cursorPos.row).padStart(2, " ");
+    const colText = String(cursorPos.col).padStart(2, " ");
+    const dirSymbol = (() => {
+      switch(cursorPos.dir){
+        case DIR_UP: return "▲";
+        case DIR_RIGHT: return "▶";
+        case DIR_DOWN: return "▼";
+        case DIR_LEFT: return "◀";
+        default: return "▲";
+      }
+    })();
+    const dirName = (() => {
+      switch(cursorPos.dir){
+        case DIR_UP: return "up";
+        case DIR_RIGHT: return "right";
+        case DIR_DOWN: return "down";
+        case DIR_LEFT: return "left";
+        default: return "up";
+      }
+    })();
+    cursorLabelEl.textContent = "Cursor";
+    cursorTextEl.textContent = `${ref}(${rowText},${colText})`;
+    cursorVisualEl.setAttribute("data-arrow", dirSymbol);
+    cursorVisualEl.setAttribute("data-dir", dirName);
+    cursorVisualEl.style.setProperty("--cursor-color", "#e60000");
+    const guideCol = document.querySelector(".guide-col");
+    if(guideCol){
+      const spans = guideCol.querySelectorAll("span");
+      spans.forEach((span, index) => {
+        span.classList.toggle("is-active", index === cursorPos.col - 1);
+      });
+    }
+    const guideRow = document.querySelector(".guide-row");
+    if(guideRow){
+      const spans = guideRow.querySelectorAll("span");
+      spans.forEach((span, index) => {
+        span.classList.toggle("is-active", index === cursorPos.row - 1);
+      });
+    }
+    const currentValue = (typeof window.getCell === "function")
+      ? window.getCell(cursorPos.row, cursorPos.col)
+      : null;
+    const currentKind = (typeof window.bitKind === "function" && typeof currentValue === "number")
+      ? window.bitKind(currentValue)
+      : (typeof currentValue === "number" ? Math.abs(currentValue) : null);
+    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+    if(typeof currentKind === "number" && currentKind !== unplacedKind){
+      const currentColor = (typeof window.colorsForKind === "function")
+        ? window.colorsForKind(currentKind)
+        : "black";
+      const resolved = colorMap[currentColor] || colorMap.black;
+      const bitIsBlack = (typeof window.isBlackBit === "function")
+        ? window.isBlackBit(currentValue)
+        : currentValue > 0;
+      const fill = bitIsBlack ? resolved[1] : resolved[0];
+      const border = bitIsBlack ? resolved[0] : resolved[1];
+      cursorCellEl.style.backgroundColor = fill;
+      cursorCellEl.style.borderColor = border;
+      cursorCellEl.style.boxShadow = "";
+    }else{
+      cursorCellEl.style.backgroundColor = "#ffffff";
+      cursorCellEl.style.borderColor = "#999999";
+      cursorCellEl.style.boxShadow = "";
+    }
+    nextLabelEl.textContent = "Next";
+    const basePatternActive = Boolean(window.isDrawingBasePattern);
+    let nextInfos = [];
+    if(basePatternActive){
+      if(typeof window.getNextBasePatternInfos === "function"){
+        nextInfos = window.getNextBasePatternInfos(NEXT_CELL_COUNT) || [];
+      }
+    }else if(typeof window.getNextDataInfos === "function"){
+      nextInfos = window.getNextDataInfos(NEXT_CELL_COUNT) || [];
+    }else{
+      const single = (typeof window.getNextDataInfo === "function") ? window.getNextDataInfo() : null;
+      if(single) nextInfos = [single];
+    }
+    for(let i = 0; i < nextCells.length; i++){
+      applyNextCellInfo(nextCells[i], nextInfos[i]);
+    }
+  };
+  if(typeof window !== "undefined"){
+    window.updateExecutionStatusCursor = updateExecutionStatusCursor;
+    window.isDrawingBasePattern = false;
+    window.lastBasePatternColorName = null;
+    window.lastBasePatternBitIsBlack = false;
+    window.lastBasePatternKind = null;
+    window.basePatternLookahead = [];
+    window.setBasePatternLookahead = (infos) => {
+      window.basePatternLookahead = Array.isArray(infos) ? infos : [];
+    };
+    window.getNextBasePatternInfos = (count = 4) => {
+      const list = Array.isArray(window.basePatternLookahead) ? window.basePatternLookahead : [];
+      return list.slice(0, Math.max(0, count));
+    };
+  }
+
+  let clearNoiseLayer = () => {};
+  let isQRCodeReadable = false;
+  let noiseSingleClickEnabled = false;
+  const noiseModeHintEl = document.getElementById("noiseModeHint");
+  const shouldShowNoiseHint = () => isQRCodeReadable && noiseSingleClickEnabled;
+  const updateNoiseModeHint = () => {
+    if(!noiseModeHintEl) return;
+    noiseModeHintEl.classList.toggle("visible", shouldShowNoiseHint());
+  };
+  const setQRCodeReadable = (value) => {
+    isQRCodeReadable = Boolean(value);
+    noiseSingleClickEnabled = false;
+    updateNoiseModeHint();
+  };
+  const setupNoiseScatter = () => {
+    const gridArea = document.querySelector(".grid-area");
+    if(!gridArea) return;
+    let noiseLayer = gridArea.querySelector(".noise-layer");
+    if(!noiseLayer){
+      noiseLayer = document.createElement("div");
+      noiseLayer.className = "noise-layer";
+      gridArea.append(noiseLayer);
+    }
+    const palette = ["#ff3b30", "#ff9500", "#ffcc00", "#34c759", "#5ac8fa", "#007aff", "#af52de", "#ff2d55"];
+    const MAX_DOTS = 320;
+    const noiseShotStack = [];
+    let noiseDotCount = 0;
+    clearNoiseLayer = () => {
+      noiseLayer.textContent = "";
+      noiseShotStack.length = 0;
+      noiseDotCount = 0;
+    };
+    const addNoiseDot = (container, x, y, size, color) => {
+      const dot = document.createElement("span");
+      dot.className = "noise-dot";
+      dot.style.width = `${size}px`;
+      dot.style.height = `${size}px`;
+      dot.style.left = `${x - size / 2}px`;
+      dot.style.top = `${y - size / 2}px`;
+      dot.style.backgroundColor = color;
+      container.append(dot);
+    };
+    const trimNoiseShots = () => {
+      while(noiseDotCount > MAX_DOTS && noiseShotStack.length){
+        const oldest = noiseShotStack.shift();
+        const removedCount = Number(oldest?.dataset?.count) || 0;
+        noiseDotCount = Math.max(0, noiseDotCount - removedCount);
+        oldest.remove();
+      }
+    };
+    const removeLastNoiseShot = () => {
+      const last = noiseShotStack.pop();
+      if(!last) return;
+      const removedCount = Number(last.dataset.count) || 0;
+      noiseDotCount = Math.max(0, noiseDotCount - removedCount);
+      last.remove();
+    };
+    const shootNoiseAt = (ev) => {
+      if(!isQRCodeReadable) return false;
+      const rect = gridArea.getBoundingClientRect();
+      const width = rect.width || 0;
+      const height = rect.height || 0;
+      if(width <= 0 || height <= 0) return false;
+      const centerX = ev.clientX - rect.left;
+      const centerY = ev.clientY - rect.top;
+      const minDimension = Math.min(width, height);
+      const maxGridRadius = Math.min((minDimension / 25) * 6, 260);
+      const radius = Math.max(24, Math.min(maxGridRadius, minDimension * 0.15));
+      const count = Math.max(16, Math.min(48, Math.round((width * height) / 18000)));
+      const minSize = Math.max(6, Math.round(minDimension * 0.03));
+      const maxSize = Math.max(minSize + 6, Math.round(minDimension * 0.168));
+      const shotGroup = document.createElement("span");
+      shotGroup.className = "noise-shot";
+      noiseLayer.append(shotGroup);
+      let shotCount = 0;
+      for(let i = 0; i < count; i++){
+        const angle = Math.random() * Math.PI * 2;
+        const dist = Math.random() * radius;
+        let x = centerX + Math.cos(angle) * dist;
+        let y = centerY + Math.sin(angle) * dist;
+        const size = minSize + Math.random() * (maxSize - minSize);
+        x = Math.max(0, Math.min(width, x));
+        y = Math.max(0, Math.min(height, y));
+        const color = palette[Math.floor(Math.random() * palette.length)];
+        addNoiseDot(shotGroup, x, y, size, color);
+        shotCount += 1;
+      }
+      shotGroup.dataset.count = String(shotCount);
+      noiseShotStack.push(shotGroup);
+      noiseDotCount += shotCount;
+      trimNoiseShots();
+      return true;
+    };
+    const handleDoubleClick = (ev) => {
+      if(shootNoiseAt(ev)){
+        noiseSingleClickEnabled = true;
+        updateNoiseModeHint();
+      }
+    };
+    gridArea.addEventListener("dblclick", handleDoubleClick);
+    gridArea.addEventListener("contextmenu", (ev) => {
+      ev.preventDefault();
+      removeLastNoiseShot();
+    });
+    gridArea.addEventListener("click", (ev) => {
+      if(isQRCodeReadable && noiseSingleClickEnabled){
+        shootNoiseAt(ev);
+      }
+    });
+  };
+  setupNoiseScatter();
 
   const describeApiStatus = (name, payload) => {
     const entry = API_STATUS_DESCRIPTIONS[name];
@@ -397,7 +905,35 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return entry || null;
   };
 
+  const BASIC_PATTERN_STATUS_NAMES = new Set([
+    "drawBasePatterns",
+    "drawFinderPatterns",
+    "drawTimingPatterns",
+    "drawAlignmentPatterns",
+    "drawDarkModulePatterns",
+    "drawFormatPatterns",
+  ]);
+  const STEP_STATUS_NAMES = new Set([
+    "drawQRCode",
+    "drawBasePatterns",
+    "drawDataPatterns",
+    "drawFinderPatterns",
+    "drawTimingPatterns",
+    "drawAlignmentPatterns",
+    "drawDarkModulePatterns",
+    "drawFormatPatterns",
+    "applyMask",
+  ]);
+  const shouldShowStepStatus = (name) => {
+    if(typeof isStepModeOn !== "function" || !isStepModeOn()) return false;
+    if(!STEP_STATUS_NAMES.has(name)) return false;
+    if(stepSkipFunctions && stepSkipFunctions.checked && BASIC_PATTERN_STATUS_NAMES.has(name)){
+      return false;
+    }
+    return true;
+  };
   const showApiStatus = (name, payload) => {
+    if(!shouldShowStepStatus(name)) return null;
     const detail = describeApiStatus(name, payload);
     if(detail){
       setExecutionStatus("running", undefined, detail);
@@ -515,38 +1051,33 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   if(typeof window !== "undefined"){
     window.shouldStepFunctions = shouldStepFunctions;
   }
-  function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false } = {}){
+  function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false, reason = "" } = {}){
     ctx.runId++;
     ctx.isStepFillRunning = false;
+    setInputLock(false);
     if(clear){
-      resetQRCode();
+      resetBoardState();
     }
     if(resetCursorFlag){
       resetCursor();
     }
     setRenderMode(RENDER_IMMEDIATE);
+    if(reason){
+      pendingStopReason = reason;
+      stopReasonLocked = true;
+      setExecutionStatus("stopped", undefined, reason);
+    }else if(clear){
+      pendingStopReason = null;
+      stopReasonLocked = false;
+    }
   }
 
   let cellsInitialized = false;
-  function resetQRCode(options = {}){
-    const {
-      abortRun = true,
-      forceImmediate = abortRun,
-      stopStep = abortRun,
-    } = options;
-    window.logEvent("resetQRCode", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, "QRコード描画をリセット");
-    if(abortRun){
-      ctx.runId++;
-      ctx.maskRunId++;
-    }
-    if(stopStep){
-      ctx.isStepFillRunning = false;
-    }
-    if(forceImmediate){
-      setRenderMode(RENDER_IMMEDIATE);
-    }
+  function clearBoardSurface(){
+    setQRCodeReadable(false);
+    clearNoiseLayer();
     const cells = document.querySelectorAll(".qr-cells .cell");
-    if(!cells || cells.length === 0) return;
+    if(!cells || cells.length === 0) return false;
     for(const cell of cells){
       cell.className = "cell";
       cell.dataset.debugVal = "0";
@@ -565,16 +1096,54 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(typeof resetData === "function"){
       resetData();
     }
+    return true;
+  }
+
+    function clearBoard(){
+      window.logEvent("clearBoard", "", "盤面をクリア");
+      clearNoiseLayer();
+      return clearBoardSurface();
+    }
+
+  function resetBoardState(options = {}){
+    const {
+      abortRun = true,
+      forceImmediate = abortRun,
+      stopStep = abortRun,
+    } = options;
+    window.logEvent("resetQRCode", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, "QRコード描画をリセット");
+    if(abortRun){
+      ctx.runId++;
+      ctx.maskRunId++;
+    }
+    if(stopStep){
+      ctx.isStepFillRunning = false;
+    }
+    if(forceImmediate){
+      setRenderMode(RENDER_IMMEDIATE);
+    }
+    if(!clearBoardSurface()){
+      return;
+    }
     resetCursor();
     pendingCursor = null;
+  }
+
+  function resetQRCode(){
+    if(!clearBoardSurface()){
+      return false;
+    }
+    resetCursor();
+    pendingCursor = null;
+    return true;
   }
   ctx.resetQRCode = resetQRCode;
   ctx.resetCursor = resetCursor;
 
-  async function resetCommand(){
+  async function resetCommand(options = {}){
     window.logEvent("resetCommand", "", "盤面をリセット");
     showApiStatus("resetCommand");
-    resetQRCode();
+    resetBoardState(options);
     await sleep(RESET_DELAY_MS);
   }
 
@@ -799,6 +1368,114 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       if(typeof window === "undefined") return;
       window.maskApplying = Boolean(value);
     };
+    const ensureMaskOverlay = () => {
+      if(ctx.maskOverlayEl && ctx.maskOverlayEl.isConnected){
+        return ctx.maskOverlayEl;
+      }
+      const gridArea = document.querySelector(".grid-area");
+      if(!gridArea) return null;
+      const overlay = document.createElement("div");
+      overlay.className = "mask-overlay";
+      const frag = document.createDocumentFragment();
+      for(let i = 0; i < 25 * 25; i++){
+        const cell = document.createElement("div");
+        cell.className = "mask-cell";
+        frag.appendChild(cell);
+      }
+      overlay.appendChild(frag);
+      gridArea.appendChild(overlay);
+      ctx.maskOverlayEl = overlay;
+      return overlay;
+    };
+    const applyMaskOverlayColor = (overlay) => {
+      if(!overlay) return;
+      const maskKind = (typeof window.BIT_MASK === "number") ? window.BIT_MASK : 30;
+      const colorName = (typeof window.colorsForKind === "function")
+        ? window.colorsForKind(maskKind)
+        : "gray";
+      if(typeof window.isColorEnabled !== "undefined" && !window.isColorEnabled){
+        overlay.style.setProperty("--mask-overlay-color", "#000");
+        return;
+      }
+      switch(colorName){
+        case "gray":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-gray-dark)");
+          break;
+        case "red":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-red-dark)");
+          break;
+        case "blue":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-blue-dark)");
+          break;
+        case "green":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-green-dark)");
+          break;
+        case "yellow":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-yellow-dark)");
+          break;
+        case "purple":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-purple-dark)");
+          break;
+        case "orange":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-orange-dark)");
+          break;
+        case "format":
+          overlay.style.setProperty("--mask-overlay-color", "var(--col-format-blue-dark)");
+          break;
+        default:
+          overlay.style.setProperty("--mask-overlay-color", "#000");
+          break;
+      }
+    };
+    const updateMaskOverlay = (overlay) => {
+      if(!overlay) return;
+      const cells = overlay.children;
+      let idx = 0;
+      for(let row = 1; row <= 25; row++){
+        for(let col = 1; col <= 25; col++){
+          const cellEl = cells[idx++];
+          if(!cellEl) continue;
+          const encoded = window.getCell(row, col);
+          if(typeof encoded !== "number"){
+            cellEl.classList.remove("is-on");
+            continue;
+          }
+          const kind = (typeof window.bitKind === "function") ? window.bitKind(encoded) : Math.abs(encoded);
+          if(typeof isFunctionalKind === "function" && isFunctionalKind(kind)){
+            cellEl.classList.remove("is-on");
+            continue;
+          }
+          if(maskFn(row - 1, col - 1)){
+            cellEl.classList.add("is-on");
+          }else{
+            cellEl.classList.remove("is-on");
+          }
+        }
+      }
+    };
+    const setOverlayState = (overlay, state) => {
+      if(!overlay) return;
+      overlay.classList.toggle("is-half", state === "half");
+      overlay.classList.toggle("is-full", state === "full");
+      if(state === "clear"){
+        overlay.classList.remove("is-half");
+        overlay.classList.remove("is-full");
+      }
+    };
+    const applyMaskBatch = () => {
+      for(let row = 1; row <= 25; row++){
+        for(let col = 1; col <= 25; col++){
+          if(shouldAbort()) return false;
+          const encoded = window.getCell(row, col);
+          if(typeof encoded !== "number") continue;
+          const kind = (typeof window.bitKind === "function") ? window.bitKind(encoded) : Math.abs(encoded);
+          if(typeof isFunctionalKind === "function" && isFunctionalKind(kind)) continue;
+          if(!maskFn(row - 1, col - 1)) continue;
+          invertCell(row, col);
+        }
+      }
+      return !shouldAbort();
+    };
     const maybeDelay = async () => {
       if(!stepMask) return true;
       if(shouldAbort()) return false;
@@ -811,8 +1488,55 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       return !shouldAbort();
     };
     let completed = false;
-    setMaskApplying(true);
+    let prevStepAnim;
+    let restoreStepAnim = false;
+    let maskApplyingActive = false;
     try{
+      setMaskApplying(true);
+      maskApplyingActive = true;
+      if(stepMask){
+        prevStepAnim = (typeof window.stepAnimationEnabled === "boolean")
+          ? window.stepAnimationEnabled
+          : undefined;
+        restoreStepAnim = true;
+        window.stepAnimationEnabled = false;
+        const overlay = ensureMaskOverlay();
+        applyMaskOverlayColor(overlay);
+        updateMaskOverlay(overlay);
+        const stepDelay = (typeof getStepDelay === "function") ? getStepDelay() : 0;
+        const fadeMs = (typeof window.maskFadeDurationMs === "number")
+          ? Math.max(0, window.maskFadeDurationMs)
+          : 250;
+        const holdMs = Math.max(100, stepDelay * 10);
+        if(overlay){
+          overlay.style.transition = `opacity ${fadeMs}ms linear`;
+          overlay.style.opacity = "0";
+          await new Promise(requestAnimationFrame);
+          await new Promise(requestAnimationFrame);
+          overlay.style.opacity = "1";
+          await sleep(fadeMs);
+        }else{
+          await sleep(fadeMs);
+        }
+        if(shouldAbort()) return false;
+        completed = applyMaskBatch();
+        if(!completed) return false;
+        if(holdMs > 0){
+          await sleep(holdMs);
+        }
+        if(overlay){
+          overlay.style.transition = `opacity ${fadeMs}ms linear`;
+          overlay.style.opacity = "1";
+          await new Promise(requestAnimationFrame);
+          await new Promise(requestAnimationFrame);
+          overlay.style.opacity = "0";
+          await sleep(fadeMs);
+          overlay.style.transition = "";
+          overlay.style.opacity = "";
+          overlay.offsetHeight;
+        }
+        completed = !shouldAbort();
+      }else{
       for(let row = 1; row <= 25; row++){
         for(let col = 1; col <= 25; col++){
           if(shouldAbort()) break;
@@ -831,13 +1555,23 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         if(shouldAbort()) break;
       }
       completed = !shouldAbort();
+      }
       if(completed && hasFormatPattern){
         showApiStatus("drawFormatPatterns");
         await callDrawFormatPatterns(idx, true);
         showApiStatus("applyMask", idx);
       }
     }finally{
-      setMaskApplying(false);
+      if(maskApplyingActive){
+        setMaskApplying(false);
+      }
+      if(restoreStepAnim){
+        if(prevStepAnim === undefined){
+          delete window.stepAnimationEnabled;
+        }else{
+          window.stepAnimationEnabled = prevStepAnim;
+        }
+      }
     }
     if(ctx.renderMode === RENDER_BUFFERED && typeof requestRender === "function"){
       requestRender("applyMask");
@@ -870,9 +1604,24 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const showBaseStatus = () => showApiStatus("drawBasePatterns");
     const runFunctionalPattern = async (name, fn, ...fnArgs) => {
       showApiStatus(name);
-      const result = await fn(...fnArgs);
-      showBaseStatus();
-      return result;
+      if(typeof window !== "undefined"){
+        window.isDrawingBasePattern = true;
+        if(typeof window.setBasePatternLookahead === "function"){
+          window.setBasePatternLookahead([]);
+        }
+      }
+      try{
+        const result = await fn(...fnArgs);
+        return result;
+      }finally{
+        if(typeof window !== "undefined"){
+          window.isDrawingBasePattern = false;
+          if(typeof window.setBasePatternLookahead === "function"){
+            window.setBasePatternLookahead([]);
+          }
+        }
+        showBaseStatus();
+      }
     };
     await runFunctionalPattern("drawFinderPatterns", callDrawFinderPatterns, opts.overwrite, opts.currentRun);
     await runFunctionalPattern("drawTimingPatterns", callDrawTimingPatterns, opts.overwrite, opts.currentRun);
@@ -914,7 +1663,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const drawTimingPatterns = wrapDrawApi("drawTimingPatterns", callDrawTimingPatterns, "タイミングパターンを描画");
   const drawFormatPatterns = wrapDrawApi("drawFormatPatterns", callDrawFormatPatterns, "フォーマットパターンを描画");
   ctx.drawFormatPatterns = drawFormatPatterns;
-  window.putNextCell = putNextCell;
   window.buildFunctionSet = buildFunctionSet;
   window.parseCellRef = parseCellRef;
   window.cellRefFromRowCol = cellRefFromRowCol;
@@ -991,6 +1739,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       drawFunctionalPatterns,
       initializeQRCode,
       resetQRCode,
+      clearBoard,
       resetCommand,
       stopCurrentRun,
       drawFormatPatterns,
@@ -1033,7 +1782,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         if(!canContinueLoop()) return false;
         const nextKind = (typeof window.getNextDataKind === "function") ? window.getNextDataKind() : null;
         markDataPatternStage(nextKind);
-        await putNextCell();
+        await advanceCommand();
         if(shouldAbort()) throw ABORT_ERR;
       }
       return runToken === runId;
@@ -1042,7 +1791,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
   }
   async function drawQRCode(arg){
-    resetQRCode({ abortRun: false, forceImmediate: true, stopStep: true });
+    resetBoardState({ abortRun: false, forceImmediate: true, stopStep: true });
     window.logEvent("drawQRCode", arg ?? "", "QRコードを描画中");
     showApiStatus("drawQRCode");
     let maskIndex;
@@ -1073,14 +1822,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(currentRun !== runId || !maskOk) return false;
     return true;
   }
-  window.up = DIR_UP;
-  window.right = DIR_RIGHT;
-  window.down = DIR_DOWN;
-  window.left = DIR_LEFT;
-  window.u = DIR_UP;
-  window.r = DIR_RIGHT;
-  window.d = DIR_DOWN;
-  window.l = DIR_LEFT;
 
   const dirs = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
   const FUNCTION_KINDS = [
@@ -1154,23 +1895,43 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return set;
   }
 
-  btnInit.addEventListener("click", () => {
+  const handleResetAction = () => {
     window.logEvent("btnInit", "", "初期化ボタン押下");
     stopCurrentRun({ resetCursor: true, clear: true });
-    if(Array.isArray(window.toggleInputs)){
-      for(const el of window.toggleInputs){
-        el.checked = true;
-        try{ el.dispatchEvent(new Event("change")); }catch(_e){}
-      }
-      if(typeof window.syncViewToggles === "function"){
-        window.syncViewToggles();
+    if(userCodeInput){
+      const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
+      btnGenerate.disabled = !codeText;
+      if(!codeText){
+        setExecutionStatus("stopped", undefined, "実行できるプログラムがありません。");
       }
     }
-    btnGenerate.disabled = false;
     btnInit.disabled = false;
     setRenderMode(RENDER_IMMEDIATE);
     lastExecutionError = null;
-    setExecutionStatus("stopped");
+    if(!userCodeInput || (typeof userCodeInput.value === "string" && userCodeInput.value.trim())){
+      setExecutionStatus("stopped");
+    }
+  };
+  const isEditableTarget = (target) => {
+    if(!target || typeof target !== "object") return false;
+    if(target.isContentEditable) return true;
+    const tag = target.tagName ? target.tagName.toLowerCase() : "";
+    if(tag === "input"){
+      const type = String(target.type || "").toLowerCase();
+      return type !== "checkbox" && type !== "button" && type !== "submit" && type !== "reset";
+    }
+    return tag === "textarea" || tag === "select";
+  };
+  btnInit.addEventListener("click", handleResetAction);
+  document.addEventListener("keydown", (ev) => {
+    if(ev.key !== "Escape") return;
+    if(ev.repeat) return;
+    const active = (typeof document !== "undefined") ? document.activeElement : null;
+    if(isEditableTarget(active)) return;
+    const asciiModal = document.getElementById("asciiModal");
+    if(asciiModal && !asciiModal.classList.contains("hidden")) return;
+    handleResetAction();
+    ev.preventDefault();
   });
 
   async function runGenerateLegacy(){
@@ -1209,6 +1970,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     window.logEvent("verify", "", "入力と出力を検証中");
     showApiStatus("verify");
     const result = verifyService.verifyBoard();
+    setQRCodeReadable(Boolean(result?.ok));
     if(!result) return null;
     const inputValue = document.getElementById("txtInput")?.value ?? "";
     const match = result.text === inputValue;
@@ -1240,18 +2002,42 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   btnGenerate.addEventListener("click", async () => {
     historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
+    if(inputLocked){
+      stopCurrentRun({ resetCursor: true, clear: true });
+    }
+    const codeText = (userCodeInput && typeof userCodeInput.value === "string")
+      ? userCodeInput.value.trim()
+      : "";
+    if(!codeText){
+      setExecutionStatus("stopped", undefined, "実行できるプログラムがありません。");
+      return;
+    }
+    const inputCheck = normalizeInputBeforeRun();
+    if(!inputCheck.ok){
+      return;
+    }
+    const lockToken = ++inputLockToken;
     setExecutionStatus("running");
+    setInputLock(true);
     let runOk = false;
     let verificationOutcome = null;
     try{
+      setQRCodeReadable(false);
       runOk = await runUserCodeWithStep();
     }finally{
+      if(lockToken === inputLockToken){
+        setInputLock(false);
+      }
       verificationOutcome = logVerificationOutcome();
       if(runOk){
-        const verificationDetail = verificationOutcome
-          ? (verificationOutcome.match ? "正しいQRコードを生成" : "読み取れないQRコード")
-          : "";
-        setExecutionStatus("finished", undefined, verificationDetail);
+          const verificationDetail = verificationOutcome
+            ? (verificationOutcome.match ? "正しいQRコードです。" : "この盤面はQRコードとして読み取れません。")
+            : "";
+          if(verificationOutcome && !verificationOutcome.match){
+            setExecutionStatus("warning", undefined, verificationDetail);
+          }else{
+            setExecutionStatus("finished", undefined, verificationDetail);
+          }
       }else if(lastExecutionError){
         setExecutionStatus("error", lastExecutionError);
       }else{
@@ -1263,15 +2049,54 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   if(btnGenerate){
     window.addEventListener("keydown", (ev) => {
       const active = document.activeElement;
-      if(active && active.id === "userCode"){
-        return; // let textarea handler manage shortcuts
+      if(active){
+        const tag = active.tagName ? active.tagName.toUpperCase() : "";
+        if(active.id === "userCode" || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || active.isContentEditable){
+          return; // let input handler manage shortcuts
+        }
       }
-      if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter"){
+      if(
+        (!ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter")
+        || (ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter")
+      ){
         ev.preventDefault();
         btnGenerate.click();
       }
     });
   }
+  const spawnPointerRing = (x, y) => {
+    if(!document || !document.body) return;
+    const ring = document.createElement("span");
+    ring.className = "pointer-ring";
+    ring.style.left = `${x}px`;
+    ring.style.top = `${y}px`;
+    document.body.append(ring);
+    const cleanup = () => {
+      ring.remove();
+    };
+    ring.addEventListener("animationend", cleanup, { once: true });
+    setTimeout(cleanup, Math.max(200, presentationRingDuration + 200));
+  };
+  document.addEventListener("contextmenu", (ev) => {
+    const target = ev.target;
+    if(target && typeof target.closest === "function"){
+      const allowed = target.closest("input, textarea");
+      if(allowed){
+        return;
+      }
+    }
+    ev.preventDefault();
+    if(presentationMode && presentationRingEnabled){
+      spawnPointerRing(ev.clientX, ev.clientY);
+    }
+  });
+  document.addEventListener("mousedown", (ev) => {
+    if(ev.button !== 1) return;
+    ev.preventDefault();
+    if(presentationMode && presentationRingEnabled){
+      spawnPointerRing(ev.clientX, ev.clientY);
+    }
+  });
 
   if(btnClearCode){
     btnClearCode.addEventListener("click", () => {
@@ -1308,7 +2133,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   syncStepControls();
 
   ensureCells();
-  resetQRCode({ abortRun: false });
+  resetBoardState({ abortRun: false });
   updateCursor(cursorPos.row, cursorPos.col, cursorPos.dir);
   syncDebugOverlay();
 
@@ -1352,6 +2177,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     syncDebugOverlay,
     syncStepControls,
   });
+  applyStepSpeedParam({ stepSpeed });
   syncDebugPanelLayout();
   syncParsedCode();
   if(dataPatternPanel){
@@ -1364,9 +2190,34 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     });
   }
   if(userCodeInput){
+    const resolvedZoomStepPx = Number.isFinite(codeZoomStepPx) ? codeZoomStepPx : 4;
+    const resolvedZoomMinPx = Number.isFinite(codeZoomMinPx) ? codeZoomMinPx : 12;
+    const resolvedZoomMaxPx = Number.isFinite(codeZoomMaxPx) ? codeZoomMaxPx : 200;
+    const resolvedZoomHoldCount = Number.isFinite(codeZoomHoldCount)
+      ? Math.max(0, Math.trunc(codeZoomHoldCount))
+      : 10;
+    const resolvedLineHeightMinPx = Number.isFinite(codeZoomLineHeightMinPx) ? codeZoomLineHeightMinPx : 16;
+    const resolvedLineHeightRatio = Number.isFinite(codeZoomLineHeightRatio) ? codeZoomLineHeightRatio : 1.2;
+    const resolvedLineHeightMaxOffsetPx = Number.isFinite(codeZoomLineHeightMaxOffsetPx) ? codeZoomLineHeightMaxOffsetPx : 8;
+    const computedBaseFontSize = parseFloat(window.getComputedStyle(userCodeInput).fontSize) || 22;
+    const baseFontSize = Number.isFinite(codeZoomBasePx) ? codeZoomBasePx : computedBaseFontSize;
+    let wheelHoldCount = 0;
+    let wheelHoldDirection = 0;
     userCodeInput.addEventListener("input", (ev) => {
       syncParsedCode();
       ensureUserCodeCaretVisible();
+      if(executionStatusEl && !executionStatusEl.classList.contains("status-running")){
+        const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
+        if(!codeText){
+          setExecutionStatus("stopped", undefined, "実行できるプログラムがありません。");
+        }else{
+          setExecutionStatus("stopped");
+        }
+      }
+      if(btnGenerate){
+        const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
+        btnGenerate.disabled = !codeText;
+      }
       if(!ev.isComposing){
         const type = ev.inputType || "";
         if(/insert(LineBreak|Paragraph)/i.test(type)){
@@ -1505,6 +2356,49 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       requestAnimationFrame(ensureUserCodeCaretVisible);
     }
   });
+    userCodeInput.addEventListener("wheel", (ev) => {
+      if(!ev.ctrlKey) return;
+      ev.preventDefault();
+      const fontSize = parseFloat(window.getComputedStyle(userCodeInput).fontSize) || baseFontSize;
+      const direction = ev.deltaY < 0 ? 1 : -1;
+      if(fontSize === baseFontSize && wheelHoldCount > 0 && direction === wheelHoldDirection){
+        wheelHoldCount -= 1;
+        return;
+      }
+      if(direction !== wheelHoldDirection){
+        wheelHoldDirection = direction;
+        wheelHoldCount = 0;
+      }
+      const delta = direction * resolvedZoomStepPx;
+      let next = fontSize + delta;
+      if(direction < 0 && fontSize > baseFontSize && next < baseFontSize){
+        next = baseFontSize;
+        wheelHoldDirection = direction;
+        wheelHoldCount = resolvedZoomHoldCount;
+      }else if(direction > 0 && fontSize < baseFontSize && next > baseFontSize){
+        next = baseFontSize;
+        wheelHoldDirection = direction;
+        wheelHoldCount = resolvedZoomHoldCount;
+      }else if(next === baseFontSize && fontSize !== baseFontSize){
+        wheelHoldDirection = direction;
+        wheelHoldCount = resolvedZoomHoldCount;
+      }
+      next = Math.min(resolvedZoomMaxPx, Math.max(resolvedZoomMinPx, next));
+      const lineHeight = Math.max(
+        resolvedLineHeightMinPx,
+        Math.min(next * resolvedLineHeightRatio, next + resolvedLineHeightMaxOffsetPx),
+      );
+      userCodeInput.style.fontSize = `${next}px`;
+      userCodeInput.style.lineHeight = `${lineHeight}px`;
+    }, { passive: false });
+    userCodeInput.addEventListener("mousedown", (ev) => {
+      if(!ev.ctrlKey || ev.button !== 1) return;
+      ev.preventDefault();
+      userCodeInput.style.fontSize = "";
+      userCodeInput.style.lineHeight = "";
+      wheelHoldCount = 0;
+      wheelHoldDirection = 0;
+    });
     userCodeInput.addEventListener("blur", (ev) => {
       const related = ev.relatedTarget || document.activeElement;
       if(btnGenerate && related === btnGenerate){
@@ -1556,6 +2450,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
   if(codeHistoryList){
     codeHistoryList.addEventListener("click", (ev) => {
+      if(inputLocked) return;
       const target = (typeof Element !== "undefined" && ev.target instanceof Element) ? ev.target : null;
       const item = target ? target.closest("li[data-index]") : null;
       if(!item) return;
