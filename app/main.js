@@ -494,6 +494,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   setExecutionStatus("stopped");
   let inputLocked = false;
+  let inputLockToken = 0;
   const setInputLock = (locked) => {
     inputLocked = locked;
     if(txtInput) txtInput.readOnly = locked;
@@ -1952,6 +1953,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   btnGenerate.addEventListener("click", async () => {
     historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
+    if(inputLocked){
+      stopCurrentRun({ resetCursor: true, clear: true });
+    }
     const codeText = (userCodeInput && typeof userCodeInput.value === "string")
       ? userCodeInput.value.trim()
       : "";
@@ -1963,6 +1967,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(!inputCheck.ok){
       return;
     }
+    const lockToken = ++inputLockToken;
     setExecutionStatus("running");
     setInputLock(true);
     let runOk = false;
@@ -1971,7 +1976,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       setQRCodeReadable(false);
       runOk = await runUserCodeWithStep();
     }finally{
-      setInputLock(false);
+      if(lockToken === inputLockToken){
+        setInputLock(false);
+      }
       verificationOutcome = logVerificationOutcome();
       if(runOk){
           const verificationDetail = verificationOutcome

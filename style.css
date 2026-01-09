@@ -1120,6 +1120,12 @@ textarea{
   box-sizing:border-box;
   background:#fff;
 }
+
+textarea[readonly]{
+  background:#f1f2f4;
+  color:#2f343a;
+  border-color:#d1d7e0;
+}
 textarea:focus{
   border-color:#b3bbc7;
   outline:none;
@@ -1132,6 +1138,12 @@ textarea:focus{
   padding:8px;
   box-sizing:border-box;
   background:#fffefb;
+}
+
+#userCode[readonly]{
+  background:#f1f2f4;
+  color:#2f343a;
+  border-color:#d1d7e0;
 }
 
 .qr-head{
