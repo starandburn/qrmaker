@@ -135,6 +135,33 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const stepAnimationStartOpacity = normalizeNumberSetting(configDefaults.stepAnimationStartOpacity);
   const stepAnimationStartScale = normalizeNumberSetting(configDefaults.stepAnimationStartScale);
   const maskFadeDurationMs = normalizeNumberSetting(configDefaults.maskFadeDurationMs);
+  const presentationRingEnabled = (typeof configDefaults.presentationPointerRingEnabled === "boolean")
+    ? configDefaults.presentationPointerRingEnabled
+    : true;
+  const presentationRingDurationMs = normalizeNumberSetting(configDefaults.presentationPointerRingDurationMs);
+  const presentationRingSize = normalizeNumberSetting(configDefaults.presentationPointerRingSize);
+  const presentationRingScaleStart = normalizeNumberSetting(configDefaults.presentationPointerRingScaleStart);
+  const presentationRingScaleEnd = normalizeNumberSetting(configDefaults.presentationPointerRingScaleEnd);
+  const presentationRingColor = (typeof configDefaults.presentationPointerRingColor === "string")
+    ? configDefaults.presentationPointerRingColor.trim()
+    : "";
+  const presentationRingShadowColor = (typeof configDefaults.presentationPointerRingShadowColor === "string")
+    ? configDefaults.presentationPointerRingShadowColor.trim()
+    : "";
+  const presentationRingEase = (typeof configDefaults.presentationPointerRingEase === "string")
+    ? configDefaults.presentationPointerRingEase.trim()
+    : "";
+  const presentationRingDuration = (presentationRingDurationMs !== null)
+    ? Math.max(0, presentationRingDurationMs)
+    : 400;
+  const codeZoomStepPx = normalizeNumberSetting(configDefaults.codeZoomStepPx);
+  const codeZoomMinPx = normalizeNumberSetting(configDefaults.codeZoomMinPx);
+  const codeZoomMaxPx = normalizeNumberSetting(configDefaults.codeZoomMaxPx);
+  const codeZoomHoldCount = normalizeNumberSetting(configDefaults.codeZoomHoldCount);
+  const codeZoomBasePx = normalizeNumberSetting(configDefaults.codeZoomBasePx);
+  const codeZoomLineHeightMinPx = normalizeNumberSetting(configDefaults.codeZoomLineHeightMinPx);
+  const codeZoomLineHeightRatio = normalizeNumberSetting(configDefaults.codeZoomLineHeightRatio);
+  const codeZoomLineHeightMaxOffsetPx = normalizeNumberSetting(configDefaults.codeZoomLineHeightMaxOffsetPx);
   if(typeof window !== "undefined"){
     window.stepAnimationEnabled = stepAnimationEnabledOverride;
     if(stepAnimationDurationMs !== null){
@@ -158,6 +185,27 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
     if(stepAnimationStartScale !== null){
       rootStyle.setProperty("--cell-step-animation-start-scale", String(stepAnimationStartScale));
+    }
+    if(presentationRingDurationMs !== null){
+      rootStyle.setProperty("--presentation-ring-duration", `${Math.max(0, presentationRingDurationMs)}ms`);
+    }
+    if(presentationRingSize !== null){
+      rootStyle.setProperty("--presentation-ring-size", `${Math.max(0, presentationRingSize)}px`);
+    }
+    if(presentationRingScaleStart !== null){
+      rootStyle.setProperty("--presentation-ring-scale-start", String(presentationRingScaleStart));
+    }
+    if(presentationRingScaleEnd !== null){
+      rootStyle.setProperty("--presentation-ring-scale-end", String(presentationRingScaleEnd));
+    }
+    if(presentationRingColor){
+      rootStyle.setProperty("--presentation-ring-border", `3px solid ${presentationRingColor}`);
+    }
+    if(presentationRingShadowColor){
+      rootStyle.setProperty("--presentation-ring-shadow", `0 0 0 3px ${presentationRingShadowColor}`);
+    }
+    if(presentationRingEase){
+      rootStyle.setProperty("--presentation-ring-ease", presentationRingEase);
     }
   }
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
@@ -2027,7 +2075,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       ring.remove();
     };
     ring.addEventListener("animationend", cleanup, { once: true });
-    setTimeout(cleanup, 900);
+    setTimeout(cleanup, Math.max(200, presentationRingDuration + 200));
   };
   document.addEventListener("contextmenu", (ev) => {
     const target = ev.target;
@@ -2038,14 +2086,14 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
     }
     ev.preventDefault();
-    if(presentationMode){
+    if(presentationMode && presentationRingEnabled){
       spawnPointerRing(ev.clientX, ev.clientY);
     }
   });
   document.addEventListener("mousedown", (ev) => {
     if(ev.button !== 1) return;
     ev.preventDefault();
-    if(presentationMode){
+    if(presentationMode && presentationRingEnabled){
       spawnPointerRing(ev.clientX, ev.clientY);
     }
   });
@@ -2142,6 +2190,19 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     });
   }
   if(userCodeInput){
+    const resolvedZoomStepPx = Number.isFinite(codeZoomStepPx) ? codeZoomStepPx : 4;
+    const resolvedZoomMinPx = Number.isFinite(codeZoomMinPx) ? codeZoomMinPx : 12;
+    const resolvedZoomMaxPx = Number.isFinite(codeZoomMaxPx) ? codeZoomMaxPx : 200;
+    const resolvedZoomHoldCount = Number.isFinite(codeZoomHoldCount)
+      ? Math.max(0, Math.trunc(codeZoomHoldCount))
+      : 10;
+    const resolvedLineHeightMinPx = Number.isFinite(codeZoomLineHeightMinPx) ? codeZoomLineHeightMinPx : 16;
+    const resolvedLineHeightRatio = Number.isFinite(codeZoomLineHeightRatio) ? codeZoomLineHeightRatio : 1.2;
+    const resolvedLineHeightMaxOffsetPx = Number.isFinite(codeZoomLineHeightMaxOffsetPx) ? codeZoomLineHeightMaxOffsetPx : 8;
+    const computedBaseFontSize = parseFloat(window.getComputedStyle(userCodeInput).fontSize) || 22;
+    const baseFontSize = Number.isFinite(codeZoomBasePx) ? codeZoomBasePx : computedBaseFontSize;
+    let wheelHoldCount = 0;
+    let wheelHoldDirection = 0;
     userCodeInput.addEventListener("input", (ev) => {
       syncParsedCode();
       ensureUserCodeCaretVisible();
@@ -2298,10 +2359,35 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     userCodeInput.addEventListener("wheel", (ev) => {
       if(!ev.ctrlKey) return;
       ev.preventDefault();
-      const fontSize = parseFloat(window.getComputedStyle(userCodeInput).fontSize) || 16;
-      const delta = ev.deltaY < 0 ? 4 : -4;
-      const next = Math.min(200, Math.max(12, fontSize + delta));
-      const lineHeight = Math.max(16, Math.min(next * 1.2, next + 8));
+      const fontSize = parseFloat(window.getComputedStyle(userCodeInput).fontSize) || baseFontSize;
+      const direction = ev.deltaY < 0 ? 1 : -1;
+      if(fontSize === baseFontSize && wheelHoldCount > 0 && direction === wheelHoldDirection){
+        wheelHoldCount -= 1;
+        return;
+      }
+      if(direction !== wheelHoldDirection){
+        wheelHoldDirection = direction;
+        wheelHoldCount = 0;
+      }
+      const delta = direction * resolvedZoomStepPx;
+      let next = fontSize + delta;
+      if(direction < 0 && fontSize > baseFontSize && next < baseFontSize){
+        next = baseFontSize;
+        wheelHoldDirection = direction;
+        wheelHoldCount = resolvedZoomHoldCount;
+      }else if(direction > 0 && fontSize < baseFontSize && next > baseFontSize){
+        next = baseFontSize;
+        wheelHoldDirection = direction;
+        wheelHoldCount = resolvedZoomHoldCount;
+      }else if(next === baseFontSize && fontSize !== baseFontSize){
+        wheelHoldDirection = direction;
+        wheelHoldCount = resolvedZoomHoldCount;
+      }
+      next = Math.min(resolvedZoomMaxPx, Math.max(resolvedZoomMinPx, next));
+      const lineHeight = Math.max(
+        resolvedLineHeightMinPx,
+        Math.min(next * resolvedLineHeightRatio, next + resolvedLineHeightMaxOffsetPx),
+      );
       userCodeInput.style.fontSize = `${next}px`;
       userCodeInput.style.lineHeight = `${lineHeight}px`;
     }, { passive: false });
@@ -2310,6 +2396,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       ev.preventDefault();
       userCodeInput.style.fontSize = "";
       userCodeInput.style.lineHeight = "";
+      wheelHoldCount = 0;
+      wheelHoldDirection = 0;
     });
     userCodeInput.addEventListener("blur", (ev) => {
       const related = ev.relatedTarget || document.activeElement;

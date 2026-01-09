@@ -11,6 +11,13 @@
   --cell-step-animation-start-opacity: 0.5;
   --cell-step-animation-start-scale: 2.0;
   --cell-step-animation-border: 1px solid rgba(0,0,0,0.65);
+  --presentation-ring-size: 120px;
+  --presentation-ring-border: 3px solid rgba(60, 120, 255, 0.75);
+  --presentation-ring-shadow: 0 0 0 3px rgba(60, 120, 255, 0.25);
+  --presentation-ring-scale-start: 1.4;
+  --presentation-ring-scale-end: 0.35;
+  --presentation-ring-duration: 400ms;
+  --presentation-ring-ease: ease-out;
   /* color palette (dark/light) */
   --col-red-dark: #8c0000;
   --col-red-light: #ffe8e8;
@@ -53,30 +60,30 @@ body{
 
 .pointer-ring{
   position:fixed;
-  width:120px;
-  height:120px;
-  border:3px solid rgba(60, 120, 255, 0.75);
+  width:var(--presentation-ring-size);
+  height:var(--presentation-ring-size);
+  border:var(--presentation-ring-border);
   border-radius:50%;
-  box-shadow:0 0 0 3px rgba(60, 120, 255, 0.25);
-  transform:translate(-50%, -50%) scale(1.4);
+  box-shadow:var(--presentation-ring-shadow);
+  transform:translate(-50%, -50%) scale(var(--presentation-ring-scale-start));
   opacity:0;
   pointer-events:none;
   z-index:9999;
-  animation:pointer-ring 400ms ease-out;
+  animation:pointer-ring var(--presentation-ring-duration) var(--presentation-ring-ease);
 }
 
 @keyframes pointer-ring{
   0%{
     opacity:0.7;
-    transform:translate(-50%, -50%) scale(1.4);
+    transform:translate(-50%, -50%) scale(var(--presentation-ring-scale-start));
   }
   60%{
     opacity:0.35;
-    transform:translate(-50%, -50%) scale(0.6);
+    transform:translate(-50%, -50%) scale(calc((var(--presentation-ring-scale-start) + var(--presentation-ring-scale-end)) / 2));
   }
   100%{
     opacity:0;
-    transform:translate(-50%, -50%) scale(0.35);
+    transform:translate(-50%, -50%) scale(var(--presentation-ring-scale-end));
   }
 }
 

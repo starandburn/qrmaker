@@ -34,6 +34,25 @@ window.appSettingsFromScript = {
     "stepAnimationShowBorder": true,
     // マスクフェードの時間(ms)
     "maskFadeDurationMs": 250,
+    // 文字ズーム設定
+    "codeZoomStepPx": 4,
+    "codeZoomMinPx": 12,
+    "codeZoomMaxPx": 200,
+    "codeZoomHoldCount": 10,
+    "codeZoomBasePx": 22,
+    "codeZoomLineHeightMinPx": 16,
+    "codeZoomLineHeightRatio": 1.2,
+    "codeZoomLineHeightMaxOffsetPx": 8,
+    // プレゼンモード設定
+    "presentationMode": false,
+    "presentationPointerRingEnabled": true,
+    "presentationPointerRingDurationMs": 400,
+    "presentationPointerRingSize": 120,
+    "presentationPointerRingColor": "rgba(60, 120, 255, 0.75)",
+    "presentationPointerRingShadowColor": "rgba(60, 120, 255, 0.25)",
+    "presentationPointerRingScaleStart": 1.4,
+    "presentationPointerRingScaleEnd": 0.35,
+    "presentationPointerRingEase": "ease-out",
     // 表示のON/OFF初期値
     "viewFlags": {
       // カーソル表示
