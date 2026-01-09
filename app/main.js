@@ -456,6 +456,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const executionStatusEl = document.getElementById("executionStatus");
   const executionStatusTextEl = document.getElementById("executionStatusText");
   const executionStatusCursorEl = document.getElementById("executionStatusCursor");
+  const isExecutionRunning = () => executionStatusEl ? executionStatusEl.classList.contains("status-running") : false;
   const executionStatusLabels = {
     stopped: "待機中",
     running: "作成中",
@@ -1927,7 +1928,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(ev.key !== "Escape") return;
     if(ev.repeat) return;
     const active = (typeof document !== "undefined") ? document.activeElement : null;
-    if(isEditableTarget(active)) return;
+    if(!isExecutionRunning() && isEditableTarget(active)) return;
     const asciiModal = document.getElementById("asciiModal");
     if(asciiModal && !asciiModal.classList.contains("hidden")) return;
     handleResetAction();
