@@ -11,6 +11,13 @@
 
   const ensureHelpers = (ctx) => (ctx && ctx.helpers) ? ctx.helpers : {};
   const PATTERN_STEP_SCALE = 1;
+  const setBasePatternLookahead = (infos) => {
+    if(typeof global.setBasePatternLookahead === "function"){
+      global.setBasePatternLookahead(infos);
+    }else{
+      global.basePatternLookahead = Array.isArray(infos) ? infos : [];
+    }
+  };
 
   function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     const baseRun = ctx ? ctx.runId : 0;
@@ -68,6 +75,7 @@
       if(!step) return true;
       if(shouldAbort(runToken, ctx)) return false;
       ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
+      setBasePatternLookahead([]);
       updateCursorSafe(runToken, ctx, baseRow, baseCol, DIR_RIGHT);
       await delay();
       return true;
@@ -83,6 +91,7 @@
     if(typeof window.updateCell === "function"){
       window.updateCell(baseRow, baseCol, window.encodeBit(BIT_FUNC_DARK, true));
     }
+    setBasePatternLookahead([]);
     updateCursorSafe(runToken, ctx, baseRow, baseCol, DIR_RIGHT);
     await delay();
     return true;

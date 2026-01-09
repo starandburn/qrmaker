@@ -48,6 +48,13 @@
     return DIR_RIGHT;
   };
   const PATTERN_STEP_SCALE = 1;
+  const setBasePatternLookahead = (infos) => {
+    if(typeof global.setBasePatternLookahead === "function"){
+      global.setBasePatternLookahead(infos);
+    }else{
+      global.basePatternLookahead = Array.isArray(infos) ? infos : [];
+    }
+  };
 
   function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     const baseRun = ctx ? ctx.runId : 0;
@@ -108,6 +115,21 @@
     const allowOverwrite = overwrite !== false;
     const shouldDrawCell = (row, col) => shouldPlaceCell(row, col, allowOverwrite);
     const patternCoords = spiralCoordinates(5, 5, startRow, startCol);
+    const patternSeq = patternCoords.map(([row, col]) => {
+      const relRow = row - startRow;
+      const relCol = col - startCol;
+      const bit = pattern[relRow][relCol];
+      return { row, col, bit };
+    });
+    const buildLookahead = (idx) => {
+      const infos = [];
+      for(let i = 1; i <= 4; i++){
+        const entry = patternSeq[idx + i];
+        if(!entry) break;
+        infos.push({ kind: BIT_FUNC_ALIGNMENT, bit: entry.bit });
+      }
+      return infos;
+    };
     if(!step){
       const prevRender = ctx.renderMode;
       ctx.setRenderMode(ctx.RENDER_BUFFERED);
@@ -136,23 +158,22 @@
     return (async () => {
       const prevRender = ctx.renderMode;
       ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
-      for(let idx = 0; idx < patternCoords.length; idx++){
-        const [row, col] = patternCoords[idx];
-        const [nextRow, nextCol] = patternCoords[idx + 1] || [row, col];
+      for(let idx = 0; idx < patternSeq.length; idx++){
+        const { row, col, bit } = patternSeq[idx];
+        const nextEntry = patternSeq[idx + 1] || patternSeq[idx];
+        const nextRow = nextEntry.row;
+        const nextCol = nextEntry.col;
         const stepDir = resolveStepDir(row, col, nextRow, nextCol);
         if(shouldAbort(runToken, ctx)) return false;
         if(!stepActive()){
           ctx.setRenderMode(prevRender);
           return putAlignmentCells(ctx, overwrite, { stepEnabled: false, currentRun: runToken });
         }
-        if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-        const relRow = row - startRow;
-        const relCol = col - startCol;
-        const bit = pattern[relRow][relCol];
         const canDraw = shouldDrawCell(row, col);
         if(canDraw){
           window.updateCell(row, col, window.encodeBit(BIT_FUNC_ALIGNMENT, bit === 1));
         }
+        setBasePatternLookahead(buildLookahead(idx));
         if(H.updateCursorIfRun){
           H.updateCursorIfRun(runToken, row, col, stepDir);
         }

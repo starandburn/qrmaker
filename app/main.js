@@ -522,7 +522,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     let cursorCellEl = executionStatusCursorEl.querySelector(".execution-status-cell");
     let cursorLabelEl = executionStatusCursorEl.querySelector(".execution-status-cursor-label");
     let nextLabelEl = executionStatusCursorEl.querySelector(".execution-status-next-label");
-    let nextCellEl = executionStatusCursorEl.querySelector(".execution-status-next-cell");
+    let nextListEl = executionStatusCursorEl.querySelector(".execution-status-next-list");
     if(!cursorTextEl){
       cursorTextEl = document.createElement("span");
       cursorTextEl.className = "execution-status-cursor-text";
@@ -544,11 +544,21 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       nextLabelEl.className = "execution-status-next-label execution-status-chip";
       executionStatusCursorEl.append(nextLabelEl);
     }
-    if(!nextCellEl){
-      nextCellEl = document.createElement("span");
-      nextCellEl.className = "execution-status-next-cell";
-      executionStatusCursorEl.append(nextCellEl);
+    const NEXT_CELL_COUNT = 4;
+    if(!nextListEl){
+      nextListEl = document.createElement("span");
+      nextListEl.className = "execution-status-next-list";
+      executionStatusCursorEl.append(nextListEl);
     }
+    if(nextListEl.childElementCount !== NEXT_CELL_COUNT){
+      nextListEl.textContent = "";
+      for(let i = 0; i < NEXT_CELL_COUNT; i++){
+        const cell = document.createElement("span");
+        cell.className = "execution-status-next-cell";
+        nextListEl.append(cell);
+      }
+    }
+    const nextCells = Array.from(nextListEl.children);
     let cursorVisualEl = cursorCellEl.querySelector(".execution-status-visual-cursor");
     if(!cursorVisualEl){
       cursorVisualEl = document.createElement("span");
@@ -565,6 +575,29 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       gray: ["var(--col-gray-light)", "var(--col-gray-dark)"],
       format: ["var(--col-format-blue-light)", "var(--col-format-blue-dark)"],
       black: ["var(--col-black-light)", "var(--col-black-dark)"],
+    };
+    const resetNextCell = (cellEl) => {
+      if(!cellEl) return;
+      cellEl.style.backgroundColor = "#ffffff";
+      cellEl.style.borderColor = "#999999";
+      cellEl.style.boxShadow = "";
+    };
+    const applyNextCellInfo = (cellEl, info) => {
+      if(!cellEl) return;
+      if(!info || typeof info.kind !== "number" || typeof info.bit !== "number"){
+        resetNextCell(cellEl);
+        return;
+      }
+      const colName = (typeof window.colorsForKind === "function")
+        ? window.colorsForKind(info.kind)
+        : "black";
+      const resolved = colorMap[colName] || colorMap.black;
+      const bitIsBlack = info.bit === 1;
+      const fill = bitIsBlack ? resolved[1] : resolved[0];
+      const border = bitIsBlack ? resolved[0] : resolved[1];
+      cellEl.style.backgroundColor = fill;
+      cellEl.style.borderColor = border;
+      cellEl.style.boxShadow = "";
     };
     const ref = (typeof window.cellRefFromRowCol === "function")
       ? window.cellRefFromRowCol(cursorPos.row, cursorPos.col)
@@ -635,29 +668,19 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
     nextLabelEl.textContent = "Next";
     const basePatternActive = Boolean(window.isDrawingBasePattern);
-    if(basePatternActive && typeof window.lastBasePatternColorName === "string" && window.lastBasePatternColorName){
-      const baseColorName = window.lastBasePatternColorName;
-      const baseResolved = colorMap[baseColorName] || colorMap.black;
-      const baseBitIsBlack = Boolean(window.lastBasePatternBitIsBlack);
-      const baseFill = baseBitIsBlack ? baseResolved[1] : baseResolved[0];
-      const baseBorder = baseBitIsBlack ? baseResolved[0] : baseResolved[1];
-      nextCellEl.style.backgroundColor = baseFill;
-      nextCellEl.style.borderColor = baseBorder;
-      nextCellEl.style.boxShadow = "";
+    let nextInfos = [];
+    if(basePatternActive){
+      if(typeof window.getNextBasePatternInfos === "function"){
+        nextInfos = window.getNextBasePatternInfos(NEXT_CELL_COUNT) || [];
+      }
+    }else if(typeof window.getNextDataInfos === "function"){
+      nextInfos = window.getNextDataInfos(NEXT_CELL_COUNT) || [];
     }else{
-      const nextInfo = (typeof window.getNextDataInfo === "function") ? window.getNextDataInfo() : null;
-      const nextKind = nextInfo ? nextInfo.kind : null;
-      const nextBit = nextInfo ? nextInfo.bit : null;
-      const colName = (typeof window.colorsForKind === "function")
-        ? window.colorsForKind(nextKind)
-        : "black";
-      const resolved = colorMap[colName] || colorMap.black;
-      const bitIsBlack = nextBit === 1;
-      const nextFill = bitIsBlack ? resolved[1] : resolved[0];
-      const nextBorder = bitIsBlack ? resolved[0] : resolved[1];
-      nextCellEl.style.backgroundColor = nextFill;
-      nextCellEl.style.borderColor = nextBorder;
-      nextCellEl.style.boxShadow = "";
+      const single = (typeof window.getNextDataInfo === "function") ? window.getNextDataInfo() : null;
+      if(single) nextInfos = [single];
+    }
+    for(let i = 0; i < nextCells.length; i++){
+      applyNextCellInfo(nextCells[i], nextInfos[i]);
     }
   };
   if(typeof window !== "undefined"){
@@ -666,6 +689,14 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     window.lastBasePatternColorName = null;
     window.lastBasePatternBitIsBlack = false;
     window.lastBasePatternKind = null;
+    window.basePatternLookahead = [];
+    window.setBasePatternLookahead = (infos) => {
+      window.basePatternLookahead = Array.isArray(infos) ? infos : [];
+    };
+    window.getNextBasePatternInfos = (count = 4) => {
+      const list = Array.isArray(window.basePatternLookahead) ? window.basePatternLookahead : [];
+      return list.slice(0, Math.max(0, count));
+    };
   }
 
   let clearNoiseLayer = () => {};
@@ -1480,6 +1511,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       showApiStatus(name);
       if(typeof window !== "undefined"){
         window.isDrawingBasePattern = true;
+        if(typeof window.setBasePatternLookahead === "function"){
+          window.setBasePatternLookahead([]);
+        }
       }
       try{
         const result = await fn(...fnArgs);
@@ -1487,6 +1521,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }finally{
         if(typeof window !== "undefined"){
           window.isDrawingBasePattern = false;
+          if(typeof window.setBasePatternLookahead === "function"){
+            window.setBasePatternLookahead([]);
+          }
         }
         showBaseStatus();
       }

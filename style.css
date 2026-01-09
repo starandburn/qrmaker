@@ -260,8 +260,8 @@ main.layout{
   border-bottom:none;
 }
 
-.panel.pastel-1{ background:#fff7e6; }
-.panel.pastel-3{ background:#f2f9ee; }
+.panel.pastel-1{ background:#f2f9ee; }
+.panel.pastel-3{ background:#fffdf7; }
 .panel.pastel-4{ background:#fff1f1; }
 .panel.pastel-5{ background:#eaf6ff; }
 .qr-panel{ background:#fff; }
@@ -441,6 +441,11 @@ main.layout{
   border-radius:6px;
   font-size:18px;
 }
+.input-row input:focus{
+  border-color:#b3bbc7;
+  outline:none;
+  box-shadow:0 0 0 1px rgba(179,187,199,0.45);
+}
 
 button{
   padding:6px 11px;
@@ -508,6 +513,11 @@ button:active{
 #btnGenerate:active{
   transform: translateY(1px) scale(0.99);
   box-shadow:0 1px 4px rgba(0,0,0,0.12);
+}
+#btnInit{
+  font-size:1.2rem;
+  line-height:1;
+  padding:6px 14px;
 }
 details.pattern-panel{
   border:1px solid #cfd6df;
@@ -896,6 +906,8 @@ details.pattern-panel:not([open]) .summary-title::before{
   align-items:stretch;
   gap:10px;
   min-height:0;
+  margin-top:4px;
+  margin-bottom:4px;
 }
 
 .code-editor-pane{
@@ -1092,9 +1104,14 @@ textarea{
   line-height:1.35;
   padding:8px;
   border:1px solid #cfd6df;
-  border-radius:0;
+  border-radius:6px;
   box-sizing:border-box;
   background:#fff;
+}
+textarea:focus{
+  border-color:#b3bbc7;
+  outline:none;
+  box-shadow:0 0 0 1px rgba(179,187,199,0.45);
 }
 #userCode{
   font-size:22px;
@@ -1102,6 +1119,7 @@ textarea{
   line-height:1.35;
   padding:8px;
   box-sizing:border-box;
+  background:#fffefb;
 }
 
 .qr-head{
@@ -1172,13 +1190,30 @@ textarea{
 .execution-status-next-label{
   white-space: pre;
 }
+.execution-status-next-list{
+  display:inline-flex;
+  align-items:center;
+  gap:3px;
+}
 .execution-status-next-cell{
-  width:1em;
-  height:1em;
+  width:0.95em;
+  height:0.95em;
   border:1px solid #999;
   border-radius:2px;
   box-sizing:border-box;
   background:#fff;
+}
+.execution-status-next-cell:nth-child(2){
+  width:0.8em;
+  height:0.8em;
+}
+.execution-status-next-cell:nth-child(3){
+  width:0.66em;
+  height:0.66em;
+}
+.execution-status-next-cell:nth-child(4){
+  width:0.52em;
+  height:0.52em;
 }
 .execution-status-visual-cursor{
   position:absolute;

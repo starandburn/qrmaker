@@ -48,6 +48,13 @@
     return DIR_RIGHT;
   };
   const PATTERN_STEP_SCALE = 1;
+  const setBasePatternLookahead = (infos) => {
+    if(typeof global.setBasePatternLookahead === "function"){
+      global.setBasePatternLookahead(infos);
+    }else{
+      global.basePatternLookahead = Array.isArray(infos) ? infos : [];
+    }
+  };
 
   function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     const baseRun = ctx ? ctx.runId : 0;
@@ -110,6 +117,32 @@
     let lastCursorCol = null;
     const coreCoords = spiralCoordinates(7, 7, baseRow, baseCol);
     const borderCoords = spiralCoordinates(9, 9, baseRow - 1, baseCol - 1);
+    const ringTop = baseRow - 1;
+    const ringBottom = baseRow + 7;
+    const ringLeft = baseCol - 1;
+    const ringRight = baseCol + 7;
+    const inBounds = (row, col) => row >= 1 && row <= 25 && col >= 1 && col <= 25;
+    const coreSeq = coreCoords
+      .filter(([row, col]) => inBounds(row, col))
+      .map(([row, col]) => {
+        const relRow = row - baseRow;
+        const relCol = col - baseCol;
+        const bit = pattern[relRow][relCol];
+        return { row, col, bit };
+      });
+    const borderSeq = borderCoords
+      .filter(([row, col]) => inBounds(row, col) && (row === ringTop || row === ringBottom || col === ringLeft || col === ringRight))
+      .map(([row, col]) => ({ row, col, bit: 0 }));
+    const fullSeq = coreSeq.concat(borderSeq);
+    const buildLookahead = (idx) => {
+      const infos = [];
+      for(let i = 1; i <= 4; i++){
+        const entry = fullSeq[idx + i];
+        if(!entry) break;
+        infos.push({ kind: BIT_FUNC_FINDER, bit: entry.bit });
+      }
+      return infos;
+    };
     const drawSync = () => {
       for(const [row, col] of coreCoords){
         const relRow = row - baseRow;
@@ -121,10 +154,6 @@
         lastCursorRow = row;
         lastCursorCol = col;
       }
-      const ringTop = baseRow - 1;
-      const ringBottom = baseRow + 7;
-      const ringLeft = baseCol - 1;
-      const ringRight = baseCol + 7;
       for(const [row, col] of borderCoords){
         if(row < 1 || row > 25 || col < 1 || col > 25) continue;
         const isBorder = row === ringTop || row === ringBottom || col === ringLeft || col === ringRight;
@@ -157,40 +186,35 @@
         : Promise.resolve();
     };
       const drawStep = async () => {
-        for(let idx = 0; idx < coreCoords.length; idx++){
-          const [row, col] = coreCoords[idx];
-          const [nextRow, nextCol] = coreCoords[idx + 1] || [row, col];
+        for(let idx = 0; idx < coreSeq.length; idx++){
+          const { row, col, bit } = coreSeq[idx];
+          const nextEntry = coreSeq[idx + 1] || coreSeq[idx];
+          const nextRow = nextEntry.row;
+          const nextCol = nextEntry.col;
           if(shouldAbort()) return false;
           if(!stepActive()) return finishSync();
-          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-          const relRow = row - baseRow;
-          const relCol = col - baseCol;
-          const bit = pattern[relRow][relCol];
           const canDraw = shouldDrawCell(row, col);
           if(canDraw){
             window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
           }
+          setBasePatternLookahead(buildLookahead(idx));
           updateCursorSafe(row, col, resolveStepDir(row, col, nextRow, nextCol));
           lastCursorRow = row;
           lastCursorCol = col;
           await delay();
         }
-      const ringTop = baseRow - 1;
-      const ringBottom = baseRow + 7;
-      const ringLeft = baseCol - 1;
-      const ringRight = baseCol + 7;
-        for(let idx = 0; idx < borderCoords.length; idx++){
-          const [row, col] = borderCoords[idx];
-          const [nextRow, nextCol] = borderCoords[idx + 1] || [row, col];
+        for(let idx = 0; idx < borderSeq.length; idx++){
+          const { row, col } = borderSeq[idx];
+          const nextEntry = borderSeq[idx + 1] || borderSeq[idx];
+          const nextRow = nextEntry.row;
+          const nextCol = nextEntry.col;
           if(shouldAbort()) return false;
           if(!stepActive()) return finishSync();
-          if(row < 1 || row > 25 || col < 1 || col > 25) continue;
-          const isBorder = row === ringTop || row === ringBottom || col === ringLeft || col === ringRight;
-          if(!isBorder) continue;
           const canDraw = shouldDrawCell(row, col);
           if(canDraw){
             window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, false));
           }
+          setBasePatternLookahead(buildLookahead(coreSeq.length + idx));
           updateCursorSafe(row, col, resolveStepDir(row, col, nextRow, nextCol));
           lastCursorRow = row;
           lastCursorCol = col;
@@ -228,4 +252,3 @@
     drawFinderPatterns,
   });
 })(typeof window !== "undefined" ? window : globalThis);
-

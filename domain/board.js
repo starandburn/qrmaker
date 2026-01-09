@@ -856,6 +856,18 @@ function getNextDataInfo(){
   return { kind: entry.kind, bit: entry.bit };
 }
 
+function getNextDataInfos(count = 4){
+  if(!Array.isArray(dataSeq) || dataSeqIndex >= dataSeq.length) return [];
+  const total = Math.max(0, Math.min(count, dataSeq.length - dataSeqIndex));
+  const infos = [];
+  for(let i = 0; i < total; i++){
+    const entry = dataSeq[dataSeqIndex + i];
+    if(!entry || typeof entry.kind !== "number" || typeof entry.bit !== "number") continue;
+    infos.push({ kind: entry.kind, bit: entry.bit });
+  }
+  return infos;
+}
+
 function reapplyCellColors(){
   if(cellStates.size === 0) return;
   const prevTimingRow = timingRowIndex;
@@ -1162,6 +1174,7 @@ window.hasMoreData = hasMoreData;
 window.getNextData = getNextData;
 window.getNextDataKind = getNextDataKind;
 window.getNextDataInfo = getNextDataInfo;
+window.getNextDataInfos = getNextDataInfos;
 window.resetLoopGuard = resetLoopGuard;
 window.canContinueLoop = canContinueLoop;
 window.pauseRunning = pauseRunning;
@@ -1183,4 +1196,3 @@ window.turnCursor = turnCursor;
 window.updateCursor = updateCursor;
 window.resetCursor = resetCursor;
 window.setHomeCursor = setHomeCursor;
-
