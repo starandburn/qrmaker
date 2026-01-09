@@ -2271,6 +2271,14 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       requestAnimationFrame(ensureUserCodeCaretVisible);
     }
   });
+    userCodeInput.addEventListener("wheel", (ev) => {
+      if(!ev.ctrlKey) return;
+      ev.preventDefault();
+      const fontSize = parseFloat(window.getComputedStyle(userCodeInput).fontSize) || 16;
+      const delta = ev.deltaY < 0 ? 1 : -1;
+      const next = Math.min(120, Math.max(12, fontSize + delta));
+      userCodeInput.style.fontSize = `${next}px`;
+    }, { passive: false });
     userCodeInput.addEventListener("blur", (ev) => {
       const related = ev.relatedTarget || document.activeElement;
       if(btnGenerate && related === btnGenerate){
