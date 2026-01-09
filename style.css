@@ -1549,7 +1549,7 @@ textarea{
 .noise-dot{
   position:absolute;
   border-radius:50%;
-  opacity:0.85;
+  opacity:0.95;
 }
 .grid-area::before{
   content:"";

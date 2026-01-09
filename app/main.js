@@ -736,9 +736,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       const minDimension = Math.min(width, height);
       const maxGridRadius = Math.min((minDimension / 25) * 6, 260);
       const radius = Math.max(24, Math.min(maxGridRadius, minDimension * 0.15));
-      const count = Math.max(8, Math.min(24, Math.round((width * height) / 36000)));
-      const minSize = Math.max(3, Math.round(minDimension * 0.02));
-      const maxSize = Math.max(minSize + 4, Math.round(minDimension * 0.12));
+      const count = Math.max(16, Math.min(48, Math.round((width * height) / 18000)));
+      const minSize = Math.max(6, Math.round(minDimension * 0.03));
+      const maxSize = Math.max(minSize + 6, Math.round(minDimension * 0.168));
       const shotGroup = document.createElement("span");
       shotGroup.className = "noise-shot";
       noiseLayer.append(shotGroup);
