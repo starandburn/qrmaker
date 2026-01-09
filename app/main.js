@@ -407,8 +407,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const executionStatusCursorEl = document.getElementById("executionStatusCursor");
   const executionStatusLabels = {
     stopped: "待機中",
-    running: "実行中",
-    finished: "実行完了",
+    running: "作成中",
+    finished: "作成完了",
     error: "エラー",
     warning: "警告",
   };
@@ -438,11 +438,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       return resolved ? `${label}：${resolved}` : label;
     }
     if(state === "stopped" && !detail){
-      return `${label}：実行できます。`;
+      return `${label}：作成できます。`;
     }
     const normalized = normalizeStatusDetail(detail);
     if(normalized){
-      const resolvedL3 = normalized.l3 || "実行中";
+      const resolvedL3 = normalized.l3 || "作成中";
       return `${normalized.l2}：${resolvedL3}`;
     }
     if(detail){
@@ -494,7 +494,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     drawAlignmentPatterns: { l2: "基本パターン", l3: "アライメントパターンを描画しています。" },
     drawDarkModulePatterns: { l2: "基本パターン", l3: "ダークモジュールを描画しています。" },
     drawFormatPatterns: { l2: "基本パターン", l3: "フォーマットパターンを描画しています。" },
-    verify: { l2: "QRコード検証", l3: "実行中" },
+    verify: { l2: "QRコード検証", l3: "作成中" },
     applyMask: (maskIndex) => ({ l2: "マスク", l3: `${maskIndex}番を適用しています。` }),
   };
   const DATA_PATTERN_STAGE_MESSAGES = {
@@ -1907,7 +1907,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       verificationOutcome = logVerificationOutcome();
       if(runOk){
           const verificationDetail = verificationOutcome
-            ? (verificationOutcome.match ? "正しいQRコードが生成されました。" : "この盤面はQRコードとして読み取れません。")
+            ? (verificationOutcome.match ? "正しいQRコードです。" : "この盤面はQRコードとして読み取れません。")
             : "";
           if(verificationOutcome && !verificationOutcome.match){
             setExecutionStatus("warning", undefined, verificationDetail);
