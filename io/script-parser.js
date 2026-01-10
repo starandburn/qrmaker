@@ -35,6 +35,14 @@
     pause: "pauseRunning",
     advance: "advanceCommand",
     clear: "clearBoard",
+    red: "red",
+    blue: "blue",
+    green: "green",
+    yellow: "yellow",
+  };
+  const normalizeColorStateSpacing = (value) => {
+    if(typeof value !== "string" || !value) return "";
+    return value.replace(/\b(red|blue|green|yellow)(on|off)\b/gi, "$1 $2");
   };
   const ALIAS_PATTERN = new RegExp(
     `\\b(${Object.keys(ALIAS_MAP).map(escapeRegExp).join("|")})\\b`,
@@ -42,7 +50,7 @@
   );
   const applyAliasTransforms = (text) => {
     if(typeof text !== "string" || !text) return "";
-    const normalized = text
+    const normalized = normalizeColorStateSpacing(text)
       .replace(/\bmove\s+next\b/gi, "moveNext")
       .replace(/\bmove\s+advance\b/gi, "moveAdvance");
     return normalized.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
@@ -91,7 +99,7 @@
     if(typeof text !== "string" || !text) return "";
     return text.replace(DIRECTION_SUFFIX_PATTERN, "$1 $2");
   };
-  const CONDITIONAL_KEYWORDS = ["block", "clash", "empty", "used", "timing", "skip"];
+  const CONDITIONAL_KEYWORDS = ["block", "clash", "empty", "used", "timing", "skip", "red", "blue", "green", "yellow"];
   const CONDITIONAL_EXPLICIT_PATTERN = new RegExp(
     `^\\s*(if|when)\\s+(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(.*)$`,
     "i",
@@ -102,11 +110,23 @@
   );
   const applyConditionalAliases = (text) => {
     if(typeof text !== "string" || !text) return "";
+    text = normalizeColorStateSpacing(text);
     const resolveConditionalKeyword = (keyword) => {
       if(typeof keyword !== "string") return keyword;
       const lower = keyword.toLowerCase();
       if(lower === "timing" || lower === "skip") return "isSkipZone";
+      if(lower === "red") return "isRedOn";
+      if(lower === "blue") return "isBlueOn";
+      if(lower === "green") return "isGreenOn";
+      if(lower === "yellow") return "isYellowOn";
       return keyword;
+    };
+    const replaceColorStateCondition = (source, color, state, expr) => {
+      const parenPattern = new RegExp(`\\b(if|when)\\s*\\(\\s*${color}\\s+${state}\\s*\\)`, "gi");
+      source = source.replace(parenPattern, (match, keyword) => `${keyword} (${expr})`);
+      const barePattern = new RegExp(`\\b(if|when)\\s+${color}\\s+${state}\\b`, "gi");
+      source = source.replace(barePattern, (match, keyword) => `${keyword} ${expr}`);
+      return source;
     };
     const lines = text.split(/\r?\n/);
     const mapped = lines.map((line) => {
@@ -128,6 +148,22 @@
     let result = mapped.join("\n");
     result = result.replace(/\bif\s+timing\b/gi, (match) => match.replace(/timing/i, "isSkip"));
     result = result.replace(/\bif\s*\(\s*timing\b/gi, (match) => match.replace(/timing/i, "isSkip"));
+    result = replaceColorStateCondition(result, "red", "off", "!isRedOn()");
+    result = replaceColorStateCondition(result, "red", "on", "isRedOn()");
+    result = replaceColorStateCondition(result, "blue", "off", "!isBlueOn()");
+    result = replaceColorStateCondition(result, "blue", "on", "isBlueOn()");
+    result = replaceColorStateCondition(result, "green", "off", "!isGreenOn()");
+    result = replaceColorStateCondition(result, "green", "on", "isGreenOn()");
+    result = replaceColorStateCondition(result, "yellow", "off", "!isYellowOn()");
+    result = replaceColorStateCondition(result, "yellow", "on", "isYellowOn()");
+    result = result.replace(/\bif\s+red\b/gi, (match) => match.replace(/\bred\b/i, "isRedOn"));
+    result = result.replace(/\bif\s*\(\s*red\b/gi, (match) => match.replace(/\bred\b/i, "isRedOn"));
+    result = result.replace(/\bif\s+blue\b/gi, (match) => match.replace(/\bblue\b/i, "isBlueOn"));
+    result = result.replace(/\bif\s*\(\s*blue\b/gi, (match) => match.replace(/\bblue\b/i, "isBlueOn"));
+    result = result.replace(/\bif\s+green\b/gi, (match) => match.replace(/\bgreen\b/i, "isGreenOn"));
+    result = result.replace(/\bif\s*\(\s*green\b/gi, (match) => match.replace(/\bgreen\b/i, "isGreenOn"));
+    result = result.replace(/\bif\s+yellow\b/gi, (match) => match.replace(/\byellow\b/i, "isYellowOn"));
+    result = result.replace(/\bif\s*\(\s*yellow\b/gi, (match) => match.replace(/\byellow\b/i, "isYellowOn"));
     return result;
   };
 

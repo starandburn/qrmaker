@@ -1215,6 +1215,55 @@ textarea:focus{
 .execution-status-text{
   min-width:0;
 }
+.execution-status-main{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.execution-status-switches{
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.execution-status-switches-label{
+  font-size:0.75rem;
+  letter-spacing:0.05em;
+  color:#333;
+  font-weight:600;
+}
+.execution-status-switch{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  font-size:0.7rem;
+  color:#555;
+}
+.execution-status-switch-indicator{
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  background:#4a4a4a;
+  box-shadow:0 0 0 1px rgba(0,0,0,0.15) inset;
+  border:1px solid rgba(0,0,0,0.15);
+  box-shadow:0 1px 4px rgba(0,0,0,0.25);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.execution-status-switch-indicator#executionStatusSwitchRedIndicator{
+  background:var(--col-red-dark);
+  border-color:rgba(0,0,0,0.3);
+}
+.execution-status-switch-indicator#executionStatusSwitchRedIndicator.is-on{
+  background:#ff3b3b;
+  border-color:rgba(0,0,0,0.25);
+}
+.execution-status-switch-indicator#executionStatusSwitchBlueIndicator{
+  background:#0f1f42;
+  border-color:rgba(0,0,0,0.35);
+}
+.execution-status-switch-indicator#executionStatusSwitchBlueIndicator.is-on{
+  background:#567cff;
+  border-color:rgba(0,0,0,0.25);
+}
 .execution-status-cursor{
   font-family: ui-monospace, Menlo, Consolas, monospace;
   white-space: pre;
@@ -1253,6 +1302,11 @@ textarea:focus{
   gap:4px;
   justify-content:flex-end;
   flex-wrap:nowrap;
+}
+.execution-status-cursor-inline-label{
+  font-size:0.72rem;
+  letter-spacing:0.08em;
+  color:#333;
 }
 .execution-status-cursor-label{
   position:absolute;

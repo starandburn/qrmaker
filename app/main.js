@@ -38,10 +38,106 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const toggleEmpty = document.getElementById("toggleEmpty");
   const toggleColor = document.getElementById("toggleColor");
   const txtInput = document.getElementById("txtInput");
+  const switchDefinitions = [
+    { name: "red", label: "Red", color: 0xff0000, idSuffix: "Red" },
+    { name: "blue", label: "Blue", color: 0x567cff, idSuffix: "Blue" },
+    { name: "green", label: "Green", color: 0x00a800, idSuffix: "Green" },
+    { name: "yellow", label: "Yellow", color: 0xffd500, idSuffix: "Yellow" },
+  ];
+  const switchIndicatorElements = Object.create(null);
+  let switchIndicatorContainer = null;
+  let switchIndicatorLabel = null;
+  const colorIntToHex = (value) => {
+    if(typeof value !== "number" || Number.isNaN(value)) return "#000000";
+    return `#${(value >>> 0).toString(16).padStart(6, "0")}`;
+  };
+  const ensureSwitchIndicators = () => {
+    if(switchIndicatorContainer){
+      return switchIndicatorContainer;
+    }
+    switchIndicatorContainer = document.createElement("span");
+    switchIndicatorContainer.className = "execution-status-switches";
+    switchIndicatorContainer.setAttribute("role", "group");
+    switchIndicatorContainer.setAttribute("aria-label", "Switch状態");
+    switchIndicatorLabel = document.createElement("span");
+    switchIndicatorLabel.className = "execution-status-switches-label execution-status-chip";
+    switchIndicatorLabel.textContent = "Switch";
+    switchIndicatorContainer.append(switchIndicatorLabel);
+    switchDefinitions.forEach((def) => {
+      const idSuffix = def.idSuffix || (def.name.charAt(0).toUpperCase() + def.name.slice(1));
+      const indicator = document.createElement("span");
+      indicator.id = `executionStatusSwitch${idSuffix}Indicator`;
+      indicator.className = "execution-status-switch-indicator";
+      indicator.setAttribute("aria-label", def.label);
+      switchIndicatorElements[def.name] = indicator;
+      switchIndicatorContainer.append(indicator);
+    });
+    return switchIndicatorContainer;
+  };
   const configDefaults = (settings && typeof settings === "object") ? settings.defaults || {} : {};
   const resolvedDataTemplates = Array.isArray(configDefaults.dataTemplates)
     ? configDefaults.dataTemplates
     : [];
+  const switchStates = Object.fromEntries(switchDefinitions.map((def) => [def.name, false]));
+  const updateSwitchIndicators = () => {
+    ensureSwitchIndicators();
+    const offBackground = "#4a4a4a";
+    const onBorderColor = "rgba(0,0,0,0.25)";
+    const offBorderColor = "rgba(0,0,0,0.15)";
+    switchDefinitions.forEach((def) => {
+      const indicatorEl = switchIndicatorElements[def.name];
+      if(!indicatorEl) return;
+      const isOn = Boolean(switchStates[def.name]);
+      indicatorEl.classList.toggle("is-on", isOn);
+      indicatorEl.style.backgroundColor = isOn ? colorIntToHex(def.color) : offBackground;
+      indicatorEl.style.borderColor = isOn ? onBorderColor : offBorderColor;
+    });
+  };
+  const parseSwitchAction = (value) => {
+    if(typeof value === "boolean") return value;
+    if(typeof value === "string"){
+      const normalized = value.trim().toLowerCase();
+      if(!normalized.length) return null;
+      if(normalized === "on" || normalized === "true" || normalized === "1") return true;
+      if(normalized === "off" || normalized === "false" || normalized === "0") return false;
+      return null;
+    }
+    return null;
+  };
+  const setSwitchState = (color, state) => {
+    if(!(color in switchStates)) return false;
+    const next = Boolean(state);
+    switchStates[color] = next;
+    updateSwitchIndicators();
+    return next;
+  };
+  const toggleSwitchState = (color) => {
+    if(!(color in switchStates)) return false;
+    const next = !switchStates[color];
+    switchStates[color] = next;
+    updateSwitchIndicators();
+    return next;
+  };
+  const updateSwitchState = (color, action) => {
+    const desired = parseSwitchAction(action);
+    return (desired === null) ? toggleSwitchState(color) : setSwitchState(color, desired);
+  };
+  const red = (action) => updateSwitchState("red", action);
+  const blue = (action) => updateSwitchState("blue", action);
+  const green = (action) => updateSwitchState("green", action);
+  const yellow = (action) => updateSwitchState("yellow", action);
+  const isRedOn = () => Boolean(switchStates.red);
+  const isBlueOn = () => Boolean(switchStates.blue);
+  const isGreenOn = () => Boolean(switchStates.green);
+  const isYellowOn = () => Boolean(switchStates.yellow);
+  function resetSwitchStates(){
+    switchStates.red = false;
+    switchStates.blue = false;
+    switchStates.green = false;
+    switchStates.yellow = false;
+    updateSwitchIndicators();
+  }
+  updateSwitchIndicators();
   const sampleDropdownMenu = document.getElementById("sampleDropdownMenu");
   if(sampleDropdownMenu){
     sampleDropdownMenu.innerHTML = "";
@@ -607,7 +703,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(!executionStatusCursorEl) return;
     let cursorTextEl = executionStatusCursorEl.querySelector(".execution-status-cursor-text");
     let cursorCellEl = executionStatusCursorEl.querySelector(".execution-status-cell");
-    let cursorLabelEl = executionStatusCursorEl.querySelector(".execution-status-cursor-label");
+    let cursorInlineLabelEl = executionStatusCursorEl.querySelector(".execution-status-cursor-inline-label");
     let nextLabelEl = executionStatusCursorEl.querySelector(".execution-status-next-label");
     let nextListEl = executionStatusCursorEl.querySelector(".execution-status-next-list");
     let cursorBodyEl = executionStatusCursorEl.querySelector(".execution-status-cursor-body");
@@ -619,9 +715,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       cursorCellEl = document.createElement("span");
       cursorCellEl.className = "execution-status-cell";
     }
-    if(!cursorLabelEl){
-      cursorLabelEl = document.createElement("span");
-      cursorLabelEl.className = "execution-status-cursor-label execution-status-chip";
+    if(!cursorInlineLabelEl){
+      cursorInlineLabelEl = document.createElement("span");
+      cursorInlineLabelEl.className = "execution-status-cursor-inline-label execution-status-chip";
     }
     if(!nextLabelEl){
       nextLabelEl = document.createElement("span");
@@ -645,17 +741,19 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       cursorBodyEl = document.createElement("span");
       cursorBodyEl.className = "execution-status-cursor-body";
     }
-    const cursorLabelText = "Cursor";
-    cursorLabelEl.textContent = cursorLabelText;
+    const switchIndicatorGroupEl = ensureSwitchIndicators();
+    cursorInlineLabelEl.textContent = "Cursor";
     cursorBodyEl.textContent = "";
     cursorBodyEl.append(
+      switchIndicatorGroupEl,
+      cursorInlineLabelEl,
       cursorTextEl,
       cursorCellEl,
       nextLabelEl,
       nextListEl,
     );
     executionStatusCursorEl.textContent = "";
-    executionStatusCursorEl.append(cursorLabelEl, cursorBodyEl);
+    executionStatusCursorEl.append(cursorBodyEl);
     let cursorVisualEl = cursorCellEl.querySelector(".execution-status-visual-cursor");
     if(!cursorVisualEl){
       cursorVisualEl = document.createElement("span");
@@ -719,7 +817,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         default: return "up";
       }
     })();
-    cursorLabelEl.textContent = "Cursor";
+    cursorInlineLabelEl.textContent = "Cursor";
     cursorTextEl.textContent = `${ref}(${rowText},${colText})`;
     cursorVisualEl.setAttribute("data-arrow", dirSymbol);
     cursorVisualEl.setAttribute("data-dir", dirName);
@@ -1084,9 +1182,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   let cellsInitialized = false;
-  function clearBoardSurface(){
-    setQRCodeReadable(false);
-    clearNoiseLayer();
+function clearBoardSurface(){
+  setQRCodeReadable(false);
+  clearNoiseLayer();
     const cells = document.querySelectorAll(".qr-cells .cell");
     if(!cells || cells.length === 0) return false;
     for(const cell of cells){
@@ -1104,11 +1202,12 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     timingRowIndex = 0;
     timingColIndex = 0;
     hasFormatPattern = false;
-    if(typeof resetData === "function"){
-      resetData();
-    }
-    return true;
+  if(typeof resetData === "function"){
+    resetData();
   }
+  resetSwitchStates();
+  return true;
+}
 
     function clearBoard(){
       window.logEvent("clearBoard", "", "盤面をクリア");
@@ -1155,6 +1254,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     window.logEvent("resetCommand", "", "盤面をリセット");
     showApiStatus("resetCommand");
     resetBoardState(options);
+    resetSwitchStates();
     await sleep(RESET_DELAY_MS);
   }
 
@@ -1766,6 +1866,14 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       syncViewToggles: window.syncViewToggles,
       toggleInputs: window.toggleInputs,
     });
+    window.red = red;
+    window.blue = blue;
+    window.green = green;
+    window.yellow = yellow;
+    window.isRedOn = isRedOn;
+    window.isBlueOn = isBlueOn;
+    window.isGreenOn = isGreenOn;
+    window.isYellowOn = isYellowOn;
   }
   async function drawDataPatterns({ currentRun } = {}){
     window.logEvent("drawDataPatterns", currentRun ?? "", "データパターンを描画中");
