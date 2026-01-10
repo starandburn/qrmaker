@@ -60,7 +60,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     switchIndicatorContainer.setAttribute("role", "group");
     switchIndicatorContainer.setAttribute("aria-label", "Switch状態");
     switchIndicatorLabel = document.createElement("span");
-    switchIndicatorLabel.className = "execution-status-switches-label execution-status-chip";
+    switchIndicatorLabel.className = "execution-status-label execution-status-label-chip";
+    switchIndicatorLabel.dataset.labelKind = "switch";
     switchIndicatorLabel.textContent = "Switch";
     switchIndicatorContainer.append(switchIndicatorLabel);
     switchDefinitions.forEach((def) => {
@@ -717,11 +718,13 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     }
     if(!cursorInlineLabelEl){
       cursorInlineLabelEl = document.createElement("span");
-      cursorInlineLabelEl.className = "execution-status-cursor-inline-label execution-status-chip";
+      cursorInlineLabelEl.className = "execution-status-label execution-status-label-chip execution-status-cursor-inline-label";
+      cursorInlineLabelEl.dataset.labelKind = "cursor";
     }
     if(!nextLabelEl){
       nextLabelEl = document.createElement("span");
-      nextLabelEl.className = "execution-status-next-label execution-status-chip";
+      nextLabelEl.className = "execution-status-label execution-status-label-chip execution-status-next-label";
+      nextLabelEl.dataset.labelKind = "next";
     }
     const NEXT_CELL_COUNT = 4;
     if(!nextListEl){

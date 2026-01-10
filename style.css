@@ -1219,7 +1219,7 @@ textarea:focus{
   }
 .execution-status-subpanels{
     display:flex;
-    gap:16px;
+    gap:8px;
     width:100%;
     flex-wrap:nowrap;
   }
@@ -1261,11 +1261,28 @@ textarea:focus{
   align-items:center;
   gap:4px;
 }
-.execution-status-switches-label{
-  font-size:0.75rem;
-  letter-spacing:0.05em;
+.execution-status-label{
+  font-size:0.72rem;
+  letter-spacing:0.08em;
   color:#333;
-  font-weight:600;
+  background:#ffffff;
+  padding:2px 4px;
+  border-radius:999px;
+  border:1px solid #d7dfe5;
+  display:inline-flex;
+  align-items:center;
+  white-space:pre;
+  margin-left:4px;
+}
+.execution-status-label:first-child{
+  margin-left:0;
+}
+.execution-status-label[data-label-kind="cursor"]{
+  margin-right:2px;
+}
+.execution-status-label[data-label-kind="next"]{
+  margin-left:8px;
+  margin-right:0;
 }
 .execution-status-switch{
   display:flex;
@@ -1339,13 +1356,14 @@ textarea:focus{
   justify-content:flex-end;
   flex-wrap:nowrap;
 }
-.execution-status-cursor-inline-label{
-  margin-right:1px;
-}
-.execution-status-cursor-inline-label{
-  font-size:0.72rem;
-  letter-spacing:0.08em;
+.execution-status-label-chip{
+  background:#ffffff;
   color:#333;
+  padding:2px 4px;
+  border-radius:999px;
+  border:1px solid #d7dfe5;
+  display:inline-flex;
+  align-items:center;
 }
 .execution-status-cursor-label{
   position:absolute;
@@ -1363,9 +1381,6 @@ textarea:focus{
   background:#fff;
   position:relative;
   border:1px solid #999;
-}
-.execution-status-next-label{
-  white-space: pre;
 }
 .execution-status-next-list{
   display:inline-flex;
