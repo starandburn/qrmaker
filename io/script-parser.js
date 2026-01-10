@@ -42,7 +42,7 @@
   };
   const normalizeColorStateSpacing = (value) => {
     if(typeof value !== "string" || !value) return "";
-    return value.replace(/\b(red|blue|green|yellow)(on|off)\b/gi, "$1 $2");
+    return value.replace(/\b(red|blue|green|yellow)(on|off)\b(\?{0,1})/gi, "$1 $2$3");
   };
   const ALIAS_PATTERN = new RegExp(
     `\\b(${Object.keys(ALIAS_MAP).map(escapeRegExp).join("|")})\\b`,
@@ -108,9 +108,18 @@
     `^\\s*(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(.*)$`,
     "i",
   );
+  const CONDITIONAL_STATE_SHORTHAND_PATTERN = new RegExp(
+    `^([ \\t]*?)(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s+(on|off)\\?\\s*(.*)$`,
+    "img",
+  );
   const applyConditionalAliases = (text) => {
     if(typeof text !== "string" || !text) return "";
     text = normalizeColorStateSpacing(text);
+    text = text.replace(CONDITIONAL_STATE_SHORTHAND_PATTERN, (match, indent = "", keyword, state, rest = "") => {
+      const trimmedRest = rest.trim();
+      const suffix = trimmedRest ? ` ${trimmedRest}` : "";
+      return `${indent}if ${keyword} ${state}?${suffix}`;
+    });
     const resolveConditionalKeyword = (keyword) => {
       if(typeof keyword !== "string") return keyword;
       const lower = keyword.toLowerCase();
@@ -122,9 +131,10 @@
       return keyword;
     };
     const replaceColorStateCondition = (source, color, state, expr) => {
-      const parenPattern = new RegExp(`\\b(if|when)\\s*\\(\\s*${color}\\s+${state}\\s*\\)`, "gi");
+      const statePattern = `${state}\\??`;
+      const parenPattern = new RegExp(`\\b(if|when)\\s*\\(\\s*${color}\\s+${statePattern}\\s*\\)`, "gi");
       source = source.replace(parenPattern, (match, keyword) => `${keyword} (${expr})`);
-      const barePattern = new RegExp(`\\b(if|when)\\s+${color}\\s+${state}\\b`, "gi");
+      const barePattern = new RegExp(`\\b(if|when)\\s+${color}\\s+${statePattern}\\b`, "gi");
       source = source.replace(barePattern, (match, keyword) => `${keyword} ${expr}`);
       return source;
     };
@@ -156,14 +166,19 @@
     result = replaceColorStateCondition(result, "green", "on", "isGreenOn()");
     result = replaceColorStateCondition(result, "yellow", "off", "!isYellowOn()");
     result = replaceColorStateCondition(result, "yellow", "on", "isYellowOn()");
-    result = result.replace(/\bif\s+red\b/gi, (match) => match.replace(/\bred\b/i, "isRedOn"));
-    result = result.replace(/\bif\s*\(\s*red\b/gi, (match) => match.replace(/\bred\b/i, "isRedOn"));
-    result = result.replace(/\bif\s+blue\b/gi, (match) => match.replace(/\bblue\b/i, "isBlueOn"));
-    result = result.replace(/\bif\s*\(\s*blue\b/gi, (match) => match.replace(/\bblue\b/i, "isBlueOn"));
-    result = result.replace(/\bif\s+green\b/gi, (match) => match.replace(/\bgreen\b/i, "isGreenOn"));
-    result = result.replace(/\bif\s*\(\s*green\b/gi, (match) => match.replace(/\bgreen\b/i, "isGreenOn"));
-    result = result.replace(/\bif\s+yellow\b/gi, (match) => match.replace(/\byellow\b/i, "isYellowOn"));
-    result = result.replace(/\bif\s*\(\s*yellow\b/gi, (match) => match.replace(/\byellow\b/i, "isYellowOn"));
+    const fixSimpleCondition = (source, keyword) => {
+      const camel = `is${keyword.charAt(0).toUpperCase() + keyword.slice(1)}On`;
+      const simplePattern = new RegExp(`\\bif\\s+${keyword}\\??\\b`, "gi");
+      source = source.replace(simplePattern, (match) => match.replace(new RegExp(`${keyword}\\??`, "i"), camel));
+      const parenPattern = new RegExp(`\\bif\\s*\\(\\s*${keyword}\\??\\b`, "gi");
+      return source.replace(parenPattern, (match) => match.replace(new RegExp(`${keyword}\\??`, "i"), camel));
+    };
+    result = fixSimpleCondition(result, "red");
+    result = fixSimpleCondition(result, "blue");
+    result = fixSimpleCondition(result, "green");
+    result = fixSimpleCondition(result, "yellow");
+    result = result.replace(/(is(?:Red|Blue|Green|Yellow)On\(\))\?/g, "$1");
+    result = result.replace(/(!is(?:Red|Blue|Green|Yellow)On\(\))\?/g, "$1");
     return result;
   };
 
@@ -338,7 +353,9 @@
     };
     const stripLineComments = (value) => {
       if(typeof value !== "string" || value === "") return "";
-      return value.replace(/^[ \t]*(?:\/\/|#|'|;|-).*$/gm, "");
+      return value
+        .replace(/(?:\/\/|#|'|;|-).*$/gm, "")
+        .replace(/^[ \t]*(?:\/\/|#|'|;|-).*$/gm, "");
     };
     const spacedText = applyKeywordSpacing(stripLineComments(rawText || ""));
     const directionSpaced = applyCompoundDirectionSpacing(spacedText);
