@@ -38,12 +38,46 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const toggleEmpty = document.getElementById("toggleEmpty");
   const toggleColor = document.getElementById("toggleColor");
   const txtInput = document.getElementById("txtInput");
+  const configDefaults = (settings && typeof settings === "object") ? settings.defaults || {} : {};
+  const resolvedDataTemplates = Array.isArray(configDefaults.dataTemplates)
+    ? configDefaults.dataTemplates
+    : [];
   const switchDefinitions = [
     { name: "red", label: "Red", color: 0xff0000, idSuffix: "Red" },
     { name: "blue", label: "Blue", color: 0x567cff, idSuffix: "Blue" },
     { name: "green", label: "Green", color: 0x00a800, idSuffix: "Green" },
     { name: "yellow", label: "Yellow", color: 0xffd500, idSuffix: "Yellow" },
   ];
+  const DEFAULT_SWITCH_COUNT = 2;
+  const MAX_SWITCH_COUNT = switchDefinitions.length;
+  const parseSwitchCountValue = (value) => {
+    if(typeof value === "number" && Number.isFinite(value)){
+      return value;
+    }
+    if(typeof value === "string"){
+      const trimmed = value.trim();
+      if(trimmed.length){
+        const parsed = Number(trimmed);
+        if(Number.isFinite(parsed)){
+          return parsed;
+        }
+      }
+    }
+    return null;
+  };
+  const clampSwitchCount = (value) => Math.min(MAX_SWITCH_COUNT, Math.max(0, Math.trunc(value)));
+  const requestedSwitchCount = (() => {
+    const parsed = parseSwitchCountValue(configDefaults.switchCount);
+    if(parsed === null){
+      return DEFAULT_SWITCH_COUNT;
+    }
+    return clampSwitchCount(parsed);
+  })();
+  const activeSwitchDefinitions = switchDefinitions.slice(0, requestedSwitchCount);
+  const activeSwitchNames = activeSwitchDefinitions.map((def) => def.name);
+  if(typeof window !== "undefined"){
+    window.__qrSwitchConfig = Object.assign({}, window.__qrSwitchConfig, { switchNames: activeSwitchNames });
+  }
   const switchIndicatorElements = Object.create(null);
   let switchIndicatorContainer = null;
   let switchIndicatorLabel = null;
@@ -52,6 +86,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     return `#${(value >>> 0).toString(16).padStart(6, "0")}`;
   };
   const ensureSwitchIndicators = () => {
+    if(!activeSwitchDefinitions.length){
+      return null;
+    }
     if(switchIndicatorContainer){
       return switchIndicatorContainer;
     }
@@ -64,7 +101,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     switchIndicatorLabel.dataset.labelKind = "switch";
     switchIndicatorLabel.textContent = "Switch";
     switchIndicatorContainer.append(switchIndicatorLabel);
-    switchDefinitions.forEach((def) => {
+    activeSwitchDefinitions.forEach((def) => {
       const idSuffix = def.idSuffix || (def.name.charAt(0).toUpperCase() + def.name.slice(1));
       const indicator = document.createElement("span");
       indicator.id = `executionStatusSwitch${idSuffix}Indicator`;
@@ -75,17 +112,15 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     });
     return switchIndicatorContainer;
   };
-  const configDefaults = (settings && typeof settings === "object") ? settings.defaults || {} : {};
-  const resolvedDataTemplates = Array.isArray(configDefaults.dataTemplates)
-    ? configDefaults.dataTemplates
-    : [];
-  const switchStates = Object.fromEntries(switchDefinitions.map((def) => [def.name, false]));
+  const switchStates = Object.fromEntries(activeSwitchNames.map((name) => [name, false]));
   const updateSwitchIndicators = () => {
-    ensureSwitchIndicators();
+    if(!activeSwitchDefinitions.length) return;
+    const container = ensureSwitchIndicators();
+    if(!container) return;
     const offBackground = "#4a4a4a";
     const onBorderColor = "rgba(0,0,0,0.25)";
     const offBorderColor = "rgba(0,0,0,0.15)";
-    switchDefinitions.forEach((def) => {
+    activeSwitchDefinitions.forEach((def) => {
       const indicatorEl = switchIndicatorElements[def.name];
       if(!indicatorEl) return;
       const isOn = Boolean(switchStates[def.name]);
@@ -132,10 +167,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const isGreenOn = () => Boolean(switchStates.green);
   const isYellowOn = () => Boolean(switchStates.yellow);
   function resetSwitchStates(){
-    switchStates.red = false;
-    switchStates.blue = false;
-    switchStates.green = false;
-    switchStates.yellow = false;
+    activeSwitchNames.forEach((name) => {
+      switchStates[name] = false;
+    });
     updateSwitchIndicators();
   }
   updateSwitchIndicators();
@@ -151,7 +185,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }else if(typeof entry.value === "string" && entry.value.trim().length){
         label = entry.value;
       }else{
-        label = `テンプレート ${index + 1}`;
+        label = `チE��プレーチE${index + 1}`;
       }
       const value = (typeof entry.value === "string") ? entry.value : "";
       li.setAttribute("data-sample-value", value);
@@ -747,14 +781,18 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const switchIndicatorGroupEl = ensureSwitchIndicators();
     cursorInlineLabelEl.textContent = "Cursor";
     cursorBodyEl.textContent = "";
-    cursorBodyEl.append(
-      switchIndicatorGroupEl,
+    const cursorBodyChildren = [];
+    if(switchIndicatorGroupEl){
+      cursorBodyChildren.push(switchIndicatorGroupEl);
+    }
+    cursorBodyChildren.push(
       cursorInlineLabelEl,
       cursorTextEl,
       cursorCellEl,
       nextLabelEl,
       nextListEl,
     );
+    cursorBodyEl.append(...cursorBodyChildren);
     executionStatusCursorEl.textContent = "";
     executionStatusCursorEl.append(cursorBodyEl);
     let cursorVisualEl = cursorCellEl.querySelector(".execution-status-visual-cursor");

@@ -16,6 +16,8 @@ window.appSettingsFromScript = {
     "autoAvoidTiming": false,
     // 初期マスク番号
     "defaultMask": 0,
+    // 利用可能なスイッチの数 (0〜4)。0未満は0、5以上は4、デフォルト2。
+    "switchCount": 2,
     // ステップ実行の待機速度
     "stepSpeed": 30,
     // スキップモードの初期状態

@@ -40,9 +40,68 @@
     green: "green",
     yellow: "yellow",
   };
+  const BASE_SWITCH_NAMES = ["red", "blue", "green", "yellow"];
+  const DEFAULT_ACTIVE_SWITCH_NAMES = BASE_SWITCH_NAMES.slice(0, 2);
+  const SWITCH_STATE_INFO = {
+    red: { name: "red", getter: "isRedOn", onExpr: "isRedOn()", offExpr: "!isRedOn()" },
+    blue: { name: "blue", getter: "isBlueOn", onExpr: "isBlueOn()", offExpr: "!isBlueOn()" },
+    green: { name: "green", getter: "isGreenOn", onExpr: "isGreenOn()", offExpr: "!isGreenOn()" },
+    yellow: { name: "yellow", getter: "isYellowOn", onExpr: "isYellowOn()", offExpr: "!isYellowOn()" },
+  };
+  const BASE_CONDITIONAL_KEYWORDS = ["block", "clash", "empty", "used", "timing", "skip"];
+  const BASE_ALLOWED_COMMANDS = new Set(Object.keys(ALIAS_MAP));
+  const normalizeSwitchName = (value) => {
+    if(typeof value !== "string") return "";
+    return value.trim().toLowerCase();
+  };
+  const getConfiguredSwitchNames = () => {
+    if(!global || !global.__qrSwitchConfig) return null;
+    const { switchNames } = global.__qrSwitchConfig;
+    if(!Array.isArray(switchNames)) return null;
+    const normalized = switchNames
+      .map(normalizeSwitchName)
+      .filter((name) => name && BASE_SWITCH_NAMES.includes(name));
+    const unique = Array.from(new Set(normalized));
+    return BASE_SWITCH_NAMES.filter((name) => unique.includes(name));
+  };
+  const getActiveSwitchNames = () => {
+    const configured = getConfiguredSwitchNames();
+    if(Array.isArray(configured)){
+      return configured;
+    }
+    return DEFAULT_ACTIVE_SWITCH_NAMES;
+  };
+  const buildActiveSwitchPattern = () => {
+    const names = getActiveSwitchNames();
+    if(!names.length) return "";
+    return names.map(escapeRegExp).join("|");
+  };
+  const buildActiveSwitchInfoList = () => {
+    const names = getActiveSwitchNames();
+    return names.map((name) => SWITCH_STATE_INFO[name]).filter(Boolean);
+  };
+  const buildConditionalKeywordPattern = (activeInfoList) => {
+    const expanded = BASE_CONDITIONAL_KEYWORDS.concat(activeInfoList.map((info) => info.name));
+    if(!expanded.length) return "";
+    return expanded.map(escapeRegExp).join("|");
+  };
+  const getAllowedCommandSet = () => {
+    const allowed = new Set(BASE_ALLOWED_COMMANDS);
+    const activeNames = new Set(getActiveSwitchNames());
+    BASE_SWITCH_NAMES.forEach((name) => {
+      if(!activeNames.has(name)){
+        allowed.delete(name);
+      }
+    });
+    return allowed;
+  };
   const normalizeColorStateSpacing = (value) => {
     if(typeof value !== "string" || !value) return "";
-    return value.replace(/\b(red|blue|green|yellow)(on|off)\b(\?{0,1})/gi, "$1 $2$3");
+    const pattern = buildActiveSwitchPattern();
+    if(!pattern){
+      return value;
+    }
+    return value.replace(new RegExp(`\\b(${pattern})(on|off)\\b`, "gi"), "$1 $2");
   };
   const ALIAS_PATTERN = new RegExp(
     `\\b(${Object.keys(ALIAS_MAP).map(escapeRegExp).join("|")})\\b`,
@@ -55,7 +114,6 @@
       .replace(/\bmove\s+advance\b/gi, "moveAdvance");
     return normalized.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
   };
-  const ALLOWED_COMMANDS = new Set(Object.keys(ALIAS_MAP));
   const ALLOWED_CONTROL = new Set([
     "if",
     "when",
@@ -76,6 +134,7 @@
   const validateAllowedCommands = (text) => {
     if(typeof text !== "string") return;
     const lines = text.replace(/\r/g, "").split("\n");
+    const allowedCommands = getAllowedCommandSet();
     for(const rawLine of lines){
       const trimmed = rawLine.trim();
       if(!trimmed) continue;
@@ -85,7 +144,7 @@
       }
       const head = match[1].toLowerCase();
       if(ALLOWED_CONTROL.has(head)) continue;
-      if(ALLOWED_COMMANDS.has(head)) continue;
+      if(allowedCommands.has(head)) continue;
       throw new Error(`不明なコマンド: ${match[1]}`);
     }
   };
@@ -99,86 +158,96 @@
     if(typeof text !== "string" || !text) return "";
     return text.replace(DIRECTION_SUFFIX_PATTERN, "$1 $2");
   };
-  const CONDITIONAL_KEYWORDS = ["block", "clash", "empty", "used", "timing", "skip", "red", "blue", "green", "yellow"];
-  const CONDITIONAL_EXPLICIT_PATTERN = new RegExp(
-    `^\\s*(if|when)\\s+(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(.*)$`,
-    "i",
-  );
-  const CONDITIONAL_SHORTHAND_PATTERN = new RegExp(
-    `^\\s*(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(.*)$`,
-    "i",
-  );
-  const CONDITIONAL_STATE_SHORTHAND_PATTERN = new RegExp(
-    `^([ \\t]*?)(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s+(on|off)\\?\\s*(.*)$`,
-    "img",
-  );
   const applyConditionalAliases = (text) => {
     if(typeof text !== "string" || !text) return "";
     text = normalizeColorStateSpacing(text);
-    text = text.replace(CONDITIONAL_STATE_SHORTHAND_PATTERN, (match, indent = "", keyword, state, rest = "") => {
-      const trimmedRest = rest.trim();
-      const suffix = trimmedRest ? ` ${trimmedRest}` : "";
-      return `${indent}if ${keyword} ${state}?${suffix}`;
-    });
+    const switchPattern = buildActiveSwitchPattern();
+    if(switchPattern){
+      const stateShorthandPattern = new RegExp(`^([ \\t]*?)(${switchPattern})\\s+(on|off)\\?\\s*(.*)$`, "img");
+      text = text.replace(stateShorthandPattern, (match, indent = "", keyword, state, rest = "") => {
+        const trimmedRest = rest.trim();
+        const suffix = trimmedRest ? ` ${trimmedRest}` : "";
+        return `${indent}if ${keyword} ${state}?${suffix}`;
+      });
+    }
+    const activeSwitchInfoList = buildActiveSwitchInfoList();
+    const activeSwitchInfoMap = activeSwitchInfoList.reduce((map, info) => {
+      map[info.name] = info;
+      return map;
+    }, Object.create(null));
+    const conditionalPattern = buildConditionalKeywordPattern(activeSwitchInfoList);
+    const explicitPattern = conditionalPattern
+      ? new RegExp(`^\\s*(if|when)\\s+(${conditionalPattern})\\s*\\?\\s*(.*)$`, "i")
+      : null;
+    const shorthandPattern = conditionalPattern
+      ? new RegExp(`^\\s*(${conditionalPattern})\\s*\\?\\s*(.*)$`, "i")
+      : null;
     const resolveConditionalKeyword = (keyword) => {
       if(typeof keyword !== "string") return keyword;
       const lower = keyword.toLowerCase();
-      if(lower === "timing" || lower === "skip") return "isSkipZone";
-      if(lower === "red") return "isRedOn";
-      if(lower === "blue") return "isBlueOn";
-      if(lower === "green") return "isGreenOn";
-      if(lower === "yellow") return "isYellowOn";
+      const info = activeSwitchInfoMap[lower];
+      if(info){
+        return info.getter;
+      }
       return keyword;
-    };
-    const replaceColorStateCondition = (source, color, state, expr) => {
-      const statePattern = `${state}\\??`;
-      const parenPattern = new RegExp(`\\b(if|when)\\s*\\(\\s*${color}\\s+${statePattern}\\s*\\)`, "gi");
-      source = source.replace(parenPattern, (match, keyword) => `${keyword} (${expr})`);
-      const barePattern = new RegExp(`\\b(if|when)\\s+${color}\\s+${statePattern}\\b`, "gi");
-      source = source.replace(barePattern, (match, keyword) => `${keyword} ${expr}`);
-      return source;
     };
     const lines = text.split(/\r?\n/);
     const mapped = lines.map((line) => {
-      const explicitMatch = line.match(CONDITIONAL_EXPLICIT_PATTERN);
-      if(explicitMatch){
-        const prefix = explicitMatch[1];
-        const keyword = resolveConditionalKeyword(explicitMatch[2]);
-        const rest = (explicitMatch[3] || "").trim();
-        return rest ? `${prefix} ${keyword} ${rest}` : `${prefix} ${keyword}`;
+      if(explicitPattern){
+        const explicitMatch = line.match(explicitPattern);
+        if(explicitMatch){
+          const prefix = explicitMatch[1];
+          const keyword = resolveConditionalKeyword(explicitMatch[2]);
+          const rest = (explicitMatch[3] || "").trim();
+          return rest ? `${prefix} ${keyword} ${rest}` : `${prefix} ${keyword}`;
+        }
       }
-      const shorthandMatch = line.match(CONDITIONAL_SHORTHAND_PATTERN);
-      if(shorthandMatch){
-        const keyword = resolveConditionalKeyword(shorthandMatch[1]);
-        const rest = (shorthandMatch[2] || "").trim();
-        return rest ? `if ${keyword} ${rest}` : `if ${keyword}`;
+      if(shorthandPattern){
+        const shorthandMatch = line.match(shorthandPattern);
+        if(shorthandMatch){
+          const keyword = resolveConditionalKeyword(shorthandMatch[1]);
+          const rest = (shorthandMatch[2] || "").trim();
+          return rest ? `if ${keyword} ${rest}` : `if ${keyword}`;
+        }
       }
       return line;
     });
     let result = mapped.join("\n");
     result = result.replace(/\bif\s+timing\b/gi, (match) => match.replace(/timing/i, "isSkip"));
     result = result.replace(/\bif\s*\(\s*timing\b/gi, (match) => match.replace(/timing/i, "isSkip"));
-    result = replaceColorStateCondition(result, "red", "off", "!isRedOn()");
-    result = replaceColorStateCondition(result, "red", "on", "isRedOn()");
-    result = replaceColorStateCondition(result, "blue", "off", "!isBlueOn()");
-    result = replaceColorStateCondition(result, "blue", "on", "isBlueOn()");
-    result = replaceColorStateCondition(result, "green", "off", "!isGreenOn()");
-    result = replaceColorStateCondition(result, "green", "on", "isGreenOn()");
-    result = replaceColorStateCondition(result, "yellow", "off", "!isYellowOn()");
-    result = replaceColorStateCondition(result, "yellow", "on", "isYellowOn()");
-    const fixSimpleCondition = (source, keyword) => {
-      const camel = `is${keyword.charAt(0).toUpperCase() + keyword.slice(1)}On`;
-      const simplePattern = new RegExp(`\\bif\\s+${keyword}\\??\\b`, "gi");
-      source = source.replace(simplePattern, (match) => match.replace(new RegExp(`${keyword}\\??`, "i"), camel));
-      const parenPattern = new RegExp(`\\bif\\s*\\(\\s*${keyword}\\??\\b`, "gi");
-      return source.replace(parenPattern, (match) => match.replace(new RegExp(`${keyword}\\??`, "i"), camel));
+    const replaceColorStateCondition = (source, info, state, expr) => {
+      if(!info) return source;
+      const statePattern = `${state}\\??`;
+      const parenPattern = new RegExp(`\\b(if|when)\\s*\\(\\s*${escapeRegExp(info.name)}\\s+${statePattern}\\s*\\)`, "gi");
+      source = source.replace(parenPattern, (match, keyword) => `${keyword} (${expr})`);
+      const barePattern = new RegExp(`\\b(if|when)\\s+${escapeRegExp(info.name)}\\s+${statePattern}\\b`, "gi");
+      return source.replace(barePattern, (match, keyword) => `${keyword} ${expr}`);
     };
-    result = fixSimpleCondition(result, "red");
-    result = fixSimpleCondition(result, "blue");
-    result = fixSimpleCondition(result, "green");
-    result = fixSimpleCondition(result, "yellow");
-    result = result.replace(/(is(?:Red|Blue|Green|Yellow)On\(\))\?/g, "$1");
-    result = result.replace(/(!is(?:Red|Blue|Green|Yellow)On\(\))\?/g, "$1");
+    activeSwitchInfoList.forEach((info) => {
+      result = replaceColorStateCondition(result, info, "off", info.offExpr);
+      result = replaceColorStateCondition(result, info, "on", info.onExpr);
+    });
+    const fixSimpleCondition = (source, info) => {
+      if(!info) return source;
+      const keyword = escapeRegExp(info.name);
+      const getter = info.getter;
+      const simplePattern = new RegExp(`\\bif\\s+${keyword}\\??\\b`, "gi");
+      source = source.replace(simplePattern, (match) => match.replace(new RegExp(`${keyword}\\??`, "i"), getter));
+      const parenPattern = new RegExp(`\\bif\\s*\\(\\s*${keyword}\\??\\b`, "gi");
+      return source.replace(parenPattern, (match) => match.replace(new RegExp(`${keyword}\\??`, "i"), getter));
+    };
+    activeSwitchInfoList.forEach((info) => {
+      result = fixSimpleCondition(result, info);
+    });
+    if(activeSwitchInfoList.length){
+      const getterPattern = activeSwitchInfoList.map((info) => escapeRegExp(info.getter)).join("|");
+      if(getterPattern){
+        const positiveRegex = new RegExp(`((${getterPattern})\\(\\))\\?`, "g");
+        result = result.replace(positiveRegex, "$1");
+        const negativeRegex = new RegExp(`(!(${getterPattern})\\(\\))\\?`, "g");
+        result = result.replace(negativeRegex, "$1");
+      }
+    }
     return result;
   };
 
