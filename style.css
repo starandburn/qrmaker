@@ -1199,27 +1199,63 @@ textarea:focus{
 }
 .execution-status{
   margin-top:12px;
-  padding:6px 10px;
-  border-radius:6px;
-  border:1px solid #cfd6df;
-  background:#f7f7f7;
+  padding:0;
+  border:none;
+  background:transparent;
   color:#333;
   font-size:0.85rem;
   line-height:1.3;
-  min-height:1.4em;
-  display:grid;
-  grid-template-columns:minmax(0,1fr) auto;
-  gap:16px;
-  align-items:center;
+  min-height:auto;
+  display:block;
 }
 .execution-status-text{
-  min-width:0;
-}
+    min-width:0;
+  }
 .execution-status-main{
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-}
+    display:flex;
+    align-items:flex-start;
+    gap:12px;
+    flex-wrap:wrap;
+  }
+.execution-status-subpanels{
+    display:flex;
+    gap:16px;
+    width:100%;
+    flex-wrap:nowrap;
+  }
+.execution-status-subpanel{
+    min-width:0;
+    padding:8px 10px;
+    border-radius:6px;
+    background:#ffffff;
+    border:1px solid #d7dfe5;
+    box-shadow:0 1px 2px rgba(0,0,0,0.08);
+  }
+.execution-status-info-panel{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    padding:0 6px;
+    min-width:auto;
+    margin-left:auto;
+    background:#eef2ff;
+    border-color:#cbd6e8;
+  }
+.execution-status-message-panel{
+    flex:1 1 auto;
+    min-width:0;
+    background:#f7f7f7;
+  }
+.execution-status-message{
+    flex:1;
+    min-width:0;
+  }
+.execution-status-info{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    flex-shrink:0;
+  }
 .execution-status-switches{
   display:flex;
   align-items:center;
@@ -1273,8 +1309,8 @@ textarea:focus{
   display:flex;
   align-items:center;
   position:relative;
-  padding-left:60px;
-  justify-self:end;
+  padding-left:0;
+  justify-self:flex-start;
   width:auto;
 }
 .execution-status-chip{
@@ -1299,9 +1335,12 @@ textarea:focus{
 .execution-status-cursor-body{
   display:flex;
   align-items:center;
-  gap:4px;
+  gap:3px;
   justify-content:flex-end;
   flex-wrap:nowrap;
+}
+.execution-status-cursor-inline-label{
+  margin-right:1px;
 }
 .execution-status-cursor-inline-label{
   font-size:0.72rem;
@@ -1399,27 +1438,27 @@ textarea:focus{
   top:50%;
   transform:translate(50%, -50%) translateX(0.1em);
 }
-.execution-status.status-running{
+.execution-status.status-running .execution-status-message-panel{
   background:#eef4ff;
   border-color:#bcd3ff;
   color:#1f4a85;
 }
-.execution-status.status-finished{
+.execution-status.status-finished .execution-status-message-panel{
   background:#f0fff4;
   border-color:#b6e4c1;
   color:#1f6930;
 }
-.execution-status.status-warning{
+.execution-status.status-warning .execution-status-message-panel{
   background:#fff9e6;
   border-color:#f2d999;
   color:#8a6d3b;
 }
-.execution-status.status-error{
+.execution-status.status-error .execution-status-message-panel{
   background:#fff1f1;
   border-color:#f5c6cb;
   color:#a94442;
 }
-.execution-status.status-stopped{
+.execution-status.status-stopped .execution-status-message-panel{
   background:#f7f7f7;
   border-color:#dcdcdc;
   color:#3b3b3b;
