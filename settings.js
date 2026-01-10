@@ -58,17 +58,17 @@ window.appSettingsFromScript = {
     // 表示のON/OFF初期値
     "viewFlags": {
       // カーソル表示
-      "viewCursor": false,
+      "viewCursor": true,
       // ガイド表示
-      "viewGuide": false,
+      "viewGuide": true,
       // グリッド表示
-      "viewGrid": false,
+      "viewGrid": true,
       // 空セル表示
-      "viewEmpty": false,
+      "viewEmpty": true,
       // 色分け表示
-      "viewColor": false,
+      "viewColor": true,
       // デバッグ値表示
-      "viewDebugValues": false
+      "viewDebugValues": true
     },
     // カーソル初期方向
     "homeCursorDirection": "right",

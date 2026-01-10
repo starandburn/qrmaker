@@ -426,6 +426,32 @@
         .replace(/(?:\/\/|#|'|;|-).*$/gm, "")
         .replace(/^[ \t]*(?:\/\/|#|'|;|-).*$/gm, "");
     };
+  const INLINE_ELSE_MARKER = "__inlineElse__";
+  const expandInlineElseLines = (lines) => {
+    if(!Array.isArray(lines)) return [];
+    const inlineElsePattern = /^(\s*if\b[\s\S]+?)\belse\b\s*(.*)$/i;
+    const expanded = [];
+    for(const rawLine of lines){
+      if(typeof rawLine !== "string" || !rawLine.trim().length){
+        expanded.push(rawLine);
+        continue;
+      }
+      const match = rawLine.match(inlineElsePattern);
+      if(!match){
+        expanded.push(rawLine);
+        continue;
+      }
+      const [, ifPart, elsePart] = match;
+      const trimmedIf = ifPart.replace(/\s+$/, "");
+      const indentMatch = ifPart.match(/^\s*/);
+      const indent = indentMatch ? indentMatch[0] : "";
+      const trimmedElse = elsePart.trim();
+      const elseClause = trimmedElse ? `else ${trimmedElse}` : "else";
+        expanded.push(trimmedIf);
+        expanded.push(`${indent}${INLINE_ELSE_MARKER}${elseClause}`);
+    }
+    return expanded;
+  };
     const spacedText = applyKeywordSpacing(stripLineComments(rawText || ""));
     const directionSpaced = applyCompoundDirectionSpacing(spacedText);
     const conditionalText = applyConditionalAliases(directionSpaced);
@@ -433,10 +459,11 @@
     const codeRaw = applyAliasTransforms(conditionalText);
     if(!codeRaw.trim()) return "";
     const formattedLines = codeRaw.replace(/\r/g, "").split("\n");
+    const preparedLines = expandInlineElseLines(formattedLines);
     const combined = [];
     let blockDepth = 0;
     let pendingInlineIf = null;
-    for(const raw of formattedLines){
+    for(const raw of preparedLines){
       const trimmed = typeof raw === "string" ? raw.trim() : "";
       const pendingEndMatch = trimmed.match(/^end\s*(for|while|until|repeat|loop|if)$/i);
       if(pendingInlineIf && (trimmed === "end" || pendingEndMatch)){
@@ -452,9 +479,11 @@
         }
         continue;
       }
-      const line = trimmed.replace(/\s+$/g, "");
-      const lineLower = line.toLowerCase();
-      const indent = typeof raw === "string" ? raw.match(/^\s*/)[0] : "";
+    const rawLineContent = trimmed.replace(/\s+$/g, "");
+    const hasInlineElseMarker = rawLineContent.startsWith(INLINE_ELSE_MARKER);
+    const line = hasInlineElseMarker ? rawLineContent.slice(INLINE_ELSE_MARKER.length) : rawLineContent;
+    const lineLower = line.toLowerCase();
+    const indent = typeof raw === "string" ? raw.match(/^\s*/)[0] : "";
       const endMatch = pendingEndMatch || line.match(/^end\s*(for|while|until|repeat|loop|if)$/i);
       if(endMatch){
         const kind = endMatch[1].toLowerCase();
@@ -473,7 +502,7 @@
         pendingInlineIf = null;
       }
       if(pendingInlineIf && elseMatch && elseRest){
-        if(pendingInlineIf.condFormatted && pendingInlineIf.awaitedBody && pendingInlineIf.indent === indent){
+        if(pendingInlineIf.condFormatted && pendingInlineIf.awaitedBody){
           const elseFormatted = formatStudentCodeLine(elseRest);
           const elseStmt = elseFormatted ? (elseFormatted.endsWith(";") ? elseFormatted : `${elseFormatted};`) : "";
           const elseAwaited = elseStmt ? (awaitCalls ? `await ${elseStmt}` : elseStmt) : "";
