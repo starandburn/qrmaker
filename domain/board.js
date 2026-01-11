@@ -14,7 +14,7 @@ const ABORT_ERR = Symbol("run-aborted");
 const RESET_DELAY_MS = 10;
 
 if(typeof window !== "undefined" && typeof window.makeStepThenable !== "function"){
-  window.makeStepThenable = (ok = true) => ok;
+  window.makeStepThenable = (ok = true, _options = {}) => ok;
 }
 
 const DIR_ORDER = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
@@ -635,11 +635,24 @@ async function moveAdvance(){
   return true;
 }
 
-function callMakeStepThenable(){
+function callMakeStepThenable(options = {}){
   if(typeof window.makeStepThenable === "function"){
-    return window.makeStepThenable(true);
+    return window.makeStepThenable(true, options);
   }
   return true;
+}
+
+function makeStepResult(value, options = {}){
+  const wait = callMakeStepThenable(options);
+  if(wait && typeof wait.then === "function"){
+    return {
+      then: (resolve, reject) => wait.then(() => resolve(value), reject),
+      catch: (fn) => wait.catch(fn),
+      valueOf: () => value,
+      toString: () => String(value),
+    };
+  }
+  return value;
 }
 
 function turnCursor(dirArg){
@@ -1037,7 +1050,7 @@ function putCell(encodedValue){
     if(usedAuto && dataSeqIndex > 0){
       dataSeqIndex = Math.max(0, dataSeqIndex - 1);
     }
-    return false;
+    return makeStepResult(false, { scale: 0.5 });
   }
   if(!Number.isFinite(val)) return false;
   const valKind = (typeof window.bitKind === "function") ? window.bitKind(val) : Math.abs(val);
@@ -1051,7 +1064,8 @@ function putCell(encodedValue){
       window.updateDataPatternStatus(valKind);
     }
   }
-  return ok;
+  const waitOptions = ok ? {} : { scale: 0.5 };
+  return makeStepResult(ok, waitOptions);
 }
 
 function getCell(row, col){
