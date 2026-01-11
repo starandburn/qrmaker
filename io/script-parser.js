@@ -158,6 +158,16 @@
     if(typeof text !== "string" || !text) return "";
     return text.replace(DIRECTION_SUFFIX_PATTERN, "$1 $2");
   };
+  const applyTurnSwitchCommands = (text) => {
+    if(typeof text !== "string" || !text) return "";
+    const pattern = buildActiveSwitchPattern();
+    if(!pattern) return text;
+    const turnSwitchPattern = new RegExp(`\\bturn\\s+(${pattern})\\b`, "gi");
+    return text.replace(turnSwitchPattern, (_match, keyword) => {
+      const normalized = keyword.toLowerCase();
+      return `if ${normalized}? turn right else turn left`;
+    });
+  };
   const applyConditionalAliases = (text) => {
     if(typeof text !== "string" || !text) return "";
     text = normalizeColorStateSpacing(text);
@@ -454,7 +464,8 @@
   };
     const spacedText = applyKeywordSpacing(stripLineComments(rawText || ""));
     const directionSpaced = applyCompoundDirectionSpacing(spacedText);
-    const conditionalText = applyConditionalAliases(directionSpaced);
+    const turnCommandText = applyTurnSwitchCommands(directionSpaced);
+    const conditionalText = applyConditionalAliases(turnCommandText);
     validateAllowedCommands(conditionalText);
     const codeRaw = applyAliasTransforms(conditionalText);
     if(!codeRaw.trim()) return "";

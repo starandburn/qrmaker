@@ -95,58 +95,59 @@ mask`
       {
         "label": "3",
         "code": `clear
-finders
-timings
-alignments
-darkmodules
-formats
-move end up
+base
+move y25 up
 repeat
-	empty? put
+	if empty? put
 	move next
-	block?
+	if block?
 		turn
 		move left
-		skip? move left
+		if skip? move left
 	endif
-end
+endrepeat
 mask`
       },
       {
         "label": "4",
         "code": `clear
 base
-move end
-turn left
+move y25 up
 repeat
-    put
-    move left
-    put
-    move
-    block?
-        turn
-        move left
-     else
-        move right
-    end
-end
+	if empty? put
+	if blue?
+		turn
+		move
+	endif
+	if red? turn right else turn left
+	blue
+	move
+	if block?
+		if red? turn right else turn left
+		repeat 2
+			move
+			if skip? move
+		endrepeat
+		if red? turn right else turn left
+		red
+	endif
+endrepeat
 mask`
       },
       {
         "label": "5",
         "code": `clear
 base
-move end
-turn left
+move y25 up
 repeat
-    empty? put
+    if empty? put
     move left
-    empty? put
+    if empty? put
     move
-    block?
+    if block?
         turn
         move left
-    skip? move left
+        if skip? move left
     else
         move right
     end
