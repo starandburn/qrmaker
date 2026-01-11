@@ -115,7 +115,6 @@
   };
   const ALLOWED_CONTROL = new Set([
     "if",
-    "when",
     "else",
     "while",
     "until",
@@ -153,9 +152,59 @@
     return text.replace(KEYWORD_NUMBER_PATTERN, "$1 $2");
   };
   const DIRECTION_SUFFIX_PATTERN = /\b(move|turn)(up|down|left|right|front|back)\b/gi;
+  const ASCII_ALPHANUMERIC_PATTERN = /[0-9A-Za-z]/;
+  const WHITESPACE_PATTERN = /\s/;
+  const ALLOWED_SPECIAL_SYMBOLS = new Set(["?", "-", "'"]);
+  const FULLWIDTH_BRACKETS = new Set(["（","）","［","］","｛","｝","【","】","〈","〉","《","》"]);
+    const ensureNoForbiddenSymbols = (text) => {
+      if(typeof text !== "string" || !text) return;
+      let inDoubleQuotes = false;
+      for(const ch of text){
+        if(inDoubleQuotes){
+          if(ch === '"'){
+            inDoubleQuotes = false;
+          }
+          continue;
+        }
+      if(ch === '"'){
+        inDoubleQuotes = true;
+        continue;
+      }
+      if(WHITESPACE_PATTERN.test(ch)) continue;
+      const code = ch.codePointAt(0);
+      if(code <= 0x7F){
+        if(ASCII_ALPHANUMERIC_PATTERN.test(ch) || ALLOWED_SPECIAL_SYMBOLS.has(ch)) continue;
+        throw new Error(`使用できない文字(${ch})が含まれています。`);
+      }
+      if(FULLWIDTH_BRACKETS.has(ch)){
+        throw new Error(`使用できない文字(${ch})が含まれています。`);
+      }
+    }
+  };
   const applyCompoundDirectionSpacing = (text) => {
     if(typeof text !== "string" || !text) return "";
     return text.replace(DIRECTION_SUFFIX_PATTERN, "$1 $2");
+  };
+  const applyNegationQuestionSpacing = (text) => {
+    if(typeof text !== "string" || !text) return text;
+    const names = getActiveSwitchNames();
+    const keywords = BASE_CONDITIONAL_KEYWORDS.concat(names);
+    if(!keywords.length) return text;
+    const keywordPattern = keywords.map(escapeRegExp).join("|");
+    const newline = text.includes("\r\n") ? "\r\n" : "\n";
+    return text
+      .split(/\r?\n/)
+      .map((line) => {
+        const match = line.match(
+          new RegExp(`^(\\s*if\\s+)-\\s*(${keywordPattern})(\\s*)(\\??)(.*)$`, "i"),
+        );
+        if(!match){
+          return line;
+        }
+        const [, prefix, keyword, spacing = "", question = "", rest = ""] = match;
+        return `${prefix}-${keyword}?${spacing}${rest}`;
+      })
+      .join(newline);
   };
   const applyTurnSwitchCommands = (text) => {
     if(typeof text !== "string" || !text) return "";
@@ -232,10 +281,10 @@
     }, Object.create(null));
     const conditionalPattern = buildConditionalKeywordPattern(activeSwitchInfoList);
     const explicitPattern = conditionalPattern
-      ? new RegExp(`^\\s*(if|when)\\s+(${conditionalPattern})\\s*\\?\\s*(.*)$`, "i")
+      ? new RegExp(`^\\s*(if)\\s+(-\\s*)?(${conditionalPattern})\\s*\\?\\s*(.*)$`, "i")
       : null;
     const shorthandPattern = conditionalPattern
-      ? new RegExp(`^\\s*(${conditionalPattern})\\s*\\?\\s*(.*)$`, "i")
+      ? new RegExp(`^\\s*(-\\s*)?(${conditionalPattern})\\s*\\?\\s*(.*)$`, "i")
       : null;
     const resolveConditionalKeyword = (keyword) => {
       if(typeof keyword !== "string") return keyword;
@@ -252,17 +301,21 @@
         const explicitMatch = line.match(explicitPattern);
         if(explicitMatch){
           const prefix = explicitMatch[1];
-          const keyword = resolveConditionalKeyword(explicitMatch[2]);
-          const rest = (explicitMatch[3] || "").trim();
-          return rest ? `${prefix} ${keyword} ${rest}` : `${prefix} ${keyword}`;
+          const negated = Boolean(explicitMatch[2]);
+          const keyword = resolveConditionalKeyword(explicitMatch[3]);
+          const rest = (explicitMatch[4] || "").trim();
+          const condition = negated ? `!${keyword}` : keyword;
+          return rest ? `${prefix} ${condition} ${rest}` : `${prefix} ${condition}`;
         }
       }
       if(shorthandPattern){
         const shorthandMatch = line.match(shorthandPattern);
         if(shorthandMatch){
-          const keyword = resolveConditionalKeyword(shorthandMatch[1]);
-          const rest = (shorthandMatch[2] || "").trim();
-          return rest ? `if ${keyword} ${rest}` : `if ${keyword}`;
+          const negated = Boolean(shorthandMatch[1]);
+          const keyword = resolveConditionalKeyword(shorthandMatch[2]);
+          const rest = (shorthandMatch[3] || "").trim();
+          const condition = negated ? `!${keyword}` : keyword;
+          return rest ? `if ${condition} ${rest}` : `if ${condition}`;
         }
       }
       return line;
@@ -273,9 +326,9 @@
     const replaceColorStateCondition = (source, info, state, expr) => {
       if(!info) return source;
       const statePattern = `${state}\\??`;
-      const parenPattern = new RegExp(`\\b(if|when)\\s*\\(\\s*${escapeRegExp(info.name)}\\s+${statePattern}\\s*\\)`, "gi");
+      const parenPattern = new RegExp(`\\b(if)\\s*\\(\\s*${escapeRegExp(info.name)}\\s+${statePattern}\\s*\\)`, "gi");
       source = source.replace(parenPattern, (match, keyword) => `${keyword} (${expr})`);
-      const barePattern = new RegExp(`\\b(if|when)\\s+${escapeRegExp(info.name)}\\s+${statePattern}\\b`, "gi");
+      const barePattern = new RegExp(`\\b(if)\\s+${escapeRegExp(info.name)}\\s+${statePattern}\\b`, "gi");
       return source.replace(barePattern, (match, keyword) => `${keyword} ${expr}`);
     };
     activeSwitchInfoList.forEach((info) => {
@@ -382,12 +435,7 @@
     const pushBlock = (type) => {
       blockStack.push(type);
     };
-    const repeatDefaultConditionName = () => {
-      if(typeof global !== "undefined" && typeof global.hasMoreMove === "function"){
-        return "hasMoreMove";
-      }
-      return "hasMoreData";
-    };
+    const repeatDefaultConditionName = () => "hasMoreData";
     const DEFAULT_WHILE_CONDITION = "hasMoreData";
     const DEFAULT_UNTIL_CONDITION = "isDataEnd";
     const extractParenInfo = (line) => {
@@ -478,10 +526,10 @@
     };
     const stripLineComments = (value) => {
       if(typeof value !== "string" || value === "") return "";
-      return value
-        .replace(/(?:\/\/|#|'|;|-).*$/gm, "")
-        .replace(/^[ \t]*(?:\/\/|#|'|;|-).*$/gm, "");
-    };
+    return value
+      .replace(/(?:\/\/|#|'|;).*$/gm, "")
+      .replace(/^[ \t]*(?:\/\/|#|'|;).*$/gm, "");
+  };
   const INLINE_ELSE_MARKER = "__inlineElse__";
   const expandInlineElseLines = (lines) => {
     if(!Array.isArray(lines)) return [];
@@ -508,9 +556,13 @@
     }
     return expanded;
   };
-    const spacedText = applyKeywordSpacing(stripLineComments(rawText || ""));
+    const inputText = rawText || "";
+    const commentStrippedText = stripLineComments(inputText);
+    ensureNoForbiddenSymbols(commentStrippedText);
+    const spacedText = applyKeywordSpacing(commentStrippedText);
     const directionSpaced = applyCompoundDirectionSpacing(spacedText);
-    const switchConditionText = applySwitchConditionSpacing(directionSpaced);
+    const negatedConditionText = applyNegationQuestionSpacing(directionSpaced);
+    const switchConditionText = applySwitchConditionSpacing(negatedConditionText);
     const switchAliasedText = applySwitchCommandAliases(switchConditionText);
     const turnCommandText = applyTurnSwitchCommands(switchAliasedText);
     const conditionalText = applyConditionalAliases(turnCommandText);
@@ -579,7 +631,7 @@
         if(pendingInlineIf) continue;
         continue;
       }
-      const ifMatch = line.match(/^(if|when)\b(.*)$/i);
+      const ifMatch = line.match(/^(if)\b(.*)$/i);
       if(ifMatch){
         const conditionRaw = (ifMatch[2] || "").trim();
         const singleLineInfo = (() => {
@@ -626,7 +678,7 @@
         }
       }
       if(elseMatch && !line.includes("{")){
-        const restIfMatch = elseRest.match(/^(if|when)\b(.*)$/i);
+        const restIfMatch = elseRest.match(/^(if)\b(.*)$/i);
         if(restIfMatch){
             const nestedLine = buildConditionalLine("} else if", restIfMatch[2]);
             if(nestedLine){
@@ -748,7 +800,7 @@
           continue;
         }
       }
-      const isBlocky = /^(for|while|if|when|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(line)
+      const isBlocky = /^(for|while|if|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(line)
         || /[{;}]$/.test(line);
       if(isBlocky){
         combined.push(line);
@@ -781,6 +833,31 @@
     return indentScriptLines(combined).replace(/__SWITCH_COMMA__/g, ",");
   }
 
+  const splitCommandParts = (value) => {
+    const parts = [];
+    let buffer = "";
+    let inDoubleQuotes = false;
+    for(const ch of value){
+      if(ch === '"'){
+        buffer += ch;
+        inDoubleQuotes = !inDoubleQuotes;
+        continue;
+      }
+      if(!inDoubleQuotes && (WHITESPACE_PATTERN.test(ch) || ch === ",")){
+        if(buffer){
+          parts.push(buffer);
+          buffer = "";
+        }
+        continue;
+      }
+      buffer += ch;
+    }
+    if(buffer){
+      parts.push(buffer);
+    }
+    return parts.map((part) => part.trim()).filter(Boolean);
+  };
+
   function formatStudentCodeLine(line){
     const trimmed = typeof line === "string" ? line.trim() : "";
     if(!trimmed) return "";
@@ -791,7 +868,7 @@
     if(trimmed.includes("(") && trimmed.includes(")")){
       return trimmed.replace(/,/g, " ");
     }
-    const parts = trimmed.split(/[\s,]+/).filter(Boolean);
+    const parts = splitCommandParts(trimmed);
     if(parts.length === 0) return "";
     const fn = parts.shift();
     if(identifierPattern.test(fn)){
