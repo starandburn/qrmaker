@@ -154,18 +154,22 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     updateSwitchIndicators();
     return next;
   };
+  const isSwitchOn = (color) => Boolean(switchStates[color]);
+  const setSwitch = (color, action) => {
+    return updateSwitchState(color, action);
+  };
   const updateSwitchState = (color, action) => {
     const desired = parseSwitchAction(action);
     return (desired === null) ? toggleSwitchState(color) : setSwitchState(color, desired);
   };
-  const red = (action) => updateSwitchState("red", action);
-  const blue = (action) => updateSwitchState("blue", action);
-  const green = (action) => updateSwitchState("green", action);
-  const yellow = (action) => updateSwitchState("yellow", action);
-  const isRedOn = () => Boolean(switchStates.red);
-  const isBlueOn = () => Boolean(switchStates.blue);
-  const isGreenOn = () => Boolean(switchStates.green);
-  const isYellowOn = () => Boolean(switchStates.yellow);
+  const red = (action) => setSwitch("red", action);
+  const blue = (action) => setSwitch("blue", action);
+  const green = (action) => setSwitch("green", action);
+  const yellow = (action) => setSwitch("yellow", action);
+  const isRedOn = () => isSwitchOn("red");
+  const isBlueOn = () => isSwitchOn("blue");
+  const isGreenOn = () => isSwitchOn("green");
+  const isYellowOn = () => isSwitchOn("yellow");
   function resetSwitchStates(){
     activeSwitchNames.forEach((name) => {
       switchStates[name] = false;
@@ -1907,6 +1911,9 @@ function clearBoardSurface(){
       syncViewToggles: window.syncViewToggles,
       toggleInputs: window.toggleInputs,
     });
+    window.setSwitch = setSwitch;
+    window.isSwitchOn = isSwitchOn;
+    window.toggleSwitchState = toggleSwitchState;
     window.red = red;
     window.blue = blue;
     window.green = green;

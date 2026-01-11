@@ -35,21 +35,20 @@
     pause: "pauseRunning",
     advance: "advanceCommand",
     clear: "clearBoard",
-    red: "red",
-    blue: "blue",
-    green: "green",
-    yellow: "yellow",
+    setswitch: "setSwitch",
+    isswitchon: "isSwitchOn",
   };
   const BASE_SWITCH_NAMES = ["red", "blue", "green", "yellow"];
   const DEFAULT_ACTIVE_SWITCH_NAMES = BASE_SWITCH_NAMES.slice(0, 2);
-  const SWITCH_STATE_INFO = {
-    red: { name: "red", getter: "isRedOn", onExpr: "isRedOn()", offExpr: "!isRedOn()" },
-    blue: { name: "blue", getter: "isBlueOn", onExpr: "isBlueOn()", offExpr: "!isBlueOn()" },
-    green: { name: "green", getter: "isGreenOn", onExpr: "isGreenOn()", offExpr: "!isGreenOn()" },
-    yellow: { name: "yellow", getter: "isYellowOn", onExpr: "isYellowOn()", offExpr: "!isYellowOn()" },
-  };
+  const makeSwitchStateInfo = (name) => ({
+    name,
+    getter: `isSwitchOn("${name}")`,
+    onExpr: `isSwitchOn("${name}")`,
+    offExpr: `!isSwitchOn("${name}")`,
+  });
+  const SWITCH_STATE_INFO = Object.fromEntries(BASE_SWITCH_NAMES.map((name) => [name, makeSwitchStateInfo(name)]));
   const BASE_CONDITIONAL_KEYWORDS = ["block", "clash", "empty", "used", "timing", "skip"];
-  const BASE_ALLOWED_COMMANDS = new Set(Object.keys(ALIAS_MAP));
+  const BASE_ALLOWED_COMMANDS = new Set(Object.keys(ALIAS_MAP).map((key) => key.toLowerCase()));
   const normalizeSwitchName = (value) => {
     if(typeof value !== "string") return "";
     return value.trim().toLowerCase();
@@ -168,6 +167,52 @@
       return `if ${normalized}? turn right else turn left`;
     });
   };
+  const applySwitchConditionSpacing = (text) => {
+    if(typeof text !== "string" || !text) return text;
+    const names = getActiveSwitchNames();
+    if(!names.length) return text;
+    const pattern = names.map(escapeRegExp).join("|");
+    const condPattern = new RegExp(`\\b(${pattern})(on|off)\\?`, "gi");
+    return text.replace(condPattern, "$1 $2?");
+  };
+  const applySwitchCommandAliases = (text) => {
+    if(typeof text !== "string" || !text) return "";
+    const names = getActiveSwitchNames();
+    if(!names.length) return text;
+    const namePattern = names.map(escapeRegExp).join("|");
+    const switchLinePattern = new RegExp(
+      `^([ \\t]*)(await\\s+)?(${namePattern})(?:\\s*\\(([^)]*)\\)|((?:on|off))|\\s+((?:on|off)))?\\s*;?$`,
+      "i",
+    );
+    return text
+      .split(/\r?\n/)
+      .map((rawLine) => {
+        const trimmed = rawLine.trim();
+        if(!trimmed || trimmed.includes("?")){
+          return rawLine;
+        }
+        const match = rawLine.match(switchLinePattern);
+        if(!match){
+          return rawLine;
+        }
+        const [, indent = "", awaitPart = "", name, args, inlineState, spacedState] = match;
+        const callArgs = [`"${name}"`];
+        if(args){
+          const trimmedArgs = args.trim();
+          if(trimmedArgs){
+            callArgs.push(trimmedArgs);
+          }
+        }
+        const state = inlineState || spacedState;
+        if(state){
+          callArgs.push(`"${state.toLowerCase()}"`);
+        }
+        const placeholder = "__SWITCH_COMMA__";
+        const joined = callArgs.join(placeholder);
+        return `${indent}${awaitPart || ""}setSwitch(${joined})`;
+      })
+      .join("\n");
+  };
   const applyConditionalAliases = (text) => {
     if(typeof text !== "string" || !text) return "";
     text = normalizeColorStateSpacing(text);
@@ -258,6 +303,7 @@
         result = result.replace(negativeRegex, "$1");
       }
     }
+    result = result.replace(/(!?\s*isSwitchOn\("[^"]+"\))\?/gi, "$1");
     return result;
   };
 
@@ -464,7 +510,9 @@
   };
     const spacedText = applyKeywordSpacing(stripLineComments(rawText || ""));
     const directionSpaced = applyCompoundDirectionSpacing(spacedText);
-    const turnCommandText = applyTurnSwitchCommands(directionSpaced);
+    const switchConditionText = applySwitchConditionSpacing(directionSpaced);
+    const switchAliasedText = applySwitchCommandAliases(switchConditionText);
+    const turnCommandText = applyTurnSwitchCommands(switchAliasedText);
     const conditionalText = applyConditionalAliases(turnCommandText);
     validateAllowedCommands(conditionalText);
     const codeRaw = applyAliasTransforms(conditionalText);
@@ -730,7 +778,7 @@
       blockDepth--;
       popBlock();
     }
-    return indentScriptLines(combined);
+    return indentScriptLines(combined).replace(/__SWITCH_COMMA__/g, ",");
   }
 
   function formatStudentCodeLine(line){
