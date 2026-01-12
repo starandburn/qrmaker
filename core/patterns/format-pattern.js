@@ -8,10 +8,13 @@
  */
 (function(global){
   if(!global) return;
-  const patternCommon = global.patternCommon;
-  if(!patternCommon){
-    throw new Error("pattern-common.js must be loaded before format-pattern.js.");
+  const requireMessage = "pattern-common.js must be loaded before format-pattern.js.";
+  const requireUtils = global.requireUtils;
+  if(!requireUtils){
+    throw new Error(requireMessage);
   }
+  requireUtils.requireGlobalProp(global, "patternCommon", requireMessage);
+  const patternCommon = global.patternCommon;
   const {
     ensureHelpers,
     resolveFunctionalOptions,

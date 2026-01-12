@@ -1125,11 +1125,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   if(!globalScope){
     throw new Error("board.js must be loaded before main.js. Global scope is not available.");
   }
-  for(const key of REQUIRED_KEYS){
-    if(!(key in globalScope)){
-      throw new Error(`board.js must be loaded before main.js. Required constant '${key}' is not defined.`);
-    }
+  const requireUtils = globalScope.requireUtils;
+  if(!requireUtils){
+    throw new Error("core/require.js must be loaded before main.js.");
   }
+  requireUtils.requireGlobalKeys(globalScope, REQUIRED_KEYS, (key) => `board.js must be loaded before main.js. Required constant '${key}' is not defined.`);
   const {
     DIR_UP,
     DIR_RIGHT,
