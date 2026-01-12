@@ -939,9 +939,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   if(typeof window !== "undefined"){
     window.updateExecutionStatusCursor = updateExecutionStatusCursor;
     window.isDrawingBasePattern = false;
-    window.lastBasePatternColorName = null;
-    window.lastBasePatternBitIsBlack = false;
-    window.lastBasePatternKind = null;
     window.basePatternLookahead = [];
     window.setBasePatternLookahead = (infos) => {
       window.basePatternLookahead = Array.isArray(infos) ? infos : [];

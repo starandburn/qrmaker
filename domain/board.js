@@ -1025,15 +1025,6 @@ function updateCell(row, col, encodedValue){
   }else{
     applySetCell(r, c, encodedValue, color);
   }
-  const isBasePatternActive = typeof window !== "undefined" && Boolean(window.isDrawingBasePattern);
-  if(isBasePatternActive){
-    const isBlackBit = (typeof window.isBlackBit === "function")
-      ? window.isBlackBit(encodedValue)
-      : encodedValue > 0;
-    window.lastBasePatternColorName = color;
-    window.lastBasePatternBitIsBlack = Boolean(isBlackBit);
-    window.lastBasePatternKind = kind;
-  }
   boardMatrix[r - 1][c - 1] = encodedValue;
   return true;
 }

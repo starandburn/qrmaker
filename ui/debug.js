@@ -157,16 +157,6 @@
 
   window.logEvent = logEvent;
 
-  const debugUIExports = {
-    applyDebugVisibility,
-    isDebugVisible,
-    flushLogBuffer,
-    get debugPanel(){
-      return getDebugPanelElement();
-    },
-    createDebugSync,
-  };
-
   const debugUI = {
     applyDebugVisibility,
     isDebugVisible,
@@ -182,5 +172,4 @@
     applyDebugVisibility,
   });
   window.createDebugSync = createDebugSync;
-  window.__debugUIExports = debugUIExports;
 })(typeof window !== "undefined" ? window : globalThis);
