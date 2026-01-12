@@ -1,3 +1,16 @@
+const REQUIRED_KEYS = [
+  "DIR_UP",
+  "DIR_RIGHT",
+  "DIR_DOWN",
+  "DIR_LEFT",
+  "DIR_FRONT",
+  "DIR_BACK",
+  "RENDER_IMMEDIATE",
+  "RENDER_BUFFERED",
+  "STEP_DELAY_MS",
+  "RESET_DELAY_MS",
+  "ABORT_ERR",
+];
 
 /**
  * 実行環境を初期化し、UI/状態/描画APIの依存を束ねるメイン関数。
@@ -1113,24 +1126,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     ? window
     : (typeof globalThis !== "undefined" ? globalThis : null);
   if(!globalScope){
-    throw new Error("Global scope is not available; board.js must load before main.js.");
+    throw new Error("board.js must be loaded before main.js. Global scope is not available.");
   }
-  const requiredKeys = [
-    "DIR_UP",
-    "DIR_RIGHT",
-    "DIR_DOWN",
-    "DIR_LEFT",
-    "DIR_FRONT",
-    "DIR_BACK",
-    "RENDER_IMMEDIATE",
-    "RENDER_BUFFERED",
-    "STEP_DELAY_MS",
-    "RESET_DELAY_MS",
-    "ABORT_ERR",
-  ];
-  for(const key of requiredKeys){
+  for(const key of REQUIRED_KEYS){
     if(!(key in globalScope)){
-      throw new Error(`Required constant '${key}' is not defined. board.js must be loaded before main.js.`);
+      throw new Error(`board.js must be loaded before main.js. Required constant '${key}' is not defined.`);
     }
   }
   const {
