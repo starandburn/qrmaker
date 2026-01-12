@@ -1111,7 +1111,28 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   // Relative directions (turn relative to current)
   const globalScope = (typeof window !== "undefined")
     ? window
-    : (typeof globalThis !== "undefined" ? globalThis : {});
+    : (typeof globalThis !== "undefined" ? globalThis : null);
+  if(!globalScope){
+    throw new Error("Global scope is not available; board.js must load before main.js.");
+  }
+  const requiredKeys = [
+    "DIR_UP",
+    "DIR_RIGHT",
+    "DIR_DOWN",
+    "DIR_LEFT",
+    "DIR_FRONT",
+    "DIR_BACK",
+    "RENDER_IMMEDIATE",
+    "RENDER_BUFFERED",
+    "STEP_DELAY_MS",
+    "RESET_DELAY_MS",
+    "ABORT_ERR",
+  ];
+  for(const key of requiredKeys){
+    if(!(key in globalScope)){
+      throw new Error(`Required constant '${key}' is not defined. board.js must be loaded before main.js.`);
+    }
+  }
   const {
     DIR_UP,
     DIR_RIGHT,
