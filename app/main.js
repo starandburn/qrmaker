@@ -1109,18 +1109,22 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   // Relative directions (turn relative to current)
-  const DIR_UP = "up";
-  const DIR_RIGHT = "right";
-  const DIR_DOWN = "down";
-  const DIR_LEFT = "left";
-  const DIR_FRONT = "front";
-  const DIR_BACK = "back";
-  const RENDER_IMMEDIATE = "immediate";
-  const RENDER_BUFFERED = "buffered";
-  const STEP_DELAY_MS = 12;
-  const ABORT_ERR = window.ABORT_ERR || Symbol("run-aborted");
-  window.ABORT_ERR = ABORT_ERR;
-  const RESET_DELAY_MS = 10;
+  const globalScope = (typeof window !== "undefined")
+    ? window
+    : (typeof globalThis !== "undefined" ? globalThis : {});
+  const {
+    DIR_UP,
+    DIR_RIGHT,
+    DIR_DOWN,
+    DIR_LEFT,
+    DIR_FRONT,
+    DIR_BACK,
+    RENDER_IMMEDIATE,
+    RENDER_BUFFERED,
+    STEP_DELAY_MS,
+    ABORT_ERR,
+    RESET_DELAY_MS,
+  } = globalScope;
   const FORMAT_L = [
     30660, // mask 0
     29427, // mask 1
