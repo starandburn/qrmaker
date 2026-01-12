@@ -3,8 +3,10 @@
  */
 (function(global){
   if(!global) return;
-  const ABORT_ERR = global.ABORT_ERR || Symbol("run-aborted");
-  global.ABORT_ERR = ABORT_ERR;
+  const ABORT_ERR = global.ABORT_ERR;
+  if(!ABORT_ERR){
+    throw new Error("board.js must be loaded before script-parser.js. Required constant 'ABORT_ERR' is not defined.");
+  }
 
   const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const ALIAS_MAP = {
