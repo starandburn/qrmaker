@@ -8,17 +8,18 @@
  */
 (function(global){
   if(!global) return;
-
-  const ensureHelpers = (ctx) => (ctx && ctx.helpers) ? ctx.helpers : {};
+  const patternCommon = global.patternCommon;
+  if(!patternCommon){
+    throw new Error("pattern-common.js must be loaded before timing-pattern.js.");
+  }
+  const {
+    ensureHelpers,
+    resolveFunctionalOptions,
+    setBasePatternLookahead,
+    shouldAbort,
+  } = patternCommon;
   const PATTERN_STEP_SCALE = 1;
   const resolveStepDir = (dirVal) => (dirVal === TIMING_HORIZONTAL ? DIR_RIGHT : DIR_DOWN);
-  const setBasePatternLookahead = (infos) => {
-    if(typeof global.setBasePatternLookahead === "function"){
-      global.setBasePatternLookahead(infos);
-    }else{
-      global.basePatternLookahead = Array.isArray(infos) ? infos : [];
-    }
-  };
   const buildTimingLookahead = (dirVal, startPos) => {
     const infos = [];
     for(let i = 1; i <= 4; i++){
@@ -29,28 +30,6 @@
     }
     return infos;
   };
-
-  function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
-    const baseRun = ctx ? ctx.runId : 0;
-    const helpers = ensureHelpers(ctx);
-    const defaultStep = helpers.shouldStepFunctions ? helpers.shouldStepFunctions() : false;
-    if(typeof overwriteOrOpts === "object" && overwriteOrOpts !== null && !Array.isArray(overwriteOrOpts)){
-      const { overwrite = false, currentRun, stepEnabled: stepFromOpts } = overwriteOrOpts;
-      const resolvedRun = (typeof currentRun === "number") ? currentRun : baseRun;
-      const resolvedStep = (typeof stepFromOpts === "boolean") ? stepFromOpts : defaultStep;
-      return { overwrite, currentRun: resolvedRun, stepEnabled: resolvedStep };
-    }
-    const overwriteValue = (overwriteOrOpts === undefined) ? true : overwriteOrOpts;
-    if(typeof currentRunOrOpts === "object" && currentRunOrOpts !== null && !Array.isArray(currentRunOrOpts)){
-      const { currentRun, stepEnabled: stepFromOpts } = currentRunOrOpts;
-      const resolvedRun = (typeof currentRun === "number") ? currentRun : baseRun;
-      const resolvedStep = (typeof stepFromOpts === "boolean") ? stepFromOpts : defaultStep;
-      return { overwrite: overwriteValue, currentRun: resolvedRun, stepEnabled: resolvedStep };
-    }
-    const resolvedRun = (typeof currentRunOrOpts === "number") ? currentRunOrOpts : baseRun;
-    const resolvedStep = (typeof stepEnabled === "boolean") ? stepEnabled : defaultStep;
-    return { overwrite: overwriteValue, currentRun: resolvedRun, stepEnabled: resolvedStep };
-  }
 
   /** Writes one timing row or column and tracks stepping/abort. */
   async function putTimingCells(ctx, direction = TIMING_HORIZONTAL, index = TIMING_ROW, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
@@ -68,12 +47,6 @@
     const step = !!resolvedStep;
     const allowOverwrite = overwrite !== false;
     const canWriteTimingCell = (r, c) => shouldPlaceCell(r, c, allowOverwrite);
-    const shouldAbort = () => {
-      if(global.executionControl && typeof global.executionControl.shouldAbort === "function"){
-        return global.executionControl.shouldAbort(runToken, ctx);
-      }
-      return runToken !== ctx.runId;
-    };
     if(!step){
       const prevRender = ctx.renderMode;
       ctx.setRenderMode(ctx.RENDER_BUFFERED);
@@ -118,7 +91,7 @@
         let col = 1;
         timingRowIndex = pos;
         while(col <= 25){
-          if(shouldAbort()) return false;
+          if(shouldAbort(runToken, ctx)) return false;
           if(!ctx.helpers || !ctx.helpers.shouldStepFunctions() && !ctx.helpers.isStepModeOn()){
             ctx.setRenderMode(prevRender);
             return putTimingCells(ctx, direction, index, overwrite, { stepEnabled: false, currentRun: runToken });
@@ -138,7 +111,7 @@
         timingColIndex = pos;
         let row = 1;
         while(row <= 25){
-          if(shouldAbort()) return false;
+          if(shouldAbort(runToken, ctx)) return false;
           if(!ctx.helpers || !ctx.helpers.shouldStepFunctions() && !ctx.helpers.isStepModeOn()){
             ctx.setRenderMode(prevRender);
             return putTimingCells(ctx, direction, index, overwrite, { stepEnabled: false, currentRun: runToken });
