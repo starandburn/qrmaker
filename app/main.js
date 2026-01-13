@@ -1227,7 +1227,13 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   if(typeof window !== "undefined"){
     window.shouldStepFunctions = shouldStepFunctions;
   }
+  const bumpPauseAbortVersion = () => {
+    if(typeof window === "undefined") return;
+    const current = Number.isFinite(window.__pauseAbortVersion) ? window.__pauseAbortVersion : 0;
+    window.__pauseAbortVersion = current + 1;
+  };
   function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false, reason = "" } = {}){
+    bumpPauseAbortVersion();
     ctx.runId++;
     ctx.isStepFillRunning = false;
     setInputLock(false);

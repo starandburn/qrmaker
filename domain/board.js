@@ -92,12 +92,24 @@ function isDataKind(kind){
 
 const LOOP_ITER_LIMIT = BOARD_ROWS * BOARD_COLS;
 let loopGuardCounter = 0;
+let loopStagnantCounter = 0;
+let loopStagnantPosition = `${cursorPos.row}-${cursorPos.col}`;
+const getCursorPositionKey = () => `${cursorPos.row}-${cursorPos.col}`;
 function resetLoopGuard(){
   loopGuardCounter = 0;
+  loopStagnantCounter = 0;
+  loopStagnantPosition = getCursorPositionKey();
 }
 function canContinueLoop(){
   loopGuardCounter++;
-  return loopGuardCounter <= LOOP_ITER_LIMIT;
+  const currentPosition = getCursorPositionKey();
+  if(currentPosition === loopStagnantPosition){
+    loopStagnantCounter++;
+  }else{
+    loopStagnantPosition = currentPosition;
+    loopStagnantCounter = 0;
+  }
+  return loopGuardCounter <= LOOP_ITER_LIMIT && loopStagnantCounter <= LOOP_ITER_LIMIT;
 }
 
 function ensureCells(){
@@ -772,11 +784,62 @@ function sleep(ms){
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function pauseRunning({ delayMs = 60 } = {}){
+const getPauseAbortVersion = () => {
+  if(typeof window === "undefined") return 0;
+  const current = window.__pauseAbortVersion;
+  return Number.isFinite(current) ? current : 0;
+};
+
+const sleepWithAbort = async (ms, version) => {
+  let remaining = Math.max(0, ms);
+  while(remaining > 0){
+    if(getPauseAbortVersion() !== version){
+      throw ABORT_ERR;
+    }
+    const chunk = Math.min(50, remaining);
+    await sleep(chunk);
+    remaining -= chunk;
+  }
+  if(getPauseAbortVersion() !== version){
+    throw ABORT_ERR;
+  }
+};
+
+const parseDelayMsValue = (value) => {
+  if(typeof value === "string"){
+    const trimmed = value.trim().toLowerCase();
+    const match = trimmed.match(/^(-?\d+(?:\.\d+)?)(ms|s)?$/);
+    if(match){
+      const amount = Number(match[1]);
+      if(Number.isFinite(amount)){
+        return match[2] === "s" ? amount * 1000 : amount;
+      }
+    }
+  }
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
+const resolvePauseDelayArg = (value) => {
+  if(value === null || value === undefined){
+    return 60;
+  }
+  if(typeof value === "object"){
+    if("delayMs" in value){
+      return value.delayMs === undefined ? 60 : value.delayMs;
+    }
+    return 60;
+  }
+  return value;
+};
+
+async function pauseRunning(arg = {}){
   flushRender();
-  const wait = Number(delayMs);
-  if(!Number.isFinite(wait) || wait <= 0) return;
-  await sleep(wait);
+  const delayCandidate = resolvePauseDelayArg(arg);
+  const parsed = parseDelayMsValue(delayCandidate);
+  if(parsed === null || parsed <= 0) return;
+  const version = getPauseAbortVersion();
+  await sleepWithAbort(parsed, version);
 }
 
 function colorsForKind(kind){

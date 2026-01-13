@@ -244,8 +244,8 @@
     const names = getActiveSwitchNames();
     if(!names.length) return text;
     const namePattern = names.map(escapeRegExp).join("|");
-    const switchLinePattern = new RegExp(
-      `^([ \\t]*)(await\\s+)?(${namePattern})(?:\\s*\\(([^)]*)\\)|((?:on|off))|\\s+((?:on|off)))?\\s*;?$`,
+      const switchLinePattern = new RegExp(
+      `^([ \\t]*)(await\\s+)?(${namePattern})(?:\\s*\\(([^)]*)\\)|((?:on|off|flip|toggle))|\\s+((?:on|off|flip|toggle)))?\\s*;?$`,
       "i",
     );
     return text
@@ -501,7 +501,6 @@
     const pushBlock = (type) => {
       blockStack.push(type);
     };
-    const repeatDefaultConditionName = () => "hasMoreData";
     const DEFAULT_WHILE_CONDITION = "hasMoreData";
     const DEFAULT_UNTIL_CONDITION = "isDataEnd";
     const extractParenInfo = (line) => {
@@ -892,9 +891,7 @@
             }
           }
         }
-        const repeatCondition = repeatDefaultConditionName();
-        const guardCondition = formatStudentCodeLine(repeatCondition);
-        const whileLine = `while (${guardCondition} && canContinueLoop()) {`;
+        const whileLine = `while (canContinueLoop()) {`;
         combined.push(whileLine);
         blockDepth += countBraceDelta(whileLine);
         pushBlock("repeat");
