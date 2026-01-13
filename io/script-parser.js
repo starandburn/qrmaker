@@ -23,8 +23,8 @@
     qrcode: "drawQRCode",
     empty: "isEmpty",
     used: "isUsed",
-    clash: "isMoveBlocked",
     block: "isMoveBlocked",
+    wall: "isMoveBlocked",
     put: "putCell",
     timing: "putTimingCells",
     skip: "isSkipZone",
@@ -53,7 +53,16 @@
     offExpr: `!isSwitchOn("${name}")`,
   });
   const SWITCH_STATE_INFO = Object.fromEntries(BASE_SWITCH_NAMES.map((name) => [name, makeSwitchStateInfo(name)]));
-  const BASE_CONDITIONAL_KEYWORDS = ["block", "clash", "empty", "used", "timing", "skip"];
+  const BASE_CONDITIONAL_KEYWORDS = [
+    "block",
+    "wall",
+    "pass",
+    "empty",
+    "used",
+    "timing",
+    "skip",
+    "last",
+  ];
   const BASE_ALLOWED_COMMANDS = new Set(Object.keys(ALIAS_MAP).map((key) => key.toLowerCase()));
   const normalizeSwitchName = (value) => {
     if(typeof value !== "string") return "";
@@ -327,8 +336,54 @@
       return line;
     });
     let result = mapped.join("\n");
-    result = result.replace(/\bif\s+timing\b/gi, (match) => match.replace(/timing/i, "isSkip"));
-    result = result.replace(/\bif\s*\(\s*timing\b/gi, (match) => match.replace(/timing/i, "isSkip"));
+    result = result.replace(/\bif\s+timing\b/gi, (match) => match.replace(/timing/i, "isSkipZone"));
+    result = result.replace(/\bif\s*\(\s*timing\b/gi, (match) => match.replace(/timing/i, "isSkipZone"));
+    result = result.replace(/\bif\s+(last|end)\b/gi, (match) => match.replace(/(last|end)/i, "!hasMoreData"));
+    result = result.replace(
+      /\bif\s*\(\s*(last|end)\b/gi,
+      (match) => match.replace(/(last|end)/i, "!hasMoreData"),
+    );
+    if(conditionalPattern){
+      const loopKeywordPattern = "(while|until|repeat|loop)";
+      const whileUntilQuestionPattern = new RegExp(
+        `\\b${loopKeywordPattern}\\s+(-\\s*)?(${conditionalPattern})\\s*\\?`,
+        "gi",
+      );
+      result = result.replace(
+        whileUntilQuestionPattern,
+        (_match, keyword, negPrefix, cond) => {
+          const prefix = negPrefix ? `${negPrefix.trim()} ` : "";
+          return `${keyword} ${prefix}${cond}`;
+        },
+      );
+      const whileUntilParenQuestionPattern = new RegExp(
+        `\\b${loopKeywordPattern}\\s*\\(\\s*(-\\s*)?(${conditionalPattern})\\s*\\?`,
+        "gi",
+      );
+      result = result.replace(
+        whileUntilParenQuestionPattern,
+        (_match, keyword, negPrefix, cond) => {
+          const prefix = negPrefix ? `${negPrefix.trim()} ` : "";
+          return `${keyword} (${prefix}${cond}`;
+        },
+      );
+    }
+    result = result.replace(/\bif\s+pass\b/gi, (match) => match.replace(/pass/i, "!isMoveBlocked"));
+    result = result.replace(/\bif\s*\(\s*pass\b/gi, (match) => match.replace(/pass/i, "!isMoveBlocked"));
+    result = result.replace(/\bif\s+!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
+    result = result.replace(/\bif\s*\(\s*!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
+    result = result.replace(/\b(while|until|repeat|loop)\s+pass\b/gi, (match) => match.replace(/pass/i, "!isMoveBlocked"));
+    result = result.replace(/\b(while|until|repeat|loop)\s*\(\s*pass\b/gi, (match) => match.replace(/pass/i, "!isMoveBlocked"));
+    result = result.replace(/\b(while|until|repeat|loop)\s+!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
+    result = result.replace(/\b(while|until|repeat|loop)\s*\(\s*!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
+      result = result.replace(
+        /\b(while|until|repeat|loop)\s+(last|end)\b/gi,
+        (match) => match.replace(/(last|end)/i, "!hasMoreData"),
+      );
+      result = result.replace(
+        /\b(while|until|repeat|loop)\s*\(\s*(last|end)\b/gi,
+        (match) => match.replace(/(last|end)/i, "!hasMoreData"),
+      );
     const replaceColorStateCondition = (source, info, state, expr) => {
       if(!info) return source;
       const statePattern = `${state}\\??`;
@@ -364,6 +419,11 @@
     }
     result = result.replace(/(!?\s*isSwitchOn\("[^"]+"\))\?/gi, "$1");
     return result;
+  };
+
+  const normalizeLoopHyphenSpacing = (text) => {
+    if(typeof text !== "string" || !text) return text || "";
+    return text.replace(/\b(repeat|loop)-(?=\S)/gi, "$1 - ");
   };
 
   const countBraceDelta = (line) => {
@@ -507,12 +567,35 @@
     };
     const stopCommandPattern = /^stop(?:\s+(?:for|while|repeat))?$/i;
     const buildSimpleLoopLine = (keyword, conditionRaw) => {
-      const condFormatted = formatStudentCodeLine(conditionRaw);
+      const parseLoopCondition = (value) => {
+        const trimmed = typeof value === "string" ? value.trim() : "";
+        if(!trimmed) return null;
+        let base = trimmed;
+        let negationCount = 0;
+        if(base.startsWith("-")){
+          negationCount++;
+          base = base.slice(1).trim();
+        }
+        const lower = base.toLowerCase();
+        if(lower === "end" || lower === "last"){
+          negationCount++;
+          base = "hasMoreData";
+        }
+        if(!base) return null;
+        return { base, negationCount };
+      };
+      const parsed = parseLoopCondition(conditionRaw);
+      if(!parsed) return null;
+      const condFormatted = formatStudentCodeLine(parsed.base);
       if(!condFormatted) return null;
-      if(keyword === "while"){
-        return `while (${condFormatted} && canContinueLoop()) {`;
+      let condExpr = condFormatted;
+      for(let i = 0; i < parsed.negationCount; i++){
+        condExpr = `!(${condExpr})`;
       }
-      return `while (!(${condFormatted}) && canContinueLoop()) {`;
+      if(keyword === "while"){
+        return `while (${condExpr} && canContinueLoop()) {`;
+      }
+      return `while (!(${condExpr}) && canContinueLoop()) {`;
     };
     const formatSimpleFor = (countVal) => {
       const n = Number(countVal);
@@ -567,7 +650,8 @@
     ensureNoForbiddenSymbols(commentStrippedText);
     const spacedText = applyKeywordSpacing(commentStrippedText);
     const directionSpaced = applyCompoundDirectionSpacing(spacedText);
-    const negatedConditionText = applyNegationQuestionSpacing(directionSpaced);
+    const hyphenNormalizedText = normalizeLoopHyphenSpacing(directionSpaced);
+    const negatedConditionText = applyNegationQuestionSpacing(hyphenNormalizedText);
     const switchConditionText = applySwitchConditionSpacing(negatedConditionText);
     const switchAliasedText = applySwitchCommandAliases(switchConditionText);
     const turnCommandText = applyTurnSwitchCommands(switchAliasedText);
@@ -784,27 +868,37 @@
       if(/^for\b/i.test(line)){
         throw new Error("for は回数指定のみ対応しています");
       }
-      const repeatMatch = line.match(/^repeat(?:\s+(\d+))?$/i);
-      const loopMatch = line.match(/^loop(?:\s+(\d+))?$/i);
+      const repeatMatch = line.match(/^repeat(?:\s+(.+))?$/i);
+      const loopMatch = line.match(/^loop(?:\s+(.+))?$/i);
       if(repeatMatch || loopMatch){
-        const count = repeatMatch ? repeatMatch[1] : loopMatch[1];
-        if(count){
-          const formattedFor = formatSimpleFor(count);
-          if(formattedFor){
-            combined.push(formattedFor);
-            blockDepth += countBraceDelta(formattedFor);
-            pushBlock("repeat");
-            continue;
+        const repeatArgRaw = repeatMatch ? repeatMatch[1] : loopMatch[1];
+        const repeatArg = typeof repeatArgRaw === "string" ? repeatArgRaw.trim() : "";
+        if(repeatArg){
+          if(/^\d+$/.test(repeatArg)){
+            const formattedFor = formatSimpleFor(repeatArg);
+            if(formattedFor){
+              combined.push(formattedFor);
+              blockDepth += countBraceDelta(formattedFor);
+              pushBlock("repeat");
+              continue;
+            }
+          }else{
+            const loopLine = buildSimpleLoopLine("while", repeatArg);
+            if(loopLine){
+              combined.push(loopLine);
+              blockDepth += countBraceDelta(loopLine);
+              pushBlock("repeat");
+              continue;
+            }
           }
-        }else{
-          const repeatCondition = repeatDefaultConditionName();
-          const guardCondition = formatStudentCodeLine(repeatCondition);
-          const whileLine = `while (${guardCondition} && canContinueLoop()) {`;
-          combined.push(whileLine);
-          blockDepth += countBraceDelta(whileLine);
-          pushBlock("repeat");
-          continue;
         }
+        const repeatCondition = repeatDefaultConditionName();
+        const guardCondition = formatStudentCodeLine(repeatCondition);
+        const whileLine = `while (${guardCondition} && canContinueLoop()) {`;
+        combined.push(whileLine);
+        blockDepth += countBraceDelta(whileLine);
+        pushBlock("repeat");
+        continue;
       }
       const isBlocky = /^(for|while|if|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(line)
         || /[{;}]$/.test(line);
