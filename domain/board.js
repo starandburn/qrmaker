@@ -39,6 +39,12 @@ const rotateDir = (baseDir, delta) => {
   const next = DIR_ORDER[((idx + delta) % 4 + 4) % 4];
   return next;
 };
+const isDirectionEnabled = () => (typeof window !== "undefined" && window.useDirection === true);
+const shouldAllowDirectionCommands = () => {
+  if(typeof window === "undefined") return true;
+  if(window.useDirection === true) return true;
+  return window.__allowDirectionCommands === true;
+};
 
 const HOME_CURSOR = { row: 1, col: 1, dir: DIR_RIGHT };
 const cursorPos = {
@@ -310,9 +316,12 @@ function applyCursor(row, col, dir){
   const x = (c - 1) * cellW;
   const y = (r - 1) * cellH;
 
-  const angle = dir === DIR_RIGHT ? 90
-    : dir === DIR_DOWN ? 180
-    : dir === DIR_LEFT ? 270
+  const directionEnabled = isDirectionEnabled() || shouldAllowDirectionCommands();
+  const angle = directionEnabled
+    ? (dir === DIR_RIGHT ? 90
+      : dir === DIR_DOWN ? 180
+      : dir === DIR_LEFT ? 270
+      : 0)
     : 0;
 
   cursor.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
@@ -320,19 +329,21 @@ function applyCursor(row, col, dir){
 
 function updateCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.dir){
   if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
+  const directionEnabled = isDirectionEnabled() || shouldAllowDirectionCommands();
+  const nextDir = directionEnabled ? dir : cursorPos.dir;
   const r = row;
   const c = col;
   cursorPos.row = r;
   cursorPos.col = c;
-  cursorPos.dir = dir;
+  cursorPos.dir = nextDir;
   if(renderMode === RENDER_BUFFERED){
-    pendingCursor = { row: r, col: c, dir };
+    pendingCursor = { row: r, col: c, dir: nextDir };
     if(typeof window.updateExecutionStatusCursor === "function"){
       window.updateExecutionStatusCursor();
     }
     return true;
   }
-  applyCursor(r, c, dir);
+  applyCursor(r, c, nextDir);
   if(typeof window.updateExecutionStatusCursor === "function"){
     window.updateExecutionStatusCursor();
   }
@@ -357,11 +368,26 @@ function setHomeCursor({ row, col, dir } = {}){
   }
 }
 
-  function moveCursor(...args){
-    lastMoveBlocked = false;
-    let targetRow = cursorPos.row;
-    let targetCol = cursorPos.col;
-    let finalDir = cursorPos.dir;
+function moveCursor(...args){
+  const directionEnabled = isDirectionEnabled();
+  if(!directionEnabled && !shouldAllowDirectionCommands()){
+    if(args.length === 0){
+      throw new Error("Directionless mode requires explicit direction: move up/down/left/right");
+    }
+    for(const arg of args){
+      if(typeof arg !== "string") continue;
+      const trimmedArg = arg.trim();
+      const unquoted = trimmedArg.replace(/^["'](.+)["']$/, "$1");
+      const lower = unquoted.toLowerCase();
+      if(lower === DIR_FRONT || lower === DIR_BACK){
+        throw new Error(`Direction commands are disabled (useDirection=false): move ${lower}`);
+      }
+    }
+  }
+  lastMoveBlocked = false;
+  let targetRow = cursorPos.row;
+  let targetCol = cursorPos.col;
+  let finalDir = cursorPos.dir;
     let logLabel = null;
     let logPositionOnly = false;
     let shouldResetMoveNext = false;
@@ -518,6 +544,7 @@ function setHomeCursor({ row, col, dir } = {}){
   }else if(args.length >= 2){
     const [first, second, third] = args;
     const maybeDir = (val) => {
+      if(!directionEnabled) return;
       const d = normalizeDir(val);
       if(d) finalDir = d;
     };
@@ -623,6 +650,9 @@ function setHomeCursor({ row, col, dir } = {}){
 }
 
 async function moveNext(){
+  if(!isDirectionEnabled() && !shouldAllowDirectionCommands()){
+    throw new Error("Direction commands are disabled (useDirection=false): move next");
+  }
   const isLeftStep = (moveNextCounter % 2) === 0;
   moveNextCounter += 1;
   if(isLeftStep){
@@ -636,6 +666,9 @@ async function moveNext(){
 }
 
 async function moveAdvance(){
+  if(!isDirectionEnabled() && !shouldAllowDirectionCommands()){
+    throw new Error("Direction commands are disabled (useDirection=false): move advance");
+  }
   await moveNext();
   if(typeof window.isMoveBlocked === "function" && window.isMoveBlocked()){
     await turnCursor();
@@ -668,6 +701,9 @@ function makeStepResult(value, options = {}){
 }
 
 function turnCursor(dirArg){
+  if(!isDirectionEnabled() && !shouldAllowDirectionCommands()){
+    throw new Error("Direction commands are disabled (useDirection=false): turn");
+  }
   let targetDir = cursorPos.dir;
   const requestedDir = dirArg === undefined ? "back" : dirArg;
   if(dirArg === undefined){

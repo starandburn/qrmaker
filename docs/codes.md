@@ -7,7 +7,7 @@ qrcode  // QRコードを作成する
 
 ## Step2 フェーズ分解
 ````
-clear   // 盤面をクリアー
+reset   // 盤面をクリアー
 base    // 基本パターンを描画
 data    // データパターンを描画
 mask    // マスクを適用
@@ -15,7 +15,7 @@ mask    // マスクを適用
 
 ## Step3 上方向に連続描画
 ````
-clear           // 盤面をクリア
+reset           // 盤面をクリア
 move y25 up     // y=25へ移動して上向きに設定
 repeat          // 繰り返し開始
   put           // 現在位置に描画
@@ -25,7 +25,7 @@ endrepeat       // 繰り返し終了
 
 ## Step4 折り返して連続描画
 ````
-clear           // 盤面をクリア
+reset           // 盤面をクリア
 move y25 up     // y=25へ移動して上向きに設定
 repeat          // 繰り返し開始
   put           // 現在位置に描画
@@ -39,7 +39,7 @@ endrepeat       // 繰り返し終了
 
 ## Step5 ジグザグ描画
 ````
-clear           // 盤面をクリア
+reset           // 盤面をクリア
 move y25 up     // y=25へ移動して上向きに設定
 repeat          // 繰り返し開始
   put           // 左列に描画
@@ -57,7 +57,7 @@ endrepeat       // 繰り返し終了
 
 ## Step6 基本パターン追加
 ````
-clear           // 盤面をクリア
+reset           // 盤面をクリア
 base            // 基本パターンを描画
 move y25 up     // y=25へ移動して上向きに設定
 repeat          // 繰り返し開始
@@ -76,7 +76,7 @@ endrepeat       // 繰り返し終了
 
 ## Step7 基本パターン回避
 ````
-clear             // 盤面をクリア
+reset             // 盤面をクリア
 base              // 基本パターンを描画
 move y25 up       // y=25へ移動して上向きに設定
 repeat            // 繰り返し開始
@@ -95,7 +95,7 @@ endrepeat         // 繰り返し終了
 
 ## Step8 タイミング列回避
 ````
-clear             // 盤面をクリア
+reset             // 盤面をクリア
 base              // 基本パターンを描画
 move y25 up       // y=25へ移動して上向きに設定
 repeat            // 繰り返し開始
@@ -115,7 +115,7 @@ endrepeat         // 繰り返し終了
 
 ## Step9 マスク適用
 ````
-clear             // 盤面をクリア
+reset             // 盤面をクリア
 base              // 基本パターンを描画
 move y25 up       // y=25へ移動して上向きに設定
 repeat            // 繰り返し開始
@@ -136,7 +136,7 @@ mask              // マスクを適用
 
 ## Step10 スイッチによる1リピート1put
 ````
-clear             // 盤面をクリア
+reset             // 盤面をクリア
 base              // 基本パターンを描画
 move y25 up       // y=25へ移動して上向きに設定
 repeat            // 繰り返し開始
@@ -160,7 +160,7 @@ mask              // マスクを適用
 
 ## Step11 相対移動のみ
 ````
-clear                      // 盤面をクリア
+reset                      // 盤面をクリア
 base                       // 基本パターンを描画
 move y25 right             // y=25へ移動して右向きに設定
 repeat                     // 繰り返し開始
@@ -186,3 +186,36 @@ repeat                     // 繰り返し開始
 endrepeat                  // 繰り返し終了
 mask                       // マスクを適用
 ````
+
+## Step12 向き概念廃止
+````
+reset
+base
+move y25
+
+red on
+repeat-last
+
+  // 2マス分配置（列ペア）
+  if empty? put next
+  move left
+  if empty? put next
+
+  // 縦に1マス進む（赤スイッチで上/下）
+  if red? move up else move down
+
+  // 端に当たったら折り返し処理
+  if block?
+    move left
+    if timing? move left
+    red flip
+  else
+    // 折り返しでない場合は列ペアの位置合わせ
+    move right
+  endif
+
+end repeat
+mask
+
+````
+

@@ -40,7 +40,6 @@
     next: "getNextData",
     pause: "pauseRunning",
     advance: "advanceCommand",
-    clear: "clearBoard",
     setswitch: "setSwitch",
     isswitchon: "isSwitchOn",
   };
@@ -968,6 +967,34 @@
     const parts = splitCommandParts(trimmed);
     if(parts.length === 0) return "";
     const fn = parts.shift();
+    const fnLower = typeof fn === "string" ? fn.toLowerCase() : "";
+    const directionEnabled = (typeof global !== "undefined" && global.useDirection === true);
+    if(!directionEnabled){
+      if(fnLower === "turn" || fnLower === "turncursor"){
+        throw new Error("Direction commands are disabled (useDirection=false): turn");
+      }
+      if(fnLower === "movenext"){
+        throw new Error("Direction commands are disabled (useDirection=false): move next");
+      }
+      if(fnLower === "moveadvance" || fnLower === "advancecommand"){
+        throw new Error("Direction commands are disabled (useDirection=false): move advance");
+      }
+      if(fnLower === "move" || fnLower === "movecursor"){
+        if(parts.length === 0){
+          throw new Error("Directionless mode requires explicit direction: move up/down/left/right");
+        }
+        const normalizeArg = (value) => {
+          if(typeof value !== "string") return "";
+          const trimmedArg = value.trim();
+          const unquoted = trimmedArg.replace(/^["'](.+)["']$/, "$1");
+          return unquoted.toLowerCase();
+        };
+        const forbidden = parts.map(normalizeArg).find((arg) => arg === "front" || arg === "back");
+        if(forbidden){
+          throw new Error(`Direction commands are disabled (useDirection=false): move ${forbidden}`);
+        }
+      }
+    }
     if(identifierPattern.test(fn)){
       if(!globalEnv || typeof globalEnv[fn] !== "function"){
         throw new Error(`不明なコマンド: ${fn}`);

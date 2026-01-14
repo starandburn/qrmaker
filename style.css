@@ -1433,6 +1433,9 @@ textarea:focus{
     0 -1px #fff,
     0 1px #fff;
 }
+.direction-disabled .execution-status-visual-cursor::after{
+  display:none;
+}
 .execution-status-visual-cursor[data-dir="up"]::after{
   top:6%;
   left:50%;
@@ -1870,6 +1873,10 @@ textarea:focus{
   border-left:7px solid transparent;
   border-right:7px solid transparent;
   border-bottom:11px solid var(--cursor-color);
+}
+.direction-disabled .qr-cursor::before,
+.direction-disabled .qr-cursor::after{
+  display:none;
 }
 
 .qr-cursor.is-set{

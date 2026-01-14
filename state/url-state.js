@@ -14,6 +14,7 @@
   const SKIP_EXISTING_PARAM_KEY = "x";
   const STEP_SPEED_PARAM_KEY = "e";
   const STEP_FLAGS_PARAM_KEY = "s";
+  const USE_DIRECTION_PARAM_KEY = "useDirection";
 
   const lookupParam = (primary) => {
     if(primary && params.has(primary)) return params.get(primary);
@@ -254,6 +255,8 @@
     defaultSkipExistingCells = false,
     autoAvoidTiming,
     defaultAutoAvoidTiming = false,
+    useDirection,
+    defaultUseDirection = false,
     initialDebugParamPresent = false,
     codePanel,
   } = {}) => {
@@ -319,6 +322,11 @@
     if(normalizedAutoAvoid !== normalizedAutoDefault){
       stateParams.set(TIMING_AUTO_PARAM_KEY, normalizedAutoAvoid ? "1" : "0");
     }
+    const normalizedDirection = Boolean(useDirection);
+    const normalizedDefaultDirection = Boolean(defaultUseDirection);
+    if(normalizedDirection !== normalizedDefaultDirection){
+      stateParams.set(USE_DIRECTION_PARAM_KEY, normalizedDirection ? "1" : "0");
+    }
     if(params.get("z") === "1"){
       stateParams.set("z", "1");
     }
@@ -352,6 +360,7 @@
       HISTORY: HISTORY_PARAM_KEY,
       SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY,
       TIMING_AUTO: TIMING_AUTO_PARAM_KEY,
+      USE_DIRECTION: USE_DIRECTION_PARAM_KEY,
     },
   };
 

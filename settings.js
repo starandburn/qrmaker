@@ -70,6 +70,7 @@ window.appSettingsFromScript = {
       // デバッグ値表示
       "viewDebugValues": true
     },
+    "useDirection": false,
     // カーソル初期方向
     "homeCursorDirection": "right",
     // サンプル入力の候補
@@ -87,14 +88,14 @@ window.appSettingsFromScript = {
       },
       {
         "label": "2",
-        "code": `clear
+        "code": `reset
 base
 data
 mask`
       },
       {
         "label": "3",
-        "code": `clear
+        "code": `reset
 base
 move y25 up
 repeat
@@ -110,7 +111,7 @@ mask`
       },
       {
         "label": "4",
-        "code": `clear
+        "code": `reset
 base
 move y25 up
 repeat
@@ -136,7 +137,7 @@ mask`
       },
       {
         "label": "5",
-        "code": `clear
+        "code": `reset
 base
 move y25 up
 repeat

@@ -491,6 +491,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     STEP_FLAGS: STEP_FLAGS_PARAM_KEY = "s",
     SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY = "x",
     AUTO_AVOID_TIMING: TIMING_AUTO_PARAM_KEY = "t",
+    USE_DIRECTION: USE_DIRECTION_PARAM_KEY = "useDirection",
   } = PARAM_KEYS;
   const initialDebugParamPresent = urlParams.has(DEBUG_PARAM_KEY);
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
@@ -527,6 +528,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const defaultAutoAvoidTiming = (typeof configDefaults.autoAvoidTiming === "boolean")
     ? configDefaults.autoAvoidTiming
     : false;
+  const defaultUseDirection = (typeof configDefaults.useDirection === "boolean")
+    ? configDefaults.useDirection
+    : false;
   const resolveMaskIndex = (value, fallback = 0) => {
     const numeric = Number(value);
     if(Number.isFinite(numeric)){
@@ -552,6 +556,16 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     ? autoAvoidTimingFromParam
     : defaultAutoAvoidTiming;
   window.autoAvoidTiming = autoAvoidTiming;
+  const useDirectionFromParam = urlParams.has(USE_DIRECTION_PARAM_KEY)
+    ? urlState.stringifyBool(urlParams.get(USE_DIRECTION_PARAM_KEY))
+    : null;
+  const useDirection = (useDirectionFromParam !== null)
+    ? useDirectionFromParam
+    : defaultUseDirection;
+  window.useDirection = useDirection;
+  if(document && document.body){
+    document.body.classList.toggle("direction-disabled", !useDirection);
+  }
   const ensureUserCodeCaretVisible = () => {
     if(!userCodeInput) return;
     const pos = typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : 0;
@@ -857,6 +871,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       : "";
     const rowText = String(cursorPos.row).padStart(2, " ");
     const colText = String(cursorPos.col).padStart(2, " ");
+    const directionEnabled = (typeof window.useDirection === "boolean") ? window.useDirection : true;
     const dirSymbol = (() => {
       switch(cursorPos.dir){
         case DIR_UP: return "▲";
@@ -877,8 +892,13 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     })();
     cursorInlineLabelEl.textContent = "Cursor";
     cursorTextEl.textContent = `${ref}(${rowText},${colText})`;
-    cursorVisualEl.setAttribute("data-arrow", dirSymbol);
-    cursorVisualEl.setAttribute("data-dir", dirName);
+    if(directionEnabled){
+      cursorVisualEl.setAttribute("data-arrow", dirSymbol);
+      cursorVisualEl.setAttribute("data-dir", dirName);
+    }else{
+      cursorVisualEl.removeAttribute("data-arrow");
+      cursorVisualEl.removeAttribute("data-dir");
+    }
     cursorVisualEl.style.setProperty("--cursor-color", "#e60000");
     const guideCol = document.querySelector(".guide-col");
     if(guideCol){
@@ -1776,7 +1796,6 @@ function clearBoardSurface(){
   async function drawBasePatterns(ctx, { deferFlush = false, currentRun, resetDelay = false } = {}){
     if(!ctx) return false;
     window.logEvent("drawBasePatterns", currentRun ?? "", "基本パターンを描画中");
-    showApiStatus("drawBasePatterns");
     const { setRenderMode, resetCursor, requestRender, RESET_DELAY_MS, RENDER_BUFFERED, RENDER_IMMEDIATE } = ctx;
     const prevRender = ctx.renderMode;
     setRenderMode(RENDER_BUFFERED);
@@ -1785,9 +1804,7 @@ function clearBoardSurface(){
       await ctx.helpers?.sleep?.(RESET_DELAY_MS ?? 0);
     }
     const opts = { overwrite: false, currentRun };
-    const showBaseStatus = () => showApiStatus("drawBasePatterns");
-    const runFunctionalPattern = async (name, fn, ...fnArgs) => {
-      showApiStatus(name);
+    const runFunctionalPattern = async (fn, ...fnArgs) => {
       if(typeof window !== "undefined"){
         window.isDrawingBasePattern = true;
         if(typeof window.setBasePatternLookahead === "function"){
@@ -1804,14 +1821,13 @@ function clearBoardSurface(){
             window.setBasePatternLookahead([]);
           }
         }
-        showBaseStatus();
       }
     };
-    await runFunctionalPattern("drawFinderPatterns", callDrawFinderPatterns, opts.overwrite, opts.currentRun);
-    await runFunctionalPattern("drawTimingPatterns", callDrawTimingPatterns, opts.overwrite, opts.currentRun);
-    await runFunctionalPattern("drawAlignmentPatterns", callDrawAlignmentPatterns, opts.overwrite, opts.currentRun);
-    await runFunctionalPattern("drawDarkModulePatterns", callDrawDarkModulePatterns, opts.overwrite, opts.currentRun);
-    await runFunctionalPattern("drawFormatPatterns", callDrawFormatPatterns, undefined, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern(drawFinderPatterns, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern(drawTimingPatterns, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern(drawAlignmentPatterns, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern(drawDarkModulePatterns, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern(drawFormatPatterns, undefined, opts.overwrite, opts.currentRun);
     if(!deferFlush){
       requestRender("drawBasePatterns");
       setRenderMode(RENDER_IMMEDIATE);
@@ -1968,6 +1984,8 @@ function clearBoardSurface(){
         showApiStatus("drawDataPatterns");
       }
     };
+    const prevDirectionOverride = window.__allowDirectionCommands === true;
+    window.__allowDirectionCommands = true;
     try{
       resetLoopGuard();
       resetData();
@@ -1982,39 +2000,26 @@ function clearBoardSurface(){
       }
       return runToken === runId;
     }finally{
+      window.__allowDirectionCommands = prevDirectionOverride;
       finalizeStage();
     }
   }
   async function drawQRCode(arg){
-    resetBoardState({ abortRun: false, forceImmediate: true, stopStep: true });
-    window.logEvent("drawQRCode", arg ?? "", "QRコードを描画中");
-    showApiStatus("drawQRCode");
-    let maskIndex;
+    const resetOk = resetQRCode();
+    if(resetOk === false) return false;
+    const baseOk = await callDrawBasePatterns();
+    if(!baseOk) return false;
+    const dataOk = await drawDataPatterns();
+    if(!dataOk) return false;
+    let maskOk;
     if(arg === undefined){
-      maskIndex = defaultMaskIndex;
+      maskOk = await callApplyMask();
     }else if(typeof arg === "object" && arg !== null){
-      maskIndex = arg.maskIndex;
+      maskOk = await callApplyMask(arg.maskIndex);
     }else{
-      maskIndex = arg;
+      maskOk = await callApplyMask(arg);
     }
-    const currentRun = ++runId;
-    const baseOk = await callDrawBasePatterns({ deferFlush: false, currentRun, resetDelay: true });
-    if(currentRun !== runId || !baseOk) return false;
-    const dataOk = await drawDataPatterns({ currentRun });
-    if(currentRun !== runId || !dataOk) return false;
-    let maskSpecified = false;
-    let idx = 0;
-    const rawValue = maskIndex;
-    const numeric = Number(rawValue);
-    if(Number.isFinite(numeric) && numeric >= 0 && numeric <= 7){
-      maskSpecified = true;
-      idx = numeric;
-    }
-    if(!maskSpecified){
-      return true;
-    }
-    const maskOk = await callApplyMask(idx);
-    if(currentRun !== runId || !maskOk) return false;
+    if(!maskOk) return false;
     return true;
   }
 
@@ -2720,6 +2725,8 @@ function clearBoardSurface(){
         defaultSkipExistingCells,
         autoAvoidTiming,
         defaultAutoAvoidTiming,
+        useDirection,
+        defaultUseDirection,
         initialDebugParamPresent,
         codePanel,
       });
