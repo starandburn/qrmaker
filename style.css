@@ -1793,11 +1793,10 @@ textarea:focus{
   position:absolute;
   inset:0;
   background-image:
-    linear-gradient(to right, rgba(0,0,0,0.25) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(0,0,0,0.25) 1px, transparent 1px),
-    linear-gradient(to right, rgba(255,255,255,0.35) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255,255,255,0.35) 1px, transparent 1px);
-  background-size: calc(100% / 25) calc(100% / 25);
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 25 25'%3E%3Cpath d='M1 0V25 M2 0V25 M3 0V25 M4 0V25 M5 0V25 M6 0V25 M7 0V25 M8 0V25 M9 0V25 M10 0V25 M11 0V25 M12 0V25 M13 0V25 M14 0V25 M15 0V25 M16 0V25 M17 0V25 M18 0V25 M19 0V25 M20 0V25 M21 0V25 M22 0V25 M23 0V25 M24 0V25 M0 1H25 M0 2H25 M0 3H25 M0 4H25 M0 5H25 M0 6H25 M0 7H25 M0 8H25 M0 9H25 M0 10H25 M0 11H25 M0 12H25 M0 13H25 M0 14H25 M0 15H25 M0 16H25 M0 17H25 M0 18H25 M0 19H25 M0 20H25 M0 21H25 M0 22H25 M0 23H25 M0 24H25' fill='none' stroke='rgba(0,0,0,0.25)' stroke-width='1' stroke-dasharray='1 1' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 25 25'%3E%3Cpath d='M5 0V25 M10 0V25 M15 0V25 M20 0V25 M0 5H25 M0 10H25 M0 15H25 M0 20H25' fill='none' stroke='rgba(0,0,0,0.15)' stroke-width='1' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+  background-repeat:no-repeat;
   pointer-events:none;
   opacity:1;
   z-index:3; /* keep grid lines visible over filled cells */
@@ -1806,7 +1805,7 @@ textarea:focus{
   content:"";
   position:absolute;
   inset:0;
-  border:1px solid #cfd3da;
+  border:1px solid rgba(0,0,0,0.15);
   pointer-events:none;
   z-index:4;
 }
@@ -2027,9 +2026,7 @@ textarea:focus{
   opacity:0;
 }
 
-.view-area.hide-grid .grid-area::after,
-.view-area.hide-empty .grid-area::after,
-.view-area.hide-guide .grid-area::after{
+.view-area.hide-grid .grid-area::after{
   opacity:0;
 }
 

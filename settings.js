@@ -95,65 +95,250 @@ mask`
       },
       {
         "label": "3",
-        "code": `reset
-base
-move y25 up
-repeat
-	if empty? put
-	move next
-	if block?
-		turn
-		move left
-		if skip? move left
-	endif
-endrepeat
-mask`
+        "code": ``
       },
       {
         "label": "4",
         "code": `reset
-base
-move y25 up
-repeat
-	if empty? put
-	if blue?
-		turn
-		move
-	endif
-	if red? turn right else turn left
-	blue
-	move
-	if block?
-		if red? turn right else turn left
-		repeat 2
-			move
-			if skip? move
-		endrepeat
-		if red? turn right else turn left
-		red
-	endif
+
+repeat 5
+put 1
+move down
 endrepeat
-mask`
+
+move b3
+repeat 2
+put 1
+move right
+endrepeat
+
+move d1
+repeat 5
+put 1
+move down
+endrepeat
+
+move f1
+repeat 5
+put 1
+move down
+endrepeat
+
+move g1
+repeat 3
+put 1
+move right
+endrepeat
+
+move g3
+repeat 3
+put 1
+move right
+endrepeat
+
+move g5
+repeat 3
+put 1
+move right
+endrepeat
+
+move k1
+repeat 5
+put 1
+move down
+endrepeat
+
+move l5
+repeat 3
+put 1
+move right
+endrepeat
+
+move p1
+repeat 5
+put 1
+move down
+endrepeat
+
+move q5
+repeat 3
+put 1
+move right
+endrepeat
+
+move u2
+repeat 3
+put 1
+move down
+endrepeat
+
+move v1
+repeat 2
+put 1
+move right
+endrepeat
+
+move x2
+repeat 3
+put 1
+move down
+endrepeat
+
+move v5
+repeat 2
+put 1
+move right
+endrepeat
+
+move a11
+repeat 3
+put 1
+move down
+endrepeat
+
+move b14
+repeat 2
+put 1
+move down
+endrepeat
+
+move c11
+repeat 3
+put 1
+move down
+endrepeat
+
+move d14
+repeat 2
+put 1
+move down
+endrepeat
+
+move e11
+repeat 3
+put 1
+move down
+endrepeat
+
+move g12
+repeat 3
+put 1
+move down
+endrepeat
+
+move h11
+repeat 2
+put 1
+move right
+endrepeat
+
+move j12
+repeat 3
+put 1
+move down
+endrepeat
+
+move h15
+repeat 2
+put 1
+move right
+endrepeat
+
+move l11
+repeat 5
+put 1
+move down
+endrepeat
+
+move m11
+repeat 2
+put 1
+move right
+endrepeat
+
+move o12
+repeat 2
+put 1
+move down
+endrepeat
+
+move m13
+repeat 2
+put 1
+move right
+endrepeat
+
+move n14
+put 1
+
+move o15
+put 1
+
+move q11
+repeat 5
+put 1
+move down
+endrepeat
+
+move r15
+repeat 3
+put 1
+move right
+endrepeat
+
+move v11
+repeat 5
+put 1
+move down
+end repeat
+
+move w11
+repeat 2
+put 1
+move right
+endrepeat
+
+move y12
+repeat 3
+put 1
+move down
+endrepeat
+
+move w15
+repeat 2
+put 1
+move right
+endrepeat`
       },
       {
         "label": "5",
         "code": `reset
-base
-move y25 up
-repeat
-    if empty? put
-    move left
-    if empty? put
-    move
-    if block?
-        turn
-        move left
-        if skip? move left
-    else
-        move right
-    end
-end
-mask`
+reset		// 盤面リセット
+base		// 基本パターン描画
+move y25 	// 開始位置右下に移動
+red off		// 赤スイッチをOFF
+blue off	// 青スイッチをOFF
+
+// データパターン描画
+repeat-last	// 最後のデータまで繰り返し
+	if empty? put next	// まだ未配置であれば次のデータを置く
+	
+	// 赤スイッチによる処理分け
+	if red?	// 赤スイッチがON（2列の左側を処理中）
+		if blue? move down else move up	// 青スイッチにより上下どちらかに移動
+		if block?	// 進めなかった場合
+			move left	// 左に移動
+			if timing? move left	// タイミングパターン列を避ける
+			blue flip	// 青スイッチ（上下方向）を反転
+		else		// 進めた場合
+			move right	// 右側の列に戻る
+		endif
+	else	// 赤スイッチがOFF（2列の右側を処理中）
+		move left	// 左に移動	
+	endif
+	red flip	// 赤スイッチを反転する
+endrepeat
+mask	// マスクを適用する`
       }
     ]
   }
