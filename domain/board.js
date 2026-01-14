@@ -72,7 +72,9 @@ let lastMoveBlocked = false;
 let moveNextCounter = 0;
 const BOARD_ROWS = 25;
 const BOARD_COLS = 25;
-const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
+const GENERIC_WHITE = (typeof window !== "undefined" && typeof window.BIT_WHITE === "number") ? window.BIT_WHITE : 0;
+const GENERIC_BLACK = (typeof window !== "undefined" && typeof window.BIT_BLACK === "number") ? window.BIT_BLACK : 1;
 const DEFAULT_CURSOR_COLOR = "#e60000";
 const STEP_CURSOR_COLOR = "#1a73e8";
 const MASK_KIND = (typeof window !== "undefined" && typeof window.BIT_MASK === "number") ? window.BIT_MASK : null;
@@ -93,11 +95,19 @@ function isDataKind(kind){
   if(isMaskKind(kind)){
     return false;
   }
+  if(isGenericKind(kind)){
+    return false;
+  }
   return !isFunctionalKind(kind);
+}
+
+function isGenericKind(kind){
+  return kind === GENERIC_WHITE || kind === GENERIC_BLACK;
 }
 
 const LOOP_ITER_LIMIT = BOARD_ROWS * BOARD_COLS;
 const LOOP_STAGNANT_LIMIT = Math.max(BOARD_ROWS, BOARD_COLS);
+const LOOP_OCCUPIED_LIMIT = (BOARD_ROWS + BOARD_COLS) * 2;
 let loopGuardCounter = 0;
 let loopStagnantCounter = 0;
 let loopOccupiedCounter = 0;
@@ -131,7 +141,7 @@ function canContinueLoop(){
   }
   const canContinue = loopGuardCounter <= LOOP_ITER_LIMIT
     && loopStagnantCounter <= LOOP_STAGNANT_LIMIT
-    && loopOccupiedCounter <= LOOP_STAGNANT_LIMIT;
+    && loopOccupiedCounter <= LOOP_OCCUPIED_LIMIT;
   if(!canContinue && !loopStopLogged){
     loopStopLogged = true;
     const detail = "canContinueLoopの上限に達したため停止";
@@ -795,7 +805,7 @@ function applySetCell(row, col, encodedValue, color = "black"){
   const finalColor = isColorEnabled ? color : "black";
   cell.className = "cell";
   const kind = (typeof window.bitKind === "function") ? window.bitKind(encodedValue) : Math.abs(encodedValue);
-  const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+  const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
   if(kind !== unplacedKind){
     const isBlack = (typeof window.isBlackBit === "function")
       ? window.isBlackBit(encodedValue)
@@ -911,6 +921,8 @@ async function pauseRunning(arg = {}){
 
 function colorsForKind(kind){
   const map = {
+    [GENERIC_WHITE]:       "black",
+    [GENERIC_BLACK]:       "black",
     [BIT_FUNC_FINDER]:     "red",
     [BIT_FUNC_TIMING]:     "orange",
     [BIT_FUNC_ALIGNMENT]:  "red",
@@ -1165,6 +1177,11 @@ function putCell(encodedValue){
   if(val === undefined){
     val = getNextData();
     usedAuto = true;
+  }
+  if(val === -1){
+    val = UNPLACED_KIND;
+  }else if(val === 0 || val === 1){
+    val = (val === 1) ? GENERIC_BLACK : GENERIC_WHITE;
   }
   const skipExisting = Boolean(window.skipExistingCells);
   if(skipExisting && typeof window.isEmpty === "function" && !window.isEmpty()){

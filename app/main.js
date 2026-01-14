@@ -920,7 +920,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const currentKind = (typeof window.bitKind === "function" && typeof currentValue === "number")
       ? window.bitKind(currentValue)
       : (typeof currentValue === "number" ? Math.abs(currentValue) : null);
-    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
     if(typeof currentKind === "number" && currentKind !== unplacedKind){
       const currentColor = (typeof window.colorsForKind === "function")
         ? window.colorsForKind(currentKind)
@@ -1280,9 +1280,10 @@ function clearBoardSurface(){
   clearNoiseLayer();
     const cells = document.querySelectorAll(".qr-cells .cell");
     if(!cells || cells.length === 0) return false;
+    const unplacedValue = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
     for(const cell of cells){
       cell.className = "cell";
-      cell.dataset.debugVal = "0";
+      cell.dataset.debugVal = String(unplacedValue);
       cell.style.setProperty("--debug-color", "#000000");
       cell.style.setProperty("--debug-shadow", "0 0 2px #fff, 0 0 4px #fff");
     }

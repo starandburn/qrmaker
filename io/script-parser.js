@@ -121,7 +121,9 @@
   );
   const applyAliasTransforms = (text) => {
     if(typeof text !== "string" || !text) return "";
-    const normalized = normalizeColorStateSpacing(text);
+    const normalized = normalizeColorStateSpacing(text)
+      .replace(/\bput\s*black\b/gi, "put 1")
+      .replace(/\bput\s*white\b/gi, "put 0");
     return normalized.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
   };
   const ALLOWED_CONTROL = new Set([
@@ -147,6 +149,9 @@
     for(const rawLine of lines){
       const trimmed = rawLine.trim();
       if(!trimmed) continue;
+      if(/^put\s*(black|white)\b/i.test(trimmed)){
+        continue;
+      }
       if(/^move\s+(next|advance)\b/i.test(trimmed)){
         throw new Error("move next/advance は使用できません");
       }

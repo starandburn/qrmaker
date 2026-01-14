@@ -1,7 +1,9 @@
 /**
  * QRコードのビット種別や符号化・パリティ計算を扱うドメインロジック。
  */
-const BIT_UNPLACED = 0;
+const BIT_UNPLACED = -1;
+const BIT_WHITE = 0;
+const BIT_BLACK = 1;
 const BIT_FUNC_FINDER = 10;
 const BIT_FUNC_TIMING = 11;
 const BIT_FUNC_ALIGNMENT = 12;
@@ -22,14 +24,14 @@ const BIT_UNKNOWN = 99;
  * kind is the absolute category id (BIT_***).
  */
 function encodeBit(kind, isBlack){
-  if(kind === BIT_UNPLACED || kind === 0) return 0;
+  if(kind === BIT_UNPLACED) return BIT_UNPLACED;
   const mag = Math.abs(kind);
   return isBlack ? mag : -mag;
 }
 
-/** Return the absolute kind; 0 (BIT_UNPLACED) stays 0. */
+/** Return the absolute kind; BIT_UNPLACED stays BIT_UNPLACED. */
 function bitKind(val){
-  if(val === 0) return BIT_UNPLACED;
+  if(val === BIT_UNPLACED) return BIT_UNPLACED;
   return Math.abs(val);
 }
 
@@ -43,9 +45,9 @@ function isWhiteBit(val){
   return val < 0;
 }
 
-/** Is unplaced? (0 or kind == BIT_UNPLACED) */
+/** Is unplaced? (BIT_UNPLACED) */
 function isUnplacedBit(val){
-  return bitKind(val) === BIT_UNPLACED;
+  return val === BIT_UNPLACED || bitKind(val) === BIT_UNPLACED;
 }
 
 // --- Reed-Solomon parity (QR GF(256) poly 0x11d) helpers ---
@@ -212,6 +214,8 @@ function parsePattern(text){
 
 // Export to global scope for use by layout.js / main.js
 window.BIT_UNPLACED = BIT_UNPLACED;
+window.BIT_WHITE = BIT_WHITE;
+window.BIT_BLACK = BIT_BLACK;
 window.BIT_FUNC_FINDER = BIT_FUNC_FINDER;
 window.BIT_FUNC_TIMING = BIT_FUNC_TIMING;
 window.BIT_FUNC_ALIGNMENT = BIT_FUNC_ALIGNMENT;
