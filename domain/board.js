@@ -97,14 +97,28 @@ function isDataKind(kind){
 }
 
 const LOOP_ITER_LIMIT = BOARD_ROWS * BOARD_COLS;
+const LOOP_STAGNANT_LIMIT = Math.max(BOARD_ROWS, BOARD_COLS);
 let loopGuardCounter = 0;
 let loopStagnantCounter = 0;
+let loopOccupiedCounter = 0;
 let loopStagnantPosition = `${cursorPos.row}-${cursorPos.col}`;
+let loopStopLogged = false;
 const getCursorPositionKey = () => `${cursorPos.row}-${cursorPos.col}`;
 function resetLoopGuard(){
   loopGuardCounter = 0;
   loopStagnantCounter = 0;
+  loopOccupiedCounter = 0;
   loopStagnantPosition = getCursorPositionKey();
+  loopStopLogged = false;
+}
+function recordLoopOccupiedTarget(row, col){
+  if(!Number.isInteger(row) || !Number.isInteger(col)) return;
+  const isUnplaced = isBoardCellUnplaced(row, col);
+  if(isUnplaced){
+    loopOccupiedCounter = 0;
+  }else{
+    loopOccupiedCounter++;
+  }
 }
 function canContinueLoop(){
   loopGuardCounter++;
@@ -115,7 +129,22 @@ function canContinueLoop(){
     loopStagnantPosition = currentPosition;
     loopStagnantCounter = 0;
   }
-  return loopGuardCounter <= LOOP_ITER_LIMIT && loopStagnantCounter <= LOOP_ITER_LIMIT;
+  const canContinue = loopGuardCounter <= LOOP_ITER_LIMIT
+    && loopStagnantCounter <= LOOP_STAGNANT_LIMIT
+    && loopOccupiedCounter <= LOOP_STAGNANT_LIMIT;
+  if(!canContinue && !loopStopLogged){
+    loopStopLogged = true;
+    const detail = "canContinueLoopの上限に達したため停止";
+    if(typeof window !== "undefined"){
+      if(typeof window.logEvent === "function"){
+        window.logEvent("canContinueLoop", "", detail);
+      }
+      if(typeof window.setExecutionStatus === "function"){
+        window.setExecutionStatus("stopped", undefined, detail);
+      }
+    }
+  }
+  return canContinue;
 }
 
 function ensureCells(){
@@ -493,6 +522,7 @@ function moveCursor(...args){
         return false;
       }
       handleAutoAvoidStep(relativeStepDir);
+      recordLoopOccupiedTarget(cursorPos.row, cursorPos.col);
     }
     targetRow = cursorPos.row;
     targetCol = cursorPos.col;
@@ -625,6 +655,7 @@ function moveCursor(...args){
         lastMoveBlocked = true;
         return false;
       }
+      recordLoopOccupiedTarget(targetRow, targetCol);
       if(shouldResetMoveNext){
         moveNextCounter = 0;
       }

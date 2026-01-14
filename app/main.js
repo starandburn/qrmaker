@@ -1425,6 +1425,7 @@ function clearBoardSurface(){
   // Export helpers to window
   window.RENDER_IMMEDIATE = RENDER_IMMEDIATE;
   window.RENDER_BUFFERED = RENDER_BUFFERED;
+  window.setExecutionStatus = setExecutionStatus;
   window.updateCursor = updateCursor;
   window.boardMatrix = boardMatrix;
   window.getNextData = getNextData;

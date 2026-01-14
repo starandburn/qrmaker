@@ -39,7 +39,6 @@
     timings: "drawTimingPatterns",
     next: "getNextData",
     pause: "pauseRunning",
-    advance: "advanceCommand",
     setswitch: "setSwitch",
     isswitchon: "isSwitchOn",
   };
@@ -122,9 +121,7 @@
   );
   const applyAliasTransforms = (text) => {
     if(typeof text !== "string" || !text) return "";
-    const normalized = normalizeColorStateSpacing(text)
-      .replace(/\bmove\s+next\b/gi, "moveNext")
-      .replace(/\bmove\s+advance\b/gi, "moveAdvance");
+    const normalized = normalizeColorStateSpacing(text);
     return normalized.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
   };
   const ALLOWED_CONTROL = new Set([
@@ -150,6 +147,9 @@
     for(const rawLine of lines){
       const trimmed = rawLine.trim();
       if(!trimmed) continue;
+      if(/^move\s+(next|advance)\b/i.test(trimmed)){
+        throw new Error("move next/advance は使用できません");
+      }
       const match = trimmed.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\b/);
       if(!match){
         throw new Error(`不明なコマンド: ${trimmed}`);
@@ -160,7 +160,7 @@
       throw new Error(`不明なコマンド: ${match[1]}`);
     }
   };
-  const KEYWORD_NUMBER_PATTERN = /\b(repeat|loop|for|mask|pause|qrcode)(\d+)\b/gi;
+  const KEYWORD_NUMBER_PATTERN = /\b(repeat|loop|for|mask|pause|qrcode|put)(\d+)\b/gi;
   const applyKeywordSpacing = (text) => {
     if(typeof text !== "string" || !text) return "";
     return text.replace(KEYWORD_NUMBER_PATTERN, "$1 $2");
@@ -599,7 +599,7 @@
       const n = Number(countVal);
       if(!Number.isFinite(n)) return null;
       const loopVar = `i${autoLoopCounter++}`;
-      return `for (let ${loopVar} = 0; ${loopVar} < ${n}; ${loopVar}++){`;
+      return `for (let ${loopVar} = 0; ${loopVar} < ${n} && canContinueLoop(); ${loopVar}++){`;
     };
     const buildConditionalLine = (prefix, conditionRaw) => {
       const condition = typeof conditionRaw === "string" ? conditionRaw.trim() : "";
