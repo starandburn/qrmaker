@@ -40,11 +40,32 @@ const rotateDir = (baseDir, delta) => {
   return next;
 };
 const isDirectionEnabled = () => (typeof window !== "undefined" && window.useDirection === true);
-const shouldAllowDirectionCommands = () => {
-  if(typeof window === "undefined") return true;
-  if(window.useDirection === true) return true;
-  return window.__allowDirectionCommands === true;
+let internalDirectionOverrideDepth = 0;
+const withInternalDirectionOverride = (fn) => {
+  internalDirectionOverrideDepth += 1;
+  try{
+    const result = fn();
+    if(result && typeof result.then === "function"){
+      return result.then(
+        (value) => {
+          internalDirectionOverrideDepth = Math.max(0, internalDirectionOverrideDepth - 1);
+          return value;
+        },
+        (err) => {
+          internalDirectionOverrideDepth = Math.max(0, internalDirectionOverrideDepth - 1);
+          throw err;
+        },
+      );
+    }
+    internalDirectionOverrideDepth = Math.max(0, internalDirectionOverrideDepth - 1);
+    return result;
+  }catch(err){
+    internalDirectionOverrideDepth = Math.max(0, internalDirectionOverrideDepth - 1);
+    throw err;
+  }
 };
+const shouldAllowDirectionCommands = () => internalDirectionOverrideDepth > 0;
+const isDirectionAllowed = () => isDirectionEnabled() || shouldAllowDirectionCommands();
 
 const HOME_CURSOR = { row: 1, col: 1, dir: DIR_RIGHT };
 const cursorPos = {
@@ -355,8 +376,8 @@ function applyCursor(row, col, dir){
   const x = (c - 1) * cellW;
   const y = (r - 1) * cellH;
 
-  const directionEnabled = isDirectionEnabled() || shouldAllowDirectionCommands();
-  const angle = directionEnabled
+  const directionAllowed = isDirectionAllowed();
+  const angle = isDirectionEnabled()
     ? (dir === DIR_RIGHT ? 90
       : dir === DIR_DOWN ? 180
       : dir === DIR_LEFT ? 270
@@ -368,8 +389,8 @@ function applyCursor(row, col, dir){
 
 function updateCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.dir){
   if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
-  const directionEnabled = isDirectionEnabled() || shouldAllowDirectionCommands();
-  const nextDir = directionEnabled ? dir : cursorPos.dir;
+  const directionAllowed = isDirectionAllowed();
+  const nextDir = directionAllowed ? dir : cursorPos.dir;
   const r = row;
   const c = col;
   cursorPos.row = r;

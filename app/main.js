@@ -871,7 +871,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       : "";
     const rowText = String(cursorPos.row).padStart(2, " ");
     const colText = String(cursorPos.col).padStart(2, " ");
-    const directionEnabled = (typeof window.useDirection === "boolean") ? window.useDirection : true;
+    const directionEnabled = useDirection === true;
     const dirSymbol = (() => {
       switch(cursorPos.dir){
         case DIR_UP: return "▲";
@@ -1986,25 +1986,30 @@ function clearBoardSurface(){
         showApiStatus("drawDataPatterns");
       }
     };
-    const prevDirectionOverride = window.__allowDirectionCommands === true;
-    window.__allowDirectionCommands = true;
-    try{
-      resetLoopGuard();
-      resetData();
-      updateCursor(BOARD_ROWS, BOARD_COLS, DIR_UP);
-      while(hasMoreData()){
-        if(shouldAbort()) throw ABORT_ERR;
-        if(!canContinueLoop()) return false;
-        const nextKind = (typeof window.getNextDataKind === "function") ? window.getNextDataKind() : null;
-        markDataPatternStage(nextKind);
-        await advanceCommand();
-        if(shouldAbort()) throw ABORT_ERR;
+    const runWithDirectionOverride = (fn) => {
+      if(typeof withInternalDirectionOverride === "function"){
+        return withInternalDirectionOverride(fn);
       }
-      return runToken === runId;
-    }finally{
-      window.__allowDirectionCommands = prevDirectionOverride;
-      finalizeStage();
-    }
+      return fn();
+    };
+    return runWithDirectionOverride(async () => {
+      try{
+        resetLoopGuard();
+        resetData();
+        updateCursor(BOARD_ROWS, BOARD_COLS, DIR_UP);
+        while(hasMoreData()){
+          if(shouldAbort()) throw ABORT_ERR;
+          if(!canContinueLoop()) return false;
+          const nextKind = (typeof window.getNextDataKind === "function") ? window.getNextDataKind() : null;
+          markDataPatternStage(nextKind);
+          await advanceCommand();
+          if(shouldAbort()) throw ABORT_ERR;
+        }
+        return runToken === runId;
+      }finally{
+        finalizeStage();
+      }
+    });
   }
   async function drawQRCode(arg){
     const resetOk = resetQRCode();
