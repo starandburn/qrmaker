@@ -592,7 +592,8 @@
       const condFormatted = formatStudentCodeLine(parsed.base);
       if(!condFormatted) return null;
       let condExpr = condFormatted;
-      for(let i = 0; i < parsed.negationCount; i++){
+      const negationCount = parsed.negationCount % 2;
+      for(let i = 0; i < negationCount; i++){
         condExpr = `!(${condExpr})`;
       }
       if(keyword === "while"){
