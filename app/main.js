@@ -2034,230 +2034,103 @@ function clearBoardSurface(){
     return true;
   }
 
-  const HELLO_WORLD_CODE = `reset
-
-move b1
-repeat 5
-put 1
-move down
-endrepeat
-
-move c3
-repeat 2
-put 1
-move right
-endrepeat
-
-move e1
-repeat 5
-put 1
-move down
-endrepeat
-
-move g1
-repeat 5
-put 1
-move down
-endrepeat
-
-move h1
-repeat 3
-put 1
-move right
-endrepeat
-
-move h3
-repeat 3
-put 1
-move right
-endrepeat
-
-move h5
-repeat 3
-put 1
-move right
-endrepeat
-
-move l1
-repeat 5
-put 1
-move down
-endrepeat
-
-move m5
-repeat 3
-put 1
-move right
-endrepeat
-
-move q1
-repeat 5
-put 1
-move down
-endrepeat
-
-move r5
-repeat 3
-put 1
-move right
-endrepeat
-
-move v2
-repeat 3
-put 1
-move down
-endrepeat
-
-move w1
-repeat 2
-put 1
-move right
-endrepeat
-
-move y2
-repeat 3
-put 1
-move down
-endrepeat
-
-move w5
-repeat 2
-put 1
-move right
-endrepeat
-
-move a11
-repeat 3
-put 1
-move down
-endrepeat
-
-move b14
-repeat 2
-put 1
-move down
-endrepeat
-
-move c11
-repeat 3
-put 1
-move down
-endrepeat
-
-move d14
-repeat 2
-put 1
-move down
-endrepeat
-
-move e11
-repeat 3
-put 1
-move down
-endrepeat
-
-move g12
-repeat 3
-put 1
-move down
-endrepeat
-
-move h11
-repeat 2
-put 1
-move right
-endrepeat
-
-move j12
-repeat 3
-put 1
-move down
-endrepeat
-
-move h15
-repeat 2
-put 1
-move right
-endrepeat
-
-move l11
-repeat 5
-put 1
-move down
-endrepeat
-
-move m11
-repeat 2
-put 1
-move right
-endrepeat
-
-move o12
-repeat 2
-put 1
-move down
-endrepeat
-
-move m13
-repeat 2
-put 1
-move right
-endrepeat
-
-move n14
-put 1
-
-move o15
-put 1
-
-move q11
-repeat 5
-put 1
-move down
-endrepeat
-
-move r15
-repeat 3
-put 1
-move right
-endrepeat
-
-move v11
-repeat 5
-put 1
-move down
-end repeat
-
-move w11
-repeat 2
-put 1
-move right
-endrepeat
-
-move y12
-repeat 3
-put 1
-move down
-endrepeat
-
-move w15
-repeat 2
-put 1
-move right
-endrepeat`;
+  const HELLO_WORLD_LINES = [
+    ["b1", "down", 5],
+    ["c3", "right", 2],
+    ["e1", "down", 5],
+    ["g1", "down", 5],
+    ["h1", "right", 3],
+    ["h3", "right", 3],
+    ["h5", "right", 3],
+    ["l1", "down", 5],
+    ["m5", "right", 3],
+    ["q1", "down", 5],
+    ["r5", "right", 3],
+    ["v2", "down", 3],
+    ["w1", "right", 2],
+    ["y2", "down", 3],
+    ["w5", "right", 2],
+    ["a11", "down", 3],
+    ["b14", "down", 2],
+    ["c11", "down", 3],
+    ["d14", "down", 2],
+    ["e11", "down", 3],
+    ["g12", "down", 3],
+    ["h11", "right", 2],
+    ["j12", "down", 3],
+    ["h15", "right", 2],
+    ["l11", "down", 5],
+    ["m11", "right", 2],
+    ["o12", "down", 2],
+    ["m13", "right", 2],
+    ["n14", null, 1],
+    ["o15", null, 1],
+    ["q11", "down", 5],
+    ["r15", "right", 3],
+    ["v11", "down", 5],
+    ["w11", "right", 2],
+    ["y12", "down", 3],
+    ["w15", "right", 2],
+  ];
 
   async function drawHelloWorld(){
-    resetLoopGuard();
-    const script = buildUserScript(HELLO_WORLD_CODE, { awaitCalls: true });
-    if(!script.trim()) return true;
-    const runner = `(async () => {\n${script}\n})();`;
-    const syntaxError = validateRunnerSyntax(runner);
-    if(syntaxError){
-      throw syntaxError;
-    }
-    const res = (0, eval)(runner);
-    if(res && typeof res.then === "function"){
-      await res;
+    const resetOk = resetQRCode();
+    if(resetOk === false) return false;
+    const stepEnabled = typeof isStepModeOn === "function" && isStepModeOn();
+    const prevRenderMode = ctx ? ctx.renderMode : RENDER_IMMEDIATE;
+    setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
+    try{
+      const blackValue = (typeof window.BIT_BLACK === "number") ? window.BIT_BLACK : 1;
+      const skipExisting = Boolean(window.skipExistingCells);
+      const parseRef = (ref) => (typeof window.parseCellRef === "function" ? window.parseCellRef(ref) : null);
+      const isCellEmpty = (row, col) => {
+        if(typeof window.getCell !== "function") return true;
+        const current = window.getCell(row, col);
+        if(typeof current !== "number") return true;
+        if(typeof window.isUnplacedBit === "function"){
+          return window.isUnplacedBit(current);
+        }
+        const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
+        const kind = (typeof window.bitKind === "function") ? window.bitKind(current) : Math.abs(current);
+        return kind === unplacedKind;
+      };
+      const setCell = async (row, col) => {
+        if(skipExisting && !isCellEmpty(row, col)) return;
+        if(typeof window.updateCursor === "function"){
+          window.updateCursor(row, col);
+        }
+        window.updateCell(row, col, blackValue);
+        if(stepEnabled && typeof makeStepThenable === "function"){
+          const wait = makeStepThenable(true, {});
+          if(wait && typeof wait.then === "function"){
+            await wait;
+          }
+        }
+      };
+      const drawLine = async (startRef, dir, count) => {
+        const start = parseRef(startRef);
+        if(!start || !count) return;
+        let row = start.row;
+        let col = start.col;
+        for(let i = 0; i < count; i++){
+          await setCell(row, col);
+          if(dir === "down"){
+            row += 1;
+          }else if(dir === "right"){
+            col += 1;
+          }
+        }
+      };
+      for(const [startRef, dir, count] of HELLO_WORLD_LINES){
+        await drawLine(startRef, dir, count);
+      }
+      const endPos = parseRef("y15");
+      if(endPos && typeof window.updateCursor === "function"){
+        window.updateCursor(endPos.row, endPos.col);
+      }
+      requestRender("drawHelloWorld");
+    }finally{
+      setRenderMode(prevRenderMode);
     }
     return true;
   }

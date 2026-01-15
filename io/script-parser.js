@@ -41,6 +41,7 @@
     pause: "pauseRunning",
     setswitch: "setSwitch",
     isswitchon: "isSwitchOn",
+    hello: "drawHelloWorld",
     helloworld: "drawHelloWorld",
     drawhelloworld: "drawHelloWorld",
   };
