@@ -22,7 +22,6 @@
     data: "drawDataPatterns",
     qrcode: "drawQRCode",
     empty: "isEmpty",
-    used: "isUsed",
     block: "isMoveBlocked",
     wall: "isMoveBlocked",
     put: "putCell",
@@ -307,12 +306,15 @@
     const shorthandPattern = conditionalPattern
       ? new RegExp(`^\\s*(-\\s*)?(${conditionalPattern})\\s*\\?\\s*(.*)$`, "i")
       : null;
-    const resolveConditionalKeyword = (keyword) => {
-      if(typeof keyword !== "string") return keyword;
-      const lower = keyword.toLowerCase();
-      const info = activeSwitchInfoMap[lower];
-      if(info){
-        return info.getter;
+  const resolveConditionalKeyword = (keyword) => {
+    if(typeof keyword !== "string") return keyword;
+    const lower = keyword.toLowerCase();
+    if(lower === "used"){
+      return "!isEmpty";
+    }
+    const info = activeSwitchInfoMap[lower];
+    if(info){
+      return info.getter;
       }
       return keyword;
     };
@@ -323,9 +325,18 @@
         if(explicitMatch){
           const prefix = explicitMatch[1];
           const negated = Boolean(explicitMatch[2]);
-          const keyword = resolveConditionalKeyword(explicitMatch[3]);
+          const rawKeyword = explicitMatch[3];
+          const keyword = resolveConditionalKeyword(rawKeyword);
           const rest = (explicitMatch[4] || "").trim();
-          const condition = negated ? `!${keyword}` : keyword;
+          let condition;
+          if(typeof rawKeyword === "string" && rawKeyword.toLowerCase() === "used"){
+            condition = negated ? "isEmpty" : "!isEmpty";
+          }else{
+            condition = negated ? `!${keyword}` : keyword;
+          }
+          if(condition.startsWith("!!")){
+            condition = condition.slice(1);
+          }
           return rest ? `${prefix} ${condition} ${rest}` : `${prefix} ${condition}`;
         }
       }
@@ -333,9 +344,18 @@
         const shorthandMatch = line.match(shorthandPattern);
         if(shorthandMatch){
           const negated = Boolean(shorthandMatch[1]);
-          const keyword = resolveConditionalKeyword(shorthandMatch[2]);
+          const rawKeyword = shorthandMatch[2];
+          const keyword = resolveConditionalKeyword(rawKeyword);
           const rest = (shorthandMatch[3] || "").trim();
-          const condition = negated ? `!${keyword}` : keyword;
+          let condition;
+          if(typeof rawKeyword === "string" && rawKeyword.toLowerCase() === "used"){
+            condition = negated ? "isEmpty" : "!isEmpty";
+          }else{
+            condition = negated ? `!${keyword}` : keyword;
+          }
+          if(condition.startsWith("!!")){
+            condition = condition.slice(1);
+          }
           return rest ? `if ${condition} ${rest}` : `if ${condition}`;
         }
       }
@@ -378,10 +398,14 @@
     result = result.replace(/\bif\s*\(\s*pass\b/gi, (match) => match.replace(/pass/i, "!isMoveBlocked"));
     result = result.replace(/\bif\s+!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
     result = result.replace(/\bif\s*\(\s*!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
+    result = result.replace(/\bif\s+used\b/gi, (match) => match.replace(/used/i, "!isEmpty"));
+    result = result.replace(/\bif\s*\(\s*used\b/gi, (match) => match.replace(/used/i, "!isEmpty"));
     result = result.replace(/\b(while|until|repeat|loop)\s+pass\b/gi, (match) => match.replace(/pass/i, "!isMoveBlocked"));
     result = result.replace(/\b(while|until|repeat|loop)\s*\(\s*pass\b/gi, (match) => match.replace(/pass/i, "!isMoveBlocked"));
     result = result.replace(/\b(while|until|repeat|loop)\s+!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
     result = result.replace(/\b(while|until|repeat|loop)\s*\(\s*!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
+    result = result.replace(/\b(while|until|repeat|loop)\s+used\b/gi, (match) => match.replace(/used/i, "!isEmpty"));
+    result = result.replace(/\b(while|until|repeat|loop)\s*\(\s*used\b/gi, (match) => match.replace(/used/i, "!isEmpty"));
       result = result.replace(
         /\b(while|until|repeat|loop)\s+(last|end)\b/gi,
         (match) => match.replace(/(last|end)/i, "!hasMoreData"),
@@ -989,7 +1013,7 @@
       }
       if(fnLower === "move" || fnLower === "movecursor"){
         if(parts.length === 0){
-          throw new Error("Directionless mode requires explicit direction: move up/down/left/right");
+          return `${fn}()`;
         }
         const normalizeArg = (value) => {
           if(typeof value !== "string") return "";

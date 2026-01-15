@@ -432,7 +432,7 @@ function moveCursor(...args){
   const directionEnabled = isDirectionEnabled();
   if(!directionEnabled && !shouldAllowDirectionCommands()){
     if(args.length === 0){
-      throw new Error("Directionless mode requires explicit direction: move up/down/left/right");
+      // allow default move in directionless mode
     }
     for(const arg of args){
       if(typeof arg !== "string") continue;
@@ -561,8 +561,22 @@ function moveCursor(...args){
   };
 
   if(args.length === 0){
-    recordRelativeMove("front");
-    scheduleRelativeMove(cursorPos.dir);
+    if(directionEnabled || shouldAllowDirectionCommands()){
+      recordRelativeMove("front");
+      scheduleRelativeMove(cursorPos.dir);
+    }else{
+      if(cursorPos.col < BOARD_COLS){
+        targetRow = cursorPos.row;
+        targetCol = cursorPos.col + 1;
+      }else if(cursorPos.row < BOARD_ROWS){
+        targetRow = cursorPos.row + 1;
+        targetCol = 1;
+      }else{
+        targetRow = 1;
+        targetCol = 1;
+      }
+      recordStraightMove();
+    }
   }else if(args.length === 1){
     const v = args[0];
     if(typeof v === "number" && Number.isFinite(v)){
@@ -1294,11 +1308,6 @@ function isEmpty(){
   return kind === unplacedKind;
 }
 
-function isUsed(){
-  const key = `${cursorPos.row}-${cursorPos.col}`;
-  return cellStates.has(key);
-}
-
 function isSkipZone(){
   const { row, col } = cursorPos;
   if(timingRowIndex > 0 && row === timingRowIndex) return true;
@@ -1358,7 +1367,6 @@ window.putCell = putCell;
 window.getCell = getCell;
 window.invertCell = invertCell;
 window.isEmpty = isEmpty;
-window.isUsed = isUsed;
   window.isSkipZone = isSkipZone;
   window.isFunctionalCell = isFunctionalCell;
   window.isMoveBlocked = isMoveBlocked;
