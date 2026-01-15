@@ -211,7 +211,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }else if(typeof entry.value === "string" && entry.value.trim().length){
         label = entry.value;
       }else{
-        label = `チE��プレーチE${index + 1}`;
+        label = `テンプレート ${index + 1}`;
       }
       const value = (typeof entry.value === "string") ? entry.value : "";
       li.setAttribute("data-sample-value", value);
