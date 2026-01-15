@@ -46,6 +46,28 @@ const FULLWIDTH_CHAR_REGEX = /[^\u0000-\u007F]/;
 const STOP_REASON_DATA = "データが変更されたので停止しました。";
 const STOP_REASON_CODE = "プログラムが変更されたので停止しました。";
 
+let lastBuiltPatternInput = null;
+const isPatternPanelOpen = () => Boolean(dataPatternPanel && dataPatternPanel.open);
+const refreshPatternIfPanelOpen = () => {
+  if(isPatternPanelOpen()){
+    refreshPattern();
+  }
+};
+const refreshPatternForCreate = () => {
+  if(isPatternPanelOpen()){
+    return false;
+  }
+  if(!txtInput){
+    return false;
+  }
+  const input = txtInput.value ?? "";
+  if(input === lastBuiltPatternInput){
+    return false;
+  }
+  refreshPattern({ force: true });
+  return true;
+};
+
 function updateDataStatus(){
   if(!txtInput || !dataInputStatus) return;
   const value = txtInput.value ?? "";
@@ -79,7 +101,7 @@ function setInputValue(value){
   if(typeof window.stopCurrentRun === "function"){
     window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
   }
-  refreshPattern();
+  refreshPatternIfPanelOpen();
   updateDataStatus();
   txtInput.focus();
 }
@@ -288,14 +310,16 @@ function renderAsciiTable(){
   asciiTable.dataset.rendered = "1";
 }
 
-function refreshPattern(){
+function refreshPattern({ force = false } = {}){
   if(!txtInput) return;
   if(!patternRowA || !patternRowB || !patternRowC) return;
-  const input = txtInput.value;
+  const input = txtInput.value ?? "";
   window.logEvent("refreshPattern", input, "パターンを再描画");
 
   const builder = (typeof window.qrBuildPatternSegments === "function") ? window.qrBuildPatternSegments(input) : null;
   if(!builder) return;
+  if(!force && input === lastBuiltPatternInput) return;
+  lastBuiltPatternInput = input;
 
   const {
     modeBits,
@@ -356,7 +380,7 @@ if(txtInput){
     if(typeof window.stopCurrentRun === "function"){
       window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
     }
-    refreshPattern();
+    refreshPatternIfPanelOpen();
     updateDataStatus();
   });
   txtInput.addEventListener("focus", () => {
@@ -400,7 +424,7 @@ if(btnClear){
       window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
     }
     txtInput.value = "";
-    refreshPattern();
+    refreshPatternIfPanelOpen();
     txtInput.focus();
     updateDataStatus();
   });
@@ -442,7 +466,7 @@ if(userCode){
   });
 }
 
-refreshPattern();
+refreshPatternIfPanelOpen();
 updateDataStatus();
 
 function syncViewLayout(){
@@ -647,7 +671,12 @@ function updatePatternToggleText(){
   }
 }
 if(dataPatternPanel){
-  dataPatternPanel.addEventListener("toggle", updatePatternToggleText);
+  dataPatternPanel.addEventListener("toggle", () => {
+    updatePatternToggleText();
+    if(dataPatternPanel.open){
+      refreshPattern({ force: true });
+    }
+  });
   updatePatternToggleText();
 }
 
@@ -709,6 +738,9 @@ const layoutUI = {
 };
 
 window.layoutUI = layoutUI;
+if(typeof window.refreshPatternForCreate !== "function"){
+  window.refreshPatternForCreate = refreshPatternForCreate;
+}
 /**
  * レイアウト周りの定数/表示トグル/パターン出力ロジックをまとめたモジュール。
  */

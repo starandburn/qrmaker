@@ -2506,6 +2506,12 @@ function clearBoardSurface(){
   btnGenerate.addEventListener("click", async () => {
     historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
+    if(typeof window.refreshPatternForCreate === "function"){
+      window.refreshPatternForCreate();
+    }
+    if(typeof window.resetData === "function"){
+      window.resetData();
+    }
     if(inputLocked){
       const resetWait = stopCurrentRun({ resetCursor: true, clear: true });
       if(resetWait && typeof resetWait.then === "function"){
