@@ -41,6 +41,8 @@
     pause: "pauseRunning",
     setswitch: "setSwitch",
     isswitchon: "isSwitchOn",
+    helloworld: "drawHelloWorld",
+    drawhelloworld: "drawHelloWorld",
   };
   const BASE_SWITCH_NAMES = ["red", "blue", "green", "yellow"];
   const DEFAULT_ACTIVE_SWITCH_NAMES = BASE_SWITCH_NAMES.slice(0, 2);

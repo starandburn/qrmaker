@@ -101,90 +101,91 @@ mask`
         "label": "4",
         "code": `reset
 
+move b1
 repeat 5
 put 1
 move down
 endrepeat
 
-move b3
+move c3
 repeat 2
 put 1
 move right
 endrepeat
 
-move d1
-repeat 5
-put 1
-move down
-endrepeat
-
-move f1
+move e1
 repeat 5
 put 1
 move down
 endrepeat
 
 move g1
-repeat 3
-put 1
-move right
-endrepeat
-
-move g3
-repeat 3
-put 1
-move right
-endrepeat
-
-move g5
-repeat 3
-put 1
-move right
-endrepeat
-
-move k1
 repeat 5
 put 1
 move down
 endrepeat
 
-move l5
+move h1
 repeat 3
 put 1
 move right
 endrepeat
 
-move p1
+move h3
+repeat 3
+put 1
+move right
+endrepeat
+
+move h5
+repeat 3
+put 1
+move right
+endrepeat
+
+move l1
 repeat 5
 put 1
 move down
 endrepeat
 
-move q5
+move m5
 repeat 3
 put 1
 move right
 endrepeat
 
-move u2
+move q1
+repeat 5
+put 1
+move down
+endrepeat
+
+move r5
+repeat 3
+put 1
+move right
+endrepeat
+
+move v2
 repeat 3
 put 1
 move down
 endrepeat
 
-move v1
+move w1
 repeat 2
 put 1
 move right
 endrepeat
 
-move x2
+move y2
 repeat 3
 put 1
 move down
 endrepeat
 
-move v5
+move w5
 repeat 2
 put 1
 move right

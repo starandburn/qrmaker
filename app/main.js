@@ -1939,6 +1939,7 @@ function clearBoardSurface(){
   if(typeof window !== "undefined"){
     window.__deferredWindowApi = Object.assign(window.__deferredWindowApi || {}, {
       drawQRCode,
+      drawHelloWorld,
       buildQRCode,
       drawDataPatterns,
       drawFunctionalPatterns,
@@ -2030,6 +2031,234 @@ function clearBoardSurface(){
       maskOk = await callApplyMask(arg);
     }
     if(!maskOk) return false;
+    return true;
+  }
+
+  const HELLO_WORLD_CODE = `reset
+
+move b1
+repeat 5
+put 1
+move down
+endrepeat
+
+move c3
+repeat 2
+put 1
+move right
+endrepeat
+
+move e1
+repeat 5
+put 1
+move down
+endrepeat
+
+move g1
+repeat 5
+put 1
+move down
+endrepeat
+
+move h1
+repeat 3
+put 1
+move right
+endrepeat
+
+move h3
+repeat 3
+put 1
+move right
+endrepeat
+
+move h5
+repeat 3
+put 1
+move right
+endrepeat
+
+move l1
+repeat 5
+put 1
+move down
+endrepeat
+
+move m5
+repeat 3
+put 1
+move right
+endrepeat
+
+move q1
+repeat 5
+put 1
+move down
+endrepeat
+
+move r5
+repeat 3
+put 1
+move right
+endrepeat
+
+move v2
+repeat 3
+put 1
+move down
+endrepeat
+
+move w1
+repeat 2
+put 1
+move right
+endrepeat
+
+move y2
+repeat 3
+put 1
+move down
+endrepeat
+
+move w5
+repeat 2
+put 1
+move right
+endrepeat
+
+move a11
+repeat 3
+put 1
+move down
+endrepeat
+
+move b14
+repeat 2
+put 1
+move down
+endrepeat
+
+move c11
+repeat 3
+put 1
+move down
+endrepeat
+
+move d14
+repeat 2
+put 1
+move down
+endrepeat
+
+move e11
+repeat 3
+put 1
+move down
+endrepeat
+
+move g12
+repeat 3
+put 1
+move down
+endrepeat
+
+move h11
+repeat 2
+put 1
+move right
+endrepeat
+
+move j12
+repeat 3
+put 1
+move down
+endrepeat
+
+move h15
+repeat 2
+put 1
+move right
+endrepeat
+
+move l11
+repeat 5
+put 1
+move down
+endrepeat
+
+move m11
+repeat 2
+put 1
+move right
+endrepeat
+
+move o12
+repeat 2
+put 1
+move down
+endrepeat
+
+move m13
+repeat 2
+put 1
+move right
+endrepeat
+
+move n14
+put 1
+
+move o15
+put 1
+
+move q11
+repeat 5
+put 1
+move down
+endrepeat
+
+move r15
+repeat 3
+put 1
+move right
+endrepeat
+
+move v11
+repeat 5
+put 1
+move down
+end repeat
+
+move w11
+repeat 2
+put 1
+move right
+endrepeat
+
+move y12
+repeat 3
+put 1
+move down
+endrepeat
+
+move w15
+repeat 2
+put 1
+move right
+endrepeat`;
+
+  async function drawHelloWorld(){
+    resetLoopGuard();
+    const script = buildUserScript(HELLO_WORLD_CODE, { awaitCalls: true });
+    if(!script.trim()) return true;
+    const runner = `(async () => {\n${script}\n})();`;
+    const syntaxError = validateRunnerSyntax(runner);
+    if(syntaxError){
+      throw syntaxError;
+    }
+    const res = (0, eval)(runner);
+    if(res && typeof res.then === "function"){
+      await res;
+    }
     return true;
   }
 

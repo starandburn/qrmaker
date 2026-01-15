@@ -18,6 +18,7 @@
     assign("shouldStepFunctions", api.shouldStepFunctions);
     assign("buildQRCode", api.buildQRCode);
     assign("drawQRCode", api.drawQRCode);
+    assign("drawHelloWorld", api.drawHelloWorld);
     assign("drawDataPatterns", api.drawDataPatterns);
     assign("drawFunctionalPatterns", api.drawFunctionalPatterns);
     assign("initializeQRCode", api.initializeQRCode);
