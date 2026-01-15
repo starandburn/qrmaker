@@ -306,17 +306,37 @@
     const shorthandPattern = conditionalPattern
       ? new RegExp(`^\\s*(-\\s*)?(${conditionalPattern})\\s*\\?\\s*(.*)$`, "i")
       : null;
-  const resolveConditionalKeyword = (keyword) => {
-    if(typeof keyword !== "string") return keyword;
-    const lower = keyword.toLowerCase();
-    if(lower === "used"){
-      return "!isEmpty";
-    }
-    const info = activeSwitchInfoMap[lower];
-    if(info){
-      return info.getter;
+    const resolveConditionExpression = (rawKeyword, negated) => {
+      if(typeof rawKeyword !== "string") return rawKeyword;
+      const trimmed = rawKeyword.trim();
+      if(!trimmed) return trimmed;
+      const lower = trimmed.toLowerCase();
+      let expr = trimmed;
+      let negationCount = negated ? 1 : 0;
+      if(lower === "used"){
+        expr = "isEmpty";
+        negationCount += 1;
+      }else if(lower === "pass"){
+        expr = "isMoveBlocked";
+        negationCount += 1;
+      }else if(lower === "last"){
+        expr = "hasMoreData";
+        negationCount += 1;
+      }else if(lower === "timing"){
+        expr = "isSkipZone";
+      }else{
+        const info = activeSwitchInfoMap[lower];
+        if(info){
+          expr = info.getter;
+        }
       }
-      return keyword;
+      if(negationCount % 2 === 0){
+        return expr;
+      }
+      if(expr.startsWith("!")){
+        return expr.slice(1);
+      }
+      return `!${expr}`;
     };
     const lines = text.split(/\r?\n/);
     const mapped = lines.map((line) => {
@@ -326,17 +346,8 @@
           const prefix = explicitMatch[1];
           const negated = Boolean(explicitMatch[2]);
           const rawKeyword = explicitMatch[3];
-          const keyword = resolveConditionalKeyword(rawKeyword);
           const rest = (explicitMatch[4] || "").trim();
-          let condition;
-          if(typeof rawKeyword === "string" && rawKeyword.toLowerCase() === "used"){
-            condition = negated ? "isEmpty" : "!isEmpty";
-          }else{
-            condition = negated ? `!${keyword}` : keyword;
-          }
-          if(condition.startsWith("!!")){
-            condition = condition.slice(1);
-          }
+          const condition = resolveConditionExpression(rawKeyword, negated);
           return rest ? `${prefix} ${condition} ${rest}` : `${prefix} ${condition}`;
         }
       }
@@ -345,31 +356,27 @@
         if(shorthandMatch){
           const negated = Boolean(shorthandMatch[1]);
           const rawKeyword = shorthandMatch[2];
-          const keyword = resolveConditionalKeyword(rawKeyword);
           const rest = (shorthandMatch[3] || "").trim();
-          let condition;
-          if(typeof rawKeyword === "string" && rawKeyword.toLowerCase() === "used"){
-            condition = negated ? "isEmpty" : "!isEmpty";
-          }else{
-            condition = negated ? `!${keyword}` : keyword;
-          }
-          if(condition.startsWith("!!")){
-            condition = condition.slice(1);
-          }
+          const condition = resolveConditionExpression(rawKeyword, negated);
           return rest ? `if ${condition} ${rest}` : `if ${condition}`;
         }
       }
       return line;
     });
     let result = mapped.join("\n");
-    result = result.replace(/\bif\s+timing\b/gi, (match) => match.replace(/timing/i, "isSkipZone"));
-    result = result.replace(/\bif\s*\(\s*timing\b/gi, (match) => match.replace(/timing/i, "isSkipZone"));
-    result = result.replace(/\bif\s+(last|end)\b/gi, (match) => match.replace(/(last|end)/i, "!hasMoreData"));
-    result = result.replace(
-      /\bif\s*\(\s*(last|end)\b/gi,
-      (match) => match.replace(/(last|end)/i, "!hasMoreData"),
-    );
     if(conditionalPattern){
+      const ifSimplePattern = new RegExp(`\\bif\\s+(-\\s*)?(${conditionalPattern})\\b(?!\\s*\\?)`, "gi");
+      result = result.replace(ifSimplePattern, (_match, negPrefix, cond) => {
+        const negated = Boolean(negPrefix && negPrefix.trim());
+        const resolved = resolveConditionExpression(cond, negated);
+        return `if ${resolved}`;
+      });
+      const ifParenPattern = new RegExp(`\\bif\\s*\\(\\s*(-\\s*)?(${conditionalPattern})\\b(?!\\s*\\?)`, "gi");
+      result = result.replace(ifParenPattern, (_match, negPrefix, cond) => {
+        const negated = Boolean(negPrefix && negPrefix.trim());
+        const resolved = resolveConditionExpression(cond, negated);
+        return `if (${resolved}`;
+      });
       const loopKeywordPattern = "(while|until|repeat|loop)";
       const whileUntilQuestionPattern = new RegExp(
         `\\b${loopKeywordPattern}\\s+(-\\s*)?(${conditionalPattern})\\s*\\?`,
@@ -378,8 +385,9 @@
       result = result.replace(
         whileUntilQuestionPattern,
         (_match, keyword, negPrefix, cond) => {
-          const prefix = negPrefix ? `${negPrefix.trim()} ` : "";
-          return `${keyword} ${prefix}${cond}`;
+          const negated = Boolean(negPrefix && negPrefix.trim());
+          const resolved = resolveConditionExpression(cond, negated);
+          return `${keyword} ${resolved}`;
         },
       );
       const whileUntilParenQuestionPattern = new RegExp(
@@ -389,31 +397,40 @@
       result = result.replace(
         whileUntilParenQuestionPattern,
         (_match, keyword, negPrefix, cond) => {
-          const prefix = negPrefix ? `${negPrefix.trim()} ` : "";
-          return `${keyword} (${prefix}${cond}`;
+          const negated = Boolean(negPrefix && negPrefix.trim());
+          const resolved = resolveConditionExpression(cond, negated);
+          return `${keyword} (${resolved}`;
+        },
+      );
+      const whileUntilSimplePattern = new RegExp(
+        `\\b${loopKeywordPattern}\\s+(-\\s*)?(${conditionalPattern})\\b(?!\\s*\\?)`,
+        "gi",
+      );
+      result = result.replace(
+        whileUntilSimplePattern,
+        (_match, keyword, negPrefix, cond) => {
+          const negated = Boolean(negPrefix && negPrefix.trim());
+          const resolved = resolveConditionExpression(cond, negated);
+          return `${keyword} ${resolved}`;
+        },
+      );
+      const whileUntilParenPattern = new RegExp(
+        `\\b${loopKeywordPattern}\\s*\\(\\s*(-\\s*)?(${conditionalPattern})\\b(?!\\s*\\?)`,
+        "gi",
+      );
+      result = result.replace(
+        whileUntilParenPattern,
+        (_match, keyword, negPrefix, cond) => {
+          const negated = Boolean(negPrefix && negPrefix.trim());
+          const resolved = resolveConditionExpression(cond, negated);
+          return `${keyword} (${resolved}`;
         },
       );
     }
-    result = result.replace(/\bif\s+pass\b/gi, (match) => match.replace(/pass/i, "!isMoveBlocked"));
-    result = result.replace(/\bif\s*\(\s*pass\b/gi, (match) => match.replace(/pass/i, "!isMoveBlocked"));
     result = result.replace(/\bif\s+!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
     result = result.replace(/\bif\s*\(\s*!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
-    result = result.replace(/\bif\s+used\b/gi, (match) => match.replace(/used/i, "!isEmpty"));
-    result = result.replace(/\bif\s*\(\s*used\b/gi, (match) => match.replace(/used/i, "!isEmpty"));
-    result = result.replace(/\b(while|until|repeat|loop)\s+pass\b/gi, (match) => match.replace(/pass/i, "!isMoveBlocked"));
-    result = result.replace(/\b(while|until|repeat|loop)\s*\(\s*pass\b/gi, (match) => match.replace(/pass/i, "!isMoveBlocked"));
     result = result.replace(/\b(while|until|repeat|loop)\s+!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
     result = result.replace(/\b(while|until|repeat|loop)\s*\(\s*!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
-    result = result.replace(/\b(while|until|repeat|loop)\s+used\b/gi, (match) => match.replace(/used/i, "!isEmpty"));
-    result = result.replace(/\b(while|until|repeat|loop)\s*\(\s*used\b/gi, (match) => match.replace(/used/i, "!isEmpty"));
-      result = result.replace(
-        /\b(while|until|repeat|loop)\s+(last|end)\b/gi,
-        (match) => match.replace(/(last|end)/i, "!hasMoreData"),
-      );
-      result = result.replace(
-        /\b(while|until|repeat|loop)\s*\(\s*(last|end)\b/gi,
-        (match) => match.replace(/(last|end)/i, "!hasMoreData"),
-      );
     const replaceColorStateCondition = (source, info, state, expr) => {
       if(!info) return source;
       const statePattern = `${state}\\??`;
@@ -453,7 +470,7 @@
 
   const normalizeLoopHyphenSpacing = (text) => {
     if(typeof text !== "string" || !text) return text || "";
-    return text.replace(/\b(repeat|loop)-(?=\S)/gi, "$1 - ");
+    return text.replace(/\b(if|while|until|repeat|loop)-\s*/gi, "$1 - ");
   };
 
   const countBraceDelta = (line) => {
@@ -531,8 +548,8 @@
     const pushBlock = (type) => {
       blockStack.push(type);
     };
-    const DEFAULT_WHILE_CONDITION = "hasMoreData";
-    const DEFAULT_UNTIL_CONDITION = "isDataEnd";
+    const DEFAULT_WHILE_CONDITION = "";
+    const DEFAULT_UNTIL_CONDITION = "";
     const extractParenInfo = (line) => {
       const openIdx = line.indexOf("(");
       if(openIdx === -1) return null;
@@ -606,7 +623,7 @@
           base = base.slice(1).trim();
         }
         const lower = base.toLowerCase();
-        if(lower === "end" || lower === "last"){
+        if(lower === "last"){
           negationCount++;
           base = "hasMoreData";
         }
@@ -754,8 +771,13 @@
       const ifMatch = line.match(/^(if)\b(.*)$/i);
       if(ifMatch){
         const conditionRaw = (ifMatch[2] || "").trim();
+        if(!conditionRaw){
+          throw new Error("if の後に条件が必要です");
+        }
+        if(/^-\s*\??$/.test(conditionRaw)){
+          throw new Error("if の後に条件が必要です");
+        }
         const singleLineInfo = (() => {
-          if(!conditionRaw) return null;
           const firstSpaceIdx = conditionRaw.search(/\s/);
           if(firstSpaceIdx === -1) return null;
           const conditionToken = conditionRaw.slice(0, firstSpaceIdx).trim();
@@ -820,6 +842,9 @@
         const conditionRaw = (whileMatch[1] || "").trim();
         const hasCondition = Boolean(conditionRaw);
         const actualCondition = hasCondition ? conditionRaw : DEFAULT_WHILE_CONDITION;
+        if(!conditionRaw || /^-\s*\??$/.test(conditionRaw)){
+          throw new Error("while の後に条件が必要です");
+        }
         if(conditionRaw.startsWith("(")){
           const guarded = guardWhileWithParen(line);
           if(guarded){
@@ -852,6 +877,9 @@
       if(untilMatch && !lineLower.includes("cancontinueloop")){
         const conditionRaw = (untilMatch[1] || "").trim();
         const actualCondition = conditionRaw || DEFAULT_UNTIL_CONDITION;
+        if(!conditionRaw || /^-\s*\??$/.test(conditionRaw)){
+          throw new Error("until の後に条件が必要です");
+        }
         if(conditionRaw.startsWith("(")){
           const rewritten = rewriteUntilWithParen(line);
           if(rewritten){
@@ -903,6 +931,9 @@
       if(repeatMatch || loopMatch){
         const repeatArgRaw = repeatMatch ? repeatMatch[1] : loopMatch[1];
         const repeatArg = typeof repeatArgRaw === "string" ? repeatArgRaw.trim() : "";
+        if(repeatArg && /^-\s*\??$/.test(repeatArg)){
+          throw new Error("repeat の後に条件が必要です");
+        }
         if(repeatArg){
           if(/^\d+$/.test(repeatArg)){
             const formattedFor = formatSimpleFor(repeatArg);
