@@ -1196,8 +1196,7 @@ function putCell(encodedValue){
   let val = encodedValue;
   let usedAuto = false;
   if(val === undefined){
-    val = getNextData();
-    usedAuto = true;
+    val = 1;
   }
   if(val === -1){
     val = UNPLACED_KIND;
