@@ -1,0 +1,239 @@
+# Fallbacks Inventory
+
+This document lists fallback-style patterns (path:line) and records which
+fallbacks were removed or kept after the cleanup.
+
+## Module Classification (index.html order)
+
+Required (normal runtime):
+- domain/qrcode.js
+- domain/board.js
+- domain/util.js
+- domain/qr-params.js
+- core/render-cycle.js
+- ui/layout.js
+- state/url-state.js
+- state/history-store.js
+- core/require.js
+- io/script-parser.js
+- ui/ui-controls.js
+- state/app-state.js
+- core/patterns/pattern-common.js
+- core/patterns/finder-pattern.js
+- core/patterns/timing-pattern.js
+- core/patterns/alignment-pattern.js
+- core/patterns/dark-module-pattern.js
+- core/patterns/format-pattern.js
+- core/base-pattern-service.js
+- core/data-encoding-service.js
+- core/data-placement-service.js
+- core/execution-coordinator-service.js
+- core/qr-build-service.js
+- core/qr-verify-service.js
+- core/execution-control.js
+- ui/event-bindings.js
+- app/step-control.js
+- app/user-code-runner.js
+- app/self-check.js
+- app/main.js
+- settings.js
+- version.js
+- app/bootstrap.js
+
+Optional / extension:
+- ui/debug.js (debug UI and related hooks)
+
+## A) Object.assign(window.X || {}, ...)
+- app/main.js:1864
+- app/main.js:1940
+
+## B) window.X || {}
+- app/bootstrap.js:53
+- app/main.js:1864
+- app/main.js:1940
+- ui/debug.js:169
+- ui/debug.js:170
+
+## C) typeof X === "function"
+- app/bootstrap.js:10
+- app/bootstrap.js:66
+- app/main.js:243
+- app/main.js:249
+- app/main.js:369
+- app/main.js:374
+- app/main.js:375
+- app/main.js:449
+- app/main.js:458
+- app/main.js:597
+- app/main.js:601
+- app/main.js:859
+- app/main.js:870
+- app/main.js:918
+- app/main.js:921
+- app/main.js:926
+- app/main.js:930
+- app/main.js:947
+- app/main.js:950
+- app/main.js:953
+- app/main.js:1087
+- app/main.js:1185
+- app/main.js:1214
+- app/main.js:1230
+- app/main.js:1302
+- app/main.js:1375
+- app/main.js:1400
+- app/main.js:1450
+- app/main.js:1458
+- app/main.js:1466
+- app/main.js:1474
+- app/main.js:1482
+- app/main.js:1490
+- app/main.js:1498
+- app/main.js:1506
+- app/main.js:1514
+- app/main.js:1522
+- app/main.js:1540
+- app/main.js:1543
+- app/main.js:1559
+- app/main.js:1561
+- app/main.js:1602
+- app/main.js:1652
+- app/main.js:1653
+- app/main.js:1680
+- app/main.js:1681
+- app/main.js:1691
+- app/main.js:1715
+- app/main.js:1754
+- app/main.js:1755
+- app/main.js:1785
+- app/main.js:1792
+- app/main.js:1815
+- app/main.js:1825
+- app/main.js:1993
+- app/main.js:2006
+- app/main.js:2292
+- app/main.js:2386
+- app/main.js:2397
+- app/main.js:2679
+- app/main.js:2693
+- app/main.js:2713
+- app/self-check.js:32
+- app/user-code-runner.js:70
+- core/base-pattern-service.js:23
+- core/data-encoding-service.js:14
+- core/data-encoding-service.js:15
+- core/data-encoding-service.js:16
+- core/data-placement-service.js:42
+- core/data-placement-service.js:61
+- core/data-placement-service.js:71
+- core/data-placement-service.js:73
+- core/data-placement-service.js:81
+- core/data-placement-service.js:83
+- core/data-placement-service.js:92
+- core/data-placement-service.js:93
+- core/data-placement-service.js:102
+- core/data-placement-service.js:108
+- core/data-placement-service.js:110
+- core/execution-control.js:6
+- core/execution-control.js:19
+- core/execution-control.js:23
+- core/execution-coordinator-service.js:34
+- core/qr-verify-service.js:80
+- core/qr-verify-service.js:91
+- core/qr-verify-service.js:293
+- core/qr-verify-service.js:306
+- core/render-cycle.js:7
+- core/render-cycle.js:15
+- core/render-cycle.js:31
+- core/patterns/dark-module-pattern.js:52
+- core/patterns/dark-module-pattern.js:59
+- core/patterns/format-pattern.js:52
+- core/patterns/format-pattern.js:55
+- core/patterns/format-pattern.js:97
+- core/patterns/format-pattern.js:100
+- core/patterns/pattern-common.js:7
+- core/patterns/pattern-common.js:37
+- core/patterns/pattern-common.js:44
+- core/patterns/timing-pattern.js:84
+- domain/board.js:48
+- domain/board.js:170
+- domain/board.js:173
+- domain/board.js:214
+- domain/board.js:225
+- domain/board.js:234
+- domain/board.js:401
+- domain/board.js:407
+- domain/board.js:700
+- domain/board.js:724
+- domain/board.js:735
+- domain/board.js:738
+- domain/board.js:746
+- domain/board.js:754
+- domain/board.js:780
+- domain/board.js:812
+- domain/board.js:828
+- domain/board.js:831
+- domain/board.js:969
+- domain/board.js:970
+- domain/board.js:1001
+- domain/board.js:1163
+- domain/board.js:1166
+- domain/board.js:1183
+- domain/board.js:1208
+- domain/board.js:1215
+- domain/board.js:1222
+- domain/board.js:1259
+- domain/board.js:1265
+- domain/board.js:1272
+- domain/board.js:1285
+- domain/board.js:1288
+- domain/board.js:1294
+- domain/board.js:1314
+- domain/qr-params.js:12
+- domain/qr-params.js:42
+- io/script-parser.js:1027
+- state/history-store.js:115
+- state/history-store.js:120
+- state/url-state.js:61
+- state/url-state.js:80
+- state/url-state.js:179
+- state/url-state.js:183
+- state/url-state.js:189
+- state/url-state.js:192
+- state/url-state.js:222
+- state/url-state.js:228
+- state/url-state.js:231
+- state/url-state.js:278
+- ui/debug.js:105
+- ui/debug.js:122
+- ui/layout.js:79
+- ui/layout.js:112
+- ui/layout.js:279
+- ui/layout.js:314
+- ui/layout.js:335
+- ui/layout.js:375
+- ui/layout.js:408
+- ui/layout.js:445
+- ui/ui-controls.js:86
+- ui/ui-controls.js:89
+- ui/ui-controls.js:90
+- ui/ui-controls.js:93
+- ui/ui-controls.js:96
+- ui/ui-controls.js:99
+- ui/ui-controls.js:102
+
+## D) window.X || { ... } (large no-op fallback)
+- none remaining (large fallback removed from app/main.js)
+
+## Removed/Changed Fallbacks (required modules)
+- core/execution-control.js: window.executionControl direct assignment
+- state/url-state.js: window.urlState direct assignment
+- ui/layout.js: window.layoutUI direct assignment
+- app/main.js: require urlState/layoutUI/historyController/domainQrParams; remove domainUtil fallback
+- app/bootstrap.js: require layoutUI/urlState; keep debugUI optional
+
+## Retained Fallbacks / Extension Points
+- app/main.js: window.__deferredWindowApi merged for deferred publish (extension hook)
+- ui/debug.js: window.debugUI merge and layoutUI extension for debug UI
+- app/bootstrap.js: debugUI remains optional
+- typeof ... === "function" guards remain as optional hooks (future: consider window.hooks.* consolidation)

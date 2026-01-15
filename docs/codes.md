@@ -216,6 +216,26 @@ repeat-last
 
 end repeat
 mask
+````
 
+## Final 完成形
+````
+reset
+base
+move y25
+repeat-last 
+	if empty put next
+	move left
+	if empty put next
+	if red move down else move up
+	if block
+		move left
+		if skip move left
+		red flip
+	else
+		move right
+	endif
+endrepeat
+mask
 ````
 

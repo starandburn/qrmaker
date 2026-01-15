@@ -15,7 +15,16 @@ const REQUIRED_KEYS = [
 /**
  * 実行環境を初期化し、UI/状態/描画APIの依存を束ねるメイン関数。
  */
-function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layoutUI || {}, debugUI = window.debugUI || {}, settings = {} } = {}){
+function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
+  if(!urlState){
+    throw new Error("state/url-state.js must be loaded before main.js.");
+  }
+  if(!layoutUI){
+    throw new Error("ui/layout.js must be loaded before main.js.");
+  }
+  if(!debugUI){
+    debugUI = {};
+  }
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");
   const btnClearCode = document.getElementById("btnClearCode");
@@ -450,18 +459,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       layoutUI.renderHistoryList(entries);
     }
   };
-  const historyController = window.historyController || {
-    pushHistorySnapshot: () => {},
-    markHistoryPending: () => {},
-    commitPendingHistory: () => false,
-    ensureRunHistory: () => {},
-    finalizeRunHistoryEntry: () => {},
-    pruneHistoryEntries: () => {},
-    getEntry: () => null,
-    getEntries: () => [],
-    setRenderer: () => {},
-    setValueGetter: () => {},
-  };
+  if(!window.historyController){
+    throw new Error("state/history-store.js must be loaded before main.js.");
+  }
+  const historyController = window.historyController;
   historyController.setRenderer(renderHistoryList);
   const getCurrentCodeValue = () => {
     return userCodeInput ? userCodeInput.value ?? "" : "";
@@ -1206,8 +1207,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   ctx.RESET_DELAY_MS = RESET_DELAY_MS;
   window.setRenderMode = setRenderMode;
   ctx.helpers = ctx.helpers || {};
-  const domainUtil = window.domainUtil || {};
-  const domainQrParams = window.domainQrParams || {};
+  if(!window.domainQrParams){
+    throw new Error("domain/qr-params.js must be loaded before main.js.");
+  }
+  const domainQrParams = window.domainQrParams;
   const applyDataParam = (typeof domainQrParams.applyDataParam === "function")
     ? (options) => domainQrParams.applyDataParam(options)
     : () => false;

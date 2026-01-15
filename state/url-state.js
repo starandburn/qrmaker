@@ -364,5 +364,5 @@
     },
   };
 
-  window.urlState = Object.assign({}, window.urlState || {}, urlState);
+  window.urlState = urlState;
 })();
