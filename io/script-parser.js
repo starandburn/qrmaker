@@ -169,7 +169,9 @@
   const KEYWORD_NUMBER_PATTERN = /\b(repeat|loop|for|mask|pause|qrcode|put)(\d+)\b/gi;
   const applyKeywordSpacing = (text) => {
     if(typeof text !== "string" || !text) return "";
-    return text.replace(KEYWORD_NUMBER_PATTERN, "$1 $2");
+    return text
+      .replace(/\bputnext\b/gi, "put next")
+      .replace(KEYWORD_NUMBER_PATTERN, "$1 $2");
   };
   const DIRECTION_SUFFIX_PATTERN = /\b(move|turn)(up|down|left|right|front|back)\b/gi;
   const ASCII_ALPHANUMERIC_PATTERN = /[0-9A-Za-z]/;
