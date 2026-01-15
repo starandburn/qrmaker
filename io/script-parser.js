@@ -710,6 +710,25 @@
     if(!codeRaw.trim()) return "";
     const formattedLines = codeRaw.replace(/\r/g, "").split("\n");
     const preparedLines = expandInlineElseLines(formattedLines);
+    const ASYNC_COMMANDS = new Set([
+      "applyMask",
+      "buildQRCode",
+      "drawBasePatterns",
+      "drawBasePatternsStepped",
+      "drawDataPatterns",
+      "drawFunctionalPatterns",
+      "drawHelloWorld",
+      "drawQRCode",
+      "initializeQRCode",
+      "pauseRunning",
+      "resetCommand",
+      "resetQRCode",
+    ]);
+    const getCommandName = (value) => {
+      if(typeof value !== "string") return "";
+      const match = value.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/);
+      return match ? match[1] : "";
+    };
     const combined = [];
     let blockDepth = 0;
     let pendingInlineIf = null;
@@ -978,7 +997,12 @@
       const formatted = formatStudentCodeLine(line);
       if(formatted){
         const stmt = formatted.endsWith(";") ? formatted : `${formatted};`;
-        combined.push(awaitCalls ? `await ${stmt}` : stmt);
+        const commandName = getCommandName(formatted);
+        if(awaitCalls || ASYNC_COMMANDS.has(commandName)){
+          combined.push(`await ${stmt}`);
+        }else{
+          combined.push(stmt);
+        }
       }
     }
     if(pendingInlineIf){

@@ -313,8 +313,7 @@ endrepeat`
       },
       {
         "label": "5",
-        "code": `reset
-reset		// 盤面リセット
+        "code": `reset		// 盤面リセット
 base		// 基本パターン描画
 move y25 	// 開始位置右下に移動
 red off		// 赤スイッチをOFF
@@ -326,7 +325,7 @@ repeat-last	// 最後のデータまで繰り返し
 	
 	// 赤スイッチによる処理分け
 	if red?	// 赤スイッチがON（2列の左側を処理中）
-		if blue? move down else move up	// 青スイッチにより上下どちらかに移動
+		if blue? move down else move up	// 青スイッチにより上下に移動
 		if block?	// 進めなかった場合
 			move left	// 左に移動
 			if timing? move left	// タイミングパターン列を避ける

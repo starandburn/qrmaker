@@ -293,6 +293,9 @@ function shouldAnimatePlacement(kind){
   if(!isStepModeActive()) return false;
   if(!isStepPlacementAnimationEnabled()) return false;
   if(isMaskApplying()) return false;
+  if(typeof window !== "undefined" && window.isDrawingBasePattern && isStepModeDataOnly()){
+    return false;
+  }
   if(isStepModeDataOnly()){
     if(typeof kind === "number"){
       return isDataKind(kind);
@@ -397,13 +400,15 @@ function updateCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.
   cursorPos.dir = nextDir;
   if(renderMode === RENDER_BUFFERED){
     pendingCursor = { row: r, col: c, dir: nextDir };
-    if(typeof window.updateExecutionStatusCursor === "function"){
+    if(!(typeof window !== "undefined" && window.suppressCursorUpdates)
+      && typeof window.updateExecutionStatusCursor === "function"){
       window.updateExecutionStatusCursor();
     }
     return true;
   }
   applyCursor(r, c, nextDir);
-  if(typeof window.updateExecutionStatusCursor === "function"){
+  if(!(typeof window !== "undefined" && window.suppressCursorUpdates)
+    && typeof window.updateExecutionStatusCursor === "function"){
     window.updateExecutionStatusCursor();
   }
   return true;
@@ -704,7 +709,8 @@ function moveCursor(...args){
       target: { row: targetRow, col: targetCol },
       dir: finalDir,
     };
-    if(typeof window.logEvent === "function"){
+    if(!(typeof window !== "undefined" && window.suppressCursorUpdates)
+      && typeof window.logEvent === "function"){
       const cellRef = cellRefFromRowCol(targetRow, targetCol);
       const refLabel = cellRef ? ("@" + cellRef) : "";
       const coordsLabel = "(" + targetRow + ", " + targetCol + ")";

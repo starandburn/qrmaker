@@ -1260,8 +1260,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ctx.runId++;
     ctx.isStepFillRunning = false;
     setInputLock(false);
+    let resetResult;
     if(clear){
-      resetBoardState();
+      resetResult = resetBoardState();
     }
     if(resetCursorFlag){
       resetCursor();
@@ -1275,6 +1276,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       pendingStopReason = null;
       stopReasonLocked = false;
     }
+    return resetResult;
   }
 
   let cellsInitialized = false;
@@ -1334,6 +1336,27 @@ function clearBoardSurface(){
     }
     resetCursor();
     pendingCursor = null;
+    requestRender("resetBoardState");
+    if(typeof requestAnimationFrame === "function"){
+      return {
+        then: (resolve, _reject) => {
+          const waitFrame = () => new Promise((frameResolve) => {
+            let done = false;
+            const finish = () => {
+              if(done) return;
+              done = true;
+              frameResolve(true);
+            };
+            requestAnimationFrame(finish);
+            setTimeout(finish, 50);
+          });
+          waitFrame().then(() => waitFrame().then(() => resolve(true)));
+        },
+        catch: () => {},
+        valueOf: () => true,
+        toString: () => "true",
+      };
+    }
   }
 
   function resetQRCode(){
@@ -1342,6 +1365,27 @@ function clearBoardSurface(){
     }
     resetCursor();
     pendingCursor = null;
+    requestRender("resetQRCode");
+    if(typeof requestAnimationFrame === "function"){
+      return {
+        then: (resolve, _reject) => {
+          const waitFrame = () => new Promise((frameResolve) => {
+            let done = false;
+            const finish = () => {
+              if(done) return;
+              done = true;
+              frameResolve(true);
+            };
+            requestAnimationFrame(finish);
+            setTimeout(finish, 50);
+          });
+          waitFrame().then(() => waitFrame().then(() => resolve(true)));
+        },
+        catch: () => {},
+        valueOf: () => true,
+        toString: () => "true",
+      };
+    }
     return true;
   }
   ctx.resetQRCode = resetQRCode;
@@ -1352,6 +1396,10 @@ function clearBoardSurface(){
     showApiStatus("resetCommand");
     resetBoardState(options);
     resetSwitchStates();
+    requestRender("resetCommand");
+    if(typeof requestAnimationFrame === "function"){
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(true)));
+    }
     await sleep(RESET_DELAY_MS);
   }
 
@@ -1379,6 +1427,7 @@ function clearBoardSurface(){
       codePanel,
       buildUserScript,
       resetLoopGuard,
+      isStepModeOn,
       isDebugVisible,
       requestRender,
       setRenderMode,
@@ -1979,6 +2028,29 @@ function clearBoardSurface(){
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     const shouldAbort = () => runToken !== runId;
     let dataPatternStageDirty = false;
+    const perfNow = (typeof performance !== "undefined" && typeof performance.now === "function")
+      ? () => performance.now()
+      : () => Date.now();
+    const waitForRender = async () => {
+      if(typeof requestAnimationFrame !== "function") return;
+      const waitFrame = () => new Promise((resolve) => {
+        let done = false;
+        const finish = () => {
+          if(done) return;
+          done = true;
+          resolve(true);
+        };
+        requestAnimationFrame(finish);
+        setTimeout(finish, 50);
+      });
+      await waitFrame();
+      await waitFrame();
+    };
+    const perfStats = {
+      steps: 0,
+      putMs: 0,
+      moveMs: 0,
+    };
     const markDataPatternStage = (kind) => {
       if(updateDataPatternStatus(kind)){
         dataPatternStageDirty = true;
@@ -1998,32 +2070,89 @@ function clearBoardSurface(){
     };
     return runWithDirectionOverride(async () => {
       let advanceStepCounter = 0;
-      const advanceDataCursor = async () => {
+      const stepModeOn = typeof isStepModeOn === "function" && isStepModeOn();
+      const stepDataEnabled = stepModeOn;
+      const prevRenderMode = ctx.renderMode;
+      const prevSuppressCursorUpdates = typeof window !== "undefined" ? window.suppressCursorUpdates : false;
+      if(!stepModeOn){
+        if(typeof window !== "undefined"){
+          window.suppressCursorUpdates = true;
+        }
+        setRenderMode(RENDER_BUFFERED);
+      }
+      const awaitIfStepping = async (result) => {
+        if(!stepDataEnabled){
+          return result;
+        }
+        return await result;
+      };
+      const advanceDataCursorSync = () => {
+        perfStats.steps += 1;
         if(window.isEmpty && window.isEmpty()){
           const nextData = (typeof window.getNextData === "function") ? window.getNextData() : null;
           if(nextData !== null && nextData !== undefined){
-            await putCell(nextData);
+            const putStart = perfNow();
+            putCell(nextData);
+            perfStats.putMs += perfNow() - putStart;
           }else{
-            await putCell();
+            const putStart = perfNow();
+            putCell();
+            perfStats.putMs += perfNow() - putStart;
           }
         }
+        const moveStart = perfNow();
         const isLeftStep = (advanceStepCounter % 2) === 0;
         advanceStepCounter += 1;
         if(isLeftStep){
-          await moveCursor("left");
+          moveCursor("left");
         }else{
-          await moveCursor();
+          moveCursor();
           if(!(typeof window.isMoveBlocked === "function" && window.isMoveBlocked())){
-            await moveCursor("right");
+            moveCursor("right");
           }
         }
         if(typeof window.isMoveBlocked === "function" && window.isMoveBlocked()){
-          await turnCursor();
-          await moveCursor("left");
+          turnCursor();
+          moveCursor("left");
           if(typeof window.isSkipZone === "function" && window.isSkipZone()){
-            await moveCursor("left");
+            moveCursor("left");
           }
         }
+        perfStats.moveMs += perfNow() - moveStart;
+      };
+      const advanceDataCursorAsync = async () => {
+        perfStats.steps += 1;
+        if(window.isEmpty && window.isEmpty()){
+          const nextData = (typeof window.getNextData === "function") ? window.getNextData() : null;
+          if(nextData !== null && nextData !== undefined){
+            const putStart = perfNow();
+            await awaitIfStepping(putCell(nextData));
+            perfStats.putMs += perfNow() - putStart;
+          }else{
+            const putStart = perfNow();
+            await awaitIfStepping(putCell());
+            perfStats.putMs += perfNow() - putStart;
+          }
+        }
+        const moveStart = perfNow();
+        const isLeftStep = (advanceStepCounter % 2) === 0;
+        advanceStepCounter += 1;
+        if(isLeftStep){
+          await awaitIfStepping(moveCursor("left"));
+        }else{
+          await awaitIfStepping(moveCursor());
+          if(!(typeof window.isMoveBlocked === "function" && window.isMoveBlocked())){
+            await awaitIfStepping(moveCursor("right"));
+          }
+        }
+        if(typeof window.isMoveBlocked === "function" && window.isMoveBlocked()){
+          await awaitIfStepping(turnCursor());
+          await awaitIfStepping(moveCursor("left"));
+          if(typeof window.isSkipZone === "function" && window.isSkipZone()){
+            await awaitIfStepping(moveCursor("left"));
+          }
+        }
+        perfStats.moveMs += perfNow() - moveStart;
       };
       try{
         resetLoopGuard();
@@ -2034,17 +2163,39 @@ function clearBoardSurface(){
           if(!canContinueLoop()) return false;
           const nextKind = (typeof window.getNextDataKind === "function") ? window.getNextDataKind() : null;
           markDataPatternStage(nextKind);
-          await advanceDataCursor();
+          if(stepDataEnabled){
+            await advanceDataCursorAsync();
+          }else{
+            advanceDataCursorSync();
+          }
           if(shouldAbort()) throw ABORT_ERR;
         }
         return runToken === runId;
       }finally{
         finalizeStage();
+        if(!stepModeOn){
+          requestRender("drawDataPatterns");
+          setRenderMode(prevRenderMode);
+          if(typeof window !== "undefined"){
+            window.suppressCursorUpdates = prevSuppressCursorUpdates;
+            if(typeof window.updateExecutionStatusCursor === "function"){
+              window.updateExecutionStatusCursor();
+            }
+          }
+        }
+        if(typeof window.logEvent === "function"){
+          const payload = {
+            steps: perfStats.steps,
+            putMs: Math.round(perfStats.putMs),
+            moveMs: Math.round(perfStats.moveMs),
+          };
+          window.logEvent("perfDataPattern", JSON.stringify(payload), "data内訳");
+        }
       }
     });
   }
   async function drawQRCode(arg){
-    const resetOk = resetQRCode();
+    const resetOk = await resetQRCode();
     if(resetOk === false) return false;
     const baseOk = await callDrawBasePatterns();
     if(!baseOk) return false;
@@ -2102,7 +2253,7 @@ function clearBoardSurface(){
   ];
 
   async function drawHelloWorld(){
-    const resetOk = resetQRCode();
+    const resetOk = await resetQRCode();
     if(resetOk === false) return false;
     const stepEnabled = typeof isStepModeOn === "function" && isStepModeOn();
     const prevRenderMode = ctx ? ctx.renderMode : RENDER_IMMEDIATE;
@@ -2341,7 +2492,10 @@ function clearBoardSurface(){
     historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
     if(inputLocked){
-      stopCurrentRun({ resetCursor: true, clear: true });
+      const resetWait = stopCurrentRun({ resetCursor: true, clear: true });
+      if(resetWait && typeof resetWait.then === "function"){
+        await resetWait;
+      }
     }
     const codeText = (userCodeInput && typeof userCodeInput.value === "string")
       ? userCodeInput.value.trim()
@@ -2359,29 +2513,82 @@ function clearBoardSurface(){
     setInputLock(true);
     let runOk = false;
     let verificationOutcome = null;
+    const shouldStepRun = typeof isStepModeOn === "function" && isStepModeOn();
+    const prevRenderMode = ctx.renderMode;
+    const prevSuppressCursorUpdates = typeof window !== "undefined" ? window.suppressCursorUpdates : false;
+    const perfNow = (typeof performance !== "undefined" && typeof performance.now === "function")
+      ? () => performance.now()
+      : () => Date.now();
+    let runDurationMs = 0;
+    let verifyDurationMs = 0;
     try{
       setQRCodeReadable(false);
+      if(!shouldStepRun){
+        if(typeof window !== "undefined"){
+          window.suppressCursorUpdates = true;
+        }
+        setRenderMode(RENDER_BUFFERED);
+      }
+      const runStart = perfNow();
       runOk = await runUserCodeWithStep();
+      runDurationMs = Math.max(0, perfNow() - runStart);
     }finally{
+      if(!shouldStepRun){
+        requestRender("runUserCodeBuffered");
+        setRenderMode(prevRenderMode);
+        if(typeof window !== "undefined"){
+          window.suppressCursorUpdates = prevSuppressCursorUpdates;
+          if(typeof window.updateExecutionStatusCursor === "function"){
+            window.updateExecutionStatusCursor();
+          }
+        }
+      }
       if(lockToken === inputLockToken){
         setInputLock(false);
       }
-      verificationOutcome = logVerificationOutcome();
-      if(runOk){
-          const verificationDetail = verificationOutcome
-            ? (verificationOutcome.match ? "正しいQRコードです。" : "この盤面はQRコードとして読み取れません。")
+      if(typeof window.logEvent === "function"){
+        window.logEvent("perfRunUserCode", JSON.stringify({ ms: Math.round(runDurationMs) }), "実行時間");
+      }
+      const applyExecutionStatus = (outcome) => {
+        if(runOk){
+          const verificationDetail = outcome
+            ? (outcome.match ? "正しいQRコードです。" : "この盤面はQRコードとして読み取れません。")
             : "";
-          if(verificationOutcome && !verificationOutcome.match){
+          if(outcome && !outcome.match){
             setExecutionStatus("warning", undefined, verificationDetail);
           }else{
             setExecutionStatus("finished", undefined, verificationDetail);
           }
-      }else if(lastExecutionError){
-        setExecutionStatus("error", lastExecutionError);
-      }else{
-        setExecutionStatus("stopped");
-      }
+          return;
+        }
+        if(lastExecutionError){
+          setExecutionStatus("error", lastExecutionError);
+        }else{
+          setExecutionStatus("stopped");
+        }
+      };
+      applyExecutionStatus(null);
       historyController.finalizeRunHistoryEntry(runOk);
+      if(runOk){
+        (async () => {
+          if(!shouldStepRun){
+            await new Promise((resolve) => setTimeout(resolve, 0));
+          }
+          try{
+            const verifyStart = perfNow();
+            verificationOutcome = logVerificationOutcome();
+            verifyDurationMs = Math.max(0, perfNow() - verifyStart);
+            if(typeof window.logEvent === "function"){
+              window.logEvent("perfVerify", JSON.stringify({ ms: Math.round(verifyDurationMs) }), "検証時間");
+            }
+            applyExecutionStatus(verificationOutcome);
+          }catch(err){
+            if(typeof window.logEvent === "function"){
+              window.logEvent("perfVerify", JSON.stringify({ error: String(err) }), "検証失敗");
+            }
+          }
+        })();
+      }
     }
   });
   if(btnGenerate){
