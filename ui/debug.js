@@ -8,6 +8,15 @@
   let debugLogElement = document.getElementById("debugLog");
   const debugOnlyControlsList = Array.from(document.querySelectorAll(".debug-only"));
   const logBuffer = global._logBuffer || [];
+  const shouldMirrorConsoleLogs = () => Boolean(global.__DEBUG_CONSOLE_LOGGING);
+  const safeConsoleLog = (value) => {
+    if(!shouldMirrorConsoleLogs()) return;
+    try{
+      console.log(value);
+    }catch(e){
+      // ignore console errors
+    }
+  };
   let lastLogBody = null;
 
   const getDebugPanelElement = () => {
@@ -91,9 +100,7 @@
   function formatEventMessage(fnName, mainArg, description){
     const clip = global.formatLogEventMessage || ((fnName, mainArg, description) => {
       const safeName = fnName || "unknown";
-      const mainArgText = (mainArg === undefined || mainArg === null) ? "" : String(mainArg);
-      const callText = `${safeName}(${mainArgText})`;
-      return description ? `${callText}: ${description}` : callText;
+      return description ? `${safeName}: ${description}` : safeName;
     });
     return clip(fnName, mainArg, description);
   }
@@ -136,10 +143,16 @@
 
   function logEvent(fnName, mainArg, description){
     const message = formatEventMessage(fnName, mainArg, description);
-    window.log(message);
+    const consoleDetails = {
+      api: fnName || "unknown",
+      args: mainArg,
+      description,
+      timestamp: new Date().toISOString(),
+    };
+    window.log(message, { consoleDetails, debugMessage: message });
   }
 
-  window.log = (msg) => {
+  window.log = (msg, { consoleDetails, debugMessage } = {}) => {
     const logEl = getDebugLogElement();
     if(logEl && logBuffer.length){
       const buffered = logBuffer.splice(0);
@@ -147,12 +160,9 @@
         appendDebugLog(bufferedLine, { raw: true });
       }
     }
-    appendDebugLog(String(msg));
-    try{
-      console.log(msg);
-    }catch(e){
-      // ignore console errors
-    }
+    const text = String(debugMessage ?? msg);
+    appendDebugLog(text);
+    safeConsoleLog(consoleDetails ?? msg);
   };
 
   window.logEvent = logEvent;

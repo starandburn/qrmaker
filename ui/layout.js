@@ -131,32 +131,50 @@ function getKindColor(kind){
   return fallback[kind] || "black";
 }
 
+const shouldMirrorConsoleLogs = () => Boolean(window.__DEBUG_CONSOLE_LOGGING);
+const safeConsoleLog = (value) => {
+  if(!shouldMirrorConsoleLogs()) return;
+  try{
+    console.log(value);
+  }catch(e){
+    // ignore console errors
+  }
+};
+
 // Minimal logger stub (overridden later in main.js) to buffer early logs
 window._logBuffer = window._logBuffer || [];
 if(typeof window.log !== "function"){
-  window.log = (msg) => {
+  window.log = (msg, { consoleDetails, debugMessage } = {}) => {
     const now = new Date();
     const hh = String(now.getHours()).padStart(2, "0");
     const mm = String(now.getMinutes()).padStart(2, "0");
     const ss = String(now.getSeconds()).padStart(2, "0");
-    const line = `[${hh}:${mm}:${ss}] ${String(msg)}`;
+    const debugText = String(debugMessage ?? msg);
+    const line = `[${hh}:${mm}:${ss}] ${debugText}`;
     window._logBuffer.push(line);
-    try{ console.log(msg); }catch(e){}
+    safeConsoleLog(consoleDetails ?? msg);
   };
 }
 
 const formatLogEventMessage = (fnName, mainArg, description) => {
   const safeName = fnName || "unknown";
-  const mainArgText = (mainArg === undefined || mainArg === null) ? "" : String(mainArg);
-  const callText = `${safeName}(${mainArgText})`;
-  return description ? `${callText}: ${description}` : callText;
+  if(description){
+    return `${safeName}: ${description}`;
+  }
+  return safeName;
 };
 window.formatLogEventMessage = formatLogEventMessage;
 
 if(typeof window.logEvent !== "function"){
   window.logEvent = (fnName, mainArg, description) => {
     const message = formatLogEventMessage(fnName, mainArg, description);
-    window.log(message);
+    const consoleDetails = {
+      api: fnName || "unknown",
+      args: mainArg,
+      description,
+      timestamp: new Date().toISOString(),
+    };
+    window.log(message, { consoleDetails, debugMessage: message });
   };
 }
 
@@ -332,6 +350,9 @@ function refreshGuide(){
 }
 if(txtInput){
   txtInput.addEventListener("input", () => {
+    if(typeof window.logEvent === "function"){
+      window.logEvent("txtInput.input", txtInput.value ?? "", "テキスト入力が変更されました");
+    }
     if(typeof window.stopCurrentRun === "function"){
       window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
     }
@@ -372,6 +393,9 @@ if(userCodeTextarea){
 
 if(btnClear){
   btnClear.addEventListener("click", () => {
+    if(typeof window.logEvent === "function"){
+      window.logEvent("btnClear.click", "", "入力をゼロにクリアしました");
+    }
     if(typeof window.stopCurrentRun === "function"){
       window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
     }
@@ -386,6 +410,10 @@ if(sampleDropdownToggle){
   sampleDropdownToggle.addEventListener("click", (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
+    const willOpen = !(sampleDropdown?.classList.contains("is-open"));
+    if(typeof window.logEvent === "function"){
+      window.logEvent("sampleDropdown.toggle", { state: willOpen ? "open" : "close" }, willOpen ? "サンプルメニューを開きました" : "サンプルメニューを閉じました");
+    }
     toggleSampleDropdown();
   });
 }
@@ -394,6 +422,9 @@ if(sampleDropdownMenu){
     const option = ev.target.closest("[data-sample-value]");
     if(!option) return;
     const value = option.getAttribute("data-sample-value") ?? "";
+    if(typeof window.logEvent === "function"){
+      window.logEvent("sampleDropdown.select", { value }, "サンプル入力が選択されました");
+    }
     setInputValue(value);
     closeSampleDropdown();
   });
@@ -533,6 +564,9 @@ if(toggleCursor){
 syncViewToggles();
 if(btnSelectAllToggles){
   btnSelectAllToggles.addEventListener("click", () => {
+    if(typeof window.logEvent === "function"){
+      window.logEvent("btnSelectAllToggles.click", "", "表示トグルをすべてオンにしました");
+    }
     for(const el of toggleInputs){
       el.checked = true;
     }
@@ -545,6 +579,9 @@ if(btnSelectAllToggles){
 }
 if(btnClearAllToggles){
   btnClearAllToggles.addEventListener("click", () => {
+    if(typeof window.logEvent === "function"){
+      window.logEvent("btnClearAllToggles.click", "", "表示トグルをすべてオフにしました");
+    }
     for(const el of toggleInputs){
       el.checked = false;
     }
@@ -570,11 +607,24 @@ function closeAsciiModal(ev){
   }
 }
 if(asciiLink){
-  asciiLink.addEventListener("click", openAsciiModal);
+  asciiLink.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if(typeof window.logEvent === "function"){
+      window.logEvent("asciiLink.click", "", "ASCII 表を開きました");
+    }
+    openAsciiModal();
+  });
   asciiLink.addEventListener("click", (ev) => ev.stopPropagation());
 }
 if(asciiClose){
-  asciiClose.addEventListener("click", closeAsciiModal);
+  asciiClose.addEventListener("click", (ev) => {
+    ev.preventDefault();
+    if(typeof window.logEvent === "function"){
+      window.logEvent("asciiClose.click", "", "ASCII 表を閉じました");
+    }
+    closeAsciiModal();
+  });
 }
 if(asciiModal){
   asciiModal.addEventListener("click", (ev) => {
