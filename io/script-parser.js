@@ -39,8 +39,6 @@
     timings: "drawTimingPatterns",
     next: "getNextData",
     pause: "pauseRunning",
-    setswitch: "setSwitch",
-    isswitchon: "isSwitchOn",
     hello: "drawHelloWorld",
     helloworld: "drawHelloWorld",
     drawhelloworld: "drawHelloWorld",
@@ -102,6 +100,7 @@
   };
   const getAllowedCommandSet = () => {
     const allowed = new Set(BASE_ALLOWED_COMMANDS);
+    allowed.add("setswitch");
     const activeNames = new Set(getActiveSwitchNames());
     BASE_SWITCH_NAMES.forEach((name) => {
       if(!activeNames.has(name)){
