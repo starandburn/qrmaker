@@ -1997,6 +1997,34 @@ function clearBoardSurface(){
       return fn();
     };
     return runWithDirectionOverride(async () => {
+      let advanceStepCounter = 0;
+      const advanceDataCursor = async () => {
+        if(window.isEmpty && window.isEmpty()){
+          const nextData = (typeof window.getNextData === "function") ? window.getNextData() : null;
+          if(nextData !== null && nextData !== undefined){
+            await putCell(nextData);
+          }else{
+            await putCell();
+          }
+        }
+        const isLeftStep = (advanceStepCounter % 2) === 0;
+        advanceStepCounter += 1;
+        if(isLeftStep){
+          await moveCursor("left");
+        }else{
+          await moveCursor();
+          if(!(typeof window.isMoveBlocked === "function" && window.isMoveBlocked())){
+            await moveCursor("right");
+          }
+        }
+        if(typeof window.isMoveBlocked === "function" && window.isMoveBlocked()){
+          await turnCursor();
+          await moveCursor("left");
+          if(typeof window.isSkipZone === "function" && window.isSkipZone()){
+            await moveCursor("left");
+          }
+        }
+      };
       try{
         resetLoopGuard();
         resetData();
@@ -2006,7 +2034,7 @@ function clearBoardSurface(){
           if(!canContinueLoop()) return false;
           const nextKind = (typeof window.getNextDataKind === "function") ? window.getNextDataKind() : null;
           markDataPatternStage(nextKind);
-          await advanceCommand();
+          await advanceDataCursor();
           if(shouldAbort()) throw ABORT_ERR;
         }
         return runToken === runId;

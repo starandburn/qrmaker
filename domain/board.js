@@ -90,7 +90,6 @@ let timingRowIndex = 0;
 let timingColIndex = 0;
 let hasFormatPattern = false;
 let lastMoveBlocked = false;
-let moveNextCounter = 0;
 const BOARD_ROWS = 25;
 const BOARD_COLS = 25;
 const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
@@ -411,7 +410,6 @@ function updateCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.
 }
 
 function resetCursor(){
-  moveNextCounter = 0;
   return updateCursor(HOME_CURSOR.row, HOME_CURSOR.col, HOME_CURSOR.dir);
 }
 
@@ -450,7 +448,6 @@ function moveCursor(...args){
   let finalDir = cursorPos.dir;
     let logLabel = null;
     let logPositionOnly = false;
-    let shouldResetMoveNext = false;
     let relativeStepDir = null;
     let relativeMoveCount = 1;
     let isRelativeMove = false;
@@ -494,7 +491,6 @@ function moveCursor(...args){
     const recordStraightMove = () => {
       logLabel = "カーソル直移動";
       logPositionOnly = true;
-      shouldResetMoveNext = true;
     };
   const recordRelativeMove = (key) => {
     logLabel = describeMove(key);
@@ -701,9 +697,6 @@ function moveCursor(...args){
         return false;
       }
       recordLoopOccupiedTarget(targetRow, targetCol);
-      if(shouldResetMoveNext){
-        moveNextCounter = 0;
-      }
     }
   if(logLabel && logPositionOnly){
     const payload = {
@@ -723,37 +716,6 @@ function moveCursor(...args){
   resetCursorColorAfterStepMove();
   lastMoveBlocked = false;
   return callMakeStepThenable();
-}
-
-async function moveNext(){
-  if(!isDirectionEnabled() && !shouldAllowDirectionCommands()){
-    throw new Error("Direction commands are disabled (useDirection=false): move next");
-  }
-  const isLeftStep = (moveNextCounter % 2) === 0;
-  moveNextCounter += 1;
-  if(isLeftStep){
-    return await moveCursor("left");
-  }
-  const forwardOk = await moveCursor();
-  if(typeof window.isMoveBlocked === "function" && window.isMoveBlocked()){
-    return forwardOk;
-  }
-  return await moveCursor("right");
-}
-
-async function moveAdvance(){
-  if(!isDirectionEnabled() && !shouldAllowDirectionCommands()){
-    throw new Error("Direction commands are disabled (useDirection=false): move advance");
-  }
-  await moveNext();
-  if(typeof window.isMoveBlocked === "function" && window.isMoveBlocked()){
-    await turnCursor();
-    await moveCursor("left");
-    if(typeof window.isSkipZone === "function" && window.isSkipZone()){
-      await moveCursor("left");
-    }
-  }
-  return true;
 }
 
 function callMakeStepThenable(options = {}){
@@ -1017,14 +979,11 @@ function encodeBitPair(kind, bit){
   }
   return bit === 1 ? Math.abs(kind) : -Math.abs(kind || 0);
 }
-function isDataEnd(){
-  return !Array.isArray(dataSeq) || dataSeqIndex >= dataSeq.length;
-}
 function hasMoreData(){
   return Array.isArray(dataSeq) && dataSeqIndex < dataSeq.length;
 }
 function getNextData(){
-  if(isDataEnd()){
+  if(!hasMoreData()){
     return null;
   }
   const entry = dataSeq[dataSeqIndex++];
@@ -1327,14 +1286,6 @@ function isMoveBlocked(){
   return lastMoveBlocked;
 }
 
-async function advanceCommand(){
-  if(window.isEmpty && window.isEmpty()){
-    await putCell();
-  }
-  await moveAdvance();
-  return true;
-}
-
 window.DIR_UP = DIR_UP;
 window.DIR_RIGHT = DIR_RIGHT;
 window.DIR_DOWN = DIR_DOWN;
@@ -1353,7 +1304,6 @@ window.flushRender = flushRender;
 window.setRenderMode = setRenderMode;
 window.reapplyCellColors = reapplyCellColors;
 window.resetData = resetData;
-window.isDataEnd = isDataEnd;
 window.hasMoreData = hasMoreData;
 window.getNextData = getNextData;
 window.getNextDataKind = getNextDataKind;
@@ -1370,9 +1320,6 @@ window.isEmpty = isEmpty;
   window.isSkipZone = isSkipZone;
   window.isFunctionalCell = isFunctionalCell;
   window.isMoveBlocked = isMoveBlocked;
-  window.advanceCommand = advanceCommand;
-  window.moveAdvance = moveAdvance;
-  window.moveNext = moveNext;
   window.shouldPlaceCell = shouldPlaceCell;
   window.moveCursor = moveCursor;
 window.turnCursor = turnCursor;
