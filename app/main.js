@@ -2365,8 +2365,6 @@ endrepeat`;
   document.addEventListener("keydown", (ev) => {
     if(ev.key !== "Escape") return;
     if(ev.repeat) return;
-    const active = (typeof document !== "undefined") ? document.activeElement : null;
-    if(!isExecutionRunning() && isEditableTarget(active)) return;
     const asciiModal = document.getElementById("asciiModal");
     if(asciiModal && !asciiModal.classList.contains("hidden")) return;
     handleResetAction();
