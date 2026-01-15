@@ -20,7 +20,7 @@
       syncParsedCode,
       isDebugVisible,
       requestAnimationFrame,
-      fitSquare,
+      syncViewLayout,
     } = opts;
 
     const TOGGLE_FLAG_ORDER = [
@@ -99,8 +99,8 @@
         if(typeof syncParsedCode === "function"){
           syncParsedCode();
         }
-        if(typeof requestAnimationFrame === "function" && typeof fitSquare === "function"){
-          requestAnimationFrame(fitSquare);
+        if(typeof requestAnimationFrame === "function" && typeof syncViewLayout === "function"){
+          requestAnimationFrame(syncViewLayout);
         }
       });
     };

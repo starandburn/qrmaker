@@ -1442,6 +1442,21 @@ function clearBoardSurface(){
       runUserCode: async () => true,
       runUserCodeWithStep: async () => true,
     };
+  const scheduleSyncParsedCode = (() => {
+    let scheduled = null;
+    const run = () => {
+      scheduled = null;
+      syncParsedCode();
+    };
+    return () => {
+      if(scheduled !== null) return;
+      if(typeof requestAnimationFrame === "function"){
+        scheduled = requestAnimationFrame(run);
+      }else{
+        scheduled = setTimeout(run, 0);
+      }
+    };
+  })();
 
   const {
     syncDebugOverlay,
@@ -1472,7 +1487,7 @@ function clearBoardSurface(){
     syncParsedCode,
     isDebugVisible,
     requestAnimationFrame,
-    fitSquare: window.fitSquare,
+    syncViewLayout: window.syncViewLayout,
   });
 
   // Export helpers to window
@@ -2724,13 +2739,13 @@ function clearBoardSurface(){
   });
   applyStepSpeedParam({ stepSpeed });
   syncDebugPanelLayout();
-  syncParsedCode();
+  scheduleSyncParsedCode();
   if(dataPatternPanel){
     dataPatternPanel.addEventListener("toggle", () => {
       syncDebugPanelLayout();
-      syncParsedCode();
-      if(typeof window.fitSquare === "function"){
-        requestAnimationFrame(window.fitSquare);
+      scheduleSyncParsedCode();
+      if(typeof window.syncViewLayout === "function"){
+        requestAnimationFrame(window.syncViewLayout);
       }
     });
   }
@@ -2749,7 +2764,7 @@ function clearBoardSurface(){
     let wheelHoldCount = 0;
     let wheelHoldDirection = 0;
     userCodeInput.addEventListener("input", (ev) => {
-      syncParsedCode();
+      scheduleSyncParsedCode();
       ensureUserCodeCaretVisible();
       if(executionStatusEl && !executionStatusEl.classList.contains("status-running")){
         const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";

@@ -445,8 +445,8 @@ if(userCode){
 refreshPattern();
 updateDataStatus();
 
-function fitSquare(){
-  window.logEvent("fitSquare", "", "描画領域にフィット");
+function syncViewLayout(){
+  window.logEvent("syncViewLayout", "", "描画領域にフィット");
   const area = document.querySelector(".view-area");
   const sq = document.querySelector(".square");
   if(!area || !sq) return;
@@ -478,10 +478,10 @@ function fitSquare(){
   }
 }
 
-window.addEventListener("resize", () => requestAnimationFrame(fitSquare));
-window.addEventListener("load", () => requestAnimationFrame(fitSquare));
-requestAnimationFrame(fitSquare);
-window.fitSquare = fitSquare;
+window.addEventListener("resize", () => requestAnimationFrame(syncViewLayout));
+window.addEventListener("load", () => requestAnimationFrame(syncViewLayout));
+requestAnimationFrame(syncViewLayout);
+window.syncViewLayout = syncViewLayout;
 
 function syncViewToggles(){
   window.logEvent("syncViewToggles", "", "表示トグルの状態を同期");
