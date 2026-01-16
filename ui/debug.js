@@ -8,7 +8,7 @@
   let debugLogElement = document.getElementById("debugLog");
   const debugOnlyControlsList = Array.from(document.querySelectorAll(".debug-only"));
   const logBuffer = global._logBuffer || [];
-  const shouldMirrorConsoleLogs = () => Boolean(global.__DEBUG_CONSOLE_LOGGING);
+  const shouldMirrorConsoleLogs = () => true;
   const safeConsoleLog = (value) => {
     if(!shouldMirrorConsoleLogs()) return;
     try{

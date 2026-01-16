@@ -151,7 +151,7 @@ function getKindColor(kind){
   return fallback[kind] || "black";
 }
 
-const shouldMirrorConsoleLogs = () => Boolean(window.__DEBUG_CONSOLE_LOGGING);
+const shouldMirrorConsoleLogs = () => true;
 const safeConsoleLog = (value) => {
   if(!shouldMirrorConsoleLogs()) return;
   try{
