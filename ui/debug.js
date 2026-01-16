@@ -179,6 +179,10 @@
     appendDebugLog(text);
     safeConsoleLog(consoleDetails ?? msg);
   };
+  if(!global.__DEBUG_LOG_STARTED){
+    global.__DEBUG_LOG_STARTED = true;
+    window.log("ログを開始しました");
+  }
 
   window.logEvent = logEvent;
 

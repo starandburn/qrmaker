@@ -522,7 +522,10 @@ requestAnimationFrame(syncViewLayout);
 window.syncViewLayout = syncViewLayout;
 
 function syncViewToggles(){
-  window.logEvent("syncViewToggles", "", "表示トグルの状態を同期");
+  const baseLabel = "表示トグルの状態を同期";
+  const summary = buildViewToggleSummary();
+  const message = summary ? `${baseLabel}${summary}` : baseLabel;
+  window.logEvent("syncViewToggles", "", message);
   updateToggleButtons();
   const area = document.querySelector(".view-area");
   if(!area) return;
@@ -530,6 +533,23 @@ function syncViewToggles(){
   area.classList.toggle("hide-grid", toggleGrid && !toggleGrid.checked);
   area.classList.toggle("hide-empty", toggleEmpty && !toggleEmpty.checked);
   area.classList.toggle("hide-cursor", toggleCursor && !toggleCursor.checked);
+}
+function buildViewToggleSummary(){
+  const entries = [
+    { el: toggleCursor, label: "カーソル" },
+    { el: toggleGuide, label: "ガイド" },
+    { el: toggleGrid, label: "グリッド" },
+    { el: toggleEmpty, label: "空セル" },
+    { el: toggleColor, label: "色" },
+    { el: toggleDebugValues, label: "セルの値" },
+  ].filter((entry) => entry.el);
+  if(!entries.length) return "";
+  const allChecked = entries.every((entry) => entry.el.checked);
+  const allUnchecked = entries.every((entry) => !entry.el.checked);
+  if(allChecked) return "（全選択）";
+  if(allUnchecked) return "（全解除）";
+  const enabled = entries.filter((entry) => entry.el.checked).map((entry) => entry.label);
+  return enabled.length ? `（${enabled.join("/")})` : "";
 }
 function updateToggleButtons(){
   if(!btnSelectAllToggles && !btnClearAllToggles) return;
@@ -599,7 +619,6 @@ if(toggleEmpty){
 if(toggleCursor){
   toggleCursor.addEventListener("change", syncViewToggles);
 }
-syncViewToggles();
 if(btnSelectAllToggles){
   btnSelectAllToggles.addEventListener("click", () => {
     if(typeof window.logEvent === "function"){
