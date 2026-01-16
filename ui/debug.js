@@ -101,6 +101,7 @@
     const clip = global.formatLogEventMessage || ((fnName, mainArg, description) => {
       const safeName = fnName || "unknown";
       const text = description ? `${safeName}: ${description}` : safeName;
+      if(fnName === "qrVerify") return text;
       if(typeof mainArg !== "string") return text;
       const trimmed = mainArg.trim();
       if(!trimmed || !/^\{[\s\S]*\}$/.test(trimmed)) return text;
@@ -176,7 +177,10 @@
       }
     }
     const text = String(debugMessage ?? msg);
-    appendDebugLog(text);
+    const skipDebugLog = Boolean(consoleDetails && typeof consoleDetails.api === "string" && consoleDetails.api.startsWith("perf"));
+    if(!skipDebugLog){
+      appendDebugLog(text);
+    }
     safeConsoleLog(consoleDetails ?? msg);
   };
   if(!global.__DEBUG_LOG_STARTED){

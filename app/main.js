@@ -747,8 +747,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     drawAlignmentPatterns: { l2: "基本パターン", l3: "アライメントパターンを描画しています。" },
     drawDarkModulePatterns: { l2: "基本パターン", l3: "ダークモジュールを描画しています。" },
     drawFormatPatterns: { l2: "基本パターン", l3: "フォーマットパターンを描画しています。" },
+    applyMaskFormat: { l2: "マスク", l3: "フォーマットパターンを更新しています。" },
     verify: { l2: "QRコード検証", l3: "作成中" },
-    applyMask: (maskIndex) => ({ l2: "マスク", l3: `${maskIndex}番を適用しています。` }),
+    applyMask: (maskIndex) => ({ l2: "マスク", l3: `マスク${maskIndex}を適用しています。` }),
   };
   const DATA_PATTERN_STAGE_MESSAGES = {
     [window.BIT_INFO_MODE]: { l2: "データパターン", l3: "種別パターンを描画しています。" },
@@ -1111,6 +1112,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     "drawDarkModulePatterns",
     "drawFormatPatterns",
     "applyMask",
+    "applyMaskFormat",
   ]);
   const shouldShowStepStatus = (name) => {
     if(typeof isStepModeOn !== "function" || !isStepModeOn()) return false;
@@ -1364,6 +1366,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
   }
 
   function resetQRCode(){
+    window.logEvent("resetQRCode", "", "盤面状態をリセット");
     if(!clearBoardSurface()){
       return false;
     }
@@ -1622,7 +1625,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
       window.logEvent("applyMask", maskIndex ?? "", "マスク指定が不正です");
       return false;
     }
-    window.logEvent("applyMask", idx, `${idx}番マスクを適用`);
+    window.logEvent("applyMask", idx, `マスク${idx}を適用`);
     showApiStatus("applyMask", idx);
     const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[idx] === "function") ? MASK_FUNCTIONS[idx] : null;
     if(!maskFn) return false;
@@ -1834,7 +1837,10 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
       completed = !shouldAbort();
       }
       if(completed && hasFormatPattern){
-        showApiStatus("drawFormatPatterns");
+        showApiStatus("applyMaskFormat");
+        const formatBits = (ctx.FORMAT_L && Number.isFinite(ctx.FORMAT_L[idx])) ? ctx.FORMAT_L[idx] : null;
+        const formatHex = Number.isFinite(formatBits) ? formatBits.toString(16).toUpperCase().padStart(4, "0") : "----";
+        window.logEvent("applyMask", idx, `フォーマットパターンを更新（${formatHex}）`);
         await callDrawFormatPatterns(idx, true);
         showApiStatus("applyMask", idx);
       }
@@ -2480,13 +2486,13 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
   const logVerificationOutcome = () => {
     const verifyService = globalThis.qrVerifyService;
     if(!verifyService || typeof verifyService.verifyBoard !== "function") return null;
-    window.logEvent("verify", "", "入力と出力を検証");
     showApiStatus("verify");
     const result = verifyService.verifyBoard();
     setQRCodeReadable(Boolean(result?.ok));
     if(!result) return null;
     const inputValue = document.getElementById("txtInput")?.value ?? "";
     const match = result.text === inputValue;
+    const outcomeLabel = match ? "入力と出力が一致しました。" : "入力と出力が一致しませんでした。";
     const payload = {
       reason: result.reason || (result.ok ? "ok" : "rs_mismatch"),
       maskIndex: result.maskIndex,
@@ -2494,7 +2500,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
       match,
       stats: result.stats,
     };
-    window.logEvent("qrVerify", JSON.stringify(payload), match ? "入力と一致" : "入力と不一致");
+    window.logEvent("qrVerify", JSON.stringify(payload), outcomeLabel);
     return Object.assign({ ok: result.ok }, payload);
   };
 
