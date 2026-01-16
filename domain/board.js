@@ -999,9 +999,13 @@ for(const v of window.patternBits){
 
 let dataSeq = [];
 let dataSeqIndex = 0;
+let dataPatternLogActive = false;
+let dataPatternLogCompleted = false;
 function resetData(){
   dataSeq = buildBitSequence();
   dataSeqIndex = 0;
+  dataPatternLogActive = false;
+  dataPatternLogCompleted = false;
 }
 function encodeBitPair(kind, bit){
   if(typeof window.encodeBit === "function"){
@@ -1010,7 +1014,25 @@ function encodeBitPair(kind, bit){
   return bit === 1 ? Math.abs(kind) : -Math.abs(kind || 0);
 }
 function hasMoreData(){
-  return Array.isArray(dataSeq) && dataSeqIndex < dataSeq.length;
+  const hasData = Array.isArray(dataSeq) && dataSeqIndex < dataSeq.length;
+  if(typeof window !== "undefined" && window.suppressDataPatternLog){
+    return hasData;
+  }
+  if(!dataPatternLogActive && hasData && dataSeqIndex === 0){
+    if(typeof window !== "undefined" && typeof window.logEvent === "function"){
+      window.logEvent("DrawDataPatterns", "", "データパターンの描画開始");
+    }
+    dataPatternLogActive = true;
+    dataPatternLogCompleted = false;
+  }
+  if(dataPatternLogActive && !hasData && !dataPatternLogCompleted){
+    if(typeof window !== "undefined" && typeof window.logEvent === "function"){
+      window.logEvent("DrawDataPatterns", "", "データパターンの描画終了");
+    }
+    dataPatternLogCompleted = true;
+    dataPatternLogActive = false;
+  }
+  return hasData;
 }
 function getNextData(){
   if(!hasMoreData()){

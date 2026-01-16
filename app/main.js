@@ -2111,6 +2111,10 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
       const stepDataEnabled = stepModeOn;
       const prevRenderMode = ctx.renderMode;
       const prevSuppressCursorUpdates = typeof window !== "undefined" ? window.suppressCursorUpdates : false;
+      const prevSuppressDataPatternLog = typeof window !== "undefined" ? window.suppressDataPatternLog : false;
+      if(typeof window !== "undefined"){
+        window.suppressDataPatternLog = true;
+      }
       if(!stepModeOn){
         if(typeof window !== "undefined"){
           window.suppressCursorUpdates = true;
@@ -2217,10 +2221,13 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
           setRenderMode(prevRenderMode);
           if(typeof window !== "undefined"){
             window.suppressCursorUpdates = prevSuppressCursorUpdates;
+            window.suppressDataPatternLog = prevSuppressDataPatternLog;
             if(typeof window.updateExecutionStatusCursor === "function"){
               window.updateExecutionStatusCursor();
             }
           }
+        }else if(typeof window !== "undefined"){
+          window.suppressDataPatternLog = prevSuppressDataPatternLog;
         }
         if(typeof window.logEvent === "function"){
           const payload = {
