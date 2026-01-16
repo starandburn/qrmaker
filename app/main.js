@@ -167,6 +167,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     const next = Boolean(state);
     switchStates[color] = next;
     updateSwitchIndicators();
+    if(typeof window.logEvent === "function"){
+      const labelMap = { red: "赤", blue: "青", green: "緑", yellow: "黄" };
+      const label = labelMap[color] || color;
+      const desc = `スイッチを${next ? "ON" : "OFF"}に設定`.replace("スイッチ", `${label}スイッチ`);
+      window.logEvent("setSwitch", JSON.stringify({ color, state: next }), desc);
+    }
     return next;
   };
   const toggleSwitchState = (color) => {
@@ -174,6 +180,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     const next = !switchStates[color];
     switchStates[color] = next;
     updateSwitchIndicators();
+    if(typeof window.logEvent === "function" && typeof isStepModeOn === "function" && isStepModeOn()){
+      const labelMap = { red: "赤", blue: "青", green: "緑", yellow: "黄" };
+      const label = labelMap[color] || color;
+      const desc = `スイッチを反転`.replace("スイッチ", `${label}スイッチ`);
+      window.logEvent("setSwitch", JSON.stringify({ color, flipped: true, state: next }), desc);
+    }
     return next;
   };
   const isSwitchOn = (color) => Boolean(switchStates[color]);
@@ -1914,7 +1926,6 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     }else{
       setRenderMode(prevRender);
     }
-    resetCursor();
     return true;
   }
   async function drawBasePatternsStepped(ctx, { currentRun } = {}){

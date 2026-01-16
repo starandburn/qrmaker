@@ -179,7 +179,9 @@ if(typeof window.log !== "function"){
 const formatLogEventMessage = (fnName, mainArg, description) => {
   const safeName = fnName || "unknown";
   const text = description ? `${safeName}: ${description}` : safeName;
-  if(fnName === "qrVerify") return text;
+  if(fnName === "qrVerify" || fnName === "resetCursor" || fnName === "moveCursor" || fnName === "setCursorDirection" || fnName === "setSwitch"){
+    return text;
+  }
   if(typeof mainArg !== "string") return text;
   const trimmed = mainArg.trim();
   if(!trimmed || !/^\{[\s\S]*\}$/.test(trimmed)) return text;

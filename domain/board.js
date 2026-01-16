@@ -415,7 +415,26 @@ function updateCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.
 }
 
 function resetCursor(){
-  return updateCursor(HOME_CURSOR.row, HOME_CURSOR.col, HOME_CURSOR.dir);
+  const ok = updateCursor(HOME_CURSOR.row, HOME_CURSOR.col, HOME_CURSOR.dir);
+  if(ok && !(typeof window !== "undefined" && window.suppressCursorUpdates)
+    && typeof window.logEvent === "function"){
+    const payload = {
+      target: { row: HOME_CURSOR.row, col: HOME_CURSOR.col },
+      dir: HOME_CURSOR.dir,
+    };
+    const cellRef = cellRefFromRowCol(HOME_CURSOR.row, HOME_CURSOR.col);
+    const refLabel = cellRef ? cellRef.toUpperCase() : "";
+    const coordsLabel = "(" + HOME_CURSOR.row + ", " + HOME_CURSOR.col + ")";
+    window.logEvent("resetCursor", JSON.stringify(payload), "カーソルを" + refLabel + coordsLabel + "に移動");
+    if(isDirectionEnabled()){
+      const directionLabels = { up: "上", right: "右", down: "下", left: "左" };
+      const label = directionLabels[HOME_CURSOR.dir] || "";
+      if(label){
+        window.logEvent("setCursorDirection", JSON.stringify({ dir: HOME_CURSOR.dir }), "向きを" + label + "に設定");
+      }
+    }
+  }
+  return ok;
 }
 
 function setHomeCursor({ row, col, dir } = {}){
@@ -709,14 +728,19 @@ function moveCursor(...args){
       target: { row: targetRow, col: targetCol },
       dir: finalDir,
     };
-    if(!(typeof window !== "undefined" && window.suppressCursorUpdates)
-      && typeof window.logEvent === "function"){
+    if(typeof window.logEvent === "function"){
       const cellRef = cellRefFromRowCol(targetRow, targetCol);
-      const refLabel = cellRef ? ("@" + cellRef) : "";
+      const refLabel = cellRef ? cellRef.toUpperCase() : "";
       const coordsLabel = "(" + targetRow + ", " + targetCol + ")";
-      const orientationLabel = getOrientationLabel(finalDir);
-      const description = logLabel + refLabel + coordsLabel + " / " + orientationLabel;
+      const description = "カーソルを" + refLabel + coordsLabel + "に移動";
       window.logEvent("moveCursor", JSON.stringify(payload), description);
+      if(isDirectionEnabled()){
+        const directionLabels = { up: "上", right: "右", down: "下", left: "左" };
+        const label = directionLabels[finalDir] || "";
+        if(label){
+          window.logEvent("setCursorDirection", JSON.stringify({ dir: finalDir }), "向きを" + label + "に設定");
+        }
+      }
     }
   }
   resetCursorColorAfterStepMove();
@@ -1199,6 +1223,17 @@ function putCell(encodedValue){
     highlightCursorForStepPutCell(valKind);
     if(isDataKind(valKind) && typeof window !== "undefined" && typeof window.updateDataPatternStatus === "function"){
       window.updateDataPatternStatus(valKind);
+    }
+    if(typeof window !== "undefined"
+      && typeof window.isStepModeOn === "function"
+      && window.isStepModeOn()
+      && typeof window.logEvent === "function"){
+      const isBlack = (typeof window.isBlackBit === "function") ? window.isBlackBit(val) : val > 0;
+      const colorLabel = isBlack ? "黒" : "白";
+      const cellRef = cellRefFromRowCol(cursorPos.row, cursorPos.col);
+      const refLabel = cellRef ? cellRef.toUpperCase() : "";
+      const coordsLabel = "(" + cursorPos.row + ", " + cursorPos.col + ")";
+      window.logEvent("putCell", "", refLabel + coordsLabel + "に" + colorLabel + "を配置");
     }
   }
   const waitOptions = ok ? {} : { scale: 0.5 };
