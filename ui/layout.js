@@ -324,7 +324,8 @@ function refreshPattern({ force = false } = {}){
   if(!txtInput) return;
   if(!patternRowA || !patternRowB || !patternRowC) return;
   const input = txtInput.value ?? "";
-  window.logEvent("refreshPattern", input, "パターンを再描画");
+  const patternLabel = input ? `データパターンを更新（${input}）` : "データパターンを更新";
+  window.logEvent("refreshPattern", input, patternLabel);
 
   const builder = (typeof window.qrBuildPatternSegments === "function") ? window.qrBuildPatternSegments(input) : null;
   if(!builder) return false;
@@ -522,7 +523,7 @@ requestAnimationFrame(syncViewLayout);
 window.syncViewLayout = syncViewLayout;
 
 function syncViewToggles(){
-  const baseLabel = "表示トグルの状態を同期";
+  const baseLabel = "表示オプションを反映";
   const summary = buildViewToggleSummary();
   const message = summary ? `${baseLabel}${summary}` : baseLabel;
   window.logEvent("syncViewToggles", "", message);

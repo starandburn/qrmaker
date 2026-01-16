@@ -1324,7 +1324,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
       stopStep = abortRun,
       resetData: resetDataFlag = true,
     } = options;
-    window.logEvent("resetQRCode", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, "QRコード描画をリセット");
+    window.logEvent("resetQRCode", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, "盤面状態をリセット");
     if(abortRun){
       ctx.runId++;
       ctx.maskRunId++;
@@ -1622,7 +1622,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
       window.logEvent("applyMask", maskIndex ?? "", "マスク指定が不正です");
       return false;
     }
-    window.logEvent("applyMask", idx, `${idx}番マスクを適用中`);
+    window.logEvent("applyMask", idx, `${idx}番マスクを適用`);
     showApiStatus("applyMask", idx);
     const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[idx] === "function") ? MASK_FUNCTIONS[idx] : null;
     if(!maskFn) return false;
@@ -1868,7 +1868,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
   };
   async function drawBasePatterns(ctx, { deferFlush = false, currentRun, resetDelay = false } = {}){
     if(!ctx) return false;
-    window.logEvent("drawBasePatterns", currentRun ?? "", "基本パターンを描画中");
+    window.logEvent("drawBasePatterns", currentRun ?? "", "基本パターン描画開始");
     const { setRenderMode, resetCursor, requestRender, RESET_DELAY_MS, RENDER_BUFFERED, RENDER_IMMEDIATE } = ctx;
     const prevRender = ctx.renderMode;
     setRenderMode(RENDER_BUFFERED);
@@ -1901,6 +1901,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     await runFunctionalPattern(drawAlignmentPatterns, opts.overwrite, opts.currentRun);
     await runFunctionalPattern(drawDarkModulePatterns, opts.overwrite, opts.currentRun);
     await runFunctionalPattern(drawFormatPatterns, undefined, opts.overwrite, opts.currentRun);
+    window.logEvent("drawBasePatterns", currentRun ?? "", "基本パターン描画完了");
     if(!deferFlush){
       requestRender("drawBasePatterns");
       setRenderMode(RENDER_IMMEDIATE);
@@ -1931,7 +1932,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
   };
   window.__deferredWindowApi = Object.assign(window.__deferredWindowApi || {}, deferredWindowApi);
   const drawFinderPatterns = wrapDrawApi("drawFinderPatterns", callDrawFinderPatterns, "ファインダーパターンを描画");
-  const drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", callDrawAlignmentPatterns, "配置パターンを描画");
+  const drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", callDrawAlignmentPatterns, "アライメントパターンを描画");
   const drawDarkModulePatterns = wrapDrawApi("drawDarkModulePatterns", callDrawDarkModulePatterns, "ダークモジュールを描画");
   const drawTimingPatterns = wrapDrawApi("drawTimingPatterns", callDrawTimingPatterns, "タイミングパターンを描画");
   const drawFormatPatterns = wrapDrawApi("drawFormatPatterns", callDrawFormatPatterns, "フォーマットパターンを描画");
@@ -2042,7 +2043,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     window.isYellowOn = isYellowOn;
   }
   async function drawDataPatterns({ currentRun } = {}){
-    window.logEvent("drawDataPatterns", currentRun ?? "", "データパターンを描画中");
+    window.logEvent("drawDataPatterns", currentRun ?? "", "データパターン描画");
     showApiStatus("drawDataPatterns");
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     const shouldAbort = () => runToken !== runId;
@@ -2216,6 +2217,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     });
   }
   async function drawQRCode(arg){
+    window.logEvent("drawQRCode", arg ?? "", "QRコード描画開始");
     const resetOk = await resetQRCode();
     if(resetOk === false) return false;
     const baseOk = await callDrawBasePatterns();
@@ -2231,6 +2233,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
       maskOk = await callApplyMask(arg);
     }
     if(!maskOk) return false;
+    window.logEvent("drawQRCode", arg ?? "", "QRコード描画完了");
     return true;
   }
 
@@ -2477,7 +2480,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
   const logVerificationOutcome = () => {
     const verifyService = globalThis.qrVerifyService;
     if(!verifyService || typeof verifyService.verifyBoard !== "function") return null;
-    window.logEvent("verify", "", "入力と出力を検証中");
+    window.logEvent("verify", "", "入力と出力を検証");
     showApiStatus("verify");
     const result = verifyService.verifyBoard();
     setQRCodeReadable(Boolean(result?.ok));
