@@ -256,6 +256,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const DATA_DEFAULT_TEXT = configuredQrData !== null
     ? configuredQrData
     : (txtInput?.value ?? "Hello, World!");
+  if(typeof window !== "undefined" && typeof window.refreshPatternIfPanelOpen === "function"){
+    window.refreshPatternIfPanelOpen();
+  }
   if(userCodeInput){
     userCodeInput.value = (typeof configDefaults.userCode === "string") ? configDefaults.userCode : "qrcode";
   }
@@ -1255,14 +1258,14 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     const current = Number.isFinite(window.__pauseAbortVersion) ? window.__pauseAbortVersion : 0;
     window.__pauseAbortVersion = current + 1;
   };
-  function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false, reason = "" } = {}){
+  function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false, reason = "", resetData: resetDataFlag = true } = {}){
     bumpPauseAbortVersion();
     ctx.runId++;
     ctx.isStepFillRunning = false;
     setInputLock(false);
     let resetResult;
     if(clear){
-      resetResult = resetBoardState();
+      resetResult = resetBoardState({ resetData: resetDataFlag });
     }
     if(resetCursorFlag){
       resetCursor();
@@ -1280,7 +1283,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
 
   let cellsInitialized = false;
-function clearBoardSurface(){
+function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
   setQRCodeReadable(false);
   clearNoiseLayer();
     const cells = document.querySelectorAll(".qr-cells .cell");
@@ -1301,7 +1304,7 @@ function clearBoardSurface(){
     timingRowIndex = 0;
     timingColIndex = 0;
     hasFormatPattern = false;
-  if(typeof resetData === "function"){
+  if(resetDataFlag && typeof resetData === "function"){
     resetData();
   }
   resetSwitchStates();
@@ -1319,6 +1322,7 @@ function clearBoardSurface(){
       abortRun = true,
       forceImmediate = abortRun,
       stopStep = abortRun,
+      resetData: resetDataFlag = true,
     } = options;
     window.logEvent("resetQRCode", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, "QRコード描画をリセット");
     if(abortRun){
@@ -1331,7 +1335,7 @@ function clearBoardSurface(){
     if(forceImmediate){
       setRenderMode(RENDER_IMMEDIATE);
     }
-    if(!clearBoardSurface()){
+    if(!clearBoardSurface({ resetData: resetDataFlag })){
       return;
     }
     resetCursor();
@@ -2171,7 +2175,6 @@ function clearBoardSurface(){
       };
       try{
         resetLoopGuard();
-        resetData();
         updateCursor(BOARD_ROWS, BOARD_COLS, DIR_UP);
         while(hasMoreData()){
           if(shouldAbort()) throw ABORT_ERR;
@@ -2184,6 +2187,9 @@ function clearBoardSurface(){
             advanceDataCursorSync();
           }
           if(shouldAbort()) throw ABORT_ERR;
+        }
+        if(runToken === runId && typeof resetData === "function"){
+          resetData();
         }
         return runToken === runId;
       }finally{
@@ -2506,14 +2512,11 @@ function clearBoardSurface(){
   btnGenerate.addEventListener("click", async () => {
     historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
-    if(typeof window.refreshPatternForCreate === "function"){
-      window.refreshPatternForCreate();
-    }
-    if(typeof window.resetData === "function"){
-      window.resetData();
-    }
+    const patternUpdated = (typeof window.refreshPatternForCreate === "function")
+      ? window.refreshPatternForCreate()
+      : false;
     if(inputLocked){
-      const resetWait = stopCurrentRun({ resetCursor: true, clear: true });
+      const resetWait = stopCurrentRun({ resetCursor: true, clear: true, resetData: Boolean(patternUpdated) });
       if(resetWait && typeof resetWait.then === "function"){
         await resetWait;
       }

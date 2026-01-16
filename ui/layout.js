@@ -49,23 +49,21 @@ const STOP_REASON_CODE = "プログラムが変更されたので停止しまし
 let lastBuiltPatternInput = null;
 const isPatternPanelOpen = () => Boolean(dataPatternPanel && dataPatternPanel.open);
 const refreshPatternIfPanelOpen = () => {
-  if(isPatternPanelOpen()){
-    refreshPattern();
-  }
-};
-const refreshPatternForCreate = () => {
-  if(isPatternPanelOpen()){
+  if(!isPatternPanelOpen()){
     return false;
   }
+  return refreshPattern();
+};
+const refreshPatternForCreate = () => {
   if(!txtInput){
     return false;
   }
   const input = txtInput.value ?? "";
-  if(input === lastBuiltPatternInput){
+  const needsUpdate = (lastBuiltPatternInput === null || input !== lastBuiltPatternInput);
+  if(!needsUpdate){
     return false;
   }
-  refreshPattern({ force: true });
-  return true;
+  return refreshPattern({ force: true });
 };
 
 function updateDataStatus(){
@@ -317,8 +315,8 @@ function refreshPattern({ force = false } = {}){
   window.logEvent("refreshPattern", input, "パターンを再描画");
 
   const builder = (typeof window.qrBuildPatternSegments === "function") ? window.qrBuildPatternSegments(input) : null;
-  if(!builder) return;
-  if(!force && input === lastBuiltPatternInput) return;
+  if(!builder) return false;
+  if(!force && input === lastBuiltPatternInput) return false;
   lastBuiltPatternInput = input;
 
   const {
@@ -366,6 +364,10 @@ function refreshPattern({ force = false } = {}){
   renderRow(patternRowB, groupB, { breakAfterTerminator: false });
   renderRow(patternRowC, groupC, { small: false });
   refreshGuide();
+  if(typeof window.resetData === "function"){
+    window.resetData();
+  }
+  return true;
 }
 function refreshGuide(){
   if(!inputGuide || !txtInput) return;
@@ -740,6 +742,9 @@ const layoutUI = {
 window.layoutUI = layoutUI;
 if(typeof window.refreshPatternForCreate !== "function"){
   window.refreshPatternForCreate = refreshPatternForCreate;
+}
+if(typeof window.refreshPatternIfPanelOpen !== "function"){
+  window.refreshPatternIfPanelOpen = refreshPatternIfPanelOpen;
 }
 /**
  * レイアウト周りの定数/表示トグル/パターン出力ロジックをまとめたモジュール。
