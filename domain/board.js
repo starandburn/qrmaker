@@ -14,7 +14,7 @@ const ABORT_ERR = Symbol("run-aborted");
 const RESET_DELAY_MS = 10;
 
 if(typeof window !== "undefined" && typeof window.makeStepThenable !== "function"){
-  window.makeStepThenable = (ok = true) => ok;
+  window.makeStepThenable = (ok = true, _options = {}) => ok;
 }
 
 const DIR_ORDER = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
@@ -39,6 +39,33 @@ const rotateDir = (baseDir, delta) => {
   const next = DIR_ORDER[((idx + delta) % 4 + 4) % 4];
   return next;
 };
+const isDirectionEnabled = () => (typeof window !== "undefined" && window.useDirection === true);
+let internalDirectionOverrideDepth = 0;
+const withInternalDirectionOverride = (fn) => {
+  internalDirectionOverrideDepth += 1;
+  try{
+    const result = fn();
+    if(result && typeof result.then === "function"){
+      return result.then(
+        (value) => {
+          internalDirectionOverrideDepth = Math.max(0, internalDirectionOverrideDepth - 1);
+          return value;
+        },
+        (err) => {
+          internalDirectionOverrideDepth = Math.max(0, internalDirectionOverrideDepth - 1);
+          throw err;
+        },
+      );
+    }
+    internalDirectionOverrideDepth = Math.max(0, internalDirectionOverrideDepth - 1);
+    return result;
+  }catch(err){
+    internalDirectionOverrideDepth = Math.max(0, internalDirectionOverrideDepth - 1);
+    throw err;
+  }
+};
+const shouldAllowDirectionCommands = () => internalDirectionOverrideDepth > 0;
+const isDirectionAllowed = () => isDirectionEnabled() || shouldAllowDirectionCommands();
 
 const HOME_CURSOR = { row: 1, col: 1, dir: DIR_RIGHT };
 const cursorPos = {
@@ -63,10 +90,11 @@ let timingRowIndex = 0;
 let timingColIndex = 0;
 let hasFormatPattern = false;
 let lastMoveBlocked = false;
-let moveNextCounter = 0;
 const BOARD_ROWS = 25;
 const BOARD_COLS = 25;
-const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
+const GENERIC_WHITE = (typeof window !== "undefined" && typeof window.BIT_WHITE === "number") ? window.BIT_WHITE : 0;
+const GENERIC_BLACK = (typeof window !== "undefined" && typeof window.BIT_BLACK === "number") ? window.BIT_BLACK : 1;
 const DEFAULT_CURSOR_COLOR = "#e60000";
 const STEP_CURSOR_COLOR = "#1a73e8";
 const MASK_KIND = (typeof window !== "undefined" && typeof window.BIT_MASK === "number") ? window.BIT_MASK : null;
@@ -87,17 +115,66 @@ function isDataKind(kind){
   if(isMaskKind(kind)){
     return false;
   }
+  if(isGenericKind(kind)){
+    return false;
+  }
   return !isFunctionalKind(kind);
 }
 
+function isGenericKind(kind){
+  return kind === GENERIC_WHITE || kind === GENERIC_BLACK;
+}
+
 const LOOP_ITER_LIMIT = BOARD_ROWS * BOARD_COLS;
+const LOOP_STAGNANT_LIMIT = Math.max(BOARD_ROWS, BOARD_COLS);
+const LOOP_OCCUPIED_LIMIT = (BOARD_ROWS + BOARD_COLS) * 2;
 let loopGuardCounter = 0;
+let loopStagnantCounter = 0;
+let loopOccupiedCounter = 0;
+let loopStagnantPosition = `${cursorPos.row}-${cursorPos.col}`;
+let loopStopLogged = false;
+const getCursorPositionKey = () => `${cursorPos.row}-${cursorPos.col}`;
 function resetLoopGuard(){
   loopGuardCounter = 0;
+  loopStagnantCounter = 0;
+  loopOccupiedCounter = 0;
+  loopStagnantPosition = getCursorPositionKey();
+  loopStopLogged = false;
+}
+function recordLoopOccupiedTarget(row, col){
+  if(!Number.isInteger(row) || !Number.isInteger(col)) return;
+  const isUnplaced = isBoardCellUnplaced(row, col);
+  if(isUnplaced){
+    loopOccupiedCounter = 0;
+  }else{
+    loopOccupiedCounter++;
+  }
 }
 function canContinueLoop(){
   loopGuardCounter++;
-  return loopGuardCounter <= LOOP_ITER_LIMIT;
+  const currentPosition = getCursorPositionKey();
+  if(currentPosition === loopStagnantPosition){
+    loopStagnantCounter++;
+  }else{
+    loopStagnantPosition = currentPosition;
+    loopStagnantCounter = 0;
+  }
+  const canContinue = loopGuardCounter <= LOOP_ITER_LIMIT
+    && loopStagnantCounter <= LOOP_STAGNANT_LIMIT
+    && loopOccupiedCounter <= LOOP_OCCUPIED_LIMIT;
+  if(!canContinue && !loopStopLogged){
+    loopStopLogged = true;
+    const detail = "canContinueLoopの上限に達したため停止";
+    if(typeof window !== "undefined"){
+      if(typeof window.logEvent === "function"){
+        window.logEvent("canContinueLoop", "", detail);
+      }
+      if(typeof window.setExecutionStatus === "function"){
+        window.setExecutionStatus("stopped", undefined, detail);
+      }
+    }
+  }
+  return canContinue;
 }
 
 function ensureCells(){
@@ -216,6 +293,9 @@ function shouldAnimatePlacement(kind){
   if(!isStepModeActive()) return false;
   if(!isStepPlacementAnimationEnabled()) return false;
   if(isMaskApplying()) return false;
+  if(typeof window !== "undefined" && window.isDrawingBasePattern && isStepModeDataOnly()){
+    return false;
+  }
   if(isStepModeDataOnly()){
     if(typeof kind === "number"){
       return isDataKind(kind);
@@ -298,9 +378,12 @@ function applyCursor(row, col, dir){
   const x = (c - 1) * cellW;
   const y = (r - 1) * cellH;
 
-  const angle = dir === DIR_RIGHT ? 90
-    : dir === DIR_DOWN ? 180
-    : dir === DIR_LEFT ? 270
+  const directionAllowed = isDirectionAllowed();
+  const angle = isDirectionEnabled()
+    ? (dir === DIR_RIGHT ? 90
+      : dir === DIR_DOWN ? 180
+      : dir === DIR_LEFT ? 270
+      : 0)
     : 0;
 
   cursor.style.transform = `translate(${x}px, ${y}px) rotate(${angle}deg)`;
@@ -308,28 +391,50 @@ function applyCursor(row, col, dir){
 
 function updateCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.dir){
   if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
+  const directionAllowed = isDirectionAllowed();
+  const nextDir = directionAllowed ? dir : cursorPos.dir;
   const r = row;
   const c = col;
   cursorPos.row = r;
   cursorPos.col = c;
-  cursorPos.dir = dir;
+  cursorPos.dir = nextDir;
   if(renderMode === RENDER_BUFFERED){
-    pendingCursor = { row: r, col: c, dir };
-    if(typeof window.updateExecutionStatusCursor === "function"){
+    pendingCursor = { row: r, col: c, dir: nextDir };
+    if(!(typeof window !== "undefined" && window.suppressCursorUpdates)
+      && typeof window.updateExecutionStatusCursor === "function"){
       window.updateExecutionStatusCursor();
     }
     return true;
   }
-  applyCursor(r, c, dir);
-  if(typeof window.updateExecutionStatusCursor === "function"){
+  applyCursor(r, c, nextDir);
+  if(!(typeof window !== "undefined" && window.suppressCursorUpdates)
+    && typeof window.updateExecutionStatusCursor === "function"){
     window.updateExecutionStatusCursor();
   }
   return true;
 }
 
 function resetCursor(){
-  moveNextCounter = 0;
-  return updateCursor(HOME_CURSOR.row, HOME_CURSOR.col, HOME_CURSOR.dir);
+  const ok = updateCursor(HOME_CURSOR.row, HOME_CURSOR.col, HOME_CURSOR.dir);
+  if(ok && !(typeof window !== "undefined" && window.suppressCursorUpdates)
+    && typeof window.logEvent === "function"){
+    const payload = {
+      target: { row: HOME_CURSOR.row, col: HOME_CURSOR.col },
+      dir: HOME_CURSOR.dir,
+    };
+    const cellRef = cellRefFromRowCol(HOME_CURSOR.row, HOME_CURSOR.col);
+    const refLabel = cellRef ? cellRef.toUpperCase() : "";
+    const coordsLabel = "(" + HOME_CURSOR.row + ", " + HOME_CURSOR.col + ")";
+    window.logEvent("resetCursor", JSON.stringify(payload), "カーソルを" + refLabel + coordsLabel + "に移動");
+    if(isDirectionEnabled()){
+      const directionLabels = { up: "上", right: "右", down: "下", left: "左" };
+      const label = directionLabels[HOME_CURSOR.dir] || "";
+      if(label){
+        window.logEvent("setCursorDirection", JSON.stringify({ dir: HOME_CURSOR.dir }), "向きを" + label + "に設定");
+      }
+    }
+  }
+  return ok;
 }
 
 function setHomeCursor({ row, col, dir } = {}){
@@ -345,14 +450,28 @@ function setHomeCursor({ row, col, dir } = {}){
   }
 }
 
-  function moveCursor(...args){
-    lastMoveBlocked = false;
-    let targetRow = cursorPos.row;
-    let targetCol = cursorPos.col;
-    let finalDir = cursorPos.dir;
+function moveCursor(...args){
+  const directionEnabled = isDirectionEnabled();
+  if(!directionEnabled && !shouldAllowDirectionCommands()){
+    if(args.length === 0){
+      // allow default move in directionless mode
+    }
+    for(const arg of args){
+      if(typeof arg !== "string") continue;
+      const trimmedArg = arg.trim();
+      const unquoted = trimmedArg.replace(/^["'](.+)["']$/, "$1");
+      const lower = unquoted.toLowerCase();
+      if(lower === DIR_FRONT || lower === DIR_BACK){
+        throw new Error(`Direction commands are disabled (useDirection=false): move ${lower}`);
+      }
+    }
+  }
+  lastMoveBlocked = false;
+  let targetRow = cursorPos.row;
+  let targetCol = cursorPos.col;
+  let finalDir = cursorPos.dir;
     let logLabel = null;
     let logPositionOnly = false;
-    let shouldResetMoveNext = false;
     let relativeStepDir = null;
     let relativeMoveCount = 1;
     let isRelativeMove = false;
@@ -396,7 +515,6 @@ function setHomeCursor({ row, col, dir } = {}){
     const recordStraightMove = () => {
       logLabel = "カーソル直移動";
       logPositionOnly = true;
-      shouldResetMoveNext = true;
     };
   const recordRelativeMove = (key) => {
     logLabel = describeMove(key);
@@ -455,6 +573,7 @@ function setHomeCursor({ row, col, dir } = {}){
         return false;
       }
       handleAutoAvoidStep(relativeStepDir);
+      recordLoopOccupiedTarget(cursorPos.row, cursorPos.col);
     }
     targetRow = cursorPos.row;
     targetCol = cursorPos.col;
@@ -462,8 +581,22 @@ function setHomeCursor({ row, col, dir } = {}){
   };
 
   if(args.length === 0){
-    recordRelativeMove("front");
-    scheduleRelativeMove(cursorPos.dir);
+    if(directionEnabled || shouldAllowDirectionCommands()){
+      recordRelativeMove("front");
+      scheduleRelativeMove(cursorPos.dir);
+    }else{
+      if(cursorPos.col < BOARD_COLS){
+        targetRow = cursorPos.row;
+        targetCol = cursorPos.col + 1;
+      }else if(cursorPos.row < BOARD_ROWS){
+        targetRow = cursorPos.row + 1;
+        targetCol = 1;
+      }else{
+        targetRow = 1;
+        targetCol = 1;
+      }
+      recordStraightMove();
+    }
   }else if(args.length === 1){
     const v = args[0];
     if(typeof v === "number" && Number.isFinite(v)){
@@ -506,6 +639,7 @@ function setHomeCursor({ row, col, dir } = {}){
   }else if(args.length >= 2){
     const [first, second, third] = args;
     const maybeDir = (val) => {
+      if(!directionEnabled) return;
       const d = normalizeDir(val);
       if(d) finalDir = d;
     };
@@ -586,9 +720,7 @@ function setHomeCursor({ row, col, dir } = {}){
         lastMoveBlocked = true;
         return false;
       }
-      if(shouldResetMoveNext){
-        moveNextCounter = 0;
-      }
+      recordLoopOccupiedTarget(targetRow, targetCol);
     }
   if(logLabel && logPositionOnly){
     const payload = {
@@ -598,11 +730,17 @@ function setHomeCursor({ row, col, dir } = {}){
     };
     if(typeof window.logEvent === "function"){
       const cellRef = cellRefFromRowCol(targetRow, targetCol);
-      const refLabel = cellRef ? ("@" + cellRef) : "";
+      const refLabel = cellRef ? cellRef.toUpperCase() : "";
       const coordsLabel = "(" + targetRow + ", " + targetCol + ")";
-      const orientationLabel = getOrientationLabel(finalDir);
-      const description = logLabel + refLabel + coordsLabel + " / " + orientationLabel;
+      const description = "カーソルを" + refLabel + coordsLabel + "に移動";
       window.logEvent("moveCursor", JSON.stringify(payload), description);
+      if(isDirectionEnabled()){
+        const directionLabels = { up: "上", right: "右", down: "下", left: "左" };
+        const label = directionLabels[finalDir] || "";
+        if(label){
+          window.logEvent("setCursorDirection", JSON.stringify({ dir: finalDir }), "向きを" + label + "に設定");
+        }
+      }
     }
   }
   resetCursorColorAfterStepMove();
@@ -610,39 +748,30 @@ function setHomeCursor({ row, col, dir } = {}){
   return callMakeStepThenable();
 }
 
-async function moveNext(){
-  const isLeftStep = (moveNextCounter % 2) === 0;
-  moveNextCounter += 1;
-  if(isLeftStep){
-    return await moveCursor("left");
-  }
-  const forwardOk = await moveCursor();
-  if(typeof window.isMoveBlocked === "function" && window.isMoveBlocked()){
-    return forwardOk;
-  }
-  return await moveCursor("right");
-}
-
-async function moveAdvance(){
-  await moveNext();
-  if(typeof window.isMoveBlocked === "function" && window.isMoveBlocked()){
-    await turnCursor();
-    await moveCursor("left");
-    if(typeof window.isSkipZone === "function" && window.isSkipZone()){
-      await moveCursor("left");
-    }
-  }
-  return true;
-}
-
-function callMakeStepThenable(){
+function callMakeStepThenable(options = {}){
   if(typeof window.makeStepThenable === "function"){
-    return window.makeStepThenable(true);
+    return window.makeStepThenable(true, options);
   }
   return true;
+}
+
+function makeStepResult(value, options = {}){
+  const wait = callMakeStepThenable(options);
+  if(wait && typeof wait.then === "function"){
+    return {
+      then: (resolve, reject) => wait.then(() => resolve(value), reject),
+      catch: (fn) => wait.catch(fn),
+      valueOf: () => value,
+      toString: () => String(value),
+    };
+  }
+  return value;
 }
 
 function turnCursor(dirArg){
+  if(!isDirectionEnabled() && !shouldAllowDirectionCommands()){
+    throw new Error("Direction commands are disabled (useDirection=false): turn");
+  }
   let targetDir = cursorPos.dir;
   const requestedDir = dirArg === undefined ? "back" : dirArg;
   if(dirArg === undefined){
@@ -703,7 +832,7 @@ function applySetCell(row, col, encodedValue, color = "black"){
   const finalColor = isColorEnabled ? color : "black";
   cell.className = "cell";
   const kind = (typeof window.bitKind === "function") ? window.bitKind(encodedValue) : Math.abs(encodedValue);
-  const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+  const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
   if(kind !== unplacedKind){
     const isBlack = (typeof window.isBlackBit === "function")
       ? window.isBlackBit(encodedValue)
@@ -759,15 +888,68 @@ function sleep(ms){
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function pauseRunning({ delayMs = 60 } = {}){
+const getPauseAbortVersion = () => {
+  if(typeof window === "undefined") return 0;
+  const current = window.__pauseAbortVersion;
+  return Number.isFinite(current) ? current : 0;
+};
+
+const sleepWithAbort = async (ms, version) => {
+  let remaining = Math.max(0, ms);
+  while(remaining > 0){
+    if(getPauseAbortVersion() !== version){
+      throw ABORT_ERR;
+    }
+    const chunk = Math.min(50, remaining);
+    await sleep(chunk);
+    remaining -= chunk;
+  }
+  if(getPauseAbortVersion() !== version){
+    throw ABORT_ERR;
+  }
+};
+
+const parseDelayMsValue = (value) => {
+  if(typeof value === "string"){
+    const trimmed = value.trim().toLowerCase();
+    const match = trimmed.match(/^(-?\d+(?:\.\d+)?)(ms|s)?$/);
+    if(match){
+      const amount = Number(match[1]);
+      if(Number.isFinite(amount)){
+        return match[2] === "s" ? amount * 1000 : amount;
+      }
+    }
+  }
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
+const resolvePauseDelayArg = (value) => {
+  if(value === null || value === undefined){
+    return 60;
+  }
+  if(typeof value === "object"){
+    if("delayMs" in value){
+      return value.delayMs === undefined ? 60 : value.delayMs;
+    }
+    return 60;
+  }
+  return value;
+};
+
+async function pauseRunning(arg = {}){
   flushRender();
-  const wait = Number(delayMs);
-  if(!Number.isFinite(wait) || wait <= 0) return;
-  await sleep(wait);
+  const delayCandidate = resolvePauseDelayArg(arg);
+  const parsed = parseDelayMsValue(delayCandidate);
+  if(parsed === null || parsed <= 0) return;
+  const version = getPauseAbortVersion();
+  await sleepWithAbort(parsed, version);
 }
 
 function colorsForKind(kind){
   const map = {
+    [GENERIC_WHITE]:       "black",
+    [GENERIC_BLACK]:       "black",
     [BIT_FUNC_FINDER]:     "red",
     [BIT_FUNC_TIMING]:     "orange",
     [BIT_FUNC_ALIGNMENT]:  "red",
@@ -817,9 +999,13 @@ for(const v of window.patternBits){
 
 let dataSeq = [];
 let dataSeqIndex = 0;
+let dataPatternLogActive = false;
+let dataPatternLogCompleted = false;
 function resetData(){
   dataSeq = buildBitSequence();
   dataSeqIndex = 0;
+  dataPatternLogActive = false;
+  dataPatternLogCompleted = false;
 }
 function encodeBitPair(kind, bit){
   if(typeof window.encodeBit === "function"){
@@ -827,14 +1013,29 @@ function encodeBitPair(kind, bit){
   }
   return bit === 1 ? Math.abs(kind) : -Math.abs(kind || 0);
 }
-function isDataEnd(){
-  return !Array.isArray(dataSeq) || dataSeqIndex >= dataSeq.length;
-}
 function hasMoreData(){
-  return Array.isArray(dataSeq) && dataSeqIndex < dataSeq.length;
+  const hasData = Array.isArray(dataSeq) && dataSeqIndex < dataSeq.length;
+  if(typeof window !== "undefined" && window.suppressDataPatternLog){
+    return hasData;
+  }
+  if(!dataPatternLogActive && hasData && dataSeqIndex === 0){
+    if(typeof window !== "undefined" && typeof window.logEvent === "function"){
+      window.logEvent("DrawDataPatterns", "", "データパターンの描画開始");
+    }
+    dataPatternLogActive = true;
+    dataPatternLogCompleted = false;
+  }
+  if(dataPatternLogActive && !hasData && !dataPatternLogCompleted){
+    if(typeof window !== "undefined" && typeof window.logEvent === "function"){
+      window.logEvent("DrawDataPatterns", "", "データパターンの描画終了");
+    }
+    dataPatternLogCompleted = true;
+    dataPatternLogActive = false;
+  }
+  return hasData;
 }
 function getNextData(){
-  if(isDataEnd()){
+  if(!hasMoreData()){
     return null;
   }
   const entry = dataSeq[dataSeqIndex++];
@@ -1012,15 +1213,6 @@ function updateCell(row, col, encodedValue){
   }else{
     applySetCell(r, c, encodedValue, color);
   }
-  const isBasePatternActive = typeof window !== "undefined" && Boolean(window.isDrawingBasePattern);
-  if(isBasePatternActive){
-    const isBlackBit = (typeof window.isBlackBit === "function")
-      ? window.isBlackBit(encodedValue)
-      : encodedValue > 0;
-    window.lastBasePatternColorName = color;
-    window.lastBasePatternBitIsBlack = Boolean(isBlackBit);
-    window.lastBasePatternKind = kind;
-  }
   boardMatrix[r - 1][c - 1] = encodedValue;
   return true;
 }
@@ -1029,15 +1221,19 @@ function putCell(encodedValue){
   let val = encodedValue;
   let usedAuto = false;
   if(val === undefined){
-    val = getNextData();
-    usedAuto = true;
+    val = 1;
+  }
+  if(val === -1){
+    val = UNPLACED_KIND;
+  }else if(val === 0 || val === 1){
+    val = (val === 1) ? GENERIC_BLACK : GENERIC_WHITE;
   }
   const skipExisting = Boolean(window.skipExistingCells);
   if(skipExisting && typeof window.isEmpty === "function" && !window.isEmpty()){
     if(usedAuto && dataSeqIndex > 0){
       dataSeqIndex = Math.max(0, dataSeqIndex - 1);
     }
-    return false;
+    return makeStepResult(false, { scale: 0.5 });
   }
   if(!Number.isFinite(val)) return false;
   const valKind = (typeof window.bitKind === "function") ? window.bitKind(val) : Math.abs(val);
@@ -1050,8 +1246,20 @@ function putCell(encodedValue){
     if(isDataKind(valKind) && typeof window !== "undefined" && typeof window.updateDataPatternStatus === "function"){
       window.updateDataPatternStatus(valKind);
     }
+    if(typeof window !== "undefined"
+      && typeof window.isStepModeOn === "function"
+      && window.isStepModeOn()
+      && typeof window.logEvent === "function"){
+      const isBlack = (typeof window.isBlackBit === "function") ? window.isBlackBit(val) : val > 0;
+      const colorLabel = isBlack ? "黒" : "白";
+      const cellRef = cellRefFromRowCol(cursorPos.row, cursorPos.col);
+      const refLabel = cellRef ? cellRef.toUpperCase() : "";
+      const coordsLabel = "(" + cursorPos.row + ", " + cursorPos.col + ")";
+      window.logEvent("putCell", "", refLabel + coordsLabel + "に" + colorLabel + "を配置");
+    }
   }
-  return ok;
+  const waitOptions = ok ? {} : { scale: 0.5 };
+  return makeStepResult(ok, waitOptions);
 }
 
 function getCell(row, col){
@@ -1122,11 +1330,6 @@ function isEmpty(){
   return kind === unplacedKind;
 }
 
-function isUsed(){
-  const key = `${cursorPos.row}-${cursorPos.col}`;
-  return cellStates.has(key);
-}
-
 function isSkipZone(){
   const { row, col } = cursorPos;
   if(timingRowIndex > 0 && row === timingRowIndex) return true;
@@ -1146,14 +1349,6 @@ function isMoveBlocked(){
   return lastMoveBlocked;
 }
 
-async function advanceCommand(){
-  if(window.isEmpty && window.isEmpty()){
-    await putCell();
-  }
-  await moveAdvance();
-  return true;
-}
-
 window.DIR_UP = DIR_UP;
 window.DIR_RIGHT = DIR_RIGHT;
 window.DIR_DOWN = DIR_DOWN;
@@ -1162,6 +1357,9 @@ window.DIR_FRONT = DIR_FRONT;
 window.DIR_BACK = DIR_BACK;
 window.RENDER_IMMEDIATE = RENDER_IMMEDIATE;
 window.RENDER_BUFFERED = RENDER_BUFFERED;
+window.STEP_DELAY_MS = STEP_DELAY_MS;
+window.RESET_DELAY_MS = RESET_DELAY_MS;
+window.ABORT_ERR = ABORT_ERR;
 window.cursorPos = cursorPos;
 window.boardMatrix = boardMatrix;
 window.ensureCells = ensureCells;
@@ -1169,7 +1367,6 @@ window.flushRender = flushRender;
 window.setRenderMode = setRenderMode;
 window.reapplyCellColors = reapplyCellColors;
 window.resetData = resetData;
-window.isDataEnd = isDataEnd;
 window.hasMoreData = hasMoreData;
 window.getNextData = getNextData;
 window.getNextDataKind = getNextDataKind;
@@ -1183,13 +1380,9 @@ window.putCell = putCell;
 window.getCell = getCell;
 window.invertCell = invertCell;
 window.isEmpty = isEmpty;
-window.isUsed = isUsed;
   window.isSkipZone = isSkipZone;
   window.isFunctionalCell = isFunctionalCell;
   window.isMoveBlocked = isMoveBlocked;
-  window.advanceCommand = advanceCommand;
-  window.moveAdvance = moveAdvance;
-  window.moveNext = moveNext;
   window.shouldPlaceCell = shouldPlaceCell;
   window.moveCursor = moveCursor;
 window.turnCursor = turnCursor;

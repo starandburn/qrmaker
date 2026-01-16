@@ -3,7 +3,13 @@
  */
 (function(global){
   if(!global) return;
-  const ABORT_ERR = global.ABORT_ERR || Symbol("run-aborted");
+  const missingAbortMsg = "board.js must be loaded before script-parser.js. Required constant 'ABORT_ERR' is not defined.";
+  const requireUtils = global.requireUtils;
+  if(!requireUtils){
+    throw new Error(missingAbortMsg);
+  }
+  requireUtils.requireGlobalProp(global, "ABORT_ERR", missingAbortMsg);
+  const ABORT_ERR = global.ABORT_ERR;
   global.ABORT_ERR = ABORT_ERR;
 
   const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -16,9 +22,8 @@
     data: "drawDataPatterns",
     qrcode: "drawQRCode",
     empty: "isEmpty",
-    used: "isUsed",
-    clash: "isMoveBlocked",
     block: "isMoveBlocked",
+    wall: "isMoveBlocked",
     put: "putCell",
     timing: "putTimingCells",
     skip: "isSkipZone",
@@ -33,8 +38,83 @@
     timings: "drawTimingPatterns",
     next: "getNextData",
     pause: "pauseRunning",
-    advance: "advanceCommand",
-    clear: "clearBoard",
+    hello: "drawHelloWorld",
+    helloworld: "drawHelloWorld",
+    drawhelloworld: "drawHelloWorld",
+  };
+  const BASE_SWITCH_NAMES = ["red", "blue", "green", "yellow"];
+  const DEFAULT_ACTIVE_SWITCH_NAMES = BASE_SWITCH_NAMES.slice(0, 2);
+  const makeSwitchStateInfo = (name) => ({
+    name,
+    getter: `isSwitchOn("${name}")`,
+    onExpr: `isSwitchOn("${name}")`,
+    offExpr: `!isSwitchOn("${name}")`,
+  });
+  const SWITCH_STATE_INFO = Object.fromEntries(BASE_SWITCH_NAMES.map((name) => [name, makeSwitchStateInfo(name)]));
+  const BASE_CONDITIONAL_KEYWORDS = [
+    "block",
+    "wall",
+    "pass",
+    "empty",
+    "used",
+    "timing",
+    "skip",
+    "last",
+  ];
+  const BASE_ALLOWED_COMMANDS = new Set(Object.keys(ALIAS_MAP).map((key) => key.toLowerCase()));
+  const normalizeSwitchName = (value) => {
+    if(typeof value !== "string") return "";
+    return value.trim().toLowerCase();
+  };
+  const getConfiguredSwitchNames = () => {
+    if(!global || !global.__qrSwitchConfig) return null;
+    const { switchNames } = global.__qrSwitchConfig;
+    if(!Array.isArray(switchNames)) return null;
+    const normalized = switchNames
+      .map(normalizeSwitchName)
+      .filter((name) => name && BASE_SWITCH_NAMES.includes(name));
+    const unique = Array.from(new Set(normalized));
+    return BASE_SWITCH_NAMES.filter((name) => unique.includes(name));
+  };
+  const getActiveSwitchNames = () => {
+    const configured = getConfiguredSwitchNames();
+    if(Array.isArray(configured)){
+      return configured;
+    }
+    return DEFAULT_ACTIVE_SWITCH_NAMES;
+  };
+  const buildActiveSwitchPattern = () => {
+    const names = getActiveSwitchNames();
+    if(!names.length) return "";
+    return names.map(escapeRegExp).join("|");
+  };
+  const buildActiveSwitchInfoList = () => {
+    const names = getActiveSwitchNames();
+    return names.map((name) => SWITCH_STATE_INFO[name]).filter(Boolean);
+  };
+  const buildConditionalKeywordPattern = (activeInfoList) => {
+    const expanded = BASE_CONDITIONAL_KEYWORDS.concat(activeInfoList.map((info) => info.name));
+    if(!expanded.length) return "";
+    return expanded.map(escapeRegExp).join("|");
+  };
+  const getAllowedCommandSet = () => {
+    const allowed = new Set(BASE_ALLOWED_COMMANDS);
+    allowed.add("setswitch");
+    const activeNames = new Set(getActiveSwitchNames());
+    BASE_SWITCH_NAMES.forEach((name) => {
+      if(!activeNames.has(name)){
+        allowed.delete(name);
+      }
+    });
+    return allowed;
+  };
+  const normalizeColorStateSpacing = (value) => {
+    if(typeof value !== "string" || !value) return "";
+    const pattern = buildActiveSwitchPattern();
+    if(!pattern){
+      return value;
+    }
+    return value.replace(new RegExp(`\\b(${pattern})(on|off)\\b`, "gi"), "$1 $2");
   };
   const ALIAS_PATTERN = new RegExp(
     `\\b(${Object.keys(ALIAS_MAP).map(escapeRegExp).join("|")})\\b`,
@@ -42,15 +122,13 @@
   );
   const applyAliasTransforms = (text) => {
     if(typeof text !== "string" || !text) return "";
-    const normalized = text
-      .replace(/\bmove\s+next\b/gi, "moveNext")
-      .replace(/\bmove\s+advance\b/gi, "moveAdvance");
+    const normalized = normalizeColorStateSpacing(text)
+      .replace(/\bput\s*black\b/gi, "put 1")
+      .replace(/\bput\s*white\b/gi, "put 0");
     return normalized.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
   };
-  const ALLOWED_COMMANDS = new Set(Object.keys(ALIAS_MAP));
   const ALLOWED_CONTROL = new Set([
     "if",
-    "when",
     "else",
     "while",
     "until",
@@ -68,67 +146,333 @@
   const validateAllowedCommands = (text) => {
     if(typeof text !== "string") return;
     const lines = text.replace(/\r/g, "").split("\n");
+    const allowedCommands = getAllowedCommandSet();
     for(const rawLine of lines){
       const trimmed = rawLine.trim();
       if(!trimmed) continue;
+      if(/^put\s*(black|white)\b/i.test(trimmed)){
+        continue;
+      }
+      if(/^move\s+(next|advance)\b/i.test(trimmed)){
+        throw new Error("move next/advance は使用できません");
+      }
       const match = trimmed.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\b/);
       if(!match){
         throw new Error(`不明なコマンド: ${trimmed}`);
       }
       const head = match[1].toLowerCase();
       if(ALLOWED_CONTROL.has(head)) continue;
-      if(ALLOWED_COMMANDS.has(head)) continue;
+      if(allowedCommands.has(head)) continue;
       throw new Error(`不明なコマンド: ${match[1]}`);
     }
   };
-  const KEYWORD_NUMBER_PATTERN = /\b(repeat|loop|for|mask|pause|qrcode)(\d+)\b/gi;
+  const KEYWORD_NUMBER_PATTERN = /\b(repeat|loop|for|mask|pause|qrcode|put)(\d+)\b/gi;
   const applyKeywordSpacing = (text) => {
     if(typeof text !== "string" || !text) return "";
-    return text.replace(KEYWORD_NUMBER_PATTERN, "$1 $2");
+    return text
+      .replace(/\bputnext\b/gi, "put next")
+      .replace(KEYWORD_NUMBER_PATTERN, "$1 $2");
   };
   const DIRECTION_SUFFIX_PATTERN = /\b(move|turn)(up|down|left|right|front|back)\b/gi;
+  const ASCII_ALPHANUMERIC_PATTERN = /[0-9A-Za-z]/;
+  const WHITESPACE_PATTERN = /\s/;
+  const ALLOWED_SPECIAL_SYMBOLS = new Set(["?", "-", "'"]);
+  const FULLWIDTH_BRACKETS = new Set(["（","）","［","］","｛","｝","【","】","〈","〉","《","》"]);
+    const ensureNoForbiddenSymbols = (text) => {
+      if(typeof text !== "string" || !text) return;
+      let inDoubleQuotes = false;
+      for(const ch of text){
+        if(inDoubleQuotes){
+          if(ch === '"'){
+            inDoubleQuotes = false;
+          }
+          continue;
+        }
+      if(ch === '"'){
+        inDoubleQuotes = true;
+        continue;
+      }
+      if(WHITESPACE_PATTERN.test(ch)) continue;
+      const code = ch.codePointAt(0);
+      if(code <= 0x7F){
+        if(ASCII_ALPHANUMERIC_PATTERN.test(ch) || ALLOWED_SPECIAL_SYMBOLS.has(ch)) continue;
+        throw new Error(`使用できない文字(${ch})が含まれています。`);
+      }
+      if(FULLWIDTH_BRACKETS.has(ch)){
+        throw new Error(`使用できない文字(${ch})が含まれています。`);
+      }
+    }
+  };
   const applyCompoundDirectionSpacing = (text) => {
     if(typeof text !== "string" || !text) return "";
     return text.replace(DIRECTION_SUFFIX_PATTERN, "$1 $2");
   };
-  const CONDITIONAL_KEYWORDS = ["block", "clash", "empty", "used", "timing", "skip"];
-  const CONDITIONAL_EXPLICIT_PATTERN = new RegExp(
-    `^\\s*(if|when)\\s+(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(.*)$`,
-    "i",
-  );
-  const CONDITIONAL_SHORTHAND_PATTERN = new RegExp(
-    `^\\s*(${CONDITIONAL_KEYWORDS.map(escapeRegExp).join("|")})\\s*\\?\\s*(.*)$`,
-    "i",
-  );
+  const applyNegationQuestionSpacing = (text) => {
+    if(typeof text !== "string" || !text) return text;
+    const names = getActiveSwitchNames();
+    const keywords = BASE_CONDITIONAL_KEYWORDS.concat(names);
+    if(!keywords.length) return text;
+    const keywordPattern = keywords.map(escapeRegExp).join("|");
+    const newline = text.includes("\r\n") ? "\r\n" : "\n";
+    return text
+      .split(/\r?\n/)
+      .map((line) => {
+        const match = line.match(
+          new RegExp(`^(\\s*if\\s+)-\\s*(${keywordPattern})(\\s*)(\\??)(.*)$`, "i"),
+        );
+        if(!match){
+          return line;
+        }
+        const [, prefix, keyword, spacing = "", question = "", rest = ""] = match;
+        return `${prefix}-${keyword}?${spacing}${rest}`;
+      })
+      .join(newline);
+  };
+  const applyTurnSwitchCommands = (text) => {
+    if(typeof text !== "string" || !text) return "";
+    const pattern = buildActiveSwitchPattern();
+    if(!pattern) return text;
+    const turnSwitchPattern = new RegExp(`\\bturn\\s+(${pattern})\\b`, "gi");
+    return text.replace(turnSwitchPattern, (_match, keyword) => {
+      const normalized = keyword.toLowerCase();
+      return `if ${normalized}? turn right else turn left`;
+    });
+  };
+  const applySwitchConditionSpacing = (text) => {
+    if(typeof text !== "string" || !text) return text;
+    const names = getActiveSwitchNames();
+    if(!names.length) return text;
+    const pattern = names.map(escapeRegExp).join("|");
+    const condPattern = new RegExp(`\\b(${pattern})(on|off)\\?`, "gi");
+    return text.replace(condPattern, "$1 $2?");
+  };
+  const applySwitchCommandAliases = (text) => {
+    if(typeof text !== "string" || !text) return "";
+    const names = getActiveSwitchNames();
+    if(!names.length) return text;
+    const namePattern = names.map(escapeRegExp).join("|");
+      const switchLinePattern = new RegExp(
+      `^([ \\t]*)(await\\s+)?(${namePattern})(?:\\s*\\(([^)]*)\\)|((?:on|off|flip|toggle))|\\s+((?:on|off|flip|toggle)))?\\s*;?$`,
+      "i",
+    );
+    return text
+      .split(/\r?\n/)
+      .map((rawLine) => {
+        const trimmed = rawLine.trim();
+        if(!trimmed || trimmed.includes("?")){
+          return rawLine;
+        }
+        const match = rawLine.match(switchLinePattern);
+        if(!match){
+          return rawLine;
+        }
+        const [, indent = "", awaitPart = "", name, args, inlineState, spacedState] = match;
+        const callArgs = [`"${name}"`];
+        if(args){
+          const trimmedArgs = args.trim();
+          if(trimmedArgs){
+            callArgs.push(trimmedArgs);
+          }
+        }
+        const state = inlineState || spacedState;
+        if(state){
+          callArgs.push(`"${state.toLowerCase()}"`);
+        }
+        const placeholder = "__SWITCH_COMMA__";
+        const joined = callArgs.join(placeholder);
+        return `${indent}${awaitPart || ""}setSwitch(${joined})`;
+      })
+      .join("\n");
+  };
   const applyConditionalAliases = (text) => {
     if(typeof text !== "string" || !text) return "";
-    const resolveConditionalKeyword = (keyword) => {
-      if(typeof keyword !== "string") return keyword;
-      const lower = keyword.toLowerCase();
-      if(lower === "timing" || lower === "skip") return "isSkipZone";
-      return keyword;
+    text = normalizeColorStateSpacing(text);
+    const switchPattern = buildActiveSwitchPattern();
+    if(switchPattern){
+      const stateShorthandPattern = new RegExp(`^([ \\t]*?)(${switchPattern})\\s+(on|off)\\?\\s*(.*)$`, "img");
+      text = text.replace(stateShorthandPattern, (match, indent = "", keyword, state, rest = "") => {
+        const trimmedRest = rest.trim();
+        const suffix = trimmedRest ? ` ${trimmedRest}` : "";
+        return `${indent}if ${keyword} ${state}?${suffix}`;
+      });
+    }
+    const activeSwitchInfoList = buildActiveSwitchInfoList();
+    const activeSwitchInfoMap = activeSwitchInfoList.reduce((map, info) => {
+      map[info.name] = info;
+      return map;
+    }, Object.create(null));
+    const conditionalPattern = buildConditionalKeywordPattern(activeSwitchInfoList);
+    const explicitPattern = conditionalPattern
+      ? new RegExp(`^\\s*(if)\\s+(-\\s*)?(${conditionalPattern})\\s*\\?\\s*(.*)$`, "i")
+      : null;
+    const shorthandPattern = conditionalPattern
+      ? new RegExp(`^\\s*(-\\s*)?(${conditionalPattern})\\s*\\?\\s*(.*)$`, "i")
+      : null;
+    const resolveConditionExpression = (rawKeyword, negated) => {
+      if(typeof rawKeyword !== "string") return rawKeyword;
+      const trimmed = rawKeyword.trim();
+      if(!trimmed) return trimmed;
+      const lower = trimmed.toLowerCase();
+      let expr = trimmed;
+      let negationCount = negated ? 1 : 0;
+      if(lower === "used"){
+        expr = "isEmpty";
+        negationCount += 1;
+      }else if(lower === "pass"){
+        expr = "isMoveBlocked";
+        negationCount += 1;
+      }else if(lower === "last"){
+        expr = "hasMoreData";
+        negationCount += 1;
+      }else if(lower === "timing"){
+        expr = "isSkipZone";
+      }else{
+        const info = activeSwitchInfoMap[lower];
+        if(info){
+          expr = info.getter;
+        }
+      }
+      if(negationCount % 2 === 0){
+        return expr;
+      }
+      if(expr.startsWith("!")){
+        return expr.slice(1);
+      }
+      return `!${expr}`;
     };
     const lines = text.split(/\r?\n/);
     const mapped = lines.map((line) => {
-      const explicitMatch = line.match(CONDITIONAL_EXPLICIT_PATTERN);
-      if(explicitMatch){
-        const prefix = explicitMatch[1];
-        const keyword = resolveConditionalKeyword(explicitMatch[2]);
-        const rest = (explicitMatch[3] || "").trim();
-        return rest ? `${prefix} ${keyword} ${rest}` : `${prefix} ${keyword}`;
+      if(explicitPattern){
+        const explicitMatch = line.match(explicitPattern);
+        if(explicitMatch){
+          const prefix = explicitMatch[1];
+          const negated = Boolean(explicitMatch[2]);
+          const rawKeyword = explicitMatch[3];
+          const rest = (explicitMatch[4] || "").trim();
+          const condition = resolveConditionExpression(rawKeyword, negated);
+          return rest ? `${prefix} ${condition} ${rest}` : `${prefix} ${condition}`;
+        }
       }
-      const shorthandMatch = line.match(CONDITIONAL_SHORTHAND_PATTERN);
-      if(shorthandMatch){
-        const keyword = resolveConditionalKeyword(shorthandMatch[1]);
-        const rest = (shorthandMatch[2] || "").trim();
-        return rest ? `if ${keyword} ${rest}` : `if ${keyword}`;
+      if(shorthandPattern){
+        const shorthandMatch = line.match(shorthandPattern);
+        if(shorthandMatch){
+          const negated = Boolean(shorthandMatch[1]);
+          const rawKeyword = shorthandMatch[2];
+          const rest = (shorthandMatch[3] || "").trim();
+          const condition = resolveConditionExpression(rawKeyword, negated);
+          return rest ? `if ${condition} ${rest}` : `if ${condition}`;
+        }
       }
       return line;
     });
     let result = mapped.join("\n");
-    result = result.replace(/\bif\s+timing\b/gi, (match) => match.replace(/timing/i, "isSkip"));
-    result = result.replace(/\bif\s*\(\s*timing\b/gi, (match) => match.replace(/timing/i, "isSkip"));
+    if(conditionalPattern){
+      const ifSimplePattern = new RegExp(`\\bif\\s+(-\\s*)?(${conditionalPattern})\\b(?!\\s*\\?)`, "gi");
+      result = result.replace(ifSimplePattern, (_match, negPrefix, cond) => {
+        const negated = Boolean(negPrefix && negPrefix.trim());
+        const resolved = resolveConditionExpression(cond, negated);
+        return `if ${resolved}`;
+      });
+      const ifParenPattern = new RegExp(`\\bif\\s*\\(\\s*(-\\s*)?(${conditionalPattern})\\b(?!\\s*\\?)`, "gi");
+      result = result.replace(ifParenPattern, (_match, negPrefix, cond) => {
+        const negated = Boolean(negPrefix && negPrefix.trim());
+        const resolved = resolveConditionExpression(cond, negated);
+        return `if (${resolved}`;
+      });
+      const loopKeywordPattern = "(while|until|repeat|loop)";
+      const whileUntilQuestionPattern = new RegExp(
+        `\\b${loopKeywordPattern}\\s+(-\\s*)?(${conditionalPattern})\\s*\\?`,
+        "gi",
+      );
+      result = result.replace(
+        whileUntilQuestionPattern,
+        (_match, keyword, negPrefix, cond) => {
+          const negated = Boolean(negPrefix && negPrefix.trim());
+          const resolved = resolveConditionExpression(cond, negated);
+          return `${keyword} ${resolved}`;
+        },
+      );
+      const whileUntilParenQuestionPattern = new RegExp(
+        `\\b${loopKeywordPattern}\\s*\\(\\s*(-\\s*)?(${conditionalPattern})\\s*\\?`,
+        "gi",
+      );
+      result = result.replace(
+        whileUntilParenQuestionPattern,
+        (_match, keyword, negPrefix, cond) => {
+          const negated = Boolean(negPrefix && negPrefix.trim());
+          const resolved = resolveConditionExpression(cond, negated);
+          return `${keyword} (${resolved}`;
+        },
+      );
+      const whileUntilSimplePattern = new RegExp(
+        `\\b${loopKeywordPattern}\\s+(-\\s*)?(${conditionalPattern})\\b(?!\\s*\\?)`,
+        "gi",
+      );
+      result = result.replace(
+        whileUntilSimplePattern,
+        (_match, keyword, negPrefix, cond) => {
+          const negated = Boolean(negPrefix && negPrefix.trim());
+          const resolved = resolveConditionExpression(cond, negated);
+          return `${keyword} ${resolved}`;
+        },
+      );
+      const whileUntilParenPattern = new RegExp(
+        `\\b${loopKeywordPattern}\\s*\\(\\s*(-\\s*)?(${conditionalPattern})\\b(?!\\s*\\?)`,
+        "gi",
+      );
+      result = result.replace(
+        whileUntilParenPattern,
+        (_match, keyword, negPrefix, cond) => {
+          const negated = Boolean(negPrefix && negPrefix.trim());
+          const resolved = resolveConditionExpression(cond, negated);
+          return `${keyword} (${resolved}`;
+        },
+      );
+    }
+    result = result.replace(/\bif\s+!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
+    result = result.replace(/\bif\s*\(\s*!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
+    result = result.replace(/\b(while|until|repeat|loop)\s+!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
+    result = result.replace(/\b(while|until|repeat|loop)\s*\(\s*!pass\b/gi, (match) => match.replace(/!pass/i, "isMoveBlocked"));
+    const replaceColorStateCondition = (source, info, state, expr) => {
+      if(!info) return source;
+      const statePattern = `${state}\\??`;
+      const parenPattern = new RegExp(`\\b(if)\\s*\\(\\s*${escapeRegExp(info.name)}\\s+${statePattern}\\s*\\)`, "gi");
+      source = source.replace(parenPattern, (match, keyword) => `${keyword} (${expr})`);
+      const barePattern = new RegExp(`\\b(if)\\s+${escapeRegExp(info.name)}\\s+${statePattern}\\b`, "gi");
+      return source.replace(barePattern, (match, keyword) => `${keyword} ${expr}`);
+    };
+    activeSwitchInfoList.forEach((info) => {
+      result = replaceColorStateCondition(result, info, "off", info.offExpr);
+      result = replaceColorStateCondition(result, info, "on", info.onExpr);
+    });
+    const fixSimpleCondition = (source, info) => {
+      if(!info) return source;
+      const keyword = escapeRegExp(info.name);
+      const getter = info.getter;
+      const simplePattern = new RegExp(`\\bif\\s+${keyword}\\??\\b`, "gi");
+      source = source.replace(simplePattern, (match) => match.replace(new RegExp(`${keyword}\\??`, "i"), getter));
+      const parenPattern = new RegExp(`\\bif\\s*\\(\\s*${keyword}\\??\\b`, "gi");
+      return source.replace(parenPattern, (match) => match.replace(new RegExp(`${keyword}\\??`, "i"), getter));
+    };
+    activeSwitchInfoList.forEach((info) => {
+      result = fixSimpleCondition(result, info);
+    });
+    if(activeSwitchInfoList.length){
+      const getterPattern = activeSwitchInfoList.map((info) => escapeRegExp(info.getter)).join("|");
+      if(getterPattern){
+        const positiveRegex = new RegExp(`((${getterPattern})\\(\\))\\?`, "g");
+        result = result.replace(positiveRegex, "$1");
+        const negativeRegex = new RegExp(`(!(${getterPattern})\\(\\))\\?`, "g");
+        result = result.replace(negativeRegex, "$1");
+      }
+    }
+    result = result.replace(/(!?\s*isSwitchOn\("[^"]+"\))\?/gi, "$1");
     return result;
+  };
+
+  const normalizeLoopHyphenSpacing = (text) => {
+    if(typeof text !== "string" || !text) return text || "";
+    return text.replace(/\b(if|while|until|repeat|loop)-\s*/gi, "$1 - ");
   };
 
   const countBraceDelta = (line) => {
@@ -206,14 +550,8 @@
     const pushBlock = (type) => {
       blockStack.push(type);
     };
-    const repeatDefaultConditionName = () => {
-      if(typeof global !== "undefined" && typeof global.hasMoreMove === "function"){
-        return "hasMoreMove";
-      }
-      return "hasMoreData";
-    };
-    const DEFAULT_WHILE_CONDITION = "hasMoreData";
-    const DEFAULT_UNTIL_CONDITION = "isDataEnd";
+    const DEFAULT_WHILE_CONDITION = "";
+    const DEFAULT_UNTIL_CONDITION = "";
     const extractParenInfo = (line) => {
       const openIdx = line.indexOf("(");
       if(openIdx === -1) return null;
@@ -277,18 +615,42 @@
     };
     const stopCommandPattern = /^stop(?:\s+(?:for|while|repeat))?$/i;
     const buildSimpleLoopLine = (keyword, conditionRaw) => {
-      const condFormatted = formatStudentCodeLine(conditionRaw);
+      const parseLoopCondition = (value) => {
+        const trimmed = typeof value === "string" ? value.trim() : "";
+        if(!trimmed) return null;
+        let base = trimmed;
+        let negationCount = 0;
+        if(base.startsWith("-")){
+          negationCount++;
+          base = base.slice(1).trim();
+        }
+        const lower = base.toLowerCase();
+        if(lower === "last"){
+          negationCount++;
+          base = "hasMoreData";
+        }
+        if(!base) return null;
+        return { base, negationCount };
+      };
+      const parsed = parseLoopCondition(conditionRaw);
+      if(!parsed) return null;
+      const condFormatted = formatStudentCodeLine(parsed.base);
       if(!condFormatted) return null;
-      if(keyword === "while"){
-        return `while (${condFormatted} && canContinueLoop()) {`;
+      let condExpr = condFormatted;
+      const negationCount = parsed.negationCount % 2;
+      for(let i = 0; i < negationCount; i++){
+        condExpr = `!(${condExpr})`;
       }
-      return `while (!(${condFormatted}) && canContinueLoop()) {`;
+      if(keyword === "while"){
+        return `while (${condExpr} && canContinueLoop()) {`;
+      }
+      return `while (!(${condExpr}) && canContinueLoop()) {`;
     };
     const formatSimpleFor = (countVal) => {
       const n = Number(countVal);
       if(!Number.isFinite(n)) return null;
       const loopVar = `i${autoLoopCounter++}`;
-      return `for (let ${loopVar} = 0; ${loopVar} < ${n}; ${loopVar}++){`;
+      return `for (let ${loopVar} = 0; ${loopVar} < ${n} && canContinueLoop(); ${loopVar}++){`;
     };
     const buildConditionalLine = (prefix, conditionRaw) => {
       const condition = typeof conditionRaw === "string" ? conditionRaw.trim() : "";
@@ -302,19 +664,75 @@
     };
     const stripLineComments = (value) => {
       if(typeof value !== "string" || value === "") return "";
-      return value.replace(/^[ \t]*(?:\/\/|#|'|;|-).*$/gm, "");
-    };
-    const spacedText = applyKeywordSpacing(stripLineComments(rawText || ""));
+    return value
+      .replace(/(?:\/\/|#|'|;).*$/gm, "")
+      .replace(/^[ \t]*(?:\/\/|#|'|;).*$/gm, "");
+  };
+  const INLINE_ELSE_MARKER = "__inlineElse__";
+  const expandInlineElseLines = (lines) => {
+    if(!Array.isArray(lines)) return [];
+    const inlineElsePattern = /^(\s*if\b[\s\S]+?)\belse\b\s*(.*)$/i;
+    const expanded = [];
+    for(const rawLine of lines){
+      if(typeof rawLine !== "string" || !rawLine.trim().length){
+        expanded.push(rawLine);
+        continue;
+      }
+      const match = rawLine.match(inlineElsePattern);
+      if(!match){
+        expanded.push(rawLine);
+        continue;
+      }
+      const [, ifPart, elsePart] = match;
+      const trimmedIf = ifPart.replace(/\s+$/, "");
+      const indentMatch = ifPart.match(/^\s*/);
+      const indent = indentMatch ? indentMatch[0] : "";
+      const trimmedElse = elsePart.trim();
+      const elseClause = trimmedElse ? `else ${trimmedElse}` : "else";
+        expanded.push(trimmedIf);
+        expanded.push(`${indent}${INLINE_ELSE_MARKER}${elseClause}`);
+    }
+    return expanded;
+  };
+    const inputText = rawText || "";
+    const commentStrippedText = stripLineComments(inputText);
+    ensureNoForbiddenSymbols(commentStrippedText);
+    const spacedText = applyKeywordSpacing(commentStrippedText);
     const directionSpaced = applyCompoundDirectionSpacing(spacedText);
-    const conditionalText = applyConditionalAliases(directionSpaced);
+    const hyphenNormalizedText = normalizeLoopHyphenSpacing(directionSpaced);
+    const negatedConditionText = applyNegationQuestionSpacing(hyphenNormalizedText);
+    const switchConditionText = applySwitchConditionSpacing(negatedConditionText);
+    const switchAliasedText = applySwitchCommandAliases(switchConditionText);
+    const turnCommandText = applyTurnSwitchCommands(switchAliasedText);
+    const conditionalText = applyConditionalAliases(turnCommandText);
     validateAllowedCommands(conditionalText);
     const codeRaw = applyAliasTransforms(conditionalText);
     if(!codeRaw.trim()) return "";
     const formattedLines = codeRaw.replace(/\r/g, "").split("\n");
+    const preparedLines = expandInlineElseLines(formattedLines);
+    const ASYNC_COMMANDS = new Set([
+      "applyMask",
+      "buildQRCode",
+      "drawBasePatterns",
+      "drawBasePatternsStepped",
+      "drawDataPatterns",
+      "drawFunctionalPatterns",
+      "drawHelloWorld",
+      "drawQRCode",
+      "initializeQRCode",
+      "pauseRunning",
+      "resetCommand",
+      "resetQRCode",
+    ]);
+    const getCommandName = (value) => {
+      if(typeof value !== "string") return "";
+      const match = value.match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/);
+      return match ? match[1] : "";
+    };
     const combined = [];
     let blockDepth = 0;
     let pendingInlineIf = null;
-    for(const raw of formattedLines){
+    for(const raw of preparedLines){
       const trimmed = typeof raw === "string" ? raw.trim() : "";
       const pendingEndMatch = trimmed.match(/^end\s*(for|while|until|repeat|loop|if)$/i);
       if(pendingInlineIf && (trimmed === "end" || pendingEndMatch)){
@@ -330,9 +748,11 @@
         }
         continue;
       }
-      const line = trimmed.replace(/\s+$/g, "");
-      const lineLower = line.toLowerCase();
-      const indent = typeof raw === "string" ? raw.match(/^\s*/)[0] : "";
+    const rawLineContent = trimmed.replace(/\s+$/g, "");
+    const hasInlineElseMarker = rawLineContent.startsWith(INLINE_ELSE_MARKER);
+    const line = hasInlineElseMarker ? rawLineContent.slice(INLINE_ELSE_MARKER.length) : rawLineContent;
+    const lineLower = line.toLowerCase();
+    const indent = typeof raw === "string" ? raw.match(/^\s*/)[0] : "";
       const endMatch = pendingEndMatch || line.match(/^end\s*(for|while|until|repeat|loop|if)$/i);
       if(endMatch){
         const kind = endMatch[1].toLowerCase();
@@ -351,7 +771,7 @@
         pendingInlineIf = null;
       }
       if(pendingInlineIf && elseMatch && elseRest){
-        if(pendingInlineIf.condFormatted && pendingInlineIf.awaitedBody && pendingInlineIf.indent === indent){
+        if(pendingInlineIf.condFormatted && pendingInlineIf.awaitedBody){
           const elseFormatted = formatStudentCodeLine(elseRest);
           const elseStmt = elseFormatted ? (elseFormatted.endsWith(";") ? elseFormatted : `${elseFormatted};`) : "";
           const elseAwaited = elseStmt ? (awaitCalls ? `await ${elseStmt}` : elseStmt) : "";
@@ -369,11 +789,16 @@
         if(pendingInlineIf) continue;
         continue;
       }
-      const ifMatch = line.match(/^(if|when)\b(.*)$/i);
+      const ifMatch = line.match(/^(if)\b(.*)$/i);
       if(ifMatch){
         const conditionRaw = (ifMatch[2] || "").trim();
+        if(!conditionRaw){
+          throw new Error("if の後に条件が必要です");
+        }
+        if(/^-\s*\??$/.test(conditionRaw)){
+          throw new Error("if の後に条件が必要です");
+        }
         const singleLineInfo = (() => {
-          if(!conditionRaw) return null;
           const firstSpaceIdx = conditionRaw.search(/\s/);
           if(firstSpaceIdx === -1) return null;
           const conditionToken = conditionRaw.slice(0, firstSpaceIdx).trim();
@@ -416,7 +841,7 @@
         }
       }
       if(elseMatch && !line.includes("{")){
-        const restIfMatch = elseRest.match(/^(if|when)\b(.*)$/i);
+        const restIfMatch = elseRest.match(/^(if)\b(.*)$/i);
         if(restIfMatch){
             const nestedLine = buildConditionalLine("} else if", restIfMatch[2]);
             if(nestedLine){
@@ -438,6 +863,9 @@
         const conditionRaw = (whileMatch[1] || "").trim();
         const hasCondition = Boolean(conditionRaw);
         const actualCondition = hasCondition ? conditionRaw : DEFAULT_WHILE_CONDITION;
+        if(!conditionRaw || /^-\s*\??$/.test(conditionRaw)){
+          throw new Error("while の後に条件が必要です");
+        }
         if(conditionRaw.startsWith("(")){
           const guarded = guardWhileWithParen(line);
           if(guarded){
@@ -470,6 +898,9 @@
       if(untilMatch && !lineLower.includes("cancontinueloop")){
         const conditionRaw = (untilMatch[1] || "").trim();
         const actualCondition = conditionRaw || DEFAULT_UNTIL_CONDITION;
+        if(!conditionRaw || /^-\s*\??$/.test(conditionRaw)){
+          throw new Error("until の後に条件が必要です");
+        }
         if(conditionRaw.startsWith("(")){
           const rewritten = rewriteUntilWithParen(line);
           if(rewritten){
@@ -516,29 +947,40 @@
       if(/^for\b/i.test(line)){
         throw new Error("for は回数指定のみ対応しています");
       }
-      const repeatMatch = line.match(/^repeat(?:\s+(\d+))?$/i);
-      const loopMatch = line.match(/^loop(?:\s+(\d+))?$/i);
+      const repeatMatch = line.match(/^repeat(?:\s+(.+))?$/i);
+      const loopMatch = line.match(/^loop(?:\s+(.+))?$/i);
       if(repeatMatch || loopMatch){
-        const count = repeatMatch ? repeatMatch[1] : loopMatch[1];
-        if(count){
-          const formattedFor = formatSimpleFor(count);
-          if(formattedFor){
-            combined.push(formattedFor);
-            blockDepth += countBraceDelta(formattedFor);
-            pushBlock("repeat");
-            continue;
-          }
-        }else{
-          const repeatCondition = repeatDefaultConditionName();
-          const guardCondition = formatStudentCodeLine(repeatCondition);
-          const whileLine = `while (${guardCondition} && canContinueLoop()) {`;
-          combined.push(whileLine);
-          blockDepth += countBraceDelta(whileLine);
-          pushBlock("repeat");
-          continue;
+        const repeatArgRaw = repeatMatch ? repeatMatch[1] : loopMatch[1];
+        const repeatArg = typeof repeatArgRaw === "string" ? repeatArgRaw.trim() : "";
+        if(repeatArg && /^-\s*\??$/.test(repeatArg)){
+          throw new Error("repeat の後に条件が必要です");
         }
+        if(repeatArg){
+          if(/^\d+$/.test(repeatArg)){
+            const formattedFor = formatSimpleFor(repeatArg);
+            if(formattedFor){
+              combined.push(formattedFor);
+              blockDepth += countBraceDelta(formattedFor);
+              pushBlock("repeat");
+              continue;
+            }
+          }else{
+            const loopLine = buildSimpleLoopLine("while", repeatArg);
+            if(loopLine){
+              combined.push(loopLine);
+              blockDepth += countBraceDelta(loopLine);
+              pushBlock("repeat");
+              continue;
+            }
+          }
+        }
+        const whileLine = `while (canContinueLoop()) {`;
+        combined.push(whileLine);
+        blockDepth += countBraceDelta(whileLine);
+        pushBlock("repeat");
+        continue;
       }
-      const isBlocky = /^(for|while|if|when|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(line)
+      const isBlocky = /^(for|while|if|else\b|switch|do\b|try\b|catch\b|finally\b|function\b|async\b|return\b)/i.test(line)
         || /[{;}]$/.test(line);
       if(isBlocky){
         combined.push(line);
@@ -555,7 +997,12 @@
       const formatted = formatStudentCodeLine(line);
       if(formatted){
         const stmt = formatted.endsWith(";") ? formatted : `${formatted};`;
-        combined.push(awaitCalls ? `await ${stmt}` : stmt);
+        const commandName = getCommandName(formatted);
+        if(awaitCalls || ASYNC_COMMANDS.has(commandName)){
+          combined.push(`await ${stmt}`);
+        }else{
+          combined.push(stmt);
+        }
       }
     }
     if(pendingInlineIf){
@@ -568,8 +1015,33 @@
       blockDepth--;
       popBlock();
     }
-    return indentScriptLines(combined);
+    return indentScriptLines(combined).replace(/__SWITCH_COMMA__/g, ",");
   }
+
+  const splitCommandParts = (value) => {
+    const parts = [];
+    let buffer = "";
+    let inDoubleQuotes = false;
+    for(const ch of value){
+      if(ch === '"'){
+        buffer += ch;
+        inDoubleQuotes = !inDoubleQuotes;
+        continue;
+      }
+      if(!inDoubleQuotes && (WHITESPACE_PATTERN.test(ch) || ch === ",")){
+        if(buffer){
+          parts.push(buffer);
+          buffer = "";
+        }
+        continue;
+      }
+      buffer += ch;
+    }
+    if(buffer){
+      parts.push(buffer);
+    }
+    return parts.map((part) => part.trim()).filter(Boolean);
+  };
 
   function formatStudentCodeLine(line){
     const trimmed = typeof line === "string" ? line.trim() : "";
@@ -581,9 +1053,37 @@
     if(trimmed.includes("(") && trimmed.includes(")")){
       return trimmed.replace(/,/g, " ");
     }
-    const parts = trimmed.split(/[\s,]+/).filter(Boolean);
+    const parts = splitCommandParts(trimmed);
     if(parts.length === 0) return "";
     const fn = parts.shift();
+    const fnLower = typeof fn === "string" ? fn.toLowerCase() : "";
+    const directionEnabled = (typeof global !== "undefined" && global.useDirection === true);
+    if(!directionEnabled){
+      if(fnLower === "turn" || fnLower === "turncursor"){
+        throw new Error("Direction commands are disabled (useDirection=false): turn");
+      }
+      if(fnLower === "movenext"){
+        throw new Error("Direction commands are disabled (useDirection=false): move next");
+      }
+      if(fnLower === "moveadvance" || fnLower === "advancecommand"){
+        throw new Error("Direction commands are disabled (useDirection=false): move advance");
+      }
+      if(fnLower === "move" || fnLower === "movecursor"){
+        if(parts.length === 0){
+          return `${fn}()`;
+        }
+        const normalizeArg = (value) => {
+          if(typeof value !== "string") return "";
+          const trimmedArg = value.trim();
+          const unquoted = trimmedArg.replace(/^["'](.+)["']$/, "$1");
+          return unquoted.toLowerCase();
+        };
+        const forbidden = parts.map(normalizeArg).find((arg) => arg === "front" || arg === "back");
+        if(forbidden){
+          throw new Error(`Direction commands are disabled (useDirection=false): move ${forbidden}`);
+        }
+      }
+    }
     if(identifierPattern.test(fn)){
       if(!globalEnv || typeof globalEnv[fn] !== "function"){
         throw new Error(`不明なコマンド: ${fn}`);

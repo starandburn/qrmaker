@@ -1,8 +1,30 @@
+const REQUIRED_KEYS = [
+  "DIR_UP",
+  "DIR_RIGHT",
+  "DIR_DOWN",
+  "DIR_LEFT",
+  "DIR_FRONT",
+  "DIR_BACK",
+  "RENDER_IMMEDIATE",
+  "RENDER_BUFFERED",
+  "STEP_DELAY_MS",
+  "RESET_DELAY_MS",
+  "ABORT_ERR",
+];
 
 /**
  * 実行環境を初期化し、UI/状態/描画APIの依存を束ねるメイン関数。
  */
-function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layoutUI || {}, debugUI = window.debugUI || {}, settings = {} } = {}){
+function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
+  if(!urlState){
+    throw new Error("state/url-state.js must be loaded before main.js.");
+  }
+  if(!layoutUI){
+    throw new Error("ui/layout.js must be loaded before main.js.");
+  }
+  if(!debugUI){
+    debugUI = {};
+  }
   const btnGenerate = document.getElementById("btnGenerate");
   const btnInit = document.getElementById("btnInit");
   const btnClearCode = document.getElementById("btnClearCode");
@@ -42,6 +64,153 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const resolvedDataTemplates = Array.isArray(configDefaults.dataTemplates)
     ? configDefaults.dataTemplates
     : [];
+  const switchDefinitions = [
+    { name: "red", label: "Red", color: 0xff0000, idSuffix: "Red" },
+    { name: "blue", label: "Blue", color: 0x567cff, idSuffix: "Blue" },
+    { name: "green", label: "Green", color: 0x00a800, idSuffix: "Green" },
+    { name: "yellow", label: "Yellow", color: 0xffd500, idSuffix: "Yellow" },
+  ];
+  const DEFAULT_SWITCH_COUNT = 2;
+  const MAX_SWITCH_COUNT = switchDefinitions.length;
+  const parseSwitchCountValue = (value) => {
+    if(typeof value === "number" && Number.isFinite(value)){
+      return value;
+    }
+    if(typeof value === "string"){
+      const trimmed = value.trim();
+      if(trimmed.length){
+        const parsed = Number(trimmed);
+        if(Number.isFinite(parsed)){
+          return parsed;
+        }
+      }
+    }
+    return null;
+  };
+  const clampSwitchCount = (value) => Math.min(MAX_SWITCH_COUNT, Math.max(0, Math.trunc(value)));
+  const requestedSwitchCount = (() => {
+    const parsed = parseSwitchCountValue(configDefaults.switchCount);
+    if(parsed === null){
+      return DEFAULT_SWITCH_COUNT;
+    }
+    return clampSwitchCount(parsed);
+  })();
+  const activeSwitchDefinitions = switchDefinitions.slice(0, requestedSwitchCount);
+  const activeSwitchNames = activeSwitchDefinitions.map((def) => def.name);
+  if(typeof window !== "undefined"){
+    window.__qrSwitchConfig = Object.assign({}, window.__qrSwitchConfig, { switchNames: activeSwitchNames });
+  }
+  const switchIndicatorElements = Object.create(null);
+  let switchIndicatorContainer = null;
+  let switchIndicatorLabel = null;
+  const colorIntToHex = (value) => {
+    if(typeof value !== "number" || Number.isNaN(value)) return "#000000";
+    return `#${(value >>> 0).toString(16).padStart(6, "0")}`;
+  };
+  const ensureSwitchIndicators = () => {
+    if(!activeSwitchDefinitions.length){
+      return null;
+    }
+    if(switchIndicatorContainer){
+      return switchIndicatorContainer;
+    }
+    switchIndicatorContainer = document.createElement("span");
+    switchIndicatorContainer.className = "execution-status-switches";
+    switchIndicatorContainer.setAttribute("role", "group");
+    switchIndicatorContainer.setAttribute("aria-label", "Switch状態");
+    switchIndicatorLabel = document.createElement("span");
+    switchIndicatorLabel.className = "execution-status-label execution-status-label-chip";
+    switchIndicatorLabel.dataset.labelKind = "switch";
+    switchIndicatorLabel.textContent = "Switch";
+    switchIndicatorContainer.append(switchIndicatorLabel);
+    activeSwitchDefinitions.forEach((def) => {
+      const idSuffix = def.idSuffix || (def.name.charAt(0).toUpperCase() + def.name.slice(1));
+      const indicator = document.createElement("span");
+      indicator.id = `executionStatusSwitch${idSuffix}Indicator`;
+      indicator.className = "execution-status-switch-indicator";
+      indicator.setAttribute("aria-label", def.label);
+      switchIndicatorElements[def.name] = indicator;
+      switchIndicatorContainer.append(indicator);
+    });
+    return switchIndicatorContainer;
+  };
+  const switchStates = Object.fromEntries(activeSwitchNames.map((name) => [name, false]));
+  const updateSwitchIndicators = () => {
+    if(!activeSwitchDefinitions.length) return;
+    const container = ensureSwitchIndicators();
+    if(!container) return;
+    const offBackground = "#4a4a4a";
+    const onBorderColor = "rgba(0,0,0,0.25)";
+    const offBorderColor = "rgba(0,0,0,0.15)";
+    activeSwitchDefinitions.forEach((def) => {
+      const indicatorEl = switchIndicatorElements[def.name];
+      if(!indicatorEl) return;
+      const isOn = Boolean(switchStates[def.name]);
+      indicatorEl.classList.toggle("is-on", isOn);
+      indicatorEl.style.backgroundColor = isOn ? colorIntToHex(def.color) : offBackground;
+      indicatorEl.style.borderColor = isOn ? onBorderColor : offBorderColor;
+    });
+  };
+  const parseSwitchAction = (value) => {
+    if(typeof value === "boolean") return value;
+    if(typeof value === "string"){
+      const normalized = value.trim().toLowerCase();
+      if(!normalized.length) return null;
+      if(normalized === "on" || normalized === "true" || normalized === "1") return true;
+      if(normalized === "off" || normalized === "false" || normalized === "0") return false;
+      return null;
+    }
+    return null;
+  };
+  const setSwitchState = (color, state) => {
+    if(!(color in switchStates)) return false;
+    const next = Boolean(state);
+    switchStates[color] = next;
+    updateSwitchIndicators();
+    if(typeof window.logEvent === "function"){
+      const labelMap = { red: "赤", blue: "青", green: "緑", yellow: "黄" };
+      const label = labelMap[color] || color;
+      const desc = `スイッチを${next ? "ON" : "OFF"}に設定`.replace("スイッチ", `${label}スイッチ`);
+      window.logEvent("setSwitch", JSON.stringify({ color, state: next }), desc);
+    }
+    return next;
+  };
+  const toggleSwitchState = (color) => {
+    if(!(color in switchStates)) return false;
+    const next = !switchStates[color];
+    switchStates[color] = next;
+    updateSwitchIndicators();
+    if(typeof window.logEvent === "function" && typeof isStepModeOn === "function" && isStepModeOn()){
+      const labelMap = { red: "赤", blue: "青", green: "緑", yellow: "黄" };
+      const label = labelMap[color] || color;
+      const desc = `スイッチを反転`.replace("スイッチ", `${label}スイッチ`);
+      window.logEvent("setSwitch", JSON.stringify({ color, flipped: true, state: next }), desc);
+    }
+    return next;
+  };
+  const isSwitchOn = (color) => Boolean(switchStates[color]);
+  const setSwitch = (color, action) => {
+    return updateSwitchState(color, action);
+  };
+  const updateSwitchState = (color, action) => {
+    const desired = parseSwitchAction(action);
+    return (desired === null) ? toggleSwitchState(color) : setSwitchState(color, desired);
+  };
+  const red = (action) => setSwitch("red", action);
+  const blue = (action) => setSwitch("blue", action);
+  const green = (action) => setSwitch("green", action);
+  const yellow = (action) => setSwitch("yellow", action);
+  const isRedOn = () => isSwitchOn("red");
+  const isBlueOn = () => isSwitchOn("blue");
+  const isGreenOn = () => isSwitchOn("green");
+  const isYellowOn = () => isSwitchOn("yellow");
+  function resetSwitchStates(){
+    activeSwitchNames.forEach((name) => {
+      switchStates[name] = false;
+    });
+    updateSwitchIndicators();
+  }
+  updateSwitchIndicators();
   const sampleDropdownMenu = document.getElementById("sampleDropdownMenu");
   if(sampleDropdownMenu){
     sampleDropdownMenu.innerHTML = "";
@@ -99,6 +268,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const DATA_DEFAULT_TEXT = configuredQrData !== null
     ? configuredQrData
     : (txtInput?.value ?? "Hello, World!");
+  if(typeof window !== "undefined" && typeof window.refreshPatternIfPanelOpen === "function"){
+    window.refreshPatternIfPanelOpen();
+  }
   if(userCodeInput){
     userCodeInput.value = (typeof configDefaults.userCode === "string") ? configDefaults.userCode : "qrcode";
   }
@@ -302,18 +474,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       layoutUI.renderHistoryList(entries);
     }
   };
-  const historyController = window.historyController || {
-    pushHistorySnapshot: () => {},
-    markHistoryPending: () => {},
-    commitPendingHistory: () => false,
-    ensureRunHistory: () => {},
-    finalizeRunHistoryEntry: () => {},
-    pruneHistoryEntries: () => {},
-    getEntry: () => null,
-    getEntries: () => [],
-    setRenderer: () => {},
-    setValueGetter: () => {},
-  };
+  if(!window.historyController){
+    throw new Error("state/history-store.js must be loaded before main.js.");
+  }
+  const historyController = window.historyController;
   historyController.setRenderer(renderHistoryList);
   const getCurrentCodeValue = () => {
     return userCodeInput ? userCodeInput.value ?? "" : "";
@@ -343,6 +507,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     STEP_FLAGS: STEP_FLAGS_PARAM_KEY = "s",
     SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY = "x",
     AUTO_AVOID_TIMING: TIMING_AUTO_PARAM_KEY = "t",
+    USE_DIRECTION: USE_DIRECTION_PARAM_KEY = "useDirection",
   } = PARAM_KEYS;
   const initialDebugParamPresent = urlParams.has(DEBUG_PARAM_KEY);
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
@@ -379,6 +544,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const defaultAutoAvoidTiming = (typeof configDefaults.autoAvoidTiming === "boolean")
     ? configDefaults.autoAvoidTiming
     : false;
+  const defaultUseDirection = (typeof configDefaults.useDirection === "boolean")
+    ? configDefaults.useDirection
+    : false;
   const resolveMaskIndex = (value, fallback = 0) => {
     const numeric = Number(value);
     if(Number.isFinite(numeric)){
@@ -404,6 +572,16 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     ? autoAvoidTimingFromParam
     : defaultAutoAvoidTiming;
   window.autoAvoidTiming = autoAvoidTiming;
+  const useDirectionFromParam = urlParams.has(USE_DIRECTION_PARAM_KEY)
+    ? urlState.stringifyBool(urlParams.get(USE_DIRECTION_PARAM_KEY))
+    : null;
+  const useDirection = (useDirectionFromParam !== null)
+    ? useDirectionFromParam
+    : defaultUseDirection;
+  window.useDirection = useDirection;
+  if(document && document.body){
+    document.body.classList.toggle("direction-disabled", !useDirection);
+  }
   const ensureUserCodeCaretVisible = () => {
     if(!userCodeInput) return;
     const pos = typeof userCodeInput.selectionEnd === "number" ? userCodeInput.selectionEnd : 0;
@@ -456,6 +634,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const executionStatusEl = document.getElementById("executionStatus");
   const executionStatusTextEl = document.getElementById("executionStatusText");
   const executionStatusCursorEl = document.getElementById("executionStatusCursor");
+  const isExecutionRunning = () => executionStatusEl ? executionStatusEl.classList.contains("status-running") : false;
   const executionStatusLabels = {
     stopped: "待機中",
     running: "作成中",
@@ -580,8 +759,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     drawAlignmentPatterns: { l2: "基本パターン", l3: "アライメントパターンを描画しています。" },
     drawDarkModulePatterns: { l2: "基本パターン", l3: "ダークモジュールを描画しています。" },
     drawFormatPatterns: { l2: "基本パターン", l3: "フォーマットパターンを描画しています。" },
+    applyMaskFormat: { l2: "マスク", l3: "フォーマットパターンを更新しています。" },
     verify: { l2: "QRコード検証", l3: "作成中" },
-    applyMask: (maskIndex) => ({ l2: "マスク", l3: `${maskIndex}番を適用しています。` }),
+    applyMask: (maskIndex) => ({ l2: "マスク", l3: `マスク${maskIndex}を適用しています。` }),
   };
   const DATA_PATTERN_STAGE_MESSAGES = {
     [window.BIT_INFO_MODE]: { l2: "データパターン", l3: "種別パターンを描画しています。" },
@@ -606,35 +786,32 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(!executionStatusCursorEl) return;
     let cursorTextEl = executionStatusCursorEl.querySelector(".execution-status-cursor-text");
     let cursorCellEl = executionStatusCursorEl.querySelector(".execution-status-cell");
-    let cursorLabelEl = executionStatusCursorEl.querySelector(".execution-status-cursor-label");
+    let cursorInlineLabelEl = executionStatusCursorEl.querySelector(".execution-status-cursor-inline-label");
     let nextLabelEl = executionStatusCursorEl.querySelector(".execution-status-next-label");
     let nextListEl = executionStatusCursorEl.querySelector(".execution-status-next-list");
+    let cursorBodyEl = executionStatusCursorEl.querySelector(".execution-status-cursor-body");
     if(!cursorTextEl){
       cursorTextEl = document.createElement("span");
       cursorTextEl.className = "execution-status-cursor-text";
-      executionStatusCursorEl.textContent = "";
-      executionStatusCursorEl.append(cursorTextEl);
     }
     if(!cursorCellEl){
       cursorCellEl = document.createElement("span");
       cursorCellEl.className = "execution-status-cell";
-      executionStatusCursorEl.append(cursorCellEl);
     }
-    if(!cursorLabelEl){
-      cursorLabelEl = document.createElement("span");
-      cursorLabelEl.className = "execution-status-cursor-label execution-status-chip";
-      executionStatusCursorEl.append(cursorLabelEl);
+    if(!cursorInlineLabelEl){
+      cursorInlineLabelEl = document.createElement("span");
+      cursorInlineLabelEl.className = "execution-status-label execution-status-label-chip execution-status-cursor-inline-label";
+      cursorInlineLabelEl.dataset.labelKind = "cursor";
     }
     if(!nextLabelEl){
       nextLabelEl = document.createElement("span");
-      nextLabelEl.className = "execution-status-next-label execution-status-chip";
-      executionStatusCursorEl.append(nextLabelEl);
+      nextLabelEl.className = "execution-status-label execution-status-label-chip execution-status-next-label";
+      nextLabelEl.dataset.labelKind = "next";
     }
     const NEXT_CELL_COUNT = 4;
     if(!nextListEl){
       nextListEl = document.createElement("span");
       nextListEl.className = "execution-status-next-list";
-      executionStatusCursorEl.append(nextListEl);
     }
     if(nextListEl.childElementCount !== NEXT_CELL_COUNT){
       nextListEl.textContent = "";
@@ -645,6 +822,27 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       }
     }
     const nextCells = Array.from(nextListEl.children);
+    if(!cursorBodyEl){
+      cursorBodyEl = document.createElement("span");
+      cursorBodyEl.className = "execution-status-cursor-body";
+    }
+    const switchIndicatorGroupEl = ensureSwitchIndicators();
+    cursorInlineLabelEl.textContent = "Cursor";
+    cursorBodyEl.textContent = "";
+    const cursorBodyChildren = [];
+    if(switchIndicatorGroupEl){
+      cursorBodyChildren.push(switchIndicatorGroupEl);
+    }
+    cursorBodyChildren.push(
+      cursorInlineLabelEl,
+      cursorTextEl,
+      cursorCellEl,
+      nextLabelEl,
+      nextListEl,
+    );
+    cursorBodyEl.append(...cursorBodyChildren);
+    executionStatusCursorEl.textContent = "";
+    executionStatusCursorEl.append(cursorBodyEl);
     let cursorVisualEl = cursorCellEl.querySelector(".execution-status-visual-cursor");
     if(!cursorVisualEl){
       cursorVisualEl = document.createElement("span");
@@ -690,6 +888,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       : "";
     const rowText = String(cursorPos.row).padStart(2, " ");
     const colText = String(cursorPos.col).padStart(2, " ");
+    const directionEnabled = useDirection === true;
     const dirSymbol = (() => {
       switch(cursorPos.dir){
         case DIR_UP: return "▲";
@@ -708,10 +907,15 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         default: return "up";
       }
     })();
-    cursorLabelEl.textContent = "Cursor";
+    cursorInlineLabelEl.textContent = "Cursor";
     cursorTextEl.textContent = `${ref}(${rowText},${colText})`;
-    cursorVisualEl.setAttribute("data-arrow", dirSymbol);
-    cursorVisualEl.setAttribute("data-dir", dirName);
+    if(directionEnabled){
+      cursorVisualEl.setAttribute("data-arrow", dirSymbol);
+      cursorVisualEl.setAttribute("data-dir", dirName);
+    }else{
+      cursorVisualEl.removeAttribute("data-arrow");
+      cursorVisualEl.removeAttribute("data-dir");
+    }
     cursorVisualEl.style.setProperty("--cursor-color", "#e60000");
     const guideCol = document.querySelector(".guide-col");
     if(guideCol){
@@ -733,7 +937,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     const currentKind = (typeof window.bitKind === "function" && typeof currentValue === "number")
       ? window.bitKind(currentValue)
       : (typeof currentValue === "number" ? Math.abs(currentValue) : null);
-    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
     if(typeof currentKind === "number" && currentKind !== unplacedKind){
       const currentColor = (typeof window.colorsForKind === "function")
         ? window.colorsForKind(currentKind)
@@ -772,9 +976,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   if(typeof window !== "undefined"){
     window.updateExecutionStatusCursor = updateExecutionStatusCursor;
     window.isDrawingBasePattern = false;
-    window.lastBasePatternColorName = null;
-    window.lastBasePatternBitIsBlack = false;
-    window.lastBasePatternKind = null;
     window.basePatternLookahead = [];
     window.setBasePatternLookahead = (infos) => {
       window.basePatternLookahead = Array.isArray(infos) ? infos : [];
@@ -923,6 +1124,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     "drawDarkModulePatterns",
     "drawFormatPatterns",
     "applyMask",
+    "applyMaskFormat",
   ]);
   const shouldShowStepStatus = (name) => {
     if(typeof isStepModeOn !== "function" || !isStepModeOn()) return false;
@@ -955,18 +1157,30 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   }
 
   // Relative directions (turn relative to current)
-  const DIR_UP = "up";
-  const DIR_RIGHT = "right";
-  const DIR_DOWN = "down";
-  const DIR_LEFT = "left";
-  const DIR_FRONT = "front";
-  const DIR_BACK = "back";
-  const RENDER_IMMEDIATE = "immediate";
-  const RENDER_BUFFERED = "buffered";
-  const STEP_DELAY_MS = 12;
-  const ABORT_ERR = window.ABORT_ERR || Symbol("run-aborted");
-  window.ABORT_ERR = ABORT_ERR;
-  const RESET_DELAY_MS = 10;
+  const globalScope = (typeof window !== "undefined")
+    ? window
+    : (typeof globalThis !== "undefined" ? globalThis : null);
+  if(!globalScope){
+    throw new Error("board.js must be loaded before main.js. Global scope is not available.");
+  }
+  const requireUtils = globalScope.requireUtils;
+  if(!requireUtils){
+    throw new Error("core/require.js must be loaded before main.js.");
+  }
+  requireUtils.requireGlobalKeys(globalScope, REQUIRED_KEYS, (key) => `board.js must be loaded before main.js. Required constant '${key}' is not defined.`);
+  const {
+    DIR_UP,
+    DIR_RIGHT,
+    DIR_DOWN,
+    DIR_LEFT,
+    DIR_FRONT,
+    DIR_BACK,
+    RENDER_IMMEDIATE,
+    RENDER_BUFFERED,
+    STEP_DELAY_MS,
+    ABORT_ERR,
+    RESET_DELAY_MS,
+  } = globalScope;
   const FORMAT_L = [
     30660, // mask 0
     29427, // mask 1
@@ -1010,8 +1224,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   ctx.RESET_DELAY_MS = RESET_DELAY_MS;
   window.setRenderMode = setRenderMode;
   ctx.helpers = ctx.helpers || {};
-  const domainUtil = window.domainUtil || {};
-  const domainQrParams = window.domainQrParams || {};
+  if(!window.domainQrParams){
+    throw new Error("domain/qr-params.js must be loaded before main.js.");
+  }
+  const domainQrParams = window.domainQrParams;
   const applyDataParam = (typeof domainQrParams.applyDataParam === "function")
     ? (options) => domainQrParams.applyDataParam(options)
     : () => false;
@@ -1051,12 +1267,19 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   if(typeof window !== "undefined"){
     window.shouldStepFunctions = shouldStepFunctions;
   }
-  function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false, reason = "" } = {}){
+  const bumpPauseAbortVersion = () => {
+    if(typeof window === "undefined") return;
+    const current = Number.isFinite(window.__pauseAbortVersion) ? window.__pauseAbortVersion : 0;
+    window.__pauseAbortVersion = current + 1;
+  };
+  function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false, reason = "", resetData: resetDataFlag = true } = {}){
+    bumpPauseAbortVersion();
     ctx.runId++;
     ctx.isStepFillRunning = false;
     setInputLock(false);
+    let resetResult;
     if(clear){
-      resetBoardState();
+      resetResult = resetBoardState({ resetData: resetDataFlag });
     }
     if(resetCursorFlag){
       resetCursor();
@@ -1070,17 +1293,19 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       pendingStopReason = null;
       stopReasonLocked = false;
     }
+    return resetResult;
   }
 
   let cellsInitialized = false;
-  function clearBoardSurface(){
-    setQRCodeReadable(false);
-    clearNoiseLayer();
+function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
+  setQRCodeReadable(false);
+  clearNoiseLayer();
     const cells = document.querySelectorAll(".qr-cells .cell");
     if(!cells || cells.length === 0) return false;
+    const unplacedValue = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
     for(const cell of cells){
       cell.className = "cell";
-      cell.dataset.debugVal = "0";
+      cell.dataset.debugVal = String(unplacedValue);
       cell.style.setProperty("--debug-color", "#000000");
       cell.style.setProperty("--debug-shadow", "0 0 2px #fff, 0 0 4px #fff");
     }
@@ -1093,11 +1318,12 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     timingRowIndex = 0;
     timingColIndex = 0;
     hasFormatPattern = false;
-    if(typeof resetData === "function"){
-      resetData();
-    }
-    return true;
+  if(resetDataFlag && typeof resetData === "function"){
+    resetData();
   }
+  resetSwitchStates();
+  return true;
+}
 
     function clearBoard(){
       window.logEvent("clearBoard", "", "盤面をクリア");
@@ -1110,8 +1336,9 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       abortRun = true,
       forceImmediate = abortRun,
       stopStep = abortRun,
+      resetData: resetDataFlag = true,
     } = options;
-    window.logEvent("resetQRCode", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, "QRコード描画をリセット");
+    window.logEvent("resetQRCode", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, "盤面状態をリセット");
     if(abortRun){
       ctx.runId++;
       ctx.maskRunId++;
@@ -1122,19 +1349,62 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     if(forceImmediate){
       setRenderMode(RENDER_IMMEDIATE);
     }
-    if(!clearBoardSurface()){
+    if(!clearBoardSurface({ resetData: resetDataFlag })){
       return;
     }
     resetCursor();
     pendingCursor = null;
+    requestRender("resetBoardState");
+    if(typeof requestAnimationFrame === "function"){
+      return {
+        then: (resolve, _reject) => {
+          const waitFrame = () => new Promise((frameResolve) => {
+            let done = false;
+            const finish = () => {
+              if(done) return;
+              done = true;
+              frameResolve(true);
+            };
+            requestAnimationFrame(finish);
+            setTimeout(finish, 50);
+          });
+          waitFrame().then(() => waitFrame().then(() => resolve(true)));
+        },
+        catch: () => {},
+        valueOf: () => true,
+        toString: () => "true",
+      };
+    }
   }
 
   function resetQRCode(){
+    window.logEvent("resetQRCode", "", "盤面状態をリセット");
     if(!clearBoardSurface()){
       return false;
     }
     resetCursor();
     pendingCursor = null;
+    requestRender("resetQRCode");
+    if(typeof requestAnimationFrame === "function"){
+      return {
+        then: (resolve, _reject) => {
+          const waitFrame = () => new Promise((frameResolve) => {
+            let done = false;
+            const finish = () => {
+              if(done) return;
+              done = true;
+              frameResolve(true);
+            };
+            requestAnimationFrame(finish);
+            setTimeout(finish, 50);
+          });
+          waitFrame().then(() => waitFrame().then(() => resolve(true)));
+        },
+        catch: () => {},
+        valueOf: () => true,
+        toString: () => "true",
+      };
+    }
     return true;
   }
   ctx.resetQRCode = resetQRCode;
@@ -1144,6 +1414,11 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     window.logEvent("resetCommand", "", "盤面をリセット");
     showApiStatus("resetCommand");
     resetBoardState(options);
+    resetSwitchStates();
+    requestRender("resetCommand");
+    if(typeof requestAnimationFrame === "function"){
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(true)));
+    }
     await sleep(RESET_DELAY_MS);
   }
 
@@ -1171,6 +1446,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       codePanel,
       buildUserScript,
       resetLoopGuard,
+      isStepModeOn,
       isDebugVisible,
       requestRender,
       setRenderMode,
@@ -1185,6 +1461,21 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       runUserCode: async () => true,
       runUserCodeWithStep: async () => true,
     };
+  const scheduleSyncParsedCode = (() => {
+    let scheduled = null;
+    const run = () => {
+      scheduled = null;
+      syncParsedCode();
+    };
+    return () => {
+      if(scheduled !== null) return;
+      if(typeof requestAnimationFrame === "function"){
+        scheduled = requestAnimationFrame(run);
+      }else{
+        scheduled = setTimeout(run, 0);
+      }
+    };
+  })();
 
   const {
     syncDebugOverlay,
@@ -1215,12 +1506,13 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     syncParsedCode,
     isDebugVisible,
     requestAnimationFrame,
-    fitSquare: window.fitSquare,
+    syncViewLayout: window.syncViewLayout,
   });
 
   // Export helpers to window
   window.RENDER_IMMEDIATE = RENDER_IMMEDIATE;
   window.RENDER_BUFFERED = RENDER_BUFFERED;
+  window.setExecutionStatus = setExecutionStatus;
   window.updateCursor = updateCursor;
   window.boardMatrix = boardMatrix;
   window.getNextData = getNextData;
@@ -1345,7 +1637,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       window.logEvent("applyMask", maskIndex ?? "", "マスク指定が不正です");
       return false;
     }
-    window.logEvent("applyMask", idx, `${idx}番マスクを適用中`);
+    window.logEvent("applyMask", idx, `マスク${idx}を適用`);
     showApiStatus("applyMask", idx);
     const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[idx] === "function") ? MASK_FUNCTIONS[idx] : null;
     if(!maskFn) return false;
@@ -1557,7 +1849,10 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       completed = !shouldAbort();
       }
       if(completed && hasFormatPattern){
-        showApiStatus("drawFormatPatterns");
+        showApiStatus("applyMaskFormat");
+        const formatBits = (ctx.FORMAT_L && Number.isFinite(ctx.FORMAT_L[idx])) ? ctx.FORMAT_L[idx] : null;
+        const formatHex = Number.isFinite(formatBits) ? formatBits.toString(16).toUpperCase().padStart(4, "0") : "----";
+        window.logEvent("applyMask", idx, `フォーマットパターンを更新（${formatHex}）`);
         await callDrawFormatPatterns(idx, true);
         showApiStatus("applyMask", idx);
       }
@@ -1591,8 +1886,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   async function drawBasePatterns(ctx, { deferFlush = false, currentRun, resetDelay = false } = {}){
     if(!ctx) return false;
-    window.logEvent("drawBasePatterns", currentRun ?? "", "基本パターンを描画中");
-    showApiStatus("drawBasePatterns");
+    window.logEvent("drawBasePatterns", currentRun ?? "", "基本パターン描画開始");
     const { setRenderMode, resetCursor, requestRender, RESET_DELAY_MS, RENDER_BUFFERED, RENDER_IMMEDIATE } = ctx;
     const prevRender = ctx.renderMode;
     setRenderMode(RENDER_BUFFERED);
@@ -1601,9 +1895,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       await ctx.helpers?.sleep?.(RESET_DELAY_MS ?? 0);
     }
     const opts = { overwrite: false, currentRun };
-    const showBaseStatus = () => showApiStatus("drawBasePatterns");
-    const runFunctionalPattern = async (name, fn, ...fnArgs) => {
-      showApiStatus(name);
+    const runFunctionalPattern = async (fn, ...fnArgs) => {
       if(typeof window !== "undefined"){
         window.isDrawingBasePattern = true;
         if(typeof window.setBasePatternLookahead === "function"){
@@ -1620,21 +1912,20 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
             window.setBasePatternLookahead([]);
           }
         }
-        showBaseStatus();
       }
     };
-    await runFunctionalPattern("drawFinderPatterns", callDrawFinderPatterns, opts.overwrite, opts.currentRun);
-    await runFunctionalPattern("drawTimingPatterns", callDrawTimingPatterns, opts.overwrite, opts.currentRun);
-    await runFunctionalPattern("drawAlignmentPatterns", callDrawAlignmentPatterns, opts.overwrite, opts.currentRun);
-    await runFunctionalPattern("drawDarkModulePatterns", callDrawDarkModulePatterns, opts.overwrite, opts.currentRun);
-    await runFunctionalPattern("drawFormatPatterns", callDrawFormatPatterns, undefined, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern(drawFinderPatterns, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern(drawTimingPatterns, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern(drawAlignmentPatterns, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern(drawDarkModulePatterns, opts.overwrite, opts.currentRun);
+    await runFunctionalPattern(drawFormatPatterns, undefined, opts.overwrite, opts.currentRun);
+    window.logEvent("drawBasePatterns", currentRun ?? "", "基本パターン描画完了");
     if(!deferFlush){
       requestRender("drawBasePatterns");
       setRenderMode(RENDER_IMMEDIATE);
     }else{
       setRenderMode(prevRender);
     }
-    resetCursor();
     return true;
   }
   async function drawBasePatternsStepped(ctx, { currentRun } = {}){
@@ -1658,7 +1949,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   };
   window.__deferredWindowApi = Object.assign(window.__deferredWindowApi || {}, deferredWindowApi);
   const drawFinderPatterns = wrapDrawApi("drawFinderPatterns", callDrawFinderPatterns, "ファインダーパターンを描画");
-  const drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", callDrawAlignmentPatterns, "配置パターンを描画");
+  const drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", callDrawAlignmentPatterns, "アライメントパターンを描画");
   const drawDarkModulePatterns = wrapDrawApi("drawDarkModulePatterns", callDrawDarkModulePatterns, "ダークモジュールを描画");
   const drawTimingPatterns = wrapDrawApi("drawTimingPatterns", callDrawTimingPatterns, "タイミングパターンを描画");
   const drawFormatPatterns = wrapDrawApi("drawFormatPatterns", callDrawFormatPatterns, "フォーマットパターンを描画");
@@ -1734,6 +2025,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   if(typeof window !== "undefined"){
     window.__deferredWindowApi = Object.assign(window.__deferredWindowApi || {}, {
       drawQRCode,
+      drawHelloWorld,
       buildQRCode,
       drawDataPatterns,
       drawFunctionalPatterns,
@@ -1755,13 +2047,47 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       syncViewToggles: window.syncViewToggles,
       toggleInputs: window.toggleInputs,
     });
+    window.setSwitch = setSwitch;
+    window.isSwitchOn = isSwitchOn;
+    window.toggleSwitchState = toggleSwitchState;
+    window.red = red;
+    window.blue = blue;
+    window.green = green;
+    window.yellow = yellow;
+    window.isRedOn = isRedOn;
+    window.isBlueOn = isBlueOn;
+    window.isGreenOn = isGreenOn;
+    window.isYellowOn = isYellowOn;
   }
   async function drawDataPatterns({ currentRun } = {}){
-    window.logEvent("drawDataPatterns", currentRun ?? "", "データパターンを描画中");
+    window.logEvent("drawDataPatterns", currentRun ?? "", "データパターン描画");
     showApiStatus("drawDataPatterns");
     const runToken = (typeof currentRun === "number") ? currentRun : runId;
     const shouldAbort = () => runToken !== runId;
     let dataPatternStageDirty = false;
+    const perfNow = (typeof performance !== "undefined" && typeof performance.now === "function")
+      ? () => performance.now()
+      : () => Date.now();
+    const waitForRender = async () => {
+      if(typeof requestAnimationFrame !== "function") return;
+      const waitFrame = () => new Promise((resolve) => {
+        let done = false;
+        const finish = () => {
+          if(done) return;
+          done = true;
+          resolve(true);
+        };
+        requestAnimationFrame(finish);
+        setTimeout(finish, 50);
+      });
+      await waitFrame();
+      await waitFrame();
+    };
+    const perfStats = {
+      steps: 0,
+      putMs: 0,
+      moveMs: 0,
+    };
     const markDataPatternStage = (kind) => {
       if(updateDataPatternStatus(kind)){
         dataPatternStageDirty = true;
@@ -1773,53 +2099,266 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         showApiStatus("drawDataPatterns");
       }
     };
-    try{
-      resetLoopGuard();
-      resetData();
-      updateCursor(BOARD_ROWS, BOARD_COLS, DIR_UP);
-      while(hasMoreData()){
-        if(shouldAbort()) throw ABORT_ERR;
-        if(!canContinueLoop()) return false;
-        const nextKind = (typeof window.getNextDataKind === "function") ? window.getNextDataKind() : null;
-        markDataPatternStage(nextKind);
-        await advanceCommand();
-        if(shouldAbort()) throw ABORT_ERR;
+    const runWithDirectionOverride = (fn) => {
+      if(typeof withInternalDirectionOverride === "function"){
+        return withInternalDirectionOverride(fn);
       }
-      return runToken === runId;
-    }finally{
-      finalizeStage();
-    }
+      return fn();
+    };
+    return runWithDirectionOverride(async () => {
+      let advanceStepCounter = 0;
+      const stepModeOn = typeof isStepModeOn === "function" && isStepModeOn();
+      const stepDataEnabled = stepModeOn;
+      const prevRenderMode = ctx.renderMode;
+      const prevSuppressCursorUpdates = typeof window !== "undefined" ? window.suppressCursorUpdates : false;
+      const prevSuppressDataPatternLog = typeof window !== "undefined" ? window.suppressDataPatternLog : false;
+      if(typeof window !== "undefined"){
+        window.suppressDataPatternLog = true;
+      }
+      if(!stepModeOn){
+        if(typeof window !== "undefined"){
+          window.suppressCursorUpdates = true;
+        }
+        setRenderMode(RENDER_BUFFERED);
+      }
+      const awaitIfStepping = async (result) => {
+        if(!stepDataEnabled){
+          return result;
+        }
+        return await result;
+      };
+      const advanceDataCursorSync = () => {
+        perfStats.steps += 1;
+        if(window.isEmpty && window.isEmpty()){
+          const nextData = (typeof window.getNextData === "function") ? window.getNextData() : null;
+          if(nextData !== null && nextData !== undefined){
+            const putStart = perfNow();
+            putCell(nextData);
+            perfStats.putMs += perfNow() - putStart;
+          }else{
+            const putStart = perfNow();
+            putCell();
+            perfStats.putMs += perfNow() - putStart;
+          }
+        }
+        const moveStart = perfNow();
+        const isLeftStep = (advanceStepCounter % 2) === 0;
+        advanceStepCounter += 1;
+        if(isLeftStep){
+          moveCursor("left");
+        }else{
+          moveCursor();
+          if(!(typeof window.isMoveBlocked === "function" && window.isMoveBlocked())){
+            moveCursor("right");
+          }
+        }
+        if(typeof window.isMoveBlocked === "function" && window.isMoveBlocked()){
+          turnCursor();
+          moveCursor("left");
+          if(typeof window.isSkipZone === "function" && window.isSkipZone()){
+            moveCursor("left");
+          }
+        }
+        perfStats.moveMs += perfNow() - moveStart;
+      };
+      const advanceDataCursorAsync = async () => {
+        perfStats.steps += 1;
+        if(window.isEmpty && window.isEmpty()){
+          const nextData = (typeof window.getNextData === "function") ? window.getNextData() : null;
+          if(nextData !== null && nextData !== undefined){
+            const putStart = perfNow();
+            await awaitIfStepping(putCell(nextData));
+            perfStats.putMs += perfNow() - putStart;
+          }else{
+            const putStart = perfNow();
+            await awaitIfStepping(putCell());
+            perfStats.putMs += perfNow() - putStart;
+          }
+        }
+        const moveStart = perfNow();
+        const isLeftStep = (advanceStepCounter % 2) === 0;
+        advanceStepCounter += 1;
+        if(isLeftStep){
+          await awaitIfStepping(moveCursor("left"));
+        }else{
+          await awaitIfStepping(moveCursor());
+          if(!(typeof window.isMoveBlocked === "function" && window.isMoveBlocked())){
+            await awaitIfStepping(moveCursor("right"));
+          }
+        }
+        if(typeof window.isMoveBlocked === "function" && window.isMoveBlocked()){
+          await awaitIfStepping(turnCursor());
+          await awaitIfStepping(moveCursor("left"));
+          if(typeof window.isSkipZone === "function" && window.isSkipZone()){
+            await awaitIfStepping(moveCursor("left"));
+          }
+        }
+        perfStats.moveMs += perfNow() - moveStart;
+      };
+      try{
+        resetLoopGuard();
+        updateCursor(BOARD_ROWS, BOARD_COLS, DIR_UP);
+        while(hasMoreData()){
+          if(shouldAbort()) throw ABORT_ERR;
+          if(!canContinueLoop()) return false;
+          const nextKind = (typeof window.getNextDataKind === "function") ? window.getNextDataKind() : null;
+          markDataPatternStage(nextKind);
+          if(stepDataEnabled){
+            await advanceDataCursorAsync();
+          }else{
+            advanceDataCursorSync();
+          }
+          if(shouldAbort()) throw ABORT_ERR;
+        }
+        if(runToken === runId && typeof resetData === "function"){
+          resetData();
+        }
+        return runToken === runId;
+      }finally{
+        finalizeStage();
+        if(!stepModeOn){
+          requestRender("drawDataPatterns");
+          setRenderMode(prevRenderMode);
+          if(typeof window !== "undefined"){
+            window.suppressCursorUpdates = prevSuppressCursorUpdates;
+            window.suppressDataPatternLog = prevSuppressDataPatternLog;
+            if(typeof window.updateExecutionStatusCursor === "function"){
+              window.updateExecutionStatusCursor();
+            }
+          }
+        }else if(typeof window !== "undefined"){
+          window.suppressDataPatternLog = prevSuppressDataPatternLog;
+        }
+        if(typeof window.logEvent === "function"){
+          const payload = {
+            steps: perfStats.steps,
+            putMs: Math.round(perfStats.putMs),
+            moveMs: Math.round(perfStats.moveMs),
+          };
+          window.logEvent("perfDataPattern", JSON.stringify(payload), "data内訳");
+        }
+      }
+    });
   }
   async function drawQRCode(arg){
-    resetBoardState({ abortRun: false, forceImmediate: true, stopStep: true });
-    window.logEvent("drawQRCode", arg ?? "", "QRコードを描画中");
-    showApiStatus("drawQRCode");
-    let maskIndex;
+    window.logEvent("drawQRCode", arg ?? "", "QRコード描画開始");
+    const resetOk = await resetQRCode();
+    if(resetOk === false) return false;
+    const baseOk = await callDrawBasePatterns();
+    if(!baseOk) return false;
+    const dataOk = await drawDataPatterns();
+    if(!dataOk) return false;
+    let maskOk;
     if(arg === undefined){
-      maskIndex = defaultMaskIndex;
+      maskOk = await callApplyMask();
     }else if(typeof arg === "object" && arg !== null){
-      maskIndex = arg.maskIndex;
+      maskOk = await callApplyMask(arg.maskIndex);
     }else{
-      maskIndex = arg;
+      maskOk = await callApplyMask(arg);
     }
-    const currentRun = ++runId;
-    const baseOk = await callDrawBasePatterns({ deferFlush: false, currentRun, resetDelay: true });
-    if(currentRun !== runId || !baseOk) return false;
-    const dataOk = await drawDataPatterns({ currentRun });
-    if(currentRun !== runId || !dataOk) return false;
-    let maskSpecified = false;
-    let idx = 0;
-    const rawValue = maskIndex;
-    const numeric = Number(rawValue);
-    if(Number.isFinite(numeric) && numeric >= 0 && numeric <= 7){
-      maskSpecified = true;
-      idx = numeric;
+    if(!maskOk) return false;
+    window.logEvent("drawQRCode", arg ?? "", "QRコード描画完了");
+    return true;
+  }
+
+  const HELLO_WORLD_LINES = [
+    ["b1", "down", 5],
+    ["c3", "right", 2],
+    ["e1", "down", 5],
+    ["g1", "down", 5],
+    ["h1", "right", 3],
+    ["h3", "right", 3],
+    ["h5", "right", 3],
+    ["l1", "down", 5],
+    ["m5", "right", 3],
+    ["q1", "down", 5],
+    ["r5", "right", 3],
+    ["v2", "down", 3],
+    ["w1", "right", 2],
+    ["y2", "down", 3],
+    ["w5", "right", 2],
+    ["a11", "down", 3],
+    ["b14", "down", 2],
+    ["c11", "down", 3],
+    ["d14", "down", 2],
+    ["e11", "down", 3],
+    ["g12", "down", 3],
+    ["h11", "right", 2],
+    ["j12", "down", 3],
+    ["h15", "right", 2],
+    ["l11", "down", 5],
+    ["m11", "right", 2],
+    ["o12", "down", 2],
+    ["m13", "right", 2],
+    ["n14", null, 1],
+    ["o15", null, 1],
+    ["q11", "down", 5],
+    ["r15", "right", 3],
+    ["v11", "down", 5],
+    ["w11", "right", 2],
+    ["y12", "down", 3],
+    ["w15", "right", 2],
+  ];
+
+  async function drawHelloWorld(){
+    const resetOk = await resetQRCode();
+    if(resetOk === false) return false;
+    const stepEnabled = typeof isStepModeOn === "function" && isStepModeOn();
+    const prevRenderMode = ctx ? ctx.renderMode : RENDER_IMMEDIATE;
+    setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
+    try{
+      const blackValue = (typeof window.BIT_BLACK === "number") ? window.BIT_BLACK : 1;
+      const skipExisting = Boolean(window.skipExistingCells);
+      const parseRef = (ref) => (typeof window.parseCellRef === "function" ? window.parseCellRef(ref) : null);
+      const isCellEmpty = (row, col) => {
+        if(typeof window.getCell !== "function") return true;
+        const current = window.getCell(row, col);
+        if(typeof current !== "number") return true;
+        if(typeof window.isUnplacedBit === "function"){
+          return window.isUnplacedBit(current);
+        }
+        const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
+        const kind = (typeof window.bitKind === "function") ? window.bitKind(current) : Math.abs(current);
+        return kind === unplacedKind;
+      };
+      const setCell = async (row, col) => {
+        if(skipExisting && !isCellEmpty(row, col)) return;
+        if(typeof window.updateCursor === "function"){
+          window.updateCursor(row, col);
+        }
+        window.updateCell(row, col, blackValue);
+        if(stepEnabled && typeof makeStepThenable === "function"){
+          const wait = makeStepThenable(true, {});
+          if(wait && typeof wait.then === "function"){
+            await wait;
+          }
+        }
+      };
+      const drawLine = async (startRef, dir, count) => {
+        const start = parseRef(startRef);
+        if(!start || !count) return;
+        let row = start.row;
+        let col = start.col;
+        for(let i = 0; i < count; i++){
+          await setCell(row, col);
+          if(dir === "down"){
+            row += 1;
+          }else if(dir === "right"){
+            col += 1;
+          }
+        }
+      };
+      for(const [startRef, dir, count] of HELLO_WORLD_LINES){
+        await drawLine(startRef, dir, count);
+      }
+      const endPos = parseRef("y15");
+      if(endPos && typeof window.updateCursor === "function"){
+        window.updateCursor(endPos.row, endPos.col);
+      }
+      requestRender("drawHelloWorld");
+    }finally{
+      setRenderMode(prevRenderMode);
     }
-    if(!maskSpecified){
-      return true;
-    }
-    const maskOk = await callApplyMask(idx);
-    if(currentRun !== runId || !maskOk) return false;
     return true;
   }
 
@@ -1926,8 +2465,6 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   document.addEventListener("keydown", (ev) => {
     if(ev.key !== "Escape") return;
     if(ev.repeat) return;
-    const active = (typeof document !== "undefined") ? document.activeElement : null;
-    if(isEditableTarget(active)) return;
     const asciiModal = document.getElementById("asciiModal");
     if(asciiModal && !asciiModal.classList.contains("hidden")) return;
     handleResetAction();
@@ -1967,13 +2504,13 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   const logVerificationOutcome = () => {
     const verifyService = globalThis.qrVerifyService;
     if(!verifyService || typeof verifyService.verifyBoard !== "function") return null;
-    window.logEvent("verify", "", "入力と出力を検証中");
     showApiStatus("verify");
     const result = verifyService.verifyBoard();
     setQRCodeReadable(Boolean(result?.ok));
     if(!result) return null;
     const inputValue = document.getElementById("txtInput")?.value ?? "";
     const match = result.text === inputValue;
+    const outcomeLabel = match ? "入力と出力が一致しました。" : "入力と出力が一致しませんでした。";
     const payload = {
       reason: result.reason || (result.ok ? "ok" : "rs_mismatch"),
       maskIndex: result.maskIndex,
@@ -1981,7 +2518,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
       match,
       stats: result.stats,
     };
-    window.logEvent("qrVerify", JSON.stringify(payload), match ? "入力と一致" : "入力と不一致");
+    window.logEvent("qrVerify", JSON.stringify(payload), outcomeLabel);
     return Object.assign({ ok: result.ok }, payload);
   };
 
@@ -2002,8 +2539,14 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   btnGenerate.addEventListener("click", async () => {
     historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
+    const patternUpdated = (typeof window.refreshPatternForCreate === "function")
+      ? window.refreshPatternForCreate()
+      : false;
     if(inputLocked){
-      stopCurrentRun({ resetCursor: true, clear: true });
+      const resetWait = stopCurrentRun({ resetCursor: true, clear: true, resetData: Boolean(patternUpdated) });
+      if(resetWait && typeof resetWait.then === "function"){
+        await resetWait;
+      }
     }
     const codeText = (userCodeInput && typeof userCodeInput.value === "string")
       ? userCodeInput.value.trim()
@@ -2021,29 +2564,82 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     setInputLock(true);
     let runOk = false;
     let verificationOutcome = null;
+    const shouldStepRun = typeof isStepModeOn === "function" && isStepModeOn();
+    const prevRenderMode = ctx.renderMode;
+    const prevSuppressCursorUpdates = typeof window !== "undefined" ? window.suppressCursorUpdates : false;
+    const perfNow = (typeof performance !== "undefined" && typeof performance.now === "function")
+      ? () => performance.now()
+      : () => Date.now();
+    let runDurationMs = 0;
+    let verifyDurationMs = 0;
     try{
       setQRCodeReadable(false);
+      if(!shouldStepRun){
+        if(typeof window !== "undefined"){
+          window.suppressCursorUpdates = true;
+        }
+        setRenderMode(RENDER_BUFFERED);
+      }
+      const runStart = perfNow();
       runOk = await runUserCodeWithStep();
+      runDurationMs = Math.max(0, perfNow() - runStart);
     }finally{
+      if(!shouldStepRun){
+        requestRender("runUserCodeBuffered");
+        setRenderMode(prevRenderMode);
+        if(typeof window !== "undefined"){
+          window.suppressCursorUpdates = prevSuppressCursorUpdates;
+          if(typeof window.updateExecutionStatusCursor === "function"){
+            window.updateExecutionStatusCursor();
+          }
+        }
+      }
       if(lockToken === inputLockToken){
         setInputLock(false);
       }
-      verificationOutcome = logVerificationOutcome();
-      if(runOk){
-          const verificationDetail = verificationOutcome
-            ? (verificationOutcome.match ? "正しいQRコードです。" : "この盤面はQRコードとして読み取れません。")
+      if(typeof window.logEvent === "function"){
+        window.logEvent("perfRunUserCode", JSON.stringify({ ms: Math.round(runDurationMs) }), "実行時間");
+      }
+      const applyExecutionStatus = (outcome) => {
+        if(runOk){
+          const verificationDetail = outcome
+            ? (outcome.match ? "正しいQRコードです。" : "この盤面はQRコードとして読み取れません。")
             : "";
-          if(verificationOutcome && !verificationOutcome.match){
+          if(outcome && !outcome.match){
             setExecutionStatus("warning", undefined, verificationDetail);
           }else{
             setExecutionStatus("finished", undefined, verificationDetail);
           }
-      }else if(lastExecutionError){
-        setExecutionStatus("error", lastExecutionError);
-      }else{
-        setExecutionStatus("stopped");
-      }
+          return;
+        }
+        if(lastExecutionError){
+          setExecutionStatus("error", lastExecutionError);
+        }else{
+          setExecutionStatus("stopped");
+        }
+      };
+      applyExecutionStatus(null);
       historyController.finalizeRunHistoryEntry(runOk);
+      if(runOk){
+        (async () => {
+          if(!shouldStepRun){
+            await new Promise((resolve) => setTimeout(resolve, 0));
+          }
+          try{
+            const verifyStart = perfNow();
+            verificationOutcome = logVerificationOutcome();
+            verifyDurationMs = Math.max(0, perfNow() - verifyStart);
+            if(typeof window.logEvent === "function"){
+              window.logEvent("perfVerify", JSON.stringify({ ms: Math.round(verifyDurationMs) }), "検証時間");
+            }
+            applyExecutionStatus(verificationOutcome);
+          }catch(err){
+            if(typeof window.logEvent === "function"){
+              window.logEvent("perfVerify", JSON.stringify({ error: String(err) }), "検証失敗");
+            }
+          }
+        })();
+      }
     }
   });
   if(btnGenerate){
@@ -2179,13 +2775,13 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
   });
   applyStepSpeedParam({ stepSpeed });
   syncDebugPanelLayout();
-  syncParsedCode();
+  scheduleSyncParsedCode();
   if(dataPatternPanel){
     dataPatternPanel.addEventListener("toggle", () => {
       syncDebugPanelLayout();
-      syncParsedCode();
-      if(typeof window.fitSquare === "function"){
-        requestAnimationFrame(window.fitSquare);
+      scheduleSyncParsedCode();
+      if(typeof window.syncViewLayout === "function"){
+        requestAnimationFrame(window.syncViewLayout);
       }
     });
   }
@@ -2204,7 +2800,7 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
     let wheelHoldCount = 0;
     let wheelHoldDirection = 0;
     userCodeInput.addEventListener("input", (ev) => {
-      syncParsedCode();
+      scheduleSyncParsedCode();
       ensureUserCodeCaretVisible();
       if(executionStatusEl && !executionStatusEl.classList.contains("status-running")){
         const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
@@ -2525,6 +3121,8 @@ function runMainApp({ urlState = window.urlState || {}, layoutUI = window.layout
         defaultSkipExistingCells,
         autoAvoidTiming,
         defaultAutoAvoidTiming,
+        useDirection,
+        defaultUseDirection,
         initialDebugParamPresent,
         codePanel,
       });

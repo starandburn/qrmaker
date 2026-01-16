@@ -8,6 +8,15 @@
   let debugLogElement = document.getElementById("debugLog");
   const debugOnlyControlsList = Array.from(document.querySelectorAll(".debug-only"));
   const logBuffer = global._logBuffer || [];
+  const shouldMirrorConsoleLogs = () => true;
+  const safeConsoleLog = (value) => {
+    if(!shouldMirrorConsoleLogs()) return;
+    try{
+      console.log(value);
+    }catch(e){
+      // ignore console errors
+    }
+  };
   let lastLogBody = null;
 
   const getDebugPanelElement = () => {
@@ -91,9 +100,25 @@
   function formatEventMessage(fnName, mainArg, description){
     const clip = global.formatLogEventMessage || ((fnName, mainArg, description) => {
       const safeName = fnName || "unknown";
-      const mainArgText = (mainArg === undefined || mainArg === null) ? "" : String(mainArg);
-      const callText = `${safeName}(${mainArgText})`;
-      return description ? `${callText}: ${description}` : callText;
+      const text = description ? `${safeName}: ${description}` : safeName;
+      if(fnName === "qrVerify" || fnName === "resetCursor" || fnName === "moveCursor" || fnName === "setCursorDirection" || fnName === "setSwitch"){
+        return text;
+      }
+      if(typeof mainArg !== "string") return text;
+      const trimmed = mainArg.trim();
+      if(!trimmed || !/^\{[\s\S]*\}$/.test(trimmed)) return text;
+      let parsed = null;
+      try{
+        parsed = JSON.parse(trimmed);
+      }catch(e){
+        return text;
+      }
+      if(!parsed || typeof parsed !== "object") return text;
+      const details = Object.entries(parsed)
+        .filter(([, value]) => typeof value === "number" || typeof value === "string")
+        .map(([key, value]) => `${key}=${value}`);
+      if(!details.length) return text;
+      return `${text} (${details.join(", ")})`;
     });
     return clip(fnName, mainArg, description);
   }
@@ -136,10 +161,16 @@
 
   function logEvent(fnName, mainArg, description){
     const message = formatEventMessage(fnName, mainArg, description);
-    window.log(message);
+    const consoleDetails = {
+      api: fnName || "unknown",
+      args: mainArg,
+      description,
+      timestamp: new Date().toISOString(),
+    };
+    window.log(message, { consoleDetails, debugMessage: message });
   }
 
-  window.log = (msg) => {
+  window.log = (msg, { consoleDetails, debugMessage } = {}) => {
     const logEl = getDebugLogElement();
     if(logEl && logBuffer.length){
       const buffered = logBuffer.splice(0);
@@ -147,25 +178,19 @@
         appendDebugLog(bufferedLine, { raw: true });
       }
     }
-    appendDebugLog(String(msg));
-    try{
-      console.log(msg);
-    }catch(e){
-      // ignore console errors
+    const text = String(debugMessage ?? msg);
+    const skipDebugLog = Boolean(consoleDetails && typeof consoleDetails.api === "string" && consoleDetails.api.startsWith("perf"));
+    if(!skipDebugLog){
+      appendDebugLog(text);
     }
+    safeConsoleLog(consoleDetails ?? msg);
   };
+  if(!global.__DEBUG_LOG_STARTED){
+    global.__DEBUG_LOG_STARTED = true;
+    window.log("ログを開始しました");
+  }
 
   window.logEvent = logEvent;
-
-  const debugUIExports = {
-    applyDebugVisibility,
-    isDebugVisible,
-    flushLogBuffer,
-    get debugPanel(){
-      return getDebugPanelElement();
-    },
-    createDebugSync,
-  };
 
   const debugUI = {
     applyDebugVisibility,
@@ -182,5 +207,4 @@
     applyDebugVisibility,
   });
   window.createDebugSync = createDebugSync;
-  window.__debugUIExports = debugUIExports;
 })(typeof window !== "undefined" ? window : globalThis);

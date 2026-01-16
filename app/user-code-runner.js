@@ -11,6 +11,7 @@
       codePanel,
       buildUserScript,
       resetLoopGuard,
+      isStepModeOn = () => false,
       isDebugVisible = () => false,
       requestRender = (() => {}),
       setRenderMode = (() => {}),
@@ -52,9 +53,42 @@
       if(!userCodeInput) return true;
       setLastExecutionError(null);
       resetLoopGuard();
+      const perfNow = (typeof performance !== "undefined" && typeof performance.now === "function")
+        ? () => performance.now()
+        : () => Date.now();
+      const perfStats = {
+        moveMs: 0,
+        putMs: 0,
+        moveCount: 0,
+        putCount: 0,
+      };
+      const globalObj = (typeof window !== "undefined") ? window : globalThis;
+      const wrapTimed = (name, counterKey, timeKey) => {
+        const original = globalObj ? globalObj[name] : null;
+        if(typeof original !== "function") return null;
+        return {
+          original,
+          wrapped: (...args) => {
+            const start = perfNow();
+            const result = original(...args);
+            perfStats[counterKey] += 1;
+            perfStats[timeKey] += perfNow() - start;
+            return result;
+          },
+        };
+      };
+      const moveWrapper = wrapTimed("moveCursor", "moveCount", "moveMs");
+      const putWrapper = wrapTimed("putCell", "putCount", "putMs");
+      if(moveWrapper){
+        globalObj.moveCursor = moveWrapper.wrapped;
+      }
+      if(putWrapper){
+        globalObj.putCell = putWrapper.wrapped;
+      }
       let script = "";
       try{
-        script = buildUserScript(userCodeInput.value || "", { awaitCalls: true });
+        const awaitCalls = typeof isStepModeOn === "function" && isStepModeOn();
+        script = buildUserScript(userCodeInput.value || "", { awaitCalls });
       }catch(err){
         setLastExecutionError(err && err.message ? String(err.message) : String(err));
         return false;
@@ -79,6 +113,25 @@
         const msg = err && err.message ? err.message : String(err);
         setLastExecutionError(msg);
         return false;
+      }finally{
+        if(moveWrapper){
+          globalObj.moveCursor = moveWrapper.original;
+        }
+        if(putWrapper){
+          globalObj.putCell = putWrapper.original;
+        }
+        if(typeof globalObj?.logEvent === "function"){
+          globalObj.logEvent(
+            "perfUserAlgo",
+            JSON.stringify({
+              moveCount: perfStats.moveCount,
+              moveMs: Math.round(perfStats.moveMs),
+              putCount: perfStats.putCount,
+              putMs: Math.round(perfStats.putMs),
+            }),
+            "ユーザーコード内訳",
+          );
+        }
       }
     }
 
@@ -87,6 +140,7 @@
       const currentRun = ++ctx.runId;
       ctx.isStepFillRunning = true;
       const prevRender = ctx.renderMode;
+      const prevSuppressCursorUpdates = typeof window !== "undefined" ? window.suppressCursorUpdates : false;
       setRenderMode(RENDER_IMMEDIATE);
       try{
         const ok = await runUserCode();
@@ -98,6 +152,9 @@
         }
         throw err;
       }finally{
+        if(typeof window !== "undefined"){
+          window.suppressCursorUpdates = prevSuppressCursorUpdates;
+        }
         ctx.isStepFillRunning = false;
         requestRender("runUserCodeWithStep");
         setRenderMode(prevRender);

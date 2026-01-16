@@ -36,5 +36,5 @@
     stepActive,
   };
 
-  window.executionControl = Object.assign({}, window.executionControl || {}, executionControl);
+  window.executionControl = executionControl;
 })();

@@ -67,13 +67,16 @@
       });
     }
 
-    function makeStepThenable(ok){
+    function makeStepThenable(ok, options = {}){
       if(!ok) return false;
       if(!isStepModeOn()){
         return true;
       }
       const stepRunToken = runIdAccessor.get();
-      const delay = getStepDelay();
+      const baseDelay = getStepDelay();
+      const scale = (typeof options.scale === "number") ? options.scale : 1;
+      let delay = Number.isFinite(baseDelay) ? Math.round(baseDelay * scale) : 0;
+      delay = Math.max(0, Math.min(120, delay));
       const wait = () => new Promise((resolve) => {
         const done = () => resolve(true);
         if(delay > 0){
