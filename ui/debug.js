@@ -100,7 +100,22 @@
   function formatEventMessage(fnName, mainArg, description){
     const clip = global.formatLogEventMessage || ((fnName, mainArg, description) => {
       const safeName = fnName || "unknown";
-      return description ? `${safeName}: ${description}` : safeName;
+      const text = description ? `${safeName}: ${description}` : safeName;
+      if(typeof mainArg !== "string") return text;
+      const trimmed = mainArg.trim();
+      if(!trimmed || !/^\{[\s\S]*\}$/.test(trimmed)) return text;
+      let parsed = null;
+      try{
+        parsed = JSON.parse(trimmed);
+      }catch(e){
+        return text;
+      }
+      if(!parsed || typeof parsed !== "object") return text;
+      const details = Object.entries(parsed)
+        .filter(([, value]) => typeof value === "number" || typeof value === "string")
+        .map(([key, value]) => `${key}=${value}`);
+      if(!details.length) return text;
+      return `${text} (${details.join(", ")})`;
     });
     return clip(fnName, mainArg, description);
   }
