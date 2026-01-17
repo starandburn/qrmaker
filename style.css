@@ -979,6 +979,9 @@ details.pattern-panel:not([open]) .summary-title::before{
   background:#fffefb;
   box-sizing:border-box;
   overflow:hidden;
+  font-size:22px;
+  line-height:1.35;
+  padding:8px;
 }
 
 .code-editor-parsed{

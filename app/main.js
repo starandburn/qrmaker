@@ -3152,6 +3152,12 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
         ta.dispatchEvent(new Event("input", { bubbles: true }));
       },
     });
+    const syncEditorFontStyles = () => {
+      if(!ta || !host) return;
+      host.style.fontSize = ta.style.fontSize || "";
+      host.style.lineHeight = ta.style.lineHeight || "";
+    };
+    syncEditorFontStyles();
     let lastValue = ta.value ?? "";
     setInterval(() => {
       const current = ta.value ?? "";
@@ -3179,7 +3185,58 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
           cancelable: true,
         });
         ta.dispatchEvent(forwarded);
+        syncEditorFontStyles();
       }
+    }, { capture: true });
+    host.addEventListener("wheel", (ev) => {
+      if(!ev.ctrlKey) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const forwarded = new WheelEvent("wheel", {
+        deltaX: ev.deltaX,
+        deltaY: ev.deltaY,
+        deltaZ: ev.deltaZ,
+        deltaMode: ev.deltaMode,
+        ctrlKey: ev.ctrlKey,
+        shiftKey: ev.shiftKey,
+        altKey: ev.altKey,
+        metaKey: ev.metaKey,
+        clientX: ev.clientX,
+        clientY: ev.clientY,
+        movementX: ev.movementX,
+        movementY: ev.movementY,
+        button: ev.button,
+        buttons: ev.buttons,
+        relatedTarget: ev.relatedTarget,
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      });
+      ta.dispatchEvent(forwarded);
+      syncEditorFontStyles();
+    }, { capture: true, passive: false });
+    host.addEventListener("mousedown", (ev) => {
+      if(ev.button !== 1 || !ev.ctrlKey) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const forwarded = new MouseEvent("mousedown", {
+        button: ev.button,
+        buttons: ev.buttons,
+        ctrlKey: ev.ctrlKey,
+        shiftKey: ev.shiftKey,
+        altKey: ev.altKey,
+        metaKey: ev.metaKey,
+        clientX: ev.clientX,
+        clientY: ev.clientY,
+        movementX: ev.movementX,
+        movementY: ev.movementY,
+        relatedTarget: ev.relatedTarget,
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+      });
+      ta.dispatchEvent(forwarded);
+      syncEditorFontStyles();
     }, { capture: true });
   };
 
