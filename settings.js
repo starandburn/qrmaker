@@ -320,7 +320,7 @@ red off		// 赤スイッチをOFF
 blue off	// 青スイッチをOFF
 
 // データパターン描画
-repeat-last	// 最後のデータまで繰り返し
+repeat last	// 最後のデータまで繰り返し
 	if empty? put next	// まだ未配置であれば次のデータを置く
 	
 	// 赤スイッチによる処理分け

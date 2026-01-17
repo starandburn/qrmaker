@@ -1032,25 +1032,25 @@
         if(repeatArg && /^-\s*\??$/.test(repeatArg)){
           throw new Error("repeat の後に条件が必要です");
         }
-        if(repeatArg){
-          if(/^\d+$/.test(repeatArg)){
-            const formattedFor = formatSimpleFor(repeatArg);
-            if(formattedFor){
-              combined.push(formattedFor);
-              blockDepth += countBraceDelta(formattedFor);
-              pushBlock("repeat");
-              continue;
-            }
-          }else{
-            const loopLine = buildSimpleLoopLine("while", repeatArg);
-            if(loopLine){
-              combined.push(loopLine);
-              blockDepth += countBraceDelta(loopLine);
-              pushBlock("repeat");
-              continue;
-            }
+      if(repeatArg){
+        if(/^\d+$/.test(repeatArg)){
+          const formattedFor = formatSimpleFor(repeatArg);
+          if(formattedFor){
+            combined.push(formattedFor);
+            blockDepth += countBraceDelta(formattedFor);
+            pushBlock("repeat");
+            continue;
+          }
+        }else{
+          const loopLine = buildSimpleLoopLine("until", repeatArg);
+          if(loopLine){
+            combined.push(loopLine);
+            blockDepth += countBraceDelta(loopLine);
+            pushBlock("repeat");
+            continue;
           }
         }
+      }
         const whileLine = `while (canContinueLoop()) {`;
         combined.push(whileLine);
         blockDepth += countBraceDelta(whileLine);
