@@ -981,7 +981,11 @@ details.pattern-panel:not([open]) .summary-title::before{
   overflow:hidden;
   font-size:22px;
   line-height:1.35;
-  padding:8px;
+  padding:0;
+}
+.code-editor-host:focus-within{
+  border-color:#b3bbc7;
+  box-shadow:0 0 0 1px rgba(179,187,199,0.45);
 }
 
 .code-editor-parsed{
