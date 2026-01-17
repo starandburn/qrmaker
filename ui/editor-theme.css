@@ -2,37 +2,33 @@
 
 #userCodeEditor .tok-comment{
   color:#1b7f3a;
-  font-size:0.9em;
+  font-size:0.7em;
+  font-family:sans-serif;
 }
 
 #userCodeEditor .tok-keyword{
   color:#6b21a8;
-  font-weight:600;
 }
 
 #userCodeEditor .tok-builtin,
 #userCodeEditor .tok-variableName{
   color:#0b61a4;
-  font-weight:600;
-}
-
-#userCodeEditor .tok-operator{
-  color:#b45309;
-  font-weight:600;
-}
-
-#userCodeEditor .tok-atom{
-  color:#374151;
-  font-weight:600;
-}
-
-#userCodeEditor .tok-tag,
-#userCodeEditor .tok-typeName{
-  color:#be123c;
-  font-weight:700;
 }
 
 #userCodeEditor .tok-number{
   color:#374151;
-  font-weight:600;
 }
+
+#userCodeEditor .tok-operator{
+  color:#b45309;
+}
+
+#userCodeEditor .tok-atom{
+  color:#be123c;
+}
+
+#userCodeEditor .tok-tag,
+#userCodeEditor .tok-typeName{
+  color:#0b61a4;
+}
+
