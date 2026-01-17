@@ -31,3 +31,8 @@
   color:#be123c;
   font-weight:700;
 }
+
+#userCodeEditor .tok-number{
+  color:#374151;
+  font-weight:600;
+}
