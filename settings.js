@@ -95,7 +95,7 @@ mask`
       },
       {
         "label": "3",
-        "code": ``
+        "code": `helloworld`
       },
       {
         "label": "4",
