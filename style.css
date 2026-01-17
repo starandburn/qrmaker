@@ -999,6 +999,12 @@ details.pattern-panel:not([open]) .summary-title::before{
   justify-content:flex-end;
 }
 
+
+/* エディタの各行に薄い点線（1行ごと） */
+#userCodeEditor .cm-content .cm-line {
+  border-bottom: 1px dotted rgba(0, 0, 0, 0.18);
+}
+
 .code-editor-parsed{
   display:none;
 }
