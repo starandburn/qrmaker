@@ -988,6 +988,17 @@ details.pattern-panel:not([open]) .summary-title::before{
   box-shadow:0 0 0 1px rgba(179,187,199,0.45);
 }
 
+#userCodeEditor .cm-lineNumbers {
+  font-size:0.6em;
+  text-align:right;
+}
+
+#userCodeEditor .cm-lineNumbers .cm-gutterElement {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+}
+
 .code-editor-parsed{
   display:none;
 }
