@@ -970,6 +970,17 @@ details.pattern-panel:not([open]) .summary-title::before{
   min-height:0;
 }
 
+.code-editor-host{
+  flex:1;
+  min-height:0;
+  width:100%;
+  border:1px solid #cfd6df;
+  border-radius:6px;
+  background:#fffefb;
+  box-sizing:border-box;
+  overflow:hidden;
+}
+
 .code-editor-parsed{
   display:none;
 }
@@ -1168,6 +1179,7 @@ textarea:focus{
   box-shadow:0 0 0 1px rgba(179,187,199,0.45);
 }
 #userCode{
+  display:none;
   font-size:22px;
   tab-size:4;
   line-height:1.35;

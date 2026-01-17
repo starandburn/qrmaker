@@ -3138,6 +3138,51 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     }
   }
 
+  const initOfflineCodeEditor = () => {
+    const ta = userCodeInput;
+    const host = document.getElementById("userCodeEditor");
+    const createEditor = typeof window !== "undefined" ? window.OfflineCodeEditor?.createCodeEditor : null;
+    if(!ta || !host || typeof createEditor !== "function" || window.__codeEditor) return;
+    window.__codeEditor = createEditor(host, {
+      value: ta.value ?? "",
+      onChange: (nextValue) => {
+        const next = (typeof nextValue === "string") ? nextValue : "";
+        if(ta.value === next) return;
+        ta.value = next;
+        ta.dispatchEvent(new Event("input", { bubbles: true }));
+      },
+    });
+    let lastValue = ta.value ?? "";
+    setInterval(() => {
+      const current = ta.value ?? "";
+      if(current === lastValue) return;
+      lastValue = current;
+      const editor = window.__codeEditor;
+      if(editor && typeof editor.getValue === "function" && editor.getValue() !== current){
+        editor.setValue(current);
+      }
+    }, 100);
+
+    host.addEventListener("keydown", (ev) => {
+      if(ev.key === "Enter" && ev.ctrlKey && !ev.shiftKey && !ev.altKey){
+        ev.preventDefault();
+        ev.stopPropagation();
+        const forwarded = new KeyboardEvent("keydown", {
+          key: ev.key,
+          code: ev.code,
+          ctrlKey: ev.ctrlKey,
+          shiftKey: ev.shiftKey,
+          altKey: ev.altKey,
+          metaKey: ev.metaKey,
+          repeat: ev.repeat,
+          bubbles: true,
+          cancelable: true,
+        });
+        ta.dispatchEvent(forwarded);
+      }
+    });
+  };
+
   if(document && document.body){
     requestAnimationFrame(() => {
       document.body.classList.remove("app-loading");
@@ -3148,4 +3193,6 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
   if(versionInfo && typeof window.appVersionString === "string"){
     versionInfo.textContent = `v${window.appVersionString}`;
   }
+
+  initOfflineCodeEditor();
 }
