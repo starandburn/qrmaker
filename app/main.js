@@ -3180,7 +3180,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
         });
         ta.dispatchEvent(forwarded);
       }
-    });
+    }, { capture: true });
   };
 
   if(document && document.body){
