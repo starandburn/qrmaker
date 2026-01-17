@@ -10,7 +10,8 @@
   font-weight:600;
 }
 
-#userCodeEditor .tok-builtin{
+#userCodeEditor .tok-builtin,
+#userCodeEditor .tok-variableName{
   color:#0b61a4;
   font-weight:600;
 }
@@ -25,7 +26,8 @@
   font-weight:600;
 }
 
-#userCodeEditor .tok-tag{
+#userCodeEditor .tok-tag,
+#userCodeEditor .tok-typeName{
   color:#be123c;
   font-weight:700;
 }
