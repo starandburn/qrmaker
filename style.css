@@ -990,6 +990,7 @@ details.pattern-panel:not([open]) .summary-title::before{
 
 #userCodeEditor .cm-lineNumbers {
   font-size:0.6em;
+  min-width:2.5em;
   text-align:right;
 }
 
