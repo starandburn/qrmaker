@@ -36,11 +36,87 @@
     format: "putFormatCells",
     formats: "drawFormatPatterns",
     timings: "drawTimingPatterns",
-    next: "getNextData",
     pause: "pauseRunning",
     hello: "drawHelloWorld",
     helloworld: "drawHelloWorld",
     drawhelloworld: "drawHelloWorld",
+  };
+  const CSS_DARK_COLORS = new Set(["red", "blue", "green", "yellow"]);
+  const CSS_DARK_COLOR_CACHE = new Map();
+  const resolveRootComputedStyle = () => {
+    const doc = (global && global.document) ? global.document : null;
+    if(!doc || !doc.documentElement) return null;
+    const view = doc.defaultView || global;
+    if(view && typeof view.getComputedStyle === "function"){
+      return view.getComputedStyle(doc.documentElement);
+    }
+    return null;
+  };
+  const getCssDarkColor = (name) => {
+    if(typeof name !== "string"){
+      throw new Error("Color name must be a string");
+    }
+    const normalized = name.trim().toLowerCase();
+    if(!normalized){
+      throw new Error("Color name cannot be empty");
+    }
+    if(CSS_DARK_COLOR_CACHE.has(normalized)){
+      return CSS_DARK_COLOR_CACHE.get(normalized);
+    }
+    const rootStyle = resolveRootComputedStyle();
+    if(!rootStyle || typeof rootStyle.getPropertyValue !== "function"){
+      throw new Error("Unable to read CSS variables for dark colors");
+    }
+    const varName = `--col-${normalized}-dark`;
+    const value = rootStyle.getPropertyValue(varName);
+    if(typeof value !== "string"){
+      throw new Error(`CSS variable ${varName} is not defined`);
+    }
+    const trimmedValue = value.trim();
+    if(!trimmedValue){
+      throw new Error(`CSS variable ${varName} is empty`);
+    }
+    CSS_DARK_COLOR_CACHE.set(normalized, trimmedValue);
+    return trimmedValue;
+  };
+  global.getCssDarkColor = getCssDarkColor;
+  const COLOR_KIND_PRIORITY = {
+    red: [
+      { name: "BIT_FUNC_ALIGNMENT", sign: 1 },
+      { name: "BIT_FUNC_FINDER", sign: 1 },
+      { name: "BIT_FUNC_DARK", sign: 1 },
+    ],
+    blue: [
+      { name: "BIT_INFO_MODE", sign: 1 },
+      { name: "BIT_INFO_LENGTH", sign: 1 },
+    ],
+    green: [
+      { name: "BIT_INFO_PARITY", sign: -1 },
+    ],
+    yellow: [
+      { name: "BIT_INFO_TERMINATOR", sign: -1 },
+    ],
+  };
+  const resolveKindConstant = (name) => {
+    if(typeof name !== "string" || !name) return null;
+    if(typeof global !== "undefined" && typeof global[name] === "number"){
+      return name;
+    }
+    if(typeof globalThis !== "undefined" && typeof globalThis[name] === "number"){
+      return name;
+    }
+    return null;
+  };
+  const getKindNameForColor = (colorName) => {
+    const normalized = typeof colorName === "string" ? colorName.trim().toLowerCase() : "";
+    if(!normalized) return null;
+    const priority = COLOR_KIND_PRIORITY[normalized];
+    if(!Array.isArray(priority)) return null;
+    for(const candidate of priority){
+      const resolved = resolveKindConstant(candidate.name);
+      if(resolved) return { name: resolved, sign: candidate.sign };
+    }
+    return null;
   };
   const BASE_SWITCH_NAMES = ["red", "blue", "green", "yellow"];
   const DEFAULT_ACTIVE_SWITCH_NAMES = BASE_SWITCH_NAMES.slice(0, 2);
@@ -122,9 +198,7 @@
   );
   const applyAliasTransforms = (text) => {
     if(typeof text !== "string" || !text) return "";
-    const normalized = normalizeColorStateSpacing(text)
-      .replace(/\bput\s*black\b/gi, "put 1")
-      .replace(/\bput\s*white\b/gi, "put 0");
+    const normalized = normalizeColorStateSpacing(text);
     return normalized.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
   };
   const ALLOWED_CONTROL = new Set([
@@ -161,6 +235,9 @@
         throw new Error(`不明なコマンド: ${trimmed}`);
       }
       const head = match[1].toLowerCase();
+      if(head === "next?"){
+        continue;
+      }
       if(ALLOWED_CONTROL.has(head)) continue;
       if(allowedCommands.has(head)) continue;
       throw new Error(`不明なコマンド: ${match[1]}`);
@@ -634,7 +711,7 @@
       };
       const parsed = parseLoopCondition(conditionRaw);
       if(!parsed) return null;
-      const condFormatted = formatStudentCodeLine(parsed.base);
+      const condFormatted = formatStudentCodeLine(parsed.base, { context: "condition" });
       if(!condFormatted) return null;
       let condExpr = condFormatted;
       const negationCount = parsed.negationCount % 2;
@@ -658,7 +735,7 @@
       if(condition.startsWith("(") && condition.endsWith(")")){
         return `${prefix} ${condition} {`;
       }
-      const formatted = formatStudentCodeLine(condition);
+      const formatted = formatStudentCodeLine(condition, { context: "condition" });
       if(!formatted) return null;
       return `${prefix} (${formatted}) {`;
     };
@@ -804,7 +881,7 @@
           const conditionToken = conditionRaw.slice(0, firstSpaceIdx).trim();
           const rest = conditionRaw.slice(firstSpaceIdx).trim();
           if(!conditionToken || !rest) return null;
-          const condFormatted = formatStudentCodeLine(conditionToken);
+          const condFormatted = formatStudentCodeLine(conditionToken, { context: "condition" });
           if(!condFormatted) return null;
           const exitMatch = rest.match(/^exit(?:\s+(?:for|while|repeat))?$/i);
           if(exitMatch){
@@ -1043,7 +1120,7 @@
     return parts.map((part) => part.trim()).filter(Boolean);
   };
 
-  function formatStudentCodeLine(line){
+  function formatStudentCodeLine(line, { context = "statement" } = {}){
     const trimmed = typeof line === "string" ? line.trim() : "";
     if(!trimmed) return "";
     const globalEnv = typeof global !== "undefined"
@@ -1058,6 +1135,51 @@
     const fn = parts.shift();
     const fnLower = typeof fn === "string" ? fn.toLowerCase() : "";
     const directionEnabled = (typeof global !== "undefined" && global.useDirection === true);
+    const isConditionContext = context === "condition";
+    const normalizeArgValue = (value) => {
+      if(typeof value !== "string") return "";
+      const trimmedArg = value.trim();
+      return trimmedArg.replace(/^["'](.+)["']$/, "$1");
+    };
+    const getArgLower = (index = 0) => {
+      const value = normalizeArgValue(parts[index]);
+      return value ? value.toLowerCase() : "";
+    };
+    if(fnLower === "next?"){
+      return "hasMoreData()";
+    }
+    if(fnLower === "next"){
+      if(isConditionContext){
+        return "hasMoreData()";
+      }
+      throw new Error("next は put の引数、または条件式（if/while/until/repeat、next?）でのみ使用できます");
+    }
+    const firstArgLower = getArgLower();
+    if(fnLower === "putcell" && parts.length === 1){
+      const argLower = firstArgLower;
+      if(argLower === "next"){
+        return "putCell(getNextData())";
+      }
+      if(argLower === "black"){
+        return "putCell(1)";
+      }
+      if(argLower === "white"){
+        return "putCell(0)";
+      }
+      const kindConst = getKindNameForColor(argLower);
+      if(kindConst){
+        const expr = kindConst.sign === -1 ? `-${kindConst.name}` : kindConst.name;
+        return `putCell(${expr})`;
+      }
+    }
+    if(fnLower === "movecursor" && parts.length === 1){
+      if(firstArgLower === "home"){
+        return "moveCursor(\"home\")";
+      }
+      if(firstArgLower === "end"){
+        return "moveCursor(\"end\")";
+      }
+    }
     if(!directionEnabled){
       if(fnLower === "turn" || fnLower === "turncursor"){
         throw new Error("Direction commands are disabled (useDirection=false): turn");

@@ -948,7 +948,7 @@ async function pauseRunning(arg = {}){
 
 function colorsForKind(kind){
   const map = {
-    [GENERIC_WHITE]:       "black",
+    [GENERIC_WHITE]:       "white",
     [GENERIC_BLACK]:       "black",
     [BIT_FUNC_FINDER]:     "red",
     [BIT_FUNC_TIMING]:     "orange",
@@ -1344,7 +1344,6 @@ function isFunctionalCell(){
   const kind = (typeof window.bitKind === "function") ? window.bitKind(val) : Math.abs(val);
   return isFunctionalKind(kind);
 }
-
 function isMoveBlocked(){
   return lastMoveBlocked;
 }
@@ -1380,11 +1379,11 @@ window.putCell = putCell;
 window.getCell = getCell;
 window.invertCell = invertCell;
 window.isEmpty = isEmpty;
-  window.isSkipZone = isSkipZone;
-  window.isFunctionalCell = isFunctionalCell;
-  window.isMoveBlocked = isMoveBlocked;
-  window.shouldPlaceCell = shouldPlaceCell;
-  window.moveCursor = moveCursor;
+window.isSkipZone = isSkipZone;
+window.isFunctionalCell = isFunctionalCell;
+window.isMoveBlocked = isMoveBlocked;
+window.shouldPlaceCell = shouldPlaceCell;
+window.moveCursor = moveCursor;
 window.turnCursor = turnCursor;
 window.updateCursor = updateCursor;
 window.resetCursor = resetCursor;
