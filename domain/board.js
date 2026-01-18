@@ -88,6 +88,9 @@ const TIMING_HORIZONTAL = 0;
 const TIMING_VERTICAL = 1;
 let timingRowIndex = 0;
 let timingColIndex = 0;
+if(typeof window !== "undefined" && typeof window === "object"){
+  window.timingColIndex = 0;
+}
 let hasFormatPattern = false;
 let lastMoveBlocked = false;
 const BOARD_ROWS = 25;
@@ -1080,6 +1083,9 @@ function reapplyCellColors(){
   });
   timingRowIndex = prevTimingRow;
   timingColIndex = prevTimingCol;
+  if(typeof window !== "undefined" && typeof window === "object"){
+    window.timingColIndex = prevTimingCol > 0 ? prevTimingCol : 0;
+  }
 }
 
 function parseCellRef(ref){

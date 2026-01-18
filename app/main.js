@@ -1317,6 +1317,9 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     }
     timingRowIndex = 0;
     timingColIndex = 0;
+    if(typeof window !== "undefined"){
+      window.timingColIndex = 0;
+    }
     hasFormatPattern = false;
   if(resetDataFlag && typeof resetData === "function"){
     resetData();
@@ -1940,14 +1943,6 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     if(!ctx) return { ok: false, fastForwarded: false };
     return drawBasePatternsStepped(ctx, ...args);
   };
-  const deferredWindowApi = {
-    applyMask: callApplyMask,
-    drawBasePatterns: callDrawBasePatterns,
-    drawBasePatternsStepped: callDrawBasePatternsStepped,
-    makeStepThenable,
-    shouldStepFunctions,
-  };
-  window.__deferredWindowApi = Object.assign(window.__deferredWindowApi || {}, deferredWindowApi);
   const drawFinderPatterns = wrapDrawApi("drawFinderPatterns", callDrawFinderPatterns, "ファインダーパターンを描画");
   const drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", callDrawAlignmentPatterns, "アライメントパターンを描画");
   const drawDarkModulePatterns = wrapDrawApi("drawDarkModulePatterns", callDrawDarkModulePatterns, "ダークモジュールを描画");
@@ -2023,30 +2018,6 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
   };
 
   if(typeof window !== "undefined"){
-    window.__deferredWindowApi = Object.assign(window.__deferredWindowApi || {}, {
-      drawQRCode,
-      drawHelloWorld,
-      buildQRCode,
-      drawDataPatterns,
-      drawFunctionalPatterns,
-      initializeQRCode,
-      resetQRCode,
-      clearBoard,
-      resetCommand,
-      stopCurrentRun,
-      drawFormatPatterns,
-      drawFinderPatterns,
-      drawAlignmentPatterns,
-      drawDarkModulePatterns,
-      drawTimingPatterns,
-      putFinderCells: callPutFinderCells,
-      putAlignmentCells: callPutAlignmentCells,
-      putTimingCells: callPutTimingCells,
-      putDarkModuleCells: callPutDarkModuleCells,
-      putFormatCells: callPutFormatCells,
-      syncViewToggles: window.syncViewToggles,
-      toggleInputs: window.toggleInputs,
-    });
     window.setSwitch = setSwitch;
     window.isSwitchOn = isSwitchOn;
     window.toggleSwitchState = toggleSwitchState;
@@ -3252,4 +3223,51 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
   }
 
   initOfflineCodeEditor();
+
+  const publishWindowApi = (api) => {
+    if(typeof window === "undefined" || !api) return;
+    const win = window;
+    win.qrmakerApi = api;
+    for(const [name, value] of Object.entries(api)){
+      if(typeof value === "function"){
+        win[name] = value;
+      }
+    }
+    if(Array.isArray(api.toggleInputs)){
+      win.toggleInputs = api.toggleInputs;
+    }
+  };
+
+  const buildWindowApi = () => ({
+    applyMask: callApplyMask,
+    drawBasePatterns: callDrawBasePatterns,
+    drawBasePatternsStepped: callDrawBasePatternsStepped,
+    makeStepThenable,
+    shouldStepFunctions,
+    drawQRCode,
+    drawHelloWorld,
+    buildQRCode,
+    drawDataPatterns,
+    drawFunctionalPatterns,
+    initializeQRCode,
+    resetQRCode,
+    clearBoard,
+    resetCommand,
+    stopCurrentRun,
+    drawFormatPatterns,
+    drawFinderPatterns,
+    drawAlignmentPatterns,
+    drawDarkModulePatterns,
+    drawTimingPatterns,
+    putFinderCells: callPutFinderCells,
+    putAlignmentCells: callPutAlignmentCells,
+    putTimingCells: callPutTimingCells,
+    putDarkModuleCells: callPutDarkModuleCells,
+    putFormatCells: callPutFormatCells,
+    syncViewToggles: window.syncViewToggles,
+    toggleInputs: window.toggleInputs,
+  });
+
+  const windowApi = buildWindowApi();
+  publishWindowApi(windowApi);
 }
