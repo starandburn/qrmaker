@@ -22,8 +22,10 @@
 
     const bindPatternToggle = () => {
       if(typeof setPatternPanelOpen !== "function") return;
-      const dataPatternPanel = document.getElementById("dataPatternPanel") || document.getElementById("patternDetails");
-      if(!dataPatternPanel) return;
+      const dataPatternPanel = document.getElementById("dataPatternPanel");
+      if(!dataPatternPanel){
+        throw new Error("dataPatternPanel is required");
+      }
       dataPatternPanel.addEventListener("toggle", () => {
         setPatternPanelOpen(dataPatternPanel.open);
       });

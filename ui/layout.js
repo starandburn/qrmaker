@@ -26,7 +26,10 @@ const btnSelectAllToggles = document.getElementById("btnSelectAllToggles");
 const btnClearAllToggles = document.getElementById("btnClearAllToggles");
 const dataPanel = document.getElementById("dataPanel");
 const dataInputArea = document.getElementById("dataInputArea");
-const dataPatternPanel = document.getElementById("dataPatternPanel") || document.getElementById("patternDetails");
+const dataPatternPanel = document.getElementById("dataPatternPanel");
+if(!dataPatternPanel){
+  throw new Error("dataPatternPanel is required");
+}
 const patternToggleText = document.getElementById("patternToggleText");
 const asciiLink = document.getElementById("asciiLink");
 const asciiModal = document.getElementById("asciiModal");

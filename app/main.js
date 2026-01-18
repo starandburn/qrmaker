@@ -33,8 +33,11 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const btnClear = document.getElementById("btnClear");
   const btnSampleDropdown = document.getElementById("btnSampleDropdown");
   const debugLog = document.getElementById("debugLog");
-  const dataPatternPanel = document.getElementById("dataPatternPanel") || document.getElementById("patternDetails");
+  const dataPatternPanel = document.getElementById("dataPatternPanel");
   const codePanel = document.querySelector(".code-panel");
+  if(!dataPatternPanel){
+    throw new Error("dataPatternPanel is required");
+  }
   const userCodeParsed = document.getElementById("userCodeParsed");
   const footerCopy = document.querySelector(".page-footer p:first-child");
   const versionInfo = document.getElementById("appVersionInfo");
@@ -2995,8 +2998,10 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
     historyController.commitPendingHistory("サンプル");
   };
-  const sampleToolbar = document.getElementById("codeSampleToolbar")
-    || document.querySelector(".code-debug-toolbar");
+  const sampleToolbar = document.getElementById("codeSampleToolbar");
+  if(!sampleToolbar){
+    throw new Error("codeSampleToolbar is required");
+  }
   const configuredSamples = Array.isArray(configDefaults.codeSamples) ? configDefaults.codeSamples : [];
   if(sampleToolbar && configuredSamples.length > 0){
     sampleToolbar.innerHTML = "";
