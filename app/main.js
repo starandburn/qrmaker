@@ -255,8 +255,25 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       isColorEnabled = overrideValue;
     }
   });
-  if(typeof window !== "undefined" && typeof window.syncViewToggles === "function"){
-    window.syncViewToggles();
+  const qrmakerNamespace = (typeof window !== "undefined")
+    ? (window.qrmaker = { public: {}, internal: {} })
+    : { public: {}, internal: {} };
+  const qrmakerPublic = qrmakerNamespace.public;
+  const qrmakerInternal = qrmakerNamespace.internal;
+  const syncViewTogglesFn = (typeof window !== "undefined") ? window.syncViewToggles : null;
+  if(typeof syncViewTogglesFn === "function"){
+    qrmakerInternal.syncViewToggles = syncViewTogglesFn;
+    syncViewTogglesFn();
+  }
+  const globalToggleInputs = (typeof window !== "undefined" && Array.isArray(window.toggleInputs))
+    ? window.toggleInputs
+    : [];
+  qrmakerInternal.toggleInputs = globalToggleInputs;
+  const setTimingColIndexFn = (typeof window !== "undefined" && typeof window.setTimingColIndex === "function")
+    ? window.setTimingColIndex
+    : null;
+  if(setTimingColIndexFn){
+    qrmakerInternal.setTimingColIndex = setTimingColIndexFn;
   }
   const homeCursorDirectionOverride = (typeof configDefaults.homeCursorDirection === "string")
     ? configDefaults.homeCursorDirection
@@ -1267,6 +1284,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       makeStepThenable: () => true,
       shouldStepFunctions: () => false,
     };
+  qrmakerInternal.makeStepThenable = makeStepThenable;
+  qrmakerInternal.shouldStepFunctions = shouldStepFunctions;
   if(typeof window !== "undefined"){
     window.shouldStepFunctions = shouldStepFunctions;
   }
@@ -1298,6 +1317,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     return resetResult;
   }
+  qrmakerInternal.stopCurrentRun = stopCurrentRun;
 
   let cellsInitialized = false;
 function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
@@ -1319,10 +1339,10 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
       }
     }
     timingRowIndex = 0;
-    if(typeof window === "undefined" || typeof window.setTimingColIndex !== "function"){
+    if(typeof qrmakerInternal.setTimingColIndex !== "function"){
       throw new Error("setTimingColIndex is required");
     }
-    window.setTimingColIndex(0);
+    qrmakerInternal.setTimingColIndex(0);
     hasFormatPattern = false;
   if(resetDataFlag && typeof resetData === "function"){
     resetData();
@@ -1427,6 +1447,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     }
     await sleep(RESET_DELAY_MS);
   }
+  qrmakerInternal.resetCommand = resetCommand;
 
   // Guarded cursor update for async flows: only applies if runToken matches current runId
   function updateCursorIfRun(runToken, row, col, dir = cursorPos.dir){
@@ -1946,6 +1967,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     if(!ctx) return { ok: false, fastForwarded: false };
     return drawBasePatternsStepped(ctx, ...args);
   };
+  qrmakerInternal.drawBasePatternsStepped = callDrawBasePatternsStepped;
   const drawFinderPatterns = wrapDrawApi("drawFinderPatterns", callDrawFinderPatterns, "ファインダーパターンを描画");
   const drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", callDrawAlignmentPatterns, "アライメントパターンを描画");
   const drawDarkModulePatterns = wrapDrawApi("drawDarkModulePatterns", callDrawDarkModulePatterns, "ダークモジュールを描画");
@@ -2717,8 +2739,8 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
   if(toggleDebugValues){
     toggleDebugValues.addEventListener("change", syncDebugOverlay);
   }
-  if(Array.isArray(window.toggleInputs) && toggleDebugValues && !window.toggleInputs.includes(toggleDebugValues)){
-    window.toggleInputs.push(toggleDebugValues);
+  if(Array.isArray(qrmakerInternal.toggleInputs) && toggleDebugValues && !qrmakerInternal.toggleInputs.includes(toggleDebugValues)){
+    qrmakerInternal.toggleInputs.push(toggleDebugValues);
   }
   applyDataParam({
     txtInput,
@@ -2743,7 +2765,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     colorToggleElement: colorToggleEl,
     debugToggleElement: toggleDebugValues,
     applyToggleFlags,
-    syncViewToggles: typeof window.syncViewToggles === "function" ? window.syncViewToggles : undefined,
+    syncViewToggles: qrmakerInternal.syncViewToggles,
     syncDebugOverlay,
     syncStepControls,
   });
@@ -3269,10 +3291,50 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     putTimingCells: callPutTimingCells,
     putDarkModuleCells: callPutDarkModuleCells,
     putFormatCells: callPutFormatCells,
-    syncViewToggles: window.syncViewToggles,
-    toggleInputs: window.toggleInputs,
+    syncViewToggles: qrmakerInternal.syncViewToggles,
+    toggleInputs: qrmakerInternal.toggleInputs,
   });
 
   const windowApi = buildWindowApi();
   publishWindowApi(windowApi);
+  const registerQrmakerPublicApi = (api) => {
+    if(!qrmakerPublic) return;
+    const targetScope = globalScope || ((typeof window !== "undefined") ? window : null);
+    const entries = {
+      moveCursor: targetScope && targetScope.moveCursor,
+      turnCursor: targetScope && targetScope.turnCursor,
+      resetQRCode: typeof resetQRCode === "function" ? resetQRCode : null,
+      pauseRunning: targetScope && targetScope.pauseRunning,
+      drawQRCode: api?.drawQRCode ?? drawQRCode,
+      drawBasePatterns: api?.drawBasePatterns,
+      drawDataPatterns: api?.drawDataPatterns,
+      applyMask: api?.applyMask,
+      drawHelloWorld: api?.drawHelloWorld,
+      drawFinderPatterns: api?.drawFinderPatterns,
+      drawAlignmentPatterns: api?.drawAlignmentPatterns,
+      drawDarkModulePatterns: api?.drawDarkModulePatterns,
+      drawFormatPatterns: api?.drawFormatPatterns,
+      drawTimingPatterns: api?.drawTimingPatterns,
+      putCell: targetScope && targetScope.putCell,
+      putFinderCells: api?.putFinderCells,
+      putAlignmentCells: api?.putAlignmentCells,
+      putDarkModuleCells: api?.putDarkModuleCells,
+      putFormatCells: api?.putFormatCells,
+      putTimingCells: api?.putTimingCells,
+      isEmpty: targetScope && targetScope.isEmpty,
+      isMoveBlocked: targetScope && targetScope.isMoveBlocked,
+      isSkipZone: targetScope && targetScope.isSkipZone,
+      hasMoreData: targetScope && targetScope.hasMoreData,
+      getNextData: targetScope && targetScope.getNextData,
+      canContinueLoop: targetScope && targetScope.canContinueLoop,
+      setSwitch: targetScope && targetScope.setSwitch,
+      isSwitchOn: targetScope && targetScope.isSwitchOn,
+    };
+    for(const [name, value] of Object.entries(entries)){
+      if(typeof value === "function"){
+        qrmakerPublic[name] = value;
+      }
+    }
+  };
+  registerQrmakerPublicApi(windowApi);
 }
