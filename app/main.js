@@ -255,26 +255,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       isColorEnabled = overrideValue;
     }
   });
-  const qrmakerNamespace = (typeof window !== "undefined")
-    ? (window.qrmaker = { public: {}, internal: {} })
-    : { public: {}, internal: {} };
-  const qrmakerPublic = qrmakerNamespace.public;
-  const qrmakerInternal = qrmakerNamespace.internal;
-  const syncViewTogglesFn = (typeof window !== "undefined") ? window.syncViewToggles : null;
-  if(typeof syncViewTogglesFn === "function"){
-    qrmakerInternal.syncViewToggles = syncViewTogglesFn;
-    syncViewTogglesFn();
-  }
-  const globalToggleInputs = (typeof window !== "undefined" && Array.isArray(window.toggleInputs))
-    ? window.toggleInputs
-    : [];
-  qrmakerInternal.toggleInputs = globalToggleInputs;
-  const setTimingColIndexFn = (typeof window !== "undefined" && typeof window.setTimingColIndex === "function")
-    ? window.setTimingColIndex
-    : null;
-  if(setTimingColIndexFn){
-    qrmakerInternal.setTimingColIndex = setTimingColIndexFn;
-  }
   const homeCursorDirectionOverride = (typeof configDefaults.homeCursorDirection === "string")
     ? configDefaults.homeCursorDirection
     : null;
@@ -1284,8 +1264,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       makeStepThenable: () => true,
       shouldStepFunctions: () => false,
     };
-  qrmakerInternal.makeStepThenable = makeStepThenable;
-  qrmakerInternal.shouldStepFunctions = shouldStepFunctions;
   if(typeof window !== "undefined"){
     window.shouldStepFunctions = shouldStepFunctions;
   }
@@ -1317,7 +1295,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     return resetResult;
   }
-  qrmakerInternal.stopCurrentRun = stopCurrentRun;
 
   let cellsInitialized = false;
 function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
@@ -1339,10 +1316,10 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
       }
     }
     timingRowIndex = 0;
-    if(typeof qrmakerInternal.setTimingColIndex !== "function"){
+    if(typeof window === "undefined" || typeof window.setTimingColIndex !== "function"){
       throw new Error("setTimingColIndex is required");
     }
-    qrmakerInternal.setTimingColIndex(0);
+    window.setTimingColIndex(0);
     hasFormatPattern = false;
   if(resetDataFlag && typeof resetData === "function"){
     resetData();
@@ -1447,7 +1424,6 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     }
     await sleep(RESET_DELAY_MS);
   }
-  qrmakerInternal.resetCommand = resetCommand;
 
   // Guarded cursor update for async flows: only applies if runToken matches current runId
   function updateCursorIfRun(runToken, row, col, dir = cursorPos.dir){
@@ -1967,7 +1943,6 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     if(!ctx) return { ok: false, fastForwarded: false };
     return drawBasePatternsStepped(ctx, ...args);
   };
-  qrmakerInternal.drawBasePatternsStepped = callDrawBasePatternsStepped;
   const drawFinderPatterns = wrapDrawApi("drawFinderPatterns", callDrawFinderPatterns, "ファインダーパターンを描画");
   const drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", callDrawAlignmentPatterns, "アライメントパターンを描画");
   const drawDarkModulePatterns = wrapDrawApi("drawDarkModulePatterns", callDrawDarkModulePatterns, "ダークモジュールを描画");
@@ -2739,8 +2714,8 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
   if(toggleDebugValues){
     toggleDebugValues.addEventListener("change", syncDebugOverlay);
   }
-  if(Array.isArray(qrmakerInternal.toggleInputs) && toggleDebugValues && !qrmakerInternal.toggleInputs.includes(toggleDebugValues)){
-    qrmakerInternal.toggleInputs.push(toggleDebugValues);
+  if(Array.isArray(window.toggleInputs) && toggleDebugValues && !window.toggleInputs.includes(toggleDebugValues)){
+    window.toggleInputs.push(toggleDebugValues);
   }
   applyDataParam({
     txtInput,
@@ -2765,7 +2740,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     colorToggleElement: colorToggleEl,
     debugToggleElement: toggleDebugValues,
     applyToggleFlags,
-    syncViewToggles: qrmakerInternal.syncViewToggles,
+    syncViewToggles: typeof window.syncViewToggles === "function" ? window.syncViewToggles : undefined,
     syncDebugOverlay,
     syncStepControls,
   });
@@ -3291,50 +3266,117 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     putTimingCells: callPutTimingCells,
     putDarkModuleCells: callPutDarkModuleCells,
     putFormatCells: callPutFormatCells,
-    syncViewToggles: qrmakerInternal.syncViewToggles,
-    toggleInputs: qrmakerInternal.toggleInputs,
+    syncViewToggles: typeof window.syncViewToggles === "function" ? window.syncViewToggles : undefined,
+    toggleInputs: window.toggleInputs,
   });
 
   const windowApi = buildWindowApi();
   publishWindowApi(windowApi);
-  const registerQrmakerPublicApi = (api) => {
-    if(!qrmakerPublic) return;
-    const targetScope = globalScope || ((typeof window !== "undefined") ? window : null);
-    const entries = {
-      moveCursor: targetScope && targetScope.moveCursor,
-      turnCursor: targetScope && targetScope.turnCursor,
-      resetQRCode: typeof resetQRCode === "function" ? resetQRCode : null,
-      pauseRunning: targetScope && targetScope.pauseRunning,
-      drawQRCode: api?.drawQRCode ?? drawQRCode,
-      drawBasePatterns: api?.drawBasePatterns,
-      drawDataPatterns: api?.drawDataPatterns,
-      applyMask: api?.applyMask,
-      drawHelloWorld: api?.drawHelloWorld,
-      drawFinderPatterns: api?.drawFinderPatterns,
-      drawAlignmentPatterns: api?.drawAlignmentPatterns,
-      drawDarkModulePatterns: api?.drawDarkModulePatterns,
-      drawFormatPatterns: api?.drawFormatPatterns,
-      drawTimingPatterns: api?.drawTimingPatterns,
-      putCell: targetScope && targetScope.putCell,
-      putFinderCells: api?.putFinderCells,
-      putAlignmentCells: api?.putAlignmentCells,
-      putDarkModuleCells: api?.putDarkModuleCells,
-      putFormatCells: api?.putFormatCells,
-      putTimingCells: api?.putTimingCells,
-      isEmpty: targetScope && targetScope.isEmpty,
-      isMoveBlocked: targetScope && targetScope.isMoveBlocked,
-      isSkipZone: targetScope && targetScope.isSkipZone,
-      hasMoreData: targetScope && targetScope.hasMoreData,
-      getNextData: targetScope && targetScope.getNextData,
-      canContinueLoop: targetScope && targetScope.canContinueLoop,
-      setSwitch: targetScope && targetScope.setSwitch,
-      isSwitchOn: targetScope && targetScope.isSwitchOn,
-    };
-    for(const [name, value] of Object.entries(entries)){
-      if(typeof value === "function"){
-        qrmakerPublic[name] = value;
-      }
+  if(typeof window !== "undefined"){
+    window.qrmaker = { public: {}, internal: {} };
+    const qrmakerPublic = window.qrmaker.public;
+    const qrmakerInternal = window.qrmaker.internal;
+    if(typeof window.shouldStepFunctions === "function"){
+      qrmakerInternal.shouldStepFunctions = window.shouldStepFunctions;
     }
-  };
-  registerQrmakerPublicApi(windowApi);
+    if(typeof window.makeStepThenable === "function"){
+      qrmakerInternal.makeStepThenable = window.makeStepThenable;
+    }
+    if(typeof window.drawBasePatternsStepped === "function"){
+      qrmakerInternal.drawBasePatternsStepped = window.drawBasePatternsStepped;
+    }
+    if(typeof window.drawDataPatternsStepped === "function"){
+      qrmakerInternal.drawDataPatternsStepped = window.drawDataPatternsStepped;
+    }
+    if(typeof window.stopCurrentRun === "function"){
+      qrmakerInternal.stopCurrentRun = window.stopCurrentRun;
+    }
+    if(typeof window.resetCommand === "function"){
+      qrmakerInternal.resetCommand = window.resetCommand;
+    }
+    if(typeof window.moveCursor === "function"){
+      qrmakerPublic.moveCursor = window.moveCursor;
+    }
+    if(typeof window.turnCursor === "function"){
+      qrmakerPublic.turnCursor = window.turnCursor;
+    }
+    if(typeof window.resetQRCode === "function"){
+      qrmakerPublic.resetQRCode = window.resetQRCode;
+    }
+    if(typeof window.pauseRunning === "function"){
+      qrmakerPublic.pauseRunning = window.pauseRunning;
+    }
+    if(typeof window.drawQRCode === "function"){
+      qrmakerPublic.drawQRCode = window.drawQRCode;
+    }
+    if(typeof window.drawBasePatterns === "function"){
+      qrmakerPublic.drawBasePatterns = window.drawBasePatterns;
+    }
+    if(typeof window.drawDataPatterns === "function"){
+      qrmakerPublic.drawDataPatterns = window.drawDataPatterns;
+    }
+    if(typeof window.applyMask === "function"){
+      qrmakerPublic.applyMask = window.applyMask;
+    }
+    if(typeof window.drawHelloWorld === "function"){
+      qrmakerPublic.drawHelloWorld = window.drawHelloWorld;
+    }
+    if(typeof window.drawFinderPatterns === "function"){
+      qrmakerPublic.drawFinderPatterns = window.drawFinderPatterns;
+    }
+    if(typeof window.drawAlignmentPatterns === "function"){
+      qrmakerPublic.drawAlignmentPatterns = window.drawAlignmentPatterns;
+    }
+    if(typeof window.drawDarkModulePatterns === "function"){
+      qrmakerPublic.drawDarkModulePatterns = window.drawDarkModulePatterns;
+    }
+    if(typeof window.drawFormatPatterns === "function"){
+      qrmakerPublic.drawFormatPatterns = window.drawFormatPatterns;
+    }
+    if(typeof window.drawTimingPatterns === "function"){
+      qrmakerPublic.drawTimingPatterns = window.drawTimingPatterns;
+    }
+    if(typeof window.putCell === "function"){
+      qrmakerPublic.putCell = window.putCell;
+    }
+    if(typeof window.putFinderCells === "function"){
+      qrmakerPublic.putFinderCells = window.putFinderCells;
+    }
+    if(typeof window.putAlignmentCells === "function"){
+      qrmakerPublic.putAlignmentCells = window.putAlignmentCells;
+    }
+    if(typeof window.putDarkModuleCells === "function"){
+      qrmakerPublic.putDarkModuleCells = window.putDarkModuleCells;
+    }
+    if(typeof window.putFormatCells === "function"){
+      qrmakerPublic.putFormatCells = window.putFormatCells;
+    }
+    if(typeof window.putTimingCells === "function"){
+      qrmakerPublic.putTimingCells = window.putTimingCells;
+    }
+    if(typeof window.isEmpty === "function"){
+      qrmakerPublic.isEmpty = window.isEmpty;
+    }
+    if(typeof window.isMoveBlocked === "function"){
+      qrmakerPublic.isMoveBlocked = window.isMoveBlocked;
+    }
+    if(typeof window.isSkipZone === "function"){
+      qrmakerPublic.isSkipZone = window.isSkipZone;
+    }
+    if(typeof window.hasMoreData === "function"){
+      qrmakerPublic.hasMoreData = window.hasMoreData;
+    }
+    if(typeof window.getNextData === "function"){
+      qrmakerPublic.getNextData = window.getNextData;
+    }
+    if(typeof window.canContinueLoop === "function"){
+      qrmakerPublic.canContinueLoop = window.canContinueLoop;
+    }
+    if(typeof window.setSwitch === "function"){
+      qrmakerPublic.setSwitch = window.setSwitch;
+    }
+    if(typeof window.isSwitchOn === "function"){
+      qrmakerPublic.isSwitchOn = window.isSwitchOn;
+    }
+  }
 }
