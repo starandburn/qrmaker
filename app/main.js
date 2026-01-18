@@ -1319,10 +1319,10 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
       }
     }
     timingRowIndex = 0;
-    timingColIndex = 0;
-    if(typeof window !== "undefined"){
-      window.timingColIndex = 0;
+    if(typeof window === "undefined" || typeof window.setTimingColIndex !== "function"){
+      throw new Error("setTimingColIndex is required");
     }
+    window.setTimingColIndex(0);
     hasFormatPattern = false;
   if(resetDataFlag && typeof resetData === "function"){
     resetData();

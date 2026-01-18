@@ -22,11 +22,10 @@
     shouldAbort,
   } = patternCommon;
   const PATTERN_STEP_SCALE = 1;
-  const publishTimingColIndex = (value) => {
-    if(!global) return;
-    const normalized = (typeof value === "number" && Number.isFinite(value) && value > 0) ? Number(value) : 0;
-    global.timingColIndex = normalized;
-  };
+  if(typeof global.setTimingColIndex !== "function"){
+    throw new Error("setTimingColIndex is required");
+  }
+  const setTimingColIndex = global.setTimingColIndex;
   const resolveStepDir = (dirVal) => (dirVal === TIMING_HORIZONTAL ? DIR_RIGHT : DIR_DOWN);
   const buildTimingLookahead = (dirVal, startPos) => {
     const infos = [];
@@ -61,8 +60,7 @@
       if(dirVal === TIMING_HORIZONTAL){
         timingRowIndex = pos;
       }else{
-        timingColIndex = pos;
-        publishTimingColIndex(pos);
+        setTimingColIndex(pos);
       }
       if(dirVal === TIMING_HORIZONTAL){
         for(let c = 1; c <= 25; c++){
@@ -117,8 +115,7 @@
           col++;
         }
       }else{
-        timingColIndex = pos;
-        publishTimingColIndex(pos);
+        setTimingColIndex(pos);
         let row = 1;
         while(row <= 25){
           if(shouldAbort(runToken, ctx)) return false;

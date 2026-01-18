@@ -88,9 +88,21 @@ const TIMING_HORIZONTAL = 0;
 const TIMING_VERTICAL = 1;
 let timingRowIndex = 0;
 let timingColIndex = 0;
-if(typeof window !== "undefined" && typeof window === "object"){
-  window.timingColIndex = 0;
+const globalScope = (typeof window !== "undefined")
+  ? window
+  : ((typeof globalThis !== "undefined") ? globalThis : null);
+function setTimingColIndex(value){
+  const normalized = (typeof value === "number" && Number.isFinite(value) && value > 0) ? Number(value) : 0;
+  timingColIndex = normalized;
+  if(globalScope){
+    globalScope.timingColIndex = normalized;
+  }
+  return normalized;
 }
+if(globalScope){
+  globalScope.setTimingColIndex = setTimingColIndex;
+}
+setTimingColIndex(0);
 let hasFormatPattern = false;
 let lastMoveBlocked = false;
 const BOARD_ROWS = 25;
@@ -1082,10 +1094,7 @@ function reapplyCellColors(){
     }
   });
   timingRowIndex = prevTimingRow;
-  timingColIndex = prevTimingCol;
-  if(typeof window !== "undefined" && typeof window === "object"){
-    window.timingColIndex = prevTimingCol > 0 ? prevTimingCol : 0;
-  }
+  setTimingColIndex(prevTimingCol);
 }
 
 function parseCellRef(ref){
