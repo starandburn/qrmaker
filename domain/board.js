@@ -304,7 +304,7 @@ function scheduleCursorReset(delayMs = 0){
   pendingResetTimer = setTimeout(executeCursorReset, delayMs);
 }
 
-function shouldAnimatePlacement(kind){
+function shouldAnimatePlacement(kind, allowGenericData = false){
   if(!isStepModeActive()) return false;
   if(!isStepPlacementAnimationEnabled()) return false;
   if(isMaskApplying()) return false;
@@ -313,15 +313,16 @@ function shouldAnimatePlacement(kind){
   }
   if(isStepModeDataOnly()){
     if(typeof kind === "number"){
-      return isDataKind(kind);
+      if(isDataKind(kind)) return true;
+      return allowGenericData && isGenericKind(kind);
     }
     return false;
   }
   return true;
 }
 
-function highlightCursorForStepPutCell(kind){
-  if(!shouldAnimatePlacement(kind)) return;
+function highlightCursorForStepPutCell(kind, allowGenericData = false){
+  if(!shouldAnimatePlacement(kind, allowGenericData)) return;
   flushRender();
   const now = (typeof performance !== "undefined" && performance.now) ? performance.now() : Date.now();
   stepHighlightExpiresAt = now + STEP_HIGHLIGHT_MIN_MS;
@@ -366,8 +367,8 @@ function getCellElement(row, col){
   return cells[idx] || null;
 }
 
-function animateCellPlacementAt(row, col, kind){
-  if(!shouldAnimatePlacement(kind)) return;
+function animateCellPlacementAt(row, col, kind, allowGenericData = false){
+  if(!shouldAnimatePlacement(kind, allowGenericData)) return;
   applyStepPlacementAnimation(row, col);
 }
 
@@ -836,7 +837,7 @@ function turnCursor(dirArg){
   return callMakeStepThenable();
 }
 
-function applySetCell(row, col, encodedValue, color = "black"){
+function applySetCell(row, col, encodedValue, color = "black", allowGenericData = false){
   const cells = document.querySelectorAll(".qr-cells .cell");
   if(!cells || cells.length === 0) return;
   const r = Math.min(25, Math.max(1, row));
@@ -867,7 +868,7 @@ function applySetCell(row, col, encodedValue, color = "black"){
   if(boardMatrix[r - 1] && boardMatrix[r - 1][c - 1] !== undefined){
     boardMatrix[r - 1][c - 1] = encodedValue;
   }
-  animateCellPlacementAt(r, c, kind);
+  animateCellPlacementAt(r, c, kind, allowGenericData);
   const cursor = document.querySelector(".qr-cursor");
   if(cursor){
     cursor.classList.add("is-set");
@@ -881,8 +882,8 @@ let renderMode = RENDER_IMMEDIATE;
 function flushRender(){
   if(renderMode !== RENDER_BUFFERED) return;
   if(pendingCells.size > 0){
-    for(const { row, col, value, color } of pendingCells.values()){
-      applySetCell(row, col, value, color);
+    for(const { row, col, value, color, allowGenericData } of pendingCells.values()){
+      applySetCell(row, col, value, color, Boolean(allowGenericData));
     }
     pendingCells.clear();
   }
@@ -1216,17 +1217,18 @@ function isBoardCellUnplaced(row, col){
   return isEncodedValueUnplaced(cellValue);
 }
 
-function updateCell(row, col, encodedValue){
+function updateCell(row, col, encodedValue, options = null){
   if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
   const r = row;
   const c = col;
   const kind = (typeof window.bitKind === "function") ? window.bitKind(encodedValue) : Math.abs(encodedValue);
   const colorEntry = colorsForKind(kind);
   const color = colorEntry || "black";
+  const allowGenericData = Boolean(options && options.treatGenericAsData);
   if(renderMode === RENDER_BUFFERED){
-    pendingCells.set(`${r}-${c}`, { row: r, col: c, value: encodedValue, color });
+    pendingCells.set(`${r}-${c}`, { row: r, col: c, value: encodedValue, color, allowGenericData });
   }else{
-    applySetCell(r, c, encodedValue, color);
+    applySetCell(r, c, encodedValue, color, allowGenericData);
   }
   boardMatrix[r - 1][c - 1] = encodedValue;
   return true;
@@ -1235,6 +1237,7 @@ function updateCell(row, col, encodedValue){
 function putCell(encodedValue){
   let val = encodedValue;
   let usedAuto = false;
+  const treatGenericAsData = (val === 0 || val === 1);
   if(val === undefined){
     val = 1;
   }
@@ -1252,12 +1255,17 @@ function putCell(encodedValue){
   }
   if(!Number.isFinite(val)) return false;
   const valKind = (typeof window.bitKind === "function") ? window.bitKind(val) : Math.abs(val);
-  const ok = window.updateCell(cursorPos.row, cursorPos.col, val);
+  const ok = window.updateCell(
+    cursorPos.row,
+    cursorPos.col,
+    val,
+    treatGenericAsData ? { treatGenericAsData: true } : null,
+  );
   if(!ok && usedAuto && dataSeqIndex > 0){
     dataSeqIndex = Math.max(0, dataSeqIndex - 1);
   }
   if(ok){
-    highlightCursorForStepPutCell(valKind);
+    highlightCursorForStepPutCell(valKind, treatGenericAsData);
     if(isDataKind(valKind) && typeof window !== "undefined" && typeof window.updateDataPatternStatus === "function"){
       window.updateDataPatternStatus(valKind);
     }

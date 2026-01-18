@@ -2297,7 +2297,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
         if(typeof window.updateCursor === "function"){
           window.updateCursor(row, col);
         }
-        window.updateCell(row, col, blackValue);
+        window.updateCell(row, col, blackValue, { treatGenericAsData: true });
         if(stepEnabled && typeof makeStepThenable === "function"){
           const wait = makeStepThenable(true, {});
           if(wait && typeof wait.then === "function"){
