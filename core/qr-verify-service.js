@@ -77,29 +77,24 @@
   }
 
   function getCellValue(row, col){
-    if(typeof global.getCell === "function"){
-      return global.getCell(row, col);
+    if(typeof global.getCell !== "function"){
+      throw new Error("global.getCell is required");
     }
-    const matrix = global.boardMatrix;
-    if(!Array.isArray(matrix)) return undefined;
-    const rowData = matrix[row - 1];
-    if(!Array.isArray(rowData)) return undefined;
-    return rowData[col - 1];
+    return global.getCell(row, col);
   }
 
   function isFunctionalCellValue(value){
-    const kindVal = (typeof global.bitKind === "function")
-      ? global.bitKind(value)
-      : Math.abs(Number(value) || 0);
+    if(typeof global.bitKind !== "function"){
+      throw new Error("global.bitKind is required");
+    }
+    const kindVal = global.bitKind(value);
     if(kindVal === global.BIT_MASK) return true;
     return FUNCTION_KINDS.includes(kindVal);
   }
 
   function iterateDataCells(callback){
     if(typeof callback !== "function") return;
-    const rawGlobalTimingCol = Number.isFinite(global.timingColIndex) ? Number(global.timingColIndex) : 0;
-    const fallbackTimingCol = (typeof timingColIndex === "number" && Number.isFinite(timingColIndex)) ? timingColIndex : 0;
-    const timingCol = rawGlobalTimingCol > 0 ? rawGlobalTimingCol : fallbackTimingCol;
+    const timingCol = Number.isFinite(global.timingColIndex) ? Number(global.timingColIndex) : 0;
     let col = BOARD_SIZE;
     let upward = true;
     let startRow = BOARD_SIZE;

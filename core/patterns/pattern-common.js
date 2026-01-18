@@ -4,11 +4,10 @@
   const ensureHelpers = (ctx) => (ctx && ctx.helpers) ? ctx.helpers : {};
 
   const setBasePatternLookahead = (infos) => {
-    if(typeof global.setBasePatternLookahead === "function"){
-      global.setBasePatternLookahead(infos);
-      return;
+    if(typeof global.setBasePatternLookahead !== "function"){
+      throw new Error("global.setBasePatternLookahead is required");
     }
-    global.basePatternLookahead = Array.isArray(infos) ? infos : [];
+    global.setBasePatternLookahead(infos);
   };
 
   function resolveFunctionalOptions(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
@@ -33,26 +32,34 @@
     return { overwrite: overwriteValue, currentRun: resolvedRun, stepEnabled: resolvedStep };
   }
 
-  function shouldAbort(runToken, ctx){
-    if(global.executionControl && typeof global.executionControl.shouldAbort === "function"){
-      return global.executionControl.shouldAbort(runToken, ctx);
+  function ensureExecutionControl(){
+    if(!global.executionControl){
+      throw new Error("global.executionControl is required");
     }
-    return runToken !== ctx.runId;
+    return global.executionControl;
+  }
+
+  function shouldAbort(runToken, ctx){
+    const executionControl = ensureExecutionControl();
+    if(typeof executionControl.shouldAbort !== "function"){
+      throw new Error("executionControl.shouldAbort is required");
+    }
+    return executionControl.shouldAbort(runToken, ctx);
   }
 
   function updateCursorSafe(runToken, ctx, row, col, dir = DIR_RIGHT){
-    if(global.executionControl && typeof global.executionControl.updateCursorSafe === "function"){
-      return global.executionControl.updateCursorSafe(runToken, ctx, row, col, dir);
+    const executionControl = ensureExecutionControl();
+    if(typeof executionControl.updateCursorSafe !== "function"){
+      throw new Error("executionControl.updateCursorSafe is required");
     }
-    if(runToken !== ctx.runId) return false;
-    return updateCursor(row, col, dir);
+    return executionControl.updateCursorSafe(runToken, ctx, row, col, dir);
   }
 
-  global.patternCommon = Object.assign(global.patternCommon || {}, {
+  global.patternCommon = {
     ensureHelpers,
     resolveFunctionalOptions,
     setBasePatternLookahead,
     shouldAbort,
     updateCursorSafe,
-  });
+  };
 })(typeof window !== "undefined" ? window : globalThis);
