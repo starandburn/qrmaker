@@ -1798,20 +1798,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     return Object.assign({ ok: result.ok }, payload);
   };
 
-  const buildVerificationErrorMessage = (payload) => {
-    if(!payload) return "検証できませんでした";
-    switch(payload.reason){
-      case "rs_mismatch":
-        return "検証に失敗しました（RSチェック不一致）";
-      case "decode_error":
-        return "検証に失敗しました（デコードエラー）";
-      default:
-        return payload.reason
-          ? `検証に失敗しました（${payload.reason}）`
-          : "検証に失敗しました";
-    }
-  };
-
   btnGenerate.addEventListener("click", async () => {
     historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
