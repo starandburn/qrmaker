@@ -498,9 +498,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     setHistoryVisibility(defaultHistoryVisible);
   }
   if(!btnGenerate || !btnInit) return;
-  const executionStatusEl = dom.executionStatusEl;
-  const executionStatusTextEl = dom.executionStatusTextEl;
-  const isExecutionRunning = () => executionStatusEl ? executionStatusEl.classList.contains("status-running") : false;
   const executionStatusLabels = {
     stopped: "待機中",
     running: "作成中",
@@ -552,6 +549,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       buildExecutionStatusText,
       nonAsciiMessage: NON_ASCII_MESSAGE,
       inputMaxLength: Number(txtInput?.getAttribute("maxlength")) || 32,
+      isStepModeOn,
     })
     : null;
   const setExecutionStatus = statusManager
@@ -1684,7 +1682,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       moveMs: 0,
     };
     const markDataPatternStage = (kind) => {
-      if(updateDataPatternStatus(kind)){
+      if(statusManager?.updateDataPatternStatus?.(kind)){
         dataPatternStageDirty = true;
       }
     };
@@ -2291,7 +2289,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     userCodeInput.addEventListener("input", (ev) => {
       scheduleSyncParsedCode();
       ensureUserCodeCaretVisible();
-      if(executionStatusEl && !executionStatusEl.classList.contains("status-running")){
+      if(!statusManager?.isExecutionRunning?.()){
         const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
         if(!codeText){
           setExecutionStatus("stopped", undefined, "実行できるプログラムがありません。");

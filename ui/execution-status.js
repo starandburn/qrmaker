@@ -2,7 +2,7 @@
 (function(global){
   if(!global) return;
 
-  function createExecutionStatusManager({ dom, buildExecutionStatusText, nonAsciiMessage, inputMaxLength } = {}){
+  function createExecutionStatusManager({ dom, buildExecutionStatusText, nonAsciiMessage, inputMaxLength, isStepModeOn } = {}){
     const executionStatusEl = dom ? dom.executionStatusEl : null;
     const executionStatusTextEl = dom ? dom.executionStatusTextEl : null;
     const txtInput = dom ? dom.txtInput : null;
@@ -17,9 +17,68 @@
     let lastExecutionError = null;
     let pendingStopReason = null;
     let stopReasonLocked = false;
+    const executionStatusLabels = {
+      stopped: "待機中",
+      running: "作成中",
+      finished: "作成完了",
+      error: "エラー",
+      warning: "警告",
+    };
+    const extractUnknownCommandWord = (message) => {
+      if(!message) return "";
+      const text = String(message).trim();
+      if(!text) return "";
+      const match = text.match(/(?:不明なコマンド|Unknown command)[:：]?\s*([^\s,、。.]+)/i);
+      return match ? match[1] : "";
+    };
+    const normalizeStatusDetail = (detail) => {
+      if(!detail || typeof detail !== "object") return null;
+      const l2 = (typeof detail.l2 === "string") ? detail.l2 : "";
+      const l3 = (typeof detail.l3 === "string") ? detail.l3 : "";
+      if(!l2) return null;
+      return { l2, l3 };
+    };
+    const defaultBuildExecutionStatusText = (state, message, detail) => {
+      const label = executionStatusLabels[state] || "";
+      if(state === "error"){
+        const token = extractUnknownCommandWord(message);
+        if(token){
+          return `${token}はコマンドとして認識できませんでした。`;
+        }
+        const resolved = message ? String(message).trim() : "";
+        return resolved ? `${label}：${resolved}` : label;
+      }
+      if(state === "stopped" && !detail){
+        return `${label}：作成できます。`;
+      }
+      const normalized = normalizeStatusDetail(detail);
+      if(normalized){
+        const resolvedL3 = normalized.l3 || "作成中";
+        return `${normalized.l2}：${resolvedL3}`;
+      }
+      if(detail){
+        return `${label}：${detail}`;
+      }
+      return label;
+    };
     const buildStatusText = (typeof buildExecutionStatusText === "function")
       ? buildExecutionStatusText
-      : (() => "");
+      : defaultBuildExecutionStatusText;
+    const DEFAULT_NON_ASCII_MESSAGE = "半角英数字以外が含まれています。";
+    const resolvedNonAsciiMessage = (typeof nonAsciiMessage === "string")
+      ? nonAsciiMessage
+      : DEFAULT_NON_ASCII_MESSAGE;
+
+    const DATA_PATTERN_STAGE_MESSAGES = {
+      [global.BIT_INFO_MODE]: { l2: "データパターン", l3: "種別パターンを描画しています。" },
+      [global.BIT_INFO_LENGTH]: { l2: "データパターン", l3: "文字数パターンを描画しています。" },
+      [global.BIT_INFO_CHAR]: { l2: "データパターン", l3: "文字パターンを描画しています。" },
+      [global.BIT_INFO_TERMINATOR]: { l2: "データパターン", l3: "終端パターンを描画しています。" },
+      [global.BIT_INFO_PADDING]: { l2: "データパターン", l3: "パディングパターンを描画しています。" },
+      [global.BIT_INFO_PARITY]: { l2: "データパターン", l3: "パリティパターンを描画しています。" },
+    };
+    let currentDataPatternStage = null;
+
 
     const setExecutionStatus = (state, message, detail, options = {}) => {
       if(!executionStatusEl) return;
@@ -48,6 +107,17 @@
       executionStatusEl.className = `execution-status status-${state}`;
     };
 
+    const isExecutionRunning = () => executionStatusEl ? executionStatusEl.classList.contains("status-running") : false;
+    const updateDataPatternStatus = (kind) => {
+      if(typeof isStepModeOn !== "function" || !isStepModeOn()) return false;
+      const message = DATA_PATTERN_STAGE_MESSAGES[kind];
+      if(!message) return false;
+      if(currentDataPatternStage === message) return false;
+      currentDataPatternStage = message;
+      setExecutionStatus("running", undefined, message);
+      return true;
+    };
+
     const INPUT_MAX_LENGTH = Number(inputMaxLength ?? txtInput?.getAttribute("maxlength")) || 32;
     const NON_ASCII_REGEX = /[^\u0000-\u007F]/;
     const normalizeInputBeforeRun = () => {
@@ -63,9 +133,8 @@
         }
       }
       if(NON_ASCII_REGEX.test(value)){
-        const message = (typeof nonAsciiMessage === "string") ? nonAsciiMessage : "";
-        lastExecutionError = message;
-        setExecutionStatus("error", message);
+        lastExecutionError = resolvedNonAsciiMessage;
+        setExecutionStatus("error", resolvedNonAsciiMessage);
         return { ok: false };
       }
       return { ok: true };
@@ -97,6 +166,7 @@
 
     if(typeof global !== "undefined"){
       global.setExecutionStatus = setExecutionStatus;
+      global.updateDataPatternStatus = updateDataPatternStatus;
     }
 
     return {
@@ -105,6 +175,8 @@
       setInputLock,
       getLastExecutionError,
       setLastExecutionError,
+      isExecutionRunning,
+      updateDataPatternStatus,
     };
   }
 
