@@ -37,9 +37,6 @@
     formats: "drawFormatPatterns",
     timings: "drawTimingPatterns",
     pause: "pauseRunning",
-    hello: "drawHelloWorld",
-    helloworld: "drawHelloWorld",
-    drawhelloworld: "drawHelloWorld",
     text: "drawText",
   };
   const CSS_DARK_COLORS = new Set(["red", "blue", "green", "yellow"]);
@@ -802,7 +799,6 @@
       "drawBasePatternsStepped",
       "drawDataPatterns",
       "drawFunctionalPatterns",
-      "drawHelloWorld",
       "drawQRCode",
       "initializeQRCode",
       "pauseRunning",

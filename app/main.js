@@ -2232,107 +2232,6 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     return true;
   }
 
-  const HELLO_WORLD_LINES = [
-    ["b1", "down", 5],
-    ["c3", "right", 2],
-    ["e1", "down", 5],
-    ["g1", "down", 5],
-    ["h1", "right", 3],
-    ["h3", "right", 3],
-    ["h5", "right", 3],
-    ["l1", "down", 5],
-    ["m5", "right", 3],
-    ["q1", "down", 5],
-    ["r5", "right", 3],
-    ["v2", "down", 3],
-    ["w1", "right", 2],
-    ["y2", "down", 3],
-    ["w5", "right", 2],
-    ["a11", "down", 3],
-    ["b14", "down", 2],
-    ["c11", "down", 3],
-    ["d14", "down", 2],
-    ["e11", "down", 3],
-    ["g12", "down", 3],
-    ["h11", "right", 2],
-    ["j12", "down", 3],
-    ["h15", "right", 2],
-    ["l11", "down", 5],
-    ["m11", "right", 2],
-    ["o12", "down", 2],
-    ["m13", "right", 2],
-    ["n14", null, 1],
-    ["o15", null, 1],
-    ["q11", "down", 5],
-    ["r15", "right", 3],
-    ["v11", "down", 5],
-    ["w11", "right", 2],
-    ["y12", "down", 3],
-    ["w15", "right", 2],
-  ];
-
-  async function drawHelloWorld(){
-    const resetOk = await resetQRCode();
-    if(resetOk === false) return false;
-    const stepEnabled = typeof isStepModeOn === "function" && isStepModeOn();
-    const prevRenderMode = ctx ? ctx.renderMode : RENDER_IMMEDIATE;
-    setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
-    try{
-      const blackValue = (typeof window.BIT_BLACK === "number") ? window.BIT_BLACK : 1;
-      const skipExisting = Boolean(window.skipExistingCells);
-      const parseRef = (ref) => (typeof window.parseCellRef === "function" ? window.parseCellRef(ref) : null);
-      const isCellEmpty = (row, col) => {
-        if(typeof window.getCell !== "function") return true;
-        const current = window.getCell(row, col);
-        if(typeof current !== "number") return true;
-        if(typeof window.isUnplacedBit === "function"){
-          return window.isUnplacedBit(current);
-        }
-        const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
-        const kind = (typeof window.bitKind === "function") ? window.bitKind(current) : Math.abs(current);
-        return kind === unplacedKind;
-      };
-      const setCell = async (row, col) => {
-        if(skipExisting && !isCellEmpty(row, col)) return;
-        if(typeof window.updateCursor === "function"){
-          window.updateCursor(row, col);
-        }
-        window.updateCell(row, col, blackValue, { treatGenericAsData: true });
-        if(stepEnabled && typeof makeStepThenable === "function"){
-          const wait = makeStepThenable(true, {});
-          if(wait && typeof wait.then === "function"){
-            await wait;
-          }
-        }
-      };
-      const drawLine = async (startRef, dir, count) => {
-        const start = parseRef(startRef);
-        if(!start || !count) return;
-        let row = start.row;
-        let col = start.col;
-        for(let i = 0; i < count; i++){
-          await setCell(row, col);
-          if(dir === "down"){
-            row += 1;
-          }else if(dir === "right"){
-            col += 1;
-          }
-        }
-      };
-      for(const [startRef, dir, count] of HELLO_WORLD_LINES){
-        await drawLine(startRef, dir, count);
-      }
-      const endPos = parseRef("y15");
-      if(endPos && typeof window.updateCursor === "function"){
-        window.updateCursor(endPos.row, endPos.col);
-      }
-      requestRender("drawHelloWorld");
-    }finally{
-      setRenderMode(prevRenderMode);
-    }
-    return true;
-  }
-
   const dirs = [DIR_UP, DIR_RIGHT, DIR_DOWN, DIR_LEFT];
   const FUNCTION_KINDS = [
     (typeof window !== "undefined" && typeof window.BIT_FUNC_FINDER === "number") ? window.BIT_FUNC_FINDER : null,
@@ -3247,7 +3146,6 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     makeStepThenable,
     shouldStepFunctions,
     drawQRCode,
-    drawHelloWorld,
     drawText: (typeof window !== "undefined") ? window.drawText : undefined,
     buildQRCode,
     drawDataPatterns,
@@ -3318,9 +3216,6 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     }
     if(typeof window.applyMask === "function"){
       qrmakerPublic.applyMask = window.applyMask;
-    }
-    if(typeof window.drawHelloWorld === "function"){
-      qrmakerPublic.drawHelloWorld = window.drawHelloWorld;
     }
     if(typeof window.drawText === "function"){
       qrmakerPublic.drawText = window.drawText;

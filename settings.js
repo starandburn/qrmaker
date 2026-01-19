@@ -3,7 +3,7 @@ window.appSettingsFromScript = {
     // QR入力欄の初期値
     "qrData": "Hello, World!",
     // ユーザーコード欄の初期値
-    "userCode": "qrcode",
+    "userCode": "text",
     // 履歴パネルの初期表示
     "historyVisible": false,
     // パターン詳細パネルの初期表示
@@ -95,10 +95,6 @@ mask`
       },
       {
         "label": "3",
-        "code": `helloworld`
-      },
-      {
-        "label": "4",
         "code": `reset
 
 move b1
@@ -312,7 +308,7 @@ move right
 endrepeat`
       },
       {
-        "label": "5",
+        "label": "4",
         "code": `reset		// 盤面リセット
 base		// 基本パターン描画
 move y25 	// 開始位置右下に移動

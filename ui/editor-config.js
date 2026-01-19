@@ -44,8 +44,6 @@ window.OfflineCodeEditorConfig = {
     "timings",
     "next",
     "pause",
-    "hello",
-    "helloworld",
   ],
   predicateWord: ["block","wall","empty","used","timing","skip","last"],
   switchNames: ["red","blue","green","yellow"],
