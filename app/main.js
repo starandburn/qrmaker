@@ -106,9 +106,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const getSwitchStates = switchController
     ? switchController.getSwitchStates
     : () => ({});
-  const getActiveSwitchNames = switchController
-    ? switchController.getActiveSwitchNames
-    : () => [];
   const isSwitchOn = (color) => Boolean(getSwitchStates()[color]);
   const red = (action) => setSwitch("red", action);
   const blue = (action) => setSwitch("blue", action);
