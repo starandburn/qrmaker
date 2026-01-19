@@ -40,7 +40,7 @@
     hello: "drawHelloWorld",
     helloworld: "drawHelloWorld",
     drawhelloworld: "drawHelloWorld",
-    char: "drawChar",
+    text: "drawText",
   };
   const CSS_DARK_COLORS = new Set(["red", "blue", "green", "yellow"]);
   const CSS_DARK_COLOR_CACHE = new Map();
@@ -256,28 +256,35 @@
   const WHITESPACE_PATTERN = /\s/;
   const ALLOWED_SPECIAL_SYMBOLS = new Set(["?", "-", "'"]);
   const FULLWIDTH_BRACKETS = new Set(["（","）","［","］","｛","｝","【","】","〈","〉","《","》"]);
-    const ensureNoForbiddenSymbols = (text) => {
-      if(typeof text !== "string" || !text) return;
+  const TEXT_LINE_PATTERN = /^\s*text\b/i;
+  const ensureNoForbiddenSymbols = (text) => {
+    if(typeof text !== "string" || !text) return;
+    const lines = text.replace(/\r/g, "").split("\n");
+    for(const line of lines){
+      if(TEXT_LINE_PATTERN.test(line)){
+        continue;
+      }
       let inDoubleQuotes = false;
-      for(const ch of text){
+      for(const ch of line){
         if(inDoubleQuotes){
-          if(ch === '"'){
+          if(ch === "\""){
             inDoubleQuotes = false;
           }
           continue;
         }
-      if(ch === '"'){
-        inDoubleQuotes = true;
-        continue;
-      }
-      if(WHITESPACE_PATTERN.test(ch)) continue;
-      const code = ch.codePointAt(0);
-      if(code <= 0x7F){
-        if(ASCII_ALPHANUMERIC_PATTERN.test(ch) || ALLOWED_SPECIAL_SYMBOLS.has(ch)) continue;
-        throw new Error(`使用できない文字(${ch})が含まれています。`);
-      }
-      if(FULLWIDTH_BRACKETS.has(ch)){
-        throw new Error(`使用できない文字(${ch})が含まれています。`);
+        if(ch === "\""){
+          inDoubleQuotes = true;
+          continue;
+        }
+        if(WHITESPACE_PATTERN.test(ch)) continue;
+        const code = ch.codePointAt(0);
+        if(code <= 0x7F){
+          if(ASCII_ALPHANUMERIC_PATTERN.test(ch) || ALLOWED_SPECIAL_SYMBOLS.has(ch)) continue;
+          throw new Error(`使用できない文字(${ch})が含まれています。`);
+        }
+        if(FULLWIDTH_BRACKETS.has(ch)){
+          throw new Error(`使用できない文字(${ch})が含まれています。`);
+        }
       }
     }
   };
@@ -1122,7 +1129,8 @@
   };
 
   function formatStudentCodeLine(line, { context = "statement" } = {}){
-    const trimmed = typeof line === "string" ? line.trim() : "";
+    const rawLine = (typeof line === "string") ? line : "";
+    const trimmed = rawLine.trim();
     if(!trimmed) return "";
     const globalEnv = typeof global !== "undefined"
       ? global
@@ -1130,6 +1138,14 @@
     const identifierPattern = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
     if(trimmed.includes("(") && trimmed.includes(")")){
       return trimmed.replace(/,/g, " ");
+    }
+    const textMatch = rawLine.match(/^\s*drawtext(?:\s+([\s\S]*))?$/i);
+    if(textMatch){
+      const rawText = textMatch[1];
+      if(rawText === undefined || rawText === ""){
+        return "drawText()";
+      }
+      return `drawText(${JSON.stringify(rawText)})`;
     }
     const parts = splitCommandParts(trimmed);
     if(parts.length === 0) return "";
@@ -1154,30 +1170,6 @@
         return "hasMoreData()";
       }
       throw new Error("next は put の引数、または条件式（if/while/until/repeat、next?）でのみ使用できます");
-    }
-    if(fnLower === "drawchar"){
-      const rawChar = normalizeArgValue(parts[0] || "");
-      if(!rawChar){
-        throw new Error("drawChar requires a character");
-      }
-      const firstChar = rawChar.charAt(0);
-      const charLiteral = JSON.stringify(firstChar);
-      let colorExpr = "1";
-      if(parts.length >= 2){
-        const rawColor = parts[1].trim();
-        if(rawColor){
-          if(/^[-+]?\d+(?:\.\d+)?$/.test(rawColor)){
-            colorExpr = rawColor;
-          }else if(/^["'].+["']$/.test(rawColor)){
-            colorExpr = rawColor;
-          }else if(identifierPattern.test(rawColor)){
-            colorExpr = rawColor;
-          }else{
-            colorExpr = `"${rawColor.replace(/"/g, '\\"')}"`;
-          }
-        }
-      }
-      return `drawChar(${charLiteral}, ${colorExpr})`;
     }
     const firstArgLower = getArgLower();
     if(fnLower === "putcell" && parts.length === 1){

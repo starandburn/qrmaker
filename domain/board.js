@@ -1771,10 +1771,17 @@ function putCell(encodedValue){
   return makeStepResult(ok, waitOptions);
 }
 
-function drawChar(ch, color = 1){
+const getTextInputValue = () => {
+  if(typeof document === "undefined") return "";
+  const input = document.getElementById("txtInput");
+  if(!input) return "";
+  return (typeof input.value === "string") ? input.value : String(input.value ?? "");
+};
+
+const resolveFontGlyph = (ch) => {
   const raw = (typeof ch === "string") ? ch : String(ch ?? "");
   if(!raw || raw.length === 0){
-    throw new Error("drawChar requires a character");
+    throw new Error("drawText requires a character");
   }
   const first = raw.charAt(0);
   const code = first.charCodeAt(0);
@@ -1786,31 +1793,65 @@ function drawChar(ch, color = 1){
   if(!glyph){
     throw new Error(`Unsupported char: ${key}`);
   }
-  const numericColor = (color === undefined) ? 1 : Number(color);
-  if(!Number.isFinite(numericColor)){
-    throw new Error("Color must be a number");
-  }
-  let drawValue = numericColor;
-  if(numericColor === 1){
-    drawValue = GENERIC_BLACK;
-  }else if(numericColor === 0){
-    drawValue = GENERIC_WHITE;
-  }
-  const startRow = cursorPos.row;
-  const startCol = cursorPos.col;
+  return glyph;
+};
+
+const renderChar5x5 = (glyph, row, col, drawValue) => {
   for(let r = 0; r < 5; r++){
     const rowPattern = glyph[r];
     if(typeof rowPattern !== "string") continue;
     for(let c = 0; c < 5; c++){
       if(rowPattern[c] !== "1") continue;
-      const row = startRow + r;
-      const col = startCol + c;
-      if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) continue;
-      updateCell(row, col, drawValue, { treatGenericAsData: true });
+      const targetRow = row + r;
+      const targetCol = col + c;
+      if(targetRow < 1 || targetRow > BOARD_ROWS || targetCol < 1 || targetCol > BOARD_COLS){
+        continue;
+      }
+      updateCell(targetRow, targetCol, drawValue, { treatGenericAsData: true });
     }
   }
-  for(let i = 0; i < 5; i++){
-    moveCursor("right");
+};
+
+function drawText(text){
+  const raw = (text === undefined) ? getTextInputValue() : String(text ?? "");
+  if(!raw){
+    return makeStepResult(true);
+  }
+  let row = cursorPos.row;
+  let col = cursorPos.col;
+  let lastRow = row;
+  let lastCol = col;
+  let nextRow = row;
+  let nextCol = col;
+  let drawn = 0;
+  const drawValue = GENERIC_BLACK;
+  for(let i = 0; i < raw.length; i++){
+    if(col + 4 > BOARD_COLS){
+      col = 1;
+      row += 5;
+    }
+    if(row + 4 > BOARD_ROWS){
+      break;
+    }
+    const glyph = resolveFontGlyph(raw.charAt(i));
+    renderChar5x5(glyph, row, col, drawValue);
+    lastRow = row;
+    lastCol = col;
+    nextRow = row;
+    nextCol = col + 5;
+    if(nextCol + 4 > BOARD_COLS){
+      nextCol = 1;
+      nextRow += 5;
+    }
+    col += 5;
+    drawn += 1;
+  }
+  if(drawn > 0){
+    if(nextRow + 4 <= BOARD_ROWS && nextCol >= 1 && nextCol <= BOARD_COLS){
+      updateCursor(nextRow, nextCol, cursorPos.dir);
+    }else{
+      updateCursor(lastRow, lastCol, cursorPos.dir);
+    }
   }
   return makeStepResult(true);
 }
@@ -1929,7 +1970,7 @@ window.canContinueLoop = canContinueLoop;
 window.pauseRunning = pauseRunning;
 window.updateCell = updateCell;
 window.putCell = putCell;
-window.drawChar = drawChar;
+window.drawText = drawText;
 window.getCell = getCell;
 window.invertCell = invertCell;
 window.isEmpty = isEmpty;
