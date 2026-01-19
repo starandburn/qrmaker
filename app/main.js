@@ -1757,16 +1757,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       setExecutionStatus("stopped");
     }
   };
-  const isEditableTarget = (target) => {
-    if(!target || typeof target !== "object") return false;
-    if(target.isContentEditable) return true;
-    const tag = target.tagName ? target.tagName.toLowerCase() : "";
-    if(tag === "input"){
-      const type = String(target.type || "").toLowerCase();
-      return type !== "checkbox" && type !== "button" && type !== "submit" && type !== "reset";
-    }
-    return tag === "textarea" || tag === "select";
-  };
   btnInit.addEventListener("click", handleResetAction);
   document.addEventListener("keydown", (ev) => {
     if(ev.key !== "Escape") return;
