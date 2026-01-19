@@ -1238,15 +1238,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         }
       }
     };
-    const setOverlayState = (overlay, state) => {
-      if(!overlay) return;
-      overlay.classList.toggle("is-half", state === "half");
-      overlay.classList.toggle("is-full", state === "full");
-      if(state === "clear"){
-        overlay.classList.remove("is-half");
-        overlay.classList.remove("is-full");
-      }
-    };
     const applyMaskBatch = () => {
       for(let row = 1; row <= 25; row++){
         for(let col = 1; col <= 25; col++){
