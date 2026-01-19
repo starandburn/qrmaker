@@ -25,180 +25,91 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   if(!debugUI){
     debugUI = {};
   }
-  const btnGenerate = document.getElementById("btnGenerate");
-  const btnInit = document.getElementById("btnInit");
-  const btnClearCode = document.getElementById("btnClearCode");
-  const btnCopyCode = document.getElementById("btnCopyCode");
-  const btnPasteCode = document.getElementById("btnPasteCode");
-  const btnClear = document.getElementById("btnClear");
-  const btnSampleDropdown = document.getElementById("btnSampleDropdown");
-  const debugLog = document.getElementById("debugLog");
-  const dataPatternPanel = document.getElementById("dataPatternPanel");
-  const codePanel = document.querySelector(".code-panel");
+  const dom = (typeof window !== "undefined" && typeof window.createDomRefs === "function")
+    ? window.createDomRefs()
+    : {};
+  const btnGenerate = dom.btnGenerate;
+  const btnInit = dom.btnInit;
+  const btnClearCode = dom.btnClearCode;
+  const btnCopyCode = dom.btnCopyCode;
+  const btnPasteCode = dom.btnPasteCode;
+  const btnClear = dom.btnClear;
+  const btnSampleDropdown = dom.btnSampleDropdown;
+  const debugLog = dom.debugLog;
+  const dataPatternPanel = dom.dataPatternPanel;
+  const codePanel = dom.codePanel;
   if(!dataPatternPanel){
     throw new Error("dataPatternPanel is required");
   }
-  const userCodeParsed = document.getElementById("userCodeParsed");
-  const footerCopy = document.querySelector(".page-footer p:first-child");
-  const versionInfo = document.getElementById("appVersionInfo");
-  const userCodeInput = document.getElementById("userCode");
-  const btnToggleHistory = document.getElementById("btnToggleHistory");
-  const btnPruneHistory = document.getElementById("btnPruneHistory");
-  const codeHistoryList = document.getElementById("codeHistoryList");
-  const stepMode = document.getElementById("stepMode");
-  const stepSkipFunctions = document.getElementById("stepSkipFunctions");
-  const stepSpeed = document.getElementById("stepSpeed");
-  const stepSpeedLabel = document.querySelector(".step-speed");
+  const userCodeParsed = dom.userCodeParsed;
+  const footerCopy = dom.footerCopy;
+  const versionInfo = dom.versionInfo;
+  const userCodeInput = dom.userCodeInput;
+  const btnToggleHistory = dom.btnToggleHistory;
+  const btnPruneHistory = dom.btnPruneHistory;
+  const codeHistoryList = dom.codeHistoryList;
+  const stepMode = dom.stepMode;
+  const stepSkipFunctions = dom.stepSkipFunctions;
+  const stepSpeed = dom.stepSpeed;
+  const stepSpeedLabel = dom.stepSpeedLabel;
   function isStepModeOn(){
     return !!(stepMode && stepMode.checked);
   }
   if(typeof window !== "undefined"){
     window.isStepModeOn = isStepModeOn;
   }
-  const toggleDebugValues = document.getElementById("toggleDebugValues");
-  const titleIcon = document.querySelector(".title-icon");
-  const toggleCursor = document.getElementById("toggleCursor");
-  const toggleGuide = document.getElementById("toggleGuide");
-  const toggleGrid = document.getElementById("toggleGrid");
-  const toggleEmpty = document.getElementById("toggleEmpty");
-  const toggleColor = document.getElementById("toggleColor");
-  const txtInput = document.getElementById("txtInput");
+  const toggleDebugValues = dom.toggleDebugValues;
+  const titleIcon = dom.titleIcon;
+  const toggleCursor = dom.toggleCursor;
+  const toggleGuide = dom.toggleGuide;
+  const toggleGrid = dom.toggleGrid;
+  const toggleEmpty = dom.toggleEmpty;
+  const toggleColor = dom.toggleColor;
+  const txtInput = dom.txtInput;
   const configDefaults = (settings && typeof settings === "object") ? settings.defaults || {} : {};
   const resolvedDataTemplates = Array.isArray(configDefaults.dataTemplates)
     ? configDefaults.dataTemplates
     : [];
-  const switchDefinitions = [
-    { name: "red", label: "Red", color: 0xff0000, idSuffix: "Red" },
-    { name: "blue", label: "Blue", color: 0x567cff, idSuffix: "Blue" },
-    { name: "green", label: "Green", color: 0x00a800, idSuffix: "Green" },
-    { name: "yellow", label: "Yellow", color: 0xffd500, idSuffix: "Yellow" },
-  ];
-  const DEFAULT_SWITCH_COUNT = 2;
-  const MAX_SWITCH_COUNT = switchDefinitions.length;
-  const parseSwitchCountValue = (value) => {
-    if(typeof value === "number" && Number.isFinite(value)){
-      return value;
-    }
-    if(typeof value === "string"){
-      const trimmed = value.trim();
-      if(trimmed.length){
-        const parsed = Number(trimmed);
-        if(Number.isFinite(parsed)){
-          return parsed;
-        }
-      }
-    }
-    return null;
+  const buildSetSwitchDescription = (color, next) => {
+    const labelMap = { red: "赤", blue: "青", green: "緑", yellow: "黄" };
+    const label = labelMap[color] || color;
+    const desc = `スイッチを${next ? "ON" : "OFF"}に設定`.replace("スイッチ", `${label}スイッチ`);
+    return desc;
   };
-  const clampSwitchCount = (value) => Math.min(MAX_SWITCH_COUNT, Math.max(0, Math.trunc(value)));
-  const requestedSwitchCount = (() => {
-    const parsed = parseSwitchCountValue(configDefaults.switchCount);
-    if(parsed === null){
-      return DEFAULT_SWITCH_COUNT;
-    }
-    return clampSwitchCount(parsed);
-  })();
-  const activeSwitchDefinitions = switchDefinitions.slice(0, requestedSwitchCount);
-  const activeSwitchNames = activeSwitchDefinitions.map((def) => def.name);
-  if(typeof window !== "undefined"){
-    window.__qrSwitchConfig = Object.assign({}, window.__qrSwitchConfig, { switchNames: activeSwitchNames });
-  }
-  const switchIndicatorElements = Object.create(null);
-  let switchIndicatorContainer = null;
-  let switchIndicatorLabel = null;
-  const colorIntToHex = (value) => {
-    if(typeof value !== "number" || Number.isNaN(value)) return "#000000";
-    return `#${(value >>> 0).toString(16).padStart(6, "0")}`;
+  const buildToggleSwitchDescription = (color) => {
+    const labelMap = { red: "赤", blue: "青", green: "緑", yellow: "黄" };
+    const label = labelMap[color] || color;
+    const desc = `スイッチを反転`.replace("スイッチ", `${label}スイッチ`);
+    return desc;
   };
-  const ensureSwitchIndicators = () => {
-    if(!activeSwitchDefinitions.length){
-      return null;
-    }
-    if(switchIndicatorContainer){
-      return switchIndicatorContainer;
-    }
-    switchIndicatorContainer = document.createElement("span");
-    switchIndicatorContainer.className = "execution-status-switches";
-    switchIndicatorContainer.setAttribute("role", "group");
-    switchIndicatorContainer.setAttribute("aria-label", "Switch状態");
-    switchIndicatorLabel = document.createElement("span");
-    switchIndicatorLabel.className = "execution-status-label execution-status-label-chip";
-    switchIndicatorLabel.dataset.labelKind = "switch";
-    switchIndicatorLabel.textContent = "Switch";
-    switchIndicatorContainer.append(switchIndicatorLabel);
-    activeSwitchDefinitions.forEach((def) => {
-      const idSuffix = def.idSuffix || (def.name.charAt(0).toUpperCase() + def.name.slice(1));
-      const indicator = document.createElement("span");
-      indicator.id = `executionStatusSwitch${idSuffix}Indicator`;
-      indicator.className = "execution-status-switch-indicator";
-      indicator.setAttribute("aria-label", def.label);
-      switchIndicatorElements[def.name] = indicator;
-      switchIndicatorContainer.append(indicator);
-    });
-    return switchIndicatorContainer;
-  };
-  const switchStates = Object.fromEntries(activeSwitchNames.map((name) => [name, false]));
-  const updateSwitchIndicators = () => {
-    if(!activeSwitchDefinitions.length) return;
-    const container = ensureSwitchIndicators();
-    if(!container) return;
-    const offBackground = "#4a4a4a";
-    const onBorderColor = "rgba(0,0,0,0.25)";
-    const offBorderColor = "rgba(0,0,0,0.15)";
-    activeSwitchDefinitions.forEach((def) => {
-      const indicatorEl = switchIndicatorElements[def.name];
-      if(!indicatorEl) return;
-      const isOn = Boolean(switchStates[def.name]);
-      indicatorEl.classList.toggle("is-on", isOn);
-      indicatorEl.style.backgroundColor = isOn ? colorIntToHex(def.color) : offBackground;
-      indicatorEl.style.borderColor = isOn ? onBorderColor : offBorderColor;
-    });
-  };
-  const parseSwitchAction = (value) => {
-    if(typeof value === "boolean") return value;
-    if(typeof value === "string"){
-      const normalized = value.trim().toLowerCase();
-      if(!normalized.length) return null;
-      if(normalized === "on" || normalized === "true" || normalized === "1") return true;
-      if(normalized === "off" || normalized === "false" || normalized === "0") return false;
-      return null;
-    }
-    return null;
-  };
-  const setSwitchState = (color, state) => {
-    if(!(color in switchStates)) return false;
-    const next = Boolean(state);
-    switchStates[color] = next;
-    updateSwitchIndicators();
-    if(typeof window.logEvent === "function"){
-      const labelMap = { red: "赤", blue: "青", green: "緑", yellow: "黄" };
-      const label = labelMap[color] || color;
-      const desc = `スイッチを${next ? "ON" : "OFF"}に設定`.replace("スイッチ", `${label}スイッチ`);
-      window.logEvent("setSwitch", JSON.stringify({ color, state: next }), desc);
-    }
-    return next;
-  };
-  const toggleSwitchState = (color) => {
-    if(!(color in switchStates)) return false;
-    const next = !switchStates[color];
-    switchStates[color] = next;
-    updateSwitchIndicators();
-    if(typeof window.logEvent === "function" && typeof isStepModeOn === "function" && isStepModeOn()){
-      const labelMap = { red: "赤", blue: "青", green: "緑", yellow: "黄" };
-      const label = labelMap[color] || color;
-      const desc = `スイッチを反転`.replace("スイッチ", `${label}スイッチ`);
-      window.logEvent("setSwitch", JSON.stringify({ color, flipped: true, state: next }), desc);
-    }
-    return next;
-  };
-  const isSwitchOn = (color) => Boolean(switchStates[color]);
-  const setSwitch = (color, action) => {
-    return updateSwitchState(color, action);
-  };
-  const updateSwitchState = (color, action) => {
-    const desired = parseSwitchAction(action);
-    return (desired === null) ? toggleSwitchState(color) : setSwitchState(color, desired);
-  };
+  const switchController = (typeof window !== "undefined" && typeof window.createSwitchController === "function")
+    ? window.createSwitchController({
+      configDefaults,
+      executionStatusEl: dom.executionStatusEl,
+      executionStatusTextEl: dom.executionStatusTextEl,
+      buildSetSwitchDescription,
+      buildToggleSwitchDescription,
+    })
+    : null;
+  const ensureSwitchIndicators = switchController
+    ? switchController.ensureSwitchIndicators
+    : () => null;
+  const resetSwitchStates = switchController
+    ? switchController.resetSwitchStates
+    : () => {};
+  const toggleSwitchState = switchController
+    ? switchController.toggleSwitch
+    : () => false;
+  const setSwitch = switchController
+    ? switchController.setSwitch
+    : () => false;
+  const getSwitchStates = switchController
+    ? switchController.getSwitchStates
+    : () => ({});
+  const getActiveSwitchNames = switchController
+    ? switchController.getActiveSwitchNames
+    : () => [];
+  const isSwitchOn = (color) => Boolean(getSwitchStates()[color]);
   const red = (action) => setSwitch("red", action);
   const blue = (action) => setSwitch("blue", action);
   const green = (action) => setSwitch("green", action);
@@ -207,14 +118,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const isBlueOn = () => isSwitchOn("blue");
   const isGreenOn = () => isSwitchOn("green");
   const isYellowOn = () => isSwitchOn("yellow");
-  function resetSwitchStates(){
-    activeSwitchNames.forEach((name) => {
-      switchStates[name] = false;
-    });
-    updateSwitchIndicators();
-  }
-  updateSwitchIndicators();
-  const sampleDropdownMenu = document.getElementById("sampleDropdownMenu");
+  const sampleDropdownMenu = dom.sampleDropdownMenu;
   if(sampleDropdownMenu){
     sampleDropdownMenu.innerHTML = "";
     resolvedDataTemplates.forEach((entry, index) => {
@@ -469,20 +373,24 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     });
   }
   const getDebugPanel = () => debugUI.debugPanel;
-  const renderHistoryList = (entries) => {
-    if(typeof layoutUI.renderHistoryList === "function"){
-      layoutUI.renderHistoryList(entries);
-    }
-  };
   if(!window.historyController){
     throw new Error("state/history-store.js must be loaded before main.js.");
   }
   const historyController = window.historyController;
-  historyController.setRenderer(renderHistoryList);
   const getCurrentCodeValue = () => {
     return userCodeInput ? userCodeInput.value ?? "" : "";
   };
-  historyController.setValueGetter(getCurrentCodeValue);
+  if(typeof window.bindHistoryUI === "function"){
+    window.bindHistoryUI({
+      dom,
+      layoutUI,
+      store,
+      historyController,
+      getCurrentCodeValue,
+      setHistoryVisibility,
+      getHistoryVisible,
+    });
+  }
   const urlParams = urlState.params || new URLSearchParams(window.location.search || "");
   const presentationMode = urlParams.get("z") === "1";
   const {
@@ -631,9 +539,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     setHistoryVisibility(defaultHistoryVisible);
   }
   if(!btnGenerate || !btnInit) return;
-  const executionStatusEl = document.getElementById("executionStatus");
-  const executionStatusTextEl = document.getElementById("executionStatusText");
-  const executionStatusCursorEl = document.getElementById("executionStatusCursor");
+  const executionStatusEl = dom.executionStatusEl;
+  const executionStatusTextEl = dom.executionStatusTextEl;
+  const executionStatusCursorEl = dom.executionStatusCursorEl;
   const isExecutionRunning = () => executionStatusEl ? executionStatusEl.classList.contains("status-running") : false;
   const executionStatusLabels = {
     stopped: "待機中",
@@ -642,9 +550,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     error: "エラー",
     warning: "警告",
   };
-  let lastExecutionError = null;
-  let pendingStopReason = null;
-  let stopReasonLocked = false;
   const extractUnknownCommandWord = (message) => {
     if(!message) return "";
     const text = String(message).trim();
@@ -682,68 +587,33 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     return label;
   };
-  const setExecutionStatus = (state, message, detail) => {
-    if(!executionStatusEl) return;
-    if(state !== "stopped"){
-      pendingStopReason = null;
-      stopReasonLocked = false;
-    }else if(detail){
-      if(!stopReasonLocked || detail === pendingStopReason){
-        pendingStopReason = detail;
-      }
-    }else if(pendingStopReason){
-      detail = pendingStopReason;
-    }
-    const target = executionStatusTextEl || executionStatusEl;
-    target.textContent = buildExecutionStatusText(state, message, detail);
-    executionStatusEl.className = `execution-status status-${state}`;
-  };
-  const INPUT_MAX_LENGTH = Number(txtInput?.getAttribute("maxlength")) || 32;
-  const NON_ASCII_REGEX = /[^\u0000-\u007F]/;
-  const normalizeInputBeforeRun = () => {
-    if(!txtInput) return { ok: true };
-    let value = (typeof txtInput.value === "string") ? txtInput.value : "";
-    if(value.length > INPUT_MAX_LENGTH){
-      value = value.slice(0, INPUT_MAX_LENGTH);
-      txtInput.value = value;
-      try{
-        txtInput.dispatchEvent(new Event("input", { bubbles: true }));
-      }catch(_err){
-        // ignore environments without Event
-      }
-    }
-    if(NON_ASCII_REGEX.test(value)){
-      const message = "半角英数字以外が含まれています。";
-      lastExecutionError = message;
-      setExecutionStatus("error", message);
-      return { ok: false };
-    }
-    return { ok: true };
-  };
+  const NON_ASCII_MESSAGE = "半角英数字以外が含まれています。";
+  const statusManager = (typeof window !== "undefined" && typeof window.createExecutionStatusManager === "function")
+    ? window.createExecutionStatusManager({
+      dom,
+      buildExecutionStatusText,
+      nonAsciiMessage: NON_ASCII_MESSAGE,
+      inputMaxLength: Number(txtInput?.getAttribute("maxlength")) || 32,
+    })
+    : null;
+  const setExecutionStatus = statusManager
+    ? statusManager.setExecutionStatus
+    : () => {};
+  const normalizeInputBeforeRun = statusManager
+    ? statusManager.normalizeInputBeforeRun
+    : () => ({ ok: true });
+  const setInputLock = statusManager
+    ? statusManager.setInputLock
+    : () => {};
+  const getLastExecutionError = statusManager
+    ? statusManager.getLastExecutionError
+    : () => null;
+  const setLastExecutionError = statusManager
+    ? statusManager.setLastExecutionError
+    : () => {};
   setExecutionStatus("stopped");
-  let inputLocked = false;
   let inputLockToken = 0;
-  const setInputLock = (locked) => {
-    inputLocked = locked;
-    if(txtInput) txtInput.readOnly = locked;
-    if(userCodeInput) userCodeInput.readOnly = locked;
-    if(btnClear) btnClear.disabled = locked;
-    if(btnClearCode) btnClearCode.disabled = locked;
-    if(btnCopyCode) btnCopyCode.disabled = locked;
-    if(btnPasteCode) btnPasteCode.disabled = locked;
-    if(btnSampleDropdown) btnSampleDropdown.disabled = locked;
-    const sampleButtons = document.querySelectorAll(".code-debug-btn");
-    sampleButtons.forEach((btn) => {
-      btn.disabled = locked;
-    });
-    const sampleDropdown = document.getElementById("sampleDropdown");
-    if(locked && sampleDropdown){
-      sampleDropdown.classList.remove("is-open");
-    }
-    if(codeHistoryList){
-      codeHistoryList.classList.toggle("is-disabled", locked);
-    }
-  };
+  const isInputLocked = () => Boolean(txtInput?.readOnly || userCodeInput?.readOnly);
   if(userCodeInput){
     const initialCode = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
     btnGenerate.disabled = !initialCode;
@@ -989,7 +859,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   let clearNoiseLayer = () => {};
   let isQRCodeReadable = false;
   let noiseSingleClickEnabled = false;
-  const noiseModeHintEl = document.getElementById("noiseModeHint");
+  const noiseModeHintEl = dom.noiseModeHint;
   const shouldShowNoiseHint = () => isQRCodeReadable && noiseSingleClickEnabled;
   const updateNoiseModeHint = () => {
     if(!noiseModeHintEl) return;
@@ -1272,6 +1142,45 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     const current = Number.isFinite(window.__pauseAbortVersion) ? window.__pauseAbortVersion : 0;
     window.__pauseAbortVersion = current + 1;
   };
+  const setTimingRowIndex = (value) => { timingRowIndex = value; };
+  const setHasFormatPattern = (value) => { hasFormatPattern = value; };
+  const setPendingCursor = (value) => { pendingCursor = value; };
+  const boardReset = (typeof window !== "undefined" && typeof window.createBoardReset === "function")
+    ? window.createBoardReset({
+      boardMatrix,
+      cellStates,
+      boardRows: BOARD_ROWS,
+      boardCols: BOARD_COLS,
+      unplacedKind: UNPLACED_KIND,
+      setTimingColIndex: window.setTimingColIndex,
+      setTimingRowIndex,
+      setHasFormatPattern,
+      resetData,
+      resetCursor,
+      requestRender,
+      clearNoiseLayer,
+      setQRCodeReadable,
+      setRenderMode,
+      renderModeImmediate: RENDER_IMMEDIATE,
+      ctx,
+      resetSwitchStates,
+      setPendingCursor,
+      showApiStatus,
+      sleep,
+      resetDelayMs: RESET_DELAY_MS,
+      logMessages: {
+        resetBoardState: "盤面状態をリセット",
+        resetQRCode: "盤面状態をリセット",
+        resetCommand: "盤面をリセット",
+        clearBoard: "盤面をクリア",
+      },
+    })
+    : null;
+  const clearBoardSurface = boardReset ? boardReset.clearBoardSurface : () => false;
+  const clearBoard = boardReset ? boardReset.clearBoard : () => false;
+  const resetBoardState = boardReset ? boardReset.resetBoardState : () => {};
+  const resetQRCode = boardReset ? boardReset.resetQRCode : () => false;
+  const resetCommand = boardReset ? boardReset.resetCommand : async () => {};
   function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false, reason = "", resetData: resetDataFlag = true } = {}){
     bumpPauseAbortVersion();
     ctx.runId++;
@@ -1286,144 +1195,16 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     setRenderMode(RENDER_IMMEDIATE);
     if(reason){
-      pendingStopReason = reason;
-      stopReasonLocked = true;
-      setExecutionStatus("stopped", undefined, reason);
+      setExecutionStatus("stopped", undefined, reason, { lockStopReason: true });
     }else if(clear){
-      pendingStopReason = null;
-      stopReasonLocked = false;
+      setExecutionStatus("stopped", undefined, undefined, { clearStopReason: true, suppressUpdate: true });
     }
     return resetResult;
   }
 
   let cellsInitialized = false;
-function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
-  setQRCodeReadable(false);
-  clearNoiseLayer();
-    const cells = document.querySelectorAll(".qr-cells .cell");
-    if(!cells || cells.length === 0) return false;
-    const unplacedValue = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
-    for(const cell of cells){
-      cell.className = "cell";
-      cell.dataset.debugVal = String(unplacedValue);
-      cell.style.setProperty("--debug-color", "#000000");
-      cell.style.setProperty("--debug-shadow", "0 0 2px #fff, 0 0 4px #fff");
-    }
-    cellStates.clear();
-    for(let r = 0; r < BOARD_ROWS; r++){
-      for(let c = 0; c < BOARD_COLS; c++){
-        boardMatrix[r][c] = UNPLACED_KIND;
-      }
-    }
-    timingRowIndex = 0;
-    if(typeof window === "undefined" || typeof window.setTimingColIndex !== "function"){
-      throw new Error("setTimingColIndex is required");
-    }
-    window.setTimingColIndex(0);
-    hasFormatPattern = false;
-  if(resetDataFlag && typeof resetData === "function"){
-    resetData();
-  }
-  resetSwitchStates();
-  return true;
-}
-
-    function clearBoard(){
-      window.logEvent("clearBoard", "", "盤面をクリア");
-      clearNoiseLayer();
-      return clearBoardSurface();
-    }
-
-  function resetBoardState(options = {}){
-    const {
-      abortRun = true,
-      forceImmediate = abortRun,
-      stopStep = abortRun,
-      resetData: resetDataFlag = true,
-    } = options;
-    window.logEvent("resetQRCode", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, "盤面状態をリセット");
-    if(abortRun){
-      ctx.runId++;
-      ctx.maskRunId++;
-    }
-    if(stopStep){
-      ctx.isStepFillRunning = false;
-    }
-    if(forceImmediate){
-      setRenderMode(RENDER_IMMEDIATE);
-    }
-    if(!clearBoardSurface({ resetData: resetDataFlag })){
-      return;
-    }
-    resetCursor();
-    pendingCursor = null;
-    requestRender("resetBoardState");
-    if(typeof requestAnimationFrame === "function"){
-      return {
-        then: (resolve, _reject) => {
-          const waitFrame = () => new Promise((frameResolve) => {
-            let done = false;
-            const finish = () => {
-              if(done) return;
-              done = true;
-              frameResolve(true);
-            };
-            requestAnimationFrame(finish);
-            setTimeout(finish, 50);
-          });
-          waitFrame().then(() => waitFrame().then(() => resolve(true)));
-        },
-        catch: () => {},
-        valueOf: () => true,
-        toString: () => "true",
-      };
-    }
-  }
-
-  function resetQRCode(){
-    window.logEvent("resetQRCode", "", "盤面状態をリセット");
-    if(!clearBoardSurface()){
-      return false;
-    }
-    resetCursor();
-    pendingCursor = null;
-    requestRender("resetQRCode");
-    if(typeof requestAnimationFrame === "function"){
-      return {
-        then: (resolve, _reject) => {
-          const waitFrame = () => new Promise((frameResolve) => {
-            let done = false;
-            const finish = () => {
-              if(done) return;
-              done = true;
-              frameResolve(true);
-            };
-            requestAnimationFrame(finish);
-            setTimeout(finish, 50);
-          });
-          waitFrame().then(() => waitFrame().then(() => resolve(true)));
-        },
-        catch: () => {},
-        valueOf: () => true,
-        toString: () => "true",
-      };
-    }
-    return true;
-  }
   ctx.resetQRCode = resetQRCode;
   ctx.resetCursor = resetCursor;
-
-  async function resetCommand(options = {}){
-    window.logEvent("resetCommand", "", "盤面をリセット");
-    showApiStatus("resetCommand");
-    resetBoardState(options);
-    resetSwitchStates();
-    requestRender("resetCommand");
-    if(typeof requestAnimationFrame === "function"){
-      await new Promise((resolve) => requestAnimationFrame(() => resolve(true)));
-    }
-    await sleep(RESET_DELAY_MS);
-  }
 
   // Guarded cursor update for async flows: only applies if runToken matches current runId
   function updateCursorIfRun(runToken, row, col, dir = cursorPos.dir){
@@ -1436,7 +1217,6 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     set: (value) => { isStepFillRunning = value; },
   };
 
-  const setLastExecutionError = (value) => { lastExecutionError = value; };
   const {
     syncParsedCode,
     validateRunnerSyntax,
@@ -1515,7 +1295,6 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
   // Export helpers to window
   window.RENDER_IMMEDIATE = RENDER_IMMEDIATE;
   window.RENDER_BUFFERED = RENDER_BUFFERED;
-  window.setExecutionStatus = setExecutionStatus;
   window.updateCursor = updateCursor;
   window.boardMatrix = boardMatrix;
   window.getNextData = getNextData;
@@ -2317,7 +2096,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     }
     btnInit.disabled = false;
     setRenderMode(RENDER_IMMEDIATE);
-    lastExecutionError = null;
+    setLastExecutionError(null);
     if(!userCodeInput || (typeof userCodeInput.value === "string" && userCodeInput.value.trim())){
       setExecutionStatus("stopped");
     }
@@ -2379,7 +2158,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     const result = verifyService.verifyBoard();
     setQRCodeReadable(Boolean(result?.ok));
     if(!result) return null;
-    const inputValue = document.getElementById("txtInput")?.value ?? "";
+    const inputValue = txtInput?.value ?? "";
     const match = result.text === inputValue;
     const outcomeLabel = match ? "入力と出力が一致しました。" : "入力と出力が一致しませんでした。";
     const payload = {
@@ -2413,7 +2192,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     const patternUpdated = (typeof window.refreshPatternForCreate === "function")
       ? window.refreshPatternForCreate()
       : false;
-    if(inputLocked){
+    if(isInputLocked()){
       const resetWait = stopCurrentRun({ resetCursor: true, clear: true, resetData: Boolean(patternUpdated) });
       if(resetWait && typeof resetWait.then === "function"){
         await resetWait;
@@ -2483,8 +2262,9 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
           }
           return;
         }
-        if(lastExecutionError){
-          setExecutionStatus("error", lastExecutionError);
+        const lastError = getLastExecutionError();
+        if(lastError){
+          setExecutionStatus("error", lastError);
         }else{
           setExecutionStatus("stopped");
         }
@@ -2604,7 +2384,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
   updateCursor(cursorPos.row, cursorPos.col, cursorPos.dir);
   syncDebugOverlay();
 
-  const colorToggleEl = document.getElementById("toggleColor");
+  const colorToggleEl = toggleColor;
   if(colorToggleEl){
     colorToggleEl.addEventListener("change", () => {
       isColorEnabled = !!colorToggleEl.checked;
@@ -2895,7 +2675,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
     historyController.commitPendingHistory("サンプル");
   };
-  const sampleToolbar = document.getElementById("codeSampleToolbar");
+  const sampleToolbar = dom.codeSampleToolbar;
   if(!sampleToolbar){
     throw new Error("codeSampleToolbar is required");
   }
@@ -2912,25 +2692,6 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
         applySampleCode(sample.code);
       });
       sampleToolbar.append(button);
-    });
-  }
-  if(btnPruneHistory){
-    btnPruneHistory.addEventListener("click", historyController.pruneHistoryEntries);
-  }
-  if(codeHistoryList){
-    codeHistoryList.addEventListener("click", (ev) => {
-      if(inputLocked) return;
-      const target = (typeof Element !== "undefined" && ev.target instanceof Element) ? ev.target : null;
-      const item = target ? target.closest("li[data-index]") : null;
-      if(!item) return;
-      const index = Number(item.getAttribute("data-index"));
-      if(Number.isNaN(index)) return;
-      const entry = historyController.getEntry(index);
-      if(!entry || !userCodeInput) return;
-      userCodeInput.value = entry.value;
-      userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
-      userCodeInput.scrollTop = 0;
-      userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
     });
   }
   const clipboardApi = (typeof navigator !== "undefined" ? navigator.clipboard : null);
@@ -3013,7 +2774,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
 
   const initOfflineCodeEditor = () => {
     const ta = userCodeInput;
-    const host = document.getElementById("userCodeEditor");
+    const host = dom.userCodeEditorHost;
     const createEditor = typeof window !== "undefined" ? window.OfflineCodeEditor?.createCodeEditor : null;
     if(!ta || !host || typeof createEditor !== "function" || window.__codeEditor) return;
     window.__codeEditor = createEditor(host, {
