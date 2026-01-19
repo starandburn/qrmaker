@@ -500,7 +500,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   if(!btnGenerate || !btnInit) return;
   const executionStatusEl = dom.executionStatusEl;
   const executionStatusTextEl = dom.executionStatusTextEl;
-  const executionStatusCursorEl = dom.executionStatusCursorEl;
   const isExecutionRunning = () => executionStatusEl ? executionStatusEl.classList.contains("status-running") : false;
   const executionStatusLabels = {
     stopped: "待機中",
@@ -611,199 +610,61 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     return true;
   };
   window.updateDataPatternStatus = updateDataPatternStatus;
-  const updateExecutionStatusCursor = () => {
-    if(!executionStatusCursorEl) return;
-    let cursorTextEl = executionStatusCursorEl.querySelector(".execution-status-cursor-text");
-    let cursorCellEl = executionStatusCursorEl.querySelector(".execution-status-cell");
-    let cursorInlineLabelEl = executionStatusCursorEl.querySelector(".execution-status-cursor-inline-label");
-    let nextLabelEl = executionStatusCursorEl.querySelector(".execution-status-next-label");
-    let nextListEl = executionStatusCursorEl.querySelector(".execution-status-next-list");
-    let cursorBodyEl = executionStatusCursorEl.querySelector(".execution-status-cursor-body");
-    if(!cursorTextEl){
-      cursorTextEl = document.createElement("span");
-      cursorTextEl.className = "execution-status-cursor-text";
-    }
-    if(!cursorCellEl){
-      cursorCellEl = document.createElement("span");
-      cursorCellEl.className = "execution-status-cell";
-    }
-    if(!cursorInlineLabelEl){
-      cursorInlineLabelEl = document.createElement("span");
-      cursorInlineLabelEl.className = "execution-status-label execution-status-label-chip execution-status-cursor-inline-label";
-      cursorInlineLabelEl.dataset.labelKind = "cursor";
-    }
-    if(!nextLabelEl){
-      nextLabelEl = document.createElement("span");
-      nextLabelEl.className = "execution-status-label execution-status-label-chip execution-status-next-label";
-      nextLabelEl.dataset.labelKind = "next";
-    }
-    const NEXT_CELL_COUNT = 4;
-    if(!nextListEl){
-      nextListEl = document.createElement("span");
-      nextListEl.className = "execution-status-next-list";
-    }
-    if(nextListEl.childElementCount !== NEXT_CELL_COUNT){
-      nextListEl.textContent = "";
-      for(let i = 0; i < NEXT_CELL_COUNT; i++){
-        const cell = document.createElement("span");
-        cell.className = "execution-status-next-cell";
-        nextListEl.append(cell);
-      }
-    }
-    const nextCells = Array.from(nextListEl.children);
-    if(!cursorBodyEl){
-      cursorBodyEl = document.createElement("span");
-      cursorBodyEl.className = "execution-status-cursor-body";
-    }
-    const switchIndicatorGroupEl = ensureSwitchIndicators();
-    cursorInlineLabelEl.textContent = "Cursor";
-    cursorBodyEl.textContent = "";
-    const cursorBodyChildren = [];
-    if(switchIndicatorGroupEl){
-      cursorBodyChildren.push(switchIndicatorGroupEl);
-    }
-    cursorBodyChildren.push(
-      cursorInlineLabelEl,
-      cursorTextEl,
-      cursorCellEl,
-      nextLabelEl,
-      nextListEl,
-    );
-    cursorBodyEl.append(...cursorBodyChildren);
-    executionStatusCursorEl.textContent = "";
-    executionStatusCursorEl.append(cursorBodyEl);
-    let cursorVisualEl = cursorCellEl.querySelector(".execution-status-visual-cursor");
-    if(!cursorVisualEl){
-      cursorVisualEl = document.createElement("span");
-      cursorVisualEl.className = "execution-status-visual-cursor";
-      cursorCellEl.append(cursorVisualEl);
-    }
-    const colorMap = {
-      red: ["var(--col-red-light)", "var(--col-red-dark)"],
-      blue: ["var(--col-blue-light)", "var(--col-blue-dark)"],
-      green: ["var(--col-green-light)", "var(--col-green-dark)"],
-      yellow: ["var(--col-yellow-light)", "var(--col-yellow-dark)"],
-      purple: ["var(--col-purple-light)", "var(--col-purple-dark)"],
-      orange: ["var(--col-orange-light)", "var(--col-orange-dark)"],
-      gray: ["var(--col-gray-light)", "var(--col-gray-dark)"],
-      format: ["var(--col-format-blue-light)", "var(--col-format-blue-dark)"],
-      black: ["var(--col-black-light)", "var(--col-black-dark)"],
-    };
-    const resetNextCell = (cellEl) => {
-      if(!cellEl) return;
-      cellEl.style.backgroundColor = "#ffffff";
-      cellEl.style.borderColor = "#999999";
-      cellEl.style.boxShadow = "";
-    };
-    const applyNextCellInfo = (cellEl, info) => {
-      if(!cellEl) return;
-      if(!info || typeof info.kind !== "number" || typeof info.bit !== "number"){
-        resetNextCell(cellEl);
-        return;
-      }
-      const colName = (typeof window.colorsForKind === "function")
-        ? window.colorsForKind(info.kind)
-        : "black";
-      const resolved = colorMap[colName] || colorMap.black;
-      const bitIsBlack = info.bit === 1;
-      const fill = bitIsBlack ? resolved[1] : resolved[0];
-      const border = bitIsBlack ? resolved[0] : resolved[1];
-      cellEl.style.backgroundColor = fill;
-      cellEl.style.borderColor = border;
-      cellEl.style.boxShadow = "";
-    };
-    const ref = (typeof window.cellRefFromRowCol === "function")
-      ? window.cellRefFromRowCol(cursorPos.row, cursorPos.col)
-      : "";
-    const rowText = String(cursorPos.row).padStart(2, " ");
-    const colText = String(cursorPos.col).padStart(2, " ");
-    const directionEnabled = useDirection === true;
-    const dirSymbol = (() => {
-      switch(cursorPos.dir){
-        case DIR_UP: return "▲";
-        case DIR_RIGHT: return "▶";
-        case DIR_DOWN: return "▼";
-        case DIR_LEFT: return "◀";
-        default: return "▲";
-      }
-    })();
-    const dirName = (() => {
-      switch(cursorPos.dir){
-        case DIR_UP: return "up";
-        case DIR_RIGHT: return "right";
-        case DIR_DOWN: return "down";
-        case DIR_LEFT: return "left";
-        default: return "up";
-      }
-    })();
-    cursorInlineLabelEl.textContent = "Cursor";
-    cursorTextEl.textContent = `${ref}(${rowText},${colText})`;
-    if(directionEnabled){
-      cursorVisualEl.setAttribute("data-arrow", dirSymbol);
-      cursorVisualEl.setAttribute("data-dir", dirName);
-    }else{
-      cursorVisualEl.removeAttribute("data-arrow");
-      cursorVisualEl.removeAttribute("data-dir");
-    }
-    cursorVisualEl.style.setProperty("--cursor-color", "#e60000");
-    const guideCol = document.querySelector(".guide-col");
-    if(guideCol){
-      const spans = guideCol.querySelectorAll("span");
-      spans.forEach((span, index) => {
-        span.classList.toggle("is-active", index === cursorPos.col - 1);
-      });
-    }
-    const guideRow = document.querySelector(".guide-row");
-    if(guideRow){
-      const spans = guideRow.querySelectorAll("span");
-      spans.forEach((span, index) => {
-        span.classList.toggle("is-active", index === cursorPos.row - 1);
-      });
-    }
-    const currentValue = (typeof window.getCell === "function")
-      ? window.getCell(cursorPos.row, cursorPos.col)
-      : null;
-    const currentKind = (typeof window.bitKind === "function" && typeof currentValue === "number")
-      ? window.bitKind(currentValue)
-      : (typeof currentValue === "number" ? Math.abs(currentValue) : null);
-    const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
-    if(typeof currentKind === "number" && currentKind !== unplacedKind){
-      const currentColor = (typeof window.colorsForKind === "function")
-        ? window.colorsForKind(currentKind)
-        : "black";
-      const resolved = colorMap[currentColor] || colorMap.black;
-      const bitIsBlack = (typeof window.isBlackBit === "function")
-        ? window.isBlackBit(currentValue)
-        : currentValue > 0;
-      const fill = bitIsBlack ? resolved[1] : resolved[0];
-      const border = bitIsBlack ? resolved[0] : resolved[1];
-      cursorCellEl.style.backgroundColor = fill;
-      cursorCellEl.style.borderColor = border;
-      cursorCellEl.style.boxShadow = "";
-    }else{
-      cursorCellEl.style.backgroundColor = "#ffffff";
-      cursorCellEl.style.borderColor = "#999999";
-      cursorCellEl.style.boxShadow = "";
-    }
-    nextLabelEl.textContent = "Next";
-    const basePatternActive = Boolean(window.isDrawingBasePattern);
-    let nextInfos = [];
-    if(basePatternActive){
-      if(typeof window.getNextBasePatternInfos === "function"){
-        nextInfos = window.getNextBasePatternInfos(NEXT_CELL_COUNT) || [];
-      }
-    }else if(typeof window.getNextDataInfos === "function"){
-      nextInfos = window.getNextDataInfos(NEXT_CELL_COUNT) || [];
-    }else{
-      const single = (typeof window.getNextDataInfo === "function") ? window.getNextDataInfo() : null;
-      if(single) nextInfos = [single];
-    }
-    for(let i = 0; i < nextCells.length; i++){
-      applyNextCellInfo(nextCells[i], nextInfos[i]);
-    }
-  };
+  const cursorUI = (typeof window.createExecutionStatusCursor === "function")
+    ? window.createExecutionStatusCursor({
+      dom,
+      getCursorState: () => {
+        const ref = (typeof window.cellRefFromRowCol === "function")
+          ? window.cellRefFromRowCol(cursorPos.row, cursorPos.col)
+          : "";
+        return {
+          row: cursorPos.row,
+          col: cursorPos.col,
+          dir: cursorPos.dir,
+          ref,
+          directionEnabled: useDirection === true,
+          dirConstants: {
+            DIR_UP: window.DIR_UP,
+            DIR_RIGHT: window.DIR_RIGHT,
+            DIR_DOWN: window.DIR_DOWN,
+            DIR_LEFT: window.DIR_LEFT,
+          },
+          switchIndicatorGroupEl: ensureSwitchIndicators(),
+        };
+      },
+      getBoardCellInfo: () => ({
+        getCurrentValue: () => (typeof window.getCell === "function")
+          ? window.getCell(cursorPos.row, cursorPos.col)
+          : null,
+        getCurrentKind: (value) => (typeof window.bitKind === "function" && typeof value === "number")
+          ? window.bitKind(value)
+          : (typeof value === "number" ? Math.abs(value) : null),
+        colorsForKind: (kind) => (typeof window.colorsForKind === "function")
+          ? window.colorsForKind(kind)
+          : "black",
+        isBlackBit: (value) => (typeof window.isBlackBit === "function")
+          ? window.isBlackBit(value)
+          : value > 0,
+        unplacedKind: (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1,
+        isDrawingBasePattern: Boolean(window.isDrawingBasePattern),
+        getNextBasePatternInfos: (count) => (typeof window.getNextBasePatternInfos === "function")
+          ? window.getNextBasePatternInfos(count)
+          : [],
+        getNextDataInfos: (count) => (typeof window.getNextDataInfos === "function")
+          ? window.getNextDataInfos(count)
+          : [],
+        getNextDataInfo: () => (typeof window.getNextDataInfo === "function")
+          ? window.getNextDataInfo()
+          : null,
+      }),
+      isCursorVisible: () => true,
+      logEvent: (typeof window.logEvent === "function") ? window.logEvent : null,
+    })
+    : null;
   if(typeof window !== "undefined"){
-    window.updateExecutionStatusCursor = updateExecutionStatusCursor;
+    if(cursorUI && typeof cursorUI.updateExecutionStatusCursor === "function"){
+      window.updateExecutionStatusCursor = cursorUI.updateExecutionStatusCursor;
+    }
     window.isDrawingBasePattern = false;
     window.basePatternLookahead = [];
     window.setBasePatternLookahead = (infos) => {
@@ -1956,8 +1817,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
           if(typeof window !== "undefined"){
             window.suppressCursorUpdates = prevSuppressCursorUpdates;
             window.suppressDataPatternLog = prevSuppressDataPatternLog;
-            if(typeof window.updateExecutionStatusCursor === "function"){
-              window.updateExecutionStatusCursor();
+            if(cursorUI && typeof cursorUI.updateExecutionStatusCursor === "function"){
+              cursorUI.updateExecutionStatusCursor();
             }
           }
         }else if(typeof window !== "undefined"){
@@ -2222,8 +2083,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         setRenderMode(prevRenderMode);
         if(typeof window !== "undefined"){
           window.suppressCursorUpdates = prevSuppressCursorUpdates;
-          if(typeof window.updateExecutionStatusCursor === "function"){
-            window.updateExecutionStatusCursor();
+          if(cursorUI && typeof cursorUI.updateExecutionStatusCursor === "function"){
+            cursorUI.updateExecutionStatusCursor();
           }
         }
       }
