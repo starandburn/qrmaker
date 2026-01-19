@@ -1453,61 +1453,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     updateCursor(cursorPos.row, cursorPos.col, DIR_UP);
     return true;
   };
-  async function buildQRCode(){
-    const currentRun = runId;
-    let stepEnabled = H.isStepModeOn();
-    setRenderMode(stepEnabled ? RENDER_IMMEDIATE : RENDER_BUFFERED);
-    const bitsSeq = buildBitSequence();
-
-    // Start at bottom-right, facing up
-    updateCursor(cursorPos.row, cursorPos.col, DIR_UP);
-
-      let bitIdx = 0;
-      let col = 25;
-      let upward = true;
-      while(col > 0 && bitIdx < bitsSeq.length){
-        if(currentRun !== runId) break;
-        if(timingColIndex > 0 && col === timingColIndex){ col--; continue; } // skip timing column
-        const colLeft = col - 1;
-        for(let i = 0; i < 25 && bitIdx < bitsSeq.length; i++){
-          if(currentRun !== runId) break;
-          const row = upward ? (25 - i) : (1 + i);
-          // Face the walking direction
-          updateCursor(cursorPos.row, cursorPos.col, upward ? DIR_UP : DIR_DOWN);
-          for(const cTarget of [col, colLeft]){
-            if(bitIdx >= bitsSeq.length) break;
-            if(cTarget < 1) continue;
-            const targetCol = cTarget;
-            if(targetCol < 1 || targetCol > 25) continue;
-            const moved = moveCursor(row, targetCol);
-            if(!moved) continue;
-            if(timingColIndex > 0 && targetCol === timingColIndex) continue;
-            if(!window.isEmpty()) continue;
-            const { bit, kind } = bitsSeq[bitIdx];
-            const encoded = window.encodeBit(kind, bit === 1);
-            window.updateCell(cursorPos.row, cursorPos.col, encoded);
-            bitIdx++;
-            if(currentRun !== runId) break;
-          if(stepEnabled){
-            const delay = getStepDelay();
-            await sleep(Math.max(0, delay));
-            if(currentRun !== runId) break;
-            if(!isStepModeOn()){
-              stepEnabled = false;
-              setRenderMode(RENDER_BUFFERED);
-            }
-          }
-        }
-      }
-      upward = !upward;
-      col -= 2;
-    }
-    if(currentRun === runId && !stepEnabled){
-      requestRender("drawBasePatternsStepped");
-    }
-    return currentRun === runId;
-  };
-
   if(typeof window !== "undefined"){
     window.setSwitch = setSwitch;
     window.isSwitchOn = isSwitchOn;
@@ -2578,7 +2523,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     shouldStepFunctions,
     drawQRCode,
     drawText: (typeof window !== "undefined") ? window.drawText : undefined,
-    buildQRCode,
     drawDataPatterns,
     drawFunctionalPatterns,
     initializeQRCode,
