@@ -2,7 +2,7 @@
 (function(global){
   if(!global) return;
 
-  function createExecutionStatusManager({ dom, inputMaxLength, isStepModeOn } = {}){
+  function createExecutionStatusManager({ dom, inputMaxLength, isStepModeOn, onAfterStatusUpdate } = {}){
     const executionStatusEl = dom ? dom.executionStatusEl : null;
     const executionStatusTextEl = dom ? dom.executionStatusTextEl : null;
     const txtInput = dom ? dom.txtInput : null;
@@ -100,6 +100,11 @@
       const target = executionStatusTextEl || executionStatusEl;
       target.textContent = buildExecutionStatusText(state, message, detail);
       executionStatusEl.className = `execution-status status-${state}`;
+      if(typeof onAfterStatusUpdate === "function"){
+        onAfterStatusUpdate({ state, message, detail });
+      }else if(typeof global.updateExecutionStatusCursor === "function"){
+        global.updateExecutionStatusCursor();
+      }
     };
 
     const isExecutionRunning = () => executionStatusEl ? executionStatusEl.classList.contains("status-running") : false;

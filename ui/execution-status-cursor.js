@@ -225,6 +225,9 @@
       }
     };
 
+    if(typeof global !== "undefined"){
+      global.updateExecutionStatusCursor = updateExecutionStatusCursor;
+    }
     return { updateExecutionStatusCursor };
   }
 
