@@ -40,6 +40,7 @@
     hello: "drawHelloWorld",
     helloworld: "drawHelloWorld",
     drawhelloworld: "drawHelloWorld",
+    char: "drawChar",
   };
   const CSS_DARK_COLORS = new Set(["red", "blue", "green", "yellow"]);
   const CSS_DARK_COLOR_CACHE = new Map();
@@ -1153,6 +1154,30 @@
         return "hasMoreData()";
       }
       throw new Error("next は put の引数、または条件式（if/while/until/repeat、next?）でのみ使用できます");
+    }
+    if(fnLower === "drawchar"){
+      const rawChar = normalizeArgValue(parts[0] || "");
+      if(!rawChar){
+        throw new Error("drawChar requires a character");
+      }
+      const firstChar = rawChar.charAt(0);
+      const charLiteral = JSON.stringify(firstChar);
+      let colorExpr = "1";
+      if(parts.length >= 2){
+        const rawColor = parts[1].trim();
+        if(rawColor){
+          if(/^[-+]?\d+(?:\.\d+)?$/.test(rawColor)){
+            colorExpr = rawColor;
+          }else if(/^["'].+["']$/.test(rawColor)){
+            colorExpr = rawColor;
+          }else if(identifierPattern.test(rawColor)){
+            colorExpr = rawColor;
+          }else{
+            colorExpr = `"${rawColor.replace(/"/g, '\\"')}"`;
+          }
+        }
+      }
+      return `drawChar(${charLiteral}, ${colorExpr})`;
     }
     const firstArgLower = getArgLower();
     if(fnLower === "putcell" && parts.length === 1){

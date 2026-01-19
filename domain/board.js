@@ -140,6 +140,268 @@ function isGenericKind(kind){
   return kind === GENERIC_WHITE || kind === GENERIC_BLACK;
 }
 
+const FONT5 = {
+  " ": [
+    "00000",
+    "00000",
+    "00000",
+    "00000",
+    "00000",
+  ],
+  "0": [
+    "11100",
+    "10010",
+    "10010",
+    "10010",
+    "11100",
+  ],
+  "1": [
+    "01000",
+    "11000",
+    "01000",
+    "01000",
+    "11100",
+  ],
+  "2": [
+    "11100",
+    "00010",
+    "01100",
+    "10000",
+    "11110",
+  ],
+  "3": [
+    "11100",
+    "00010",
+    "01100",
+    "00010",
+    "11100",
+  ],
+  "4": [
+    "10010",
+    "10010",
+    "11110",
+    "00010",
+    "00010",
+  ],
+  "5": [
+    "11110",
+    "10000",
+    "11100",
+    "00010",
+    "11100",
+  ],
+  "6": [
+    "01110",
+    "10000",
+    "11100",
+    "10010",
+    "11100",
+  ],
+  "7": [
+    "11110",
+    "00010",
+    "00100",
+    "01000",
+    "01000",
+  ],
+  "8": [
+    "11100",
+    "10010",
+    "11100",
+    "10010",
+    "11100",
+  ],
+  "9": [
+    "11100",
+    "10010",
+    "11110",
+    "00010",
+    "11100",
+  ],
+  "A": [
+    "01100",
+    "10010",
+    "11110",
+    "10010",
+    "10010",
+  ],
+  "B": [
+    "11100",
+    "10010",
+    "11100",
+    "10010",
+    "11100",
+  ],
+  "C": [
+    "01110",
+    "10000",
+    "10000",
+    "10000",
+    "01110",
+  ],
+  "D": [
+    "11100",
+    "10010",
+    "10010",
+    "10010",
+    "11100",
+  ],
+  "E": [
+    "11110",
+    "10000",
+    "11100",
+    "10000",
+    "11110",
+  ],
+  "F": [
+    "11110",
+    "10000",
+    "11100",
+    "10000",
+    "10000",
+  ],
+  "G": [
+    "01110",
+    "10000",
+    "10110",
+    "10010",
+    "01110",
+  ],
+  "H": [
+    "10010",
+    "10010",
+    "11110",
+    "10010",
+    "10010",
+  ],
+  "I": [
+    "11110",
+    "00100",
+    "00100",
+    "00100",
+    "11110",
+  ],
+  "J": [
+    "00010",
+    "00010",
+    "00010",
+    "10010",
+    "01100",
+  ],
+  "K": [
+    "10010",
+    "10100",
+    "11000",
+    "10100",
+    "10010",
+  ],
+  "L": [
+    "10000",
+    "10000",
+    "10000",
+    "10000",
+    "11110",
+  ],
+  "M": [
+    "10010",
+    "11110",
+    "10110",
+    "10010",
+    "10010",
+  ],
+  "N": [
+    "10010",
+    "11010",
+    "10110",
+    "10010",
+    "10010",
+  ],
+  "O": [
+    "01100",
+    "10010",
+    "10010",
+    "10010",
+    "01100",
+  ],
+  "P": [
+    "11100",
+    "10010",
+    "11100",
+    "10000",
+    "10000",
+  ],
+  "Q": [
+    "01100",
+    "10010",
+    "10010",
+    "10110",
+    "01110",
+  ],
+  "R": [
+    "11100",
+    "10010",
+    "11100",
+    "10100",
+    "10010",
+  ],
+  "S": [
+    "01110",
+    "10000",
+    "01100",
+    "00010",
+    "11100",
+  ],
+  "T": [
+    "11110",
+    "00100",
+    "00100",
+    "00100",
+    "00100",
+  ],
+  "U": [
+    "10010",
+    "10010",
+    "10010",
+    "10010",
+    "01100",
+  ],
+  "V": [
+    "10010",
+    "10010",
+    "10010",
+    "01100",
+    "01000",
+  ],
+  "W": [
+    "10001",
+    "10001",
+    "10101",
+    "10101",
+    "01010",
+  ],
+  "X": [
+    "10010",
+    "01010",
+    "00100",
+    "01010",
+    "10010",
+  ],
+  "Y": [
+    "10010",
+    "01010",
+    "00100",
+    "00100",
+    "00100",
+  ],
+  "Z": [
+    "11110",
+    "00010",
+    "00100",
+    "01000",
+    "11110",
+  ],
+};
+
 const LOOP_ITER_LIMIT = BOARD_ROWS * BOARD_COLS;
 const LOOP_STAGNANT_LIMIT = Math.max(BOARD_ROWS, BOARD_COLS);
 const LOOP_OCCUPIED_LIMIT = (BOARD_ROWS + BOARD_COLS) * 2;
@@ -1285,6 +1547,50 @@ function putCell(encodedValue){
   return makeStepResult(ok, waitOptions);
 }
 
+function drawChar(ch, color = 1){
+  const raw = (typeof ch === "string") ? ch : String(ch ?? "");
+  if(!raw || raw.length === 0){
+    throw new Error("drawChar requires a character");
+  }
+  const first = raw.charAt(0);
+  const code = first.charCodeAt(0);
+  if(code > 0x7F){
+    throw new Error(`Non-ASCII char: ${first}`);
+  }
+  const key = first.toUpperCase();
+  const glyph = FONT5[key];
+  if(!glyph){
+    throw new Error(`Unsupported char: ${key}`);
+  }
+  const numericColor = (color === undefined) ? 1 : Number(color);
+  if(!Number.isFinite(numericColor)){
+    throw new Error("Color must be a number");
+  }
+  let drawValue = numericColor;
+  if(numericColor === 1){
+    drawValue = GENERIC_BLACK;
+  }else if(numericColor === 0){
+    drawValue = GENERIC_WHITE;
+  }
+  const startRow = cursorPos.row;
+  const startCol = cursorPos.col;
+  for(let r = 0; r < 5; r++){
+    const rowPattern = glyph[r];
+    if(typeof rowPattern !== "string") continue;
+    for(let c = 0; c < 5; c++){
+      if(rowPattern[c] !== "1") continue;
+      const row = startRow + r;
+      const col = startCol + c;
+      if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) continue;
+      updateCell(row, col, drawValue, { treatGenericAsData: true });
+    }
+  }
+  for(let i = 0; i < 5; i++){
+    moveCursor("right");
+  }
+  return makeStepResult(true);
+}
+
 function getCell(row, col){
   let r = row;
   let c = col;
@@ -1399,6 +1705,7 @@ window.canContinueLoop = canContinueLoop;
 window.pauseRunning = pauseRunning;
 window.updateCell = updateCell;
 window.putCell = putCell;
+window.drawChar = drawChar;
 window.getCell = getCell;
 window.invertCell = invertCell;
 window.isEmpty = isEmpty;

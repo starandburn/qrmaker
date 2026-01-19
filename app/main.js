@@ -3248,6 +3248,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     shouldStepFunctions,
     drawQRCode,
     drawHelloWorld,
+    drawChar: (typeof window !== "undefined") ? window.drawChar : undefined,
     buildQRCode,
     drawDataPatterns,
     drawFunctionalPatterns,
@@ -3320,6 +3321,9 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     }
     if(typeof window.drawHelloWorld === "function"){
       qrmakerPublic.drawHelloWorld = window.drawHelloWorld;
+    }
+    if(typeof window.drawChar === "function"){
+      qrmakerPublic.drawChar = window.drawChar;
     }
     if(typeof window.drawFinderPatterns === "function"){
       qrmakerPublic.drawFinderPatterns = window.drawFinderPatterns;
