@@ -2,7 +2,7 @@
 (function(global){
   if(!global) return;
 
-  function createExecutionStatusManager({ dom, buildExecutionStatusText, nonAsciiMessage, inputMaxLength, isStepModeOn } = {}){
+  function createExecutionStatusManager({ dom, inputMaxLength, isStepModeOn } = {}){
     const executionStatusEl = dom ? dom.executionStatusEl : null;
     const executionStatusTextEl = dom ? dom.executionStatusTextEl : null;
     const txtInput = dom ? dom.txtInput : null;
@@ -38,7 +38,7 @@
       if(!l2) return null;
       return { l2, l3 };
     };
-    const defaultBuildExecutionStatusText = (state, message, detail) => {
+    const buildExecutionStatusText = (state, message, detail) => {
       const label = executionStatusLabels[state] || "";
       if(state === "error"){
         const token = extractUnknownCommandWord(message);
@@ -61,13 +61,8 @@
       }
       return label;
     };
-    const buildStatusText = (typeof buildExecutionStatusText === "function")
-      ? buildExecutionStatusText
-      : defaultBuildExecutionStatusText;
-    const DEFAULT_NON_ASCII_MESSAGE = "半角英数字以外が含まれています。";
-    const resolvedNonAsciiMessage = (typeof nonAsciiMessage === "string")
-      ? nonAsciiMessage
-      : DEFAULT_NON_ASCII_MESSAGE;
+    const NON_ASCII_MESSAGE = "半角英数字以外が含まれています。";
+    const resolvedNonAsciiMessage = NON_ASCII_MESSAGE;
 
     const DATA_PATTERN_STAGE_MESSAGES = {
       [global.BIT_INFO_MODE]: { l2: "データパターン", l3: "種別パターンを描画しています。" },
@@ -103,7 +98,7 @@
         return;
       }
       const target = executionStatusTextEl || executionStatusEl;
-      target.textContent = buildStatusText(state, message, detail);
+      target.textContent = buildExecutionStatusText(state, message, detail);
       executionStatusEl.className = `execution-status status-${state}`;
     };
 
@@ -116,6 +111,9 @@
       currentDataPatternStage = message;
       setExecutionStatus("running", undefined, message);
       return true;
+    };
+    const resetDataPatternStage = () => {
+      currentDataPatternStage = null;
     };
 
     const INPUT_MAX_LENGTH = Number(inputMaxLength ?? txtInput?.getAttribute("maxlength")) || 32;
@@ -177,6 +175,7 @@
       setLastExecutionError,
       isExecutionRunning,
       updateDataPatternStatus,
+      resetDataPatternStage,
     };
   }
 
