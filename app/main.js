@@ -1777,36 +1777,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ev.preventDefault();
   });
 
-  async function runGenerateLegacy(){
-    if(typeof globalThis.qrBuildService !== "object" || typeof globalThis.qrBuildService.generateQr !== "function"){
-      return;
-    }
-    return globalThis.qrBuildService.generateQr({
-      runIdAccessor,
-      stepFillAccessor,
-      runUserCode,
-      isStepModeOn,
-      stepSkipFunctions,
-      setRenderMode,
-      drawBasePatterns: callDrawBasePatterns,
-      drawBasePatternsStepped: callDrawBasePatternsStepped,
-      drawBasePatternsService: globalThis.basePatternService?.drawBasePatternsService,
-      buildFunctionSet,
-      buildBitSequence,
-      updateCursor,
-      moveCursor,
-      getStepDelay,
-      sleep,
-      requestRender,
-      renderModeImmediate: RENDER_IMMEDIATE,
-      renderModeBuffered: RENDER_BUFFERED,
-      directionUp: DIR_UP,
-      directionDown: DIR_DOWN,
-      placeDataBits: globalThis.dataPlacementService?.placeDataBits,
-      runWithCoordinator: globalThis.executionCoordinatorService?.runWithCoordinator,
-    });
-  }
-
   const logVerificationOutcome = () => {
     const verifyService = globalThis.qrVerifyService;
     if(!verifyService || typeof verifyService.verifyBoard !== "function") return null;
