@@ -1929,6 +1929,7 @@ function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
     }else{
       setRenderMode(prevRender);
     }
+    resetCursor();
     return true;
   }
   async function drawBasePatternsStepped(ctx, { currentRun } = {}){

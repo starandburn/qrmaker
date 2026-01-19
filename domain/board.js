@@ -149,11 +149,11 @@ const FONT5 = {
     "00000",
   ],
   "0": [
-    "11100",
+    "01100",
     "10010",
-    "10010",
-    "10010",
-    "11100",
+    "10110",
+    "11010",
+    "01100",
   ],
   "1": [
     "01000",
@@ -205,11 +205,11 @@ const FONT5 = {
     "01000",
   ],
   "8": [
-    "11100",
+    "01100",
     "10010",
-    "11100",
+    "01100",
     "10010",
-    "11100",
+    "01100",
   ],
   "9": [
     "11100",
@@ -373,10 +373,10 @@ const FONT5 = {
     "01000",
   ],
   "W": [
-    "10001",
-    "10001",
-    "10101",
-    "10101",
+    "10010",
+    "10010",
+    "10110",
+    "10110",
     "01010",
   ],
   "X": [
@@ -398,6 +398,188 @@ const FONT5 = {
     "00010",
     "00100",
     "01000",
+    "11110",
+  ],
+  "a": [
+    "01100",
+    "00010",
+    "01100",
+    "10010",
+    "01100",
+  ],
+  "b": [
+    "10000",
+    "10000",
+    "11100",
+    "10010",
+    "11100",
+  ],
+  "c": [
+    "01100",
+    "10000",
+    "10000",
+    "10000",
+    "01100",
+  ],
+  "d": [
+    "00010",
+    "00010",
+    "01110",
+    "10010",
+    "01110",
+  ],
+  "e": [
+    "01100",
+    "10010",
+    "11110",
+    "10000",
+    "01100",
+  ],
+  "f": [
+    "01100",
+    "10000",
+    "11100",
+    "10000",
+    "10000",
+  ],
+  "g": [
+    "01110",
+    "10010",
+    "01110",
+    "00010",
+    "11100",
+  ],
+  "h": [
+    "10000",
+    "10000",
+    "11100",
+    "10010",
+    "10010",
+  ],
+  "i": [
+    "01000",
+    "00000",
+    "11000",
+    "01000",
+    "11100",
+  ],
+  "j": [
+    "00100",
+    "00000",
+    "00100",
+    "10100",
+    "01000",
+  ],
+  "k": [
+    "10000",
+    "10010",
+    "11000",
+    "10010",
+    "10010",
+  ],
+  "l": [
+    "11000",
+    "01000",
+    "01000",
+    "01000",
+    "11100",
+  ],
+  "m": [
+    "00000",
+    "11100",
+    "10110",
+    "10110",
+    "10110",
+  ],
+  "n": [
+    "00000",
+    "11100",
+    "10010",
+    "10010",
+    "10010",
+  ],
+  "o": [
+    "00000",
+    "01100",
+    "10010",
+    "10010",
+    "01100",
+  ],
+  "p": [
+    "00000",
+    "11100",
+    "10010",
+    "11100",
+    "10000",
+  ],
+  "q": [
+    "01110",
+    "10010",
+    "01110",
+    "00010",
+    "00010",
+  ],
+  "r": [
+    "00000",
+    "11100",
+    "10010",
+    "10000",
+    "10000",
+  ],
+  "s": [
+    "00000",
+    "01110",
+    "11000",
+    "00110",
+    "11100",
+  ],
+  "t": [
+    "10000",
+    "11100",
+    "10000",
+    "10000",
+    "01100",
+  ],
+  "u": [
+    "00000",
+    "10010",
+    "10010",
+    "10010",
+    "01100",
+  ],
+  "v": [
+    "00000",
+    "10010",
+    "10010",
+    "01100",
+    "01000",
+  ],
+  "w": [
+    "00000",
+    "10010",
+    "10010",
+    "10110",
+    "01010",
+  ],
+  "x": [
+    "00000",
+    "10010",
+    "01100",
+    "01100",
+    "10010",
+  ],
+  "y": [
+    "10010",
+    "10010",
+    "01110",
+    "00010",
+    "11100",
+  ],
+  "z": [
+    "11110",
+    "00100",
+    "01000",
+    "10000",
     "11110",
   ],
   "!": [
@@ -1788,10 +1970,14 @@ const resolveFontGlyph = (ch) => {
   if(code > 0x7F){
     throw new Error(`Non-ASCII char: ${first}`);
   }
-  const key = first.toUpperCase();
-  const glyph = FONT5[key];
+  const directGlyph = FONT5[first];
+  if(directGlyph){
+    return directGlyph;
+  }
+  const fallbackKey = first.toUpperCase();
+  const glyph = FONT5[fallbackKey];
   if(!glyph){
-    throw new Error(`Unsupported char: ${key}`);
+    throw new Error(`Unsupported char: ${first}`);
   }
   return glyph;
 };
@@ -1817,41 +2003,109 @@ function drawText(text){
   if(!raw){
     return makeStepResult(true);
   }
-  let row = cursorPos.row;
-  let col = cursorPos.col;
-  let lastRow = row;
-  let lastCol = col;
-  let nextRow = row;
-  let nextCol = col;
+  let scanRow = cursorPos.row;
+  let scanCol = cursorPos.col;
+  let lastRow = scanRow;
+  let lastCol = scanCol;
   let drawn = 0;
-  const drawValue = GENERIC_BLACK;
-  for(let i = 0; i < raw.length; i++){
-    if(col + 4 > BOARD_COLS){
-      col = 1;
-      row += 5;
+  let stepChain = null;
+  const enqueueStep = (fn) => {
+    if(stepChain){
+      stepChain = stepChain.then(fn);
+      return;
     }
-    if(row + 4 > BOARD_ROWS){
+    const result = fn();
+    if(result && typeof result.then === "function"){
+      stepChain = result;
+    }
+  };
+  const advanceScanPos = (row, col) => {
+    let nextRow = row;
+    let nextCol = col + 1;
+    if(nextCol > BOARD_COLS){
+      nextCol = 1;
+      nextRow += 1;
+    }
+    return { row: nextRow, col: nextCol };
+  };
+  const canPlaceAt = (row, col) => {
+    if(row + 4 > BOARD_ROWS || col + 4 > BOARD_COLS) return false;
+    for(let r = 0; r < 5; r++){
+      for(let c = 0; c < 5; c++){
+        if(!isBoardCellUnplaced(row + r, col + c)) return false;
+      }
+    }
+    return true;
+  };
+  const blackValue = GENERIC_BLACK;
+  const whiteValue = GENERIC_WHITE;
+  for(let i = 0; i < raw.length; i++){
+    let foundRow = null;
+    let foundCol = null;
+    let probeRow = scanRow;
+    let probeCol = scanCol;
+    for(let step = 0; step < BOARD_ROWS * BOARD_COLS; step++){
+      if(probeRow > BOARD_ROWS) break;
+      enqueueStep(() => {
+        updateCursor(probeRow, probeCol, cursorPos.dir);
+        return callMakeStepThenable();
+      });
+      if(canPlaceAt(probeRow, probeCol)){
+        foundRow = probeRow;
+        foundCol = probeCol;
+        break;
+      }
+      const next = advanceScanPos(probeRow, probeCol);
+      probeRow = next.row;
+      probeCol = next.col;
+    }
+    if(foundRow === null || foundCol === null){
       break;
     }
     const glyph = resolveFontGlyph(raw.charAt(i));
-    renderChar5x5(glyph, row, col, drawValue);
-    lastRow = row;
-    lastCol = col;
-    nextRow = row;
-    nextCol = col + 5;
-    if(nextCol + 4 > BOARD_COLS){
-      nextCol = 1;
-      nextRow += 5;
+    for(let r = 0; r < 5; r++){
+      const rowPattern = (typeof glyph[r] === "string") ? glyph[r] : "00000";
+      for(let c = 0; c < 5; c++){
+        const targetRow = foundRow + r;
+        const targetCol = foundCol + c;
+        if(targetRow < 1 || targetRow > BOARD_ROWS || targetCol < 1 || targetCol > BOARD_COLS){
+          continue;
+        }
+        const shouldDraw = rowPattern[c] === "1";
+        const cellValue = shouldDraw ? blackValue : whiteValue;
+        enqueueStep(() => {
+          updateCursor(targetRow, targetCol, cursorPos.dir);
+          updateCell(targetRow, targetCol, cellValue, { treatGenericAsData: true });
+          return callMakeStepThenable();
+        });
+      }
     }
-    col += 5;
+    lastRow = foundRow;
+    lastCol = foundCol;
+    scanRow = foundRow;
+    scanCol = foundCol + 5;
+    if(scanCol > BOARD_COLS){
+      scanCol = 1;
+      scanRow = foundRow + 5;
+    }
     drawn += 1;
   }
   if(drawn > 0){
-    if(nextRow + 4 <= BOARD_ROWS && nextCol >= 1 && nextCol <= BOARD_COLS){
-      updateCursor(nextRow, nextCol, cursorPos.dir);
-    }else{
-      updateCursor(lastRow, lastCol, cursorPos.dir);
+    const targetRow = lastRow + 5;
+    const targetCol = 1;
+    const finalizeCursor = () => {
+      if(targetRow + 4 <= BOARD_ROWS){
+        updateCursor(targetRow, targetCol, cursorPos.dir);
+      }else{
+        updateCursor(lastRow, lastCol, cursorPos.dir);
+      }
+      return true;
+    };
+    if(stepChain){
+      stepChain = stepChain.then(finalizeCursor);
+      return stepChain;
     }
+    finalizeCursor();
   }
   return makeStepResult(true);
 }

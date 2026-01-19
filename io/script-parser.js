@@ -196,8 +196,24 @@
   );
   const applyAliasTransforms = (text) => {
     if(typeof text !== "string" || !text) return "";
-    const normalized = normalizeColorStateSpacing(text);
-    return normalized.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
+    const newline = text.includes("\r\n") ? "\r\n" : "\n";
+    return text
+      .split(/\r?\n/)
+      .map((line) => {
+        const textMatch = line.match(/^(\s*)text\b([\s\S]*)$/i);
+        if(textMatch){
+          const indent = textMatch[1] || "";
+          const rawRest = textMatch[2] || "";
+          let trimmedRest = rawRest.replace(/\s+$/g, "");
+          if(trimmedRest && !/^\s/.test(trimmedRest)){
+            trimmedRest = ` ${trimmedRest}`;
+          }
+          return `${indent}drawText${trimmedRest}`;
+        }
+        const normalized = normalizeColorStateSpacing(line);
+        return normalized.replace(ALIAS_PATTERN, (match) => ALIAS_MAP[match.toLowerCase()] || match);
+      })
+      .join(newline);
   };
   const ALLOWED_CONTROL = new Set([
     "if",
