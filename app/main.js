@@ -118,27 +118,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const isBlueOn = () => isSwitchOn("blue");
   const isGreenOn = () => isSwitchOn("green");
   const isYellowOn = () => isSwitchOn("yellow");
-  const viewOverrides = configDefaults.viewFlags || {};
-  const viewOverridePairs = [
-    { key: "viewCursor", element: toggleCursor },
-    { key: "viewGuide", element: toggleGuide },
-    { key: "viewGrid", element: toggleGrid },
-    { key: "viewEmpty", element: toggleEmpty },
-    { key: "viewColor", element: toggleColor },
-    { key: "viewDebugValues", element: toggleDebugValues },
-  ];
-  viewOverridePairs.forEach(({ element, key }) => {
-    if(!element) return;
-    const overrideValue = viewOverrides[key];
-    if(typeof overrideValue !== "boolean") return;
-    element.checked = overrideValue;
-    if(typeof element.defaultChecked === "boolean"){
-      element.defaultChecked = overrideValue;
-    }
-    if(key === "viewColor" && typeof isColorEnabled !== "undefined"){
-      isColorEnabled = overrideValue;
-    }
-  });
   const homeCursorDirectionOverride = (typeof configDefaults.homeCursorDirection === "string")
     ? configDefaults.homeCursorDirection
     : null;
@@ -1246,6 +1225,30 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   } = typeof createDebugSync === "function"
     ? createDebugSync({ toggleDebugValues, dataPatternPanel, debugLog, isDebugVisible })
     : { syncDebugOverlay: () => {}, syncDebugPanelLayout: () => {} };
+
+  const viewFlagsApi = (typeof window.setupViewFlags === "function")
+    ? window.setupViewFlags({
+      dom,
+      configDefaults,
+      settings,
+      urlState,
+      store,
+      requestRender,
+      setRenderMode,
+      RENDER_IMMEDIATE,
+      logEvent: (typeof window.logEvent === "function") ? window.logEvent : null,
+      onColorChange: (enabled) => {
+        isColorEnabled = enabled;
+        reapplyCellColors();
+      },
+    })
+    : null;
+  if(viewFlagsApi && typeof viewFlagsApi.isColorEnabled === "function"){
+    const v = viewFlagsApi.isColorEnabled();
+    if(typeof v === "boolean"){
+      isColorEnabled = v;
+    }
+  }
 
   const {
     defaultFlagString,
@@ -2365,12 +2368,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   syncDebugOverlay();
 
   const colorToggleEl = toggleColor;
-  if(colorToggleEl){
-    colorToggleEl.addEventListener("change", () => {
-      isColorEnabled = !!colorToggleEl.checked;
-      reapplyCellColors();
-    });
-  }
   if(toggleDebugValues){
     toggleDebugValues.addEventListener("change", syncDebugOverlay);
   }
