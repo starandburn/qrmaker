@@ -1711,8 +1711,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(!inputCheck.ok){
       return;
     }
-    const lockToken = uiState.inputLockToken + 1;
-    uiState.setInputLockToken(lockToken);
+    const lockToken = (typeof window.acquireUiInputLock === "function")
+      ? window.acquireUiInputLock(uiState)
+      : (() => {
+        const fallbackToken = uiState.inputLockToken + 1;
+        uiState.setInputLockToken(fallbackToken);
+        return fallbackToken;
+      })();
     setExecutionStatus("running");
     setInputLock(true);
     let runOk = false;
@@ -1749,6 +1754,11 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }
       if(lockToken === uiState.inputLockToken){
         setInputLock(false);
+      }
+      if(typeof window.releaseUiInputLockIfMatched === "function"){
+        window.releaseUiInputLockIfMatched(uiState, lockToken);
+      }else if(lockToken === uiState.inputLockToken){
+        uiState.clearInputLockToken();
       }
       if(typeof window.logEvent === "function"){
         window.logEvent("perfRunUserCode", JSON.stringify({ ms: Math.round(runDurationMs) }), "実行時間");

@@ -1,7 +1,6 @@
 // ui/bind-events.js
 (function(global){
   if(!global) return;
-  if(typeof global.bindSimpleUiEvents === "function") return;
 
   function bindSimpleUiEvents(ctx){
     if(!ctx) return;
@@ -30,5 +29,22 @@
     }
   }
 
-  global.bindSimpleUiEvents = bindSimpleUiEvents;
+  if(typeof global.bindSimpleUiEvents !== "function"){
+    global.bindSimpleUiEvents = bindSimpleUiEvents;
+  }
+
+  if(typeof global.acquireUiInputLock !== "function"){
+    global.acquireUiInputLock = (uiState) => {
+      const lockToken = uiState.inputLockToken + 1;
+      uiState.setInputLockToken(lockToken);
+      return lockToken;
+    };
+  }
+  if(typeof global.releaseUiInputLockIfMatched !== "function"){
+    global.releaseUiInputLockIfMatched = (uiState, lockToken) => {
+      if(lockToken === uiState.inputLockToken){
+        uiState.clearInputLockToken();
+      }
+    };
+  }
 })(typeof window !== "undefined" ? window : globalThis);
