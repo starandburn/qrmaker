@@ -2349,6 +2349,47 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
   initOfflineCodeEditor();
 
+  function buildQrmakerObject(win, api){
+    const qrmaker = { public: {}, internal: {} };
+    const qrmakerPublic = qrmaker.public;
+    const qrmakerInternal = qrmaker.internal;
+    assignIfFunction(qrmakerInternal, "shouldStepFunctions", win.shouldStepFunctions);
+    assignIfFunction(qrmakerInternal, "makeStepThenable", win.makeStepThenable);
+    assignIfFunction(qrmakerInternal, "drawBasePatternsStepped", win.drawBasePatternsStepped);
+    assignIfFunction(qrmakerInternal, "drawDataPatternsStepped", win.drawDataPatternsStepped);
+    assignIfFunction(qrmakerInternal, "stopCurrentRun", win.stopCurrentRun);
+    assignIfFunction(qrmakerInternal, "resetCommand", win.resetCommand);
+    assignIfFunction(qrmakerPublic, "moveCursor", win.moveCursor);
+    assignIfFunction(qrmakerPublic, "turnCursor", win.turnCursor);
+    assignIfFunction(qrmakerPublic, "resetQRCode", win.resetQRCode);
+    assignIfFunction(qrmakerPublic, "pauseRunning", win.pauseRunning);
+    assignIfFunction(qrmakerPublic, "drawQRCode", win.drawQRCode);
+    assignIfFunction(qrmakerPublic, "drawBasePatterns", win.drawBasePatterns);
+    assignIfFunction(qrmakerPublic, "drawDataPatterns", win.drawDataPatterns);
+    assignIfFunction(qrmakerPublic, "applyMask", win.applyMask);
+    assignIfFunction(qrmakerPublic, "drawText", win.drawText);
+    assignIfFunction(qrmakerPublic, "drawFinderPatterns", win.drawFinderPatterns);
+    assignIfFunction(qrmakerPublic, "drawAlignmentPatterns", win.drawAlignmentPatterns);
+    assignIfFunction(qrmakerPublic, "drawDarkModulePatterns", win.drawDarkModulePatterns);
+    assignIfFunction(qrmakerPublic, "drawFormatPatterns", win.drawFormatPatterns);
+    assignIfFunction(qrmakerPublic, "drawTimingPatterns", win.drawTimingPatterns);
+    assignIfFunction(qrmakerPublic, "putCell", win.putCell);
+    assignIfFunction(qrmakerPublic, "putFinderCells", win.putFinderCells);
+    assignIfFunction(qrmakerPublic, "putAlignmentCells", win.putAlignmentCells);
+    assignIfFunction(qrmakerPublic, "putDarkModuleCells", win.putDarkModuleCells);
+    assignIfFunction(qrmakerPublic, "putFormatCells", win.putFormatCells);
+    assignIfFunction(qrmakerPublic, "putTimingCells", win.putTimingCells);
+    assignIfFunction(qrmakerPublic, "isEmpty", win.isEmpty);
+    assignIfFunction(qrmakerPublic, "isMoveBlocked", win.isMoveBlocked);
+    assignIfFunction(qrmakerPublic, "isSkipZone", win.isSkipZone);
+    assignIfFunction(qrmakerPublic, "hasMoreData", win.hasMoreData);
+    assignIfFunction(qrmakerPublic, "getNextData", win.getNextData);
+    assignIfFunction(qrmakerPublic, "canContinueLoop", win.canContinueLoop);
+    assignIfFunction(qrmakerPublic, "setSwitch", win.setSwitch);
+    assignIfFunction(qrmakerPublic, "isSwitchOn", win.isSwitchOn);
+    return qrmaker;
+  }
+
   function registerGlobalApi(api){
     // A. Guard + window handle
     if(typeof window === "undefined") return;
@@ -2413,43 +2454,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       assignIfFunction(win, key, api[key]);
     }
     // E. qrmaker public/internal (keep current behavior)
-    win.qrmaker = { public: {}, internal: {} };
-    const qrmakerPublic = win.qrmaker.public;
-    const qrmakerInternal = win.qrmaker.internal;
-    assignIfFunction(qrmakerInternal, "shouldStepFunctions", win.shouldStepFunctions);
-    assignIfFunction(qrmakerInternal, "makeStepThenable", win.makeStepThenable);
-    assignIfFunction(qrmakerInternal, "drawBasePatternsStepped", win.drawBasePatternsStepped);
-    assignIfFunction(qrmakerInternal, "drawDataPatternsStepped", win.drawDataPatternsStepped);
-    assignIfFunction(qrmakerInternal, "stopCurrentRun", win.stopCurrentRun);
-    assignIfFunction(qrmakerInternal, "resetCommand", win.resetCommand);
-    assignIfFunction(qrmakerPublic, "moveCursor", win.moveCursor);
-    assignIfFunction(qrmakerPublic, "turnCursor", win.turnCursor);
-    assignIfFunction(qrmakerPublic, "resetQRCode", win.resetQRCode);
-    assignIfFunction(qrmakerPublic, "pauseRunning", win.pauseRunning);
-    assignIfFunction(qrmakerPublic, "drawQRCode", win.drawQRCode);
-    assignIfFunction(qrmakerPublic, "drawBasePatterns", win.drawBasePatterns);
-    assignIfFunction(qrmakerPublic, "drawDataPatterns", win.drawDataPatterns);
-    assignIfFunction(qrmakerPublic, "applyMask", win.applyMask);
-    assignIfFunction(qrmakerPublic, "drawText", win.drawText);
-    assignIfFunction(qrmakerPublic, "drawFinderPatterns", win.drawFinderPatterns);
-    assignIfFunction(qrmakerPublic, "drawAlignmentPatterns", win.drawAlignmentPatterns);
-    assignIfFunction(qrmakerPublic, "drawDarkModulePatterns", win.drawDarkModulePatterns);
-    assignIfFunction(qrmakerPublic, "drawFormatPatterns", win.drawFormatPatterns);
-    assignIfFunction(qrmakerPublic, "drawTimingPatterns", win.drawTimingPatterns);
-    assignIfFunction(qrmakerPublic, "putCell", win.putCell);
-    assignIfFunction(qrmakerPublic, "putFinderCells", win.putFinderCells);
-    assignIfFunction(qrmakerPublic, "putAlignmentCells", win.putAlignmentCells);
-    assignIfFunction(qrmakerPublic, "putDarkModuleCells", win.putDarkModuleCells);
-    assignIfFunction(qrmakerPublic, "putFormatCells", win.putFormatCells);
-    assignIfFunction(qrmakerPublic, "putTimingCells", win.putTimingCells);
-    assignIfFunction(qrmakerPublic, "isEmpty", win.isEmpty);
-    assignIfFunction(qrmakerPublic, "isMoveBlocked", win.isMoveBlocked);
-    assignIfFunction(qrmakerPublic, "isSkipZone", win.isSkipZone);
-    assignIfFunction(qrmakerPublic, "hasMoreData", win.hasMoreData);
-    assignIfFunction(qrmakerPublic, "getNextData", win.getNextData);
-    assignIfFunction(qrmakerPublic, "canContinueLoop", win.canContinueLoop);
-    assignIfFunction(qrmakerPublic, "setSwitch", win.setSwitch);
-    assignIfFunction(qrmakerPublic, "isSwitchOn", win.isSwitchOn);
+    const qrmaker = buildQrmakerObject(win, api);
+    if(qrmaker) win.qrmaker = qrmaker;
   }
 
   const buildWindowApi = () => ({
