@@ -140,67 +140,37 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     stepSpeed.value = normalizedStepSpeedOverride;
     stepSpeed.defaultValue = normalizedStepSpeedOverride;
   }
-  const normalizeNumberSetting = (value) => {
-    if(typeof value === "number" && Number.isFinite(value)){
-      return value;
-    }
-    if(typeof value === "string"){
-      const trimmed = value.trim();
-      if(trimmed.length){
-        const parsed = Number(trimmed);
-        if(Number.isFinite(parsed)){
-          return parsed;
-        }
-      }
-    }
-    return null;
-  };
-  const stepAnimationEnabledOverride = (typeof configDefaults.stepAnimationEnabled === "boolean")
-    ? configDefaults.stepAnimationEnabled
-    : true;
-  const stepAnimationShowBorder = (typeof configDefaults.stepAnimationShowBorder === "boolean")
-    ? configDefaults.stepAnimationShowBorder
-    : true;
-  const stepAnimationDurationMs = normalizeNumberSetting(configDefaults.stepAnimationDurationMs);
-  const stepAnimationStartOpacity = normalizeNumberSetting(configDefaults.stepAnimationStartOpacity);
-  const stepAnimationStartScale = normalizeNumberSetting(configDefaults.stepAnimationStartScale);
-  const maskFadeDurationMs = normalizeNumberSetting(configDefaults.maskFadeDurationMs);
-  const presentationRingEnabled = (typeof configDefaults.presentationPointerRingEnabled === "boolean")
-    ? configDefaults.presentationPointerRingEnabled
-    : true;
-  const presentationRingDurationMs = normalizeNumberSetting(configDefaults.presentationPointerRingDurationMs);
-  const presentationRingSize = normalizeNumberSetting(configDefaults.presentationPointerRingSize);
-  const presentationRingScaleStart = normalizeNumberSetting(configDefaults.presentationPointerRingScaleStart);
-  const presentationRingScaleEnd = normalizeNumberSetting(configDefaults.presentationPointerRingScaleEnd);
-  const presentationRingColor = (typeof configDefaults.presentationPointerRingColor === "string")
-    ? configDefaults.presentationPointerRingColor.trim()
-    : "";
-  const presentationRingShadowColor = (typeof configDefaults.presentationPointerRingShadowColor === "string")
-    ? configDefaults.presentationPointerRingShadowColor.trim()
-    : "";
-  const presentationRingEase = (typeof configDefaults.presentationPointerRingEase === "string")
-    ? configDefaults.presentationPointerRingEase.trim()
-    : "";
-  const presentationRingDuration = (presentationRingDurationMs !== null)
-    ? Math.max(0, presentationRingDurationMs)
-    : 400;
-  const codeZoomStepPx = normalizeNumberSetting(configDefaults.codeZoomStepPx);
-  const codeZoomMinPx = normalizeNumberSetting(configDefaults.codeZoomMinPx);
-  const codeZoomMaxPx = normalizeNumberSetting(configDefaults.codeZoomMaxPx);
-  const codeZoomHoldCount = normalizeNumberSetting(configDefaults.codeZoomHoldCount);
-  const codeZoomBasePx = normalizeNumberSetting(configDefaults.codeZoomBasePx);
-  const codeZoomLineHeightMinPx = normalizeNumberSetting(configDefaults.codeZoomLineHeightMinPx);
-  const codeZoomLineHeightRatio = normalizeNumberSetting(configDefaults.codeZoomLineHeightRatio);
-  const codeZoomLineHeightMaxOffsetPx = normalizeNumberSetting(configDefaults.codeZoomLineHeightMaxOffsetPx);
-  if(typeof window !== "undefined"){
-    window.stepAnimationEnabled = stepAnimationEnabledOverride;
-    if(stepAnimationDurationMs !== null){
-      window.stepAnimationDurationMs = Math.max(0, stepAnimationDurationMs);
-    }
-    if(maskFadeDurationMs !== null){
-      window.maskFadeDurationMs = Math.max(0, maskFadeDurationMs);
-    }
+  const settingsNormalizer = (typeof window.createSettingsNormalizer === "function")
+    ? window.createSettingsNormalizer()
+    : null;
+  const resolvedSettings = (settingsNormalizer && typeof settingsNormalizer.resolveSettings === "function")
+    ? settingsNormalizer.resolveSettings(configDefaults)
+    : null;
+  if(settingsNormalizer && typeof settingsNormalizer.applyWindowSettings === "function"){
+    settingsNormalizer.applyWindowSettings(resolvedSettings);
   }
+  const stepAnimationEnabledOverride = resolvedSettings.stepAnimationEnabledOverride;
+  const stepAnimationShowBorder = resolvedSettings.stepAnimationShowBorder;
+  const stepAnimationDurationMs = resolvedSettings.stepAnimationDurationMs;
+  const stepAnimationStartOpacity = resolvedSettings.stepAnimationStartOpacity;
+  const stepAnimationStartScale = resolvedSettings.stepAnimationStartScale;
+  const presentationRingEnabled = resolvedSettings.presentationRingEnabled;
+  const presentationRingDurationMs = resolvedSettings.presentationRingDurationMs;
+  const presentationRingSize = resolvedSettings.presentationRingSize;
+  const presentationRingScaleStart = resolvedSettings.presentationRingScaleStart;
+  const presentationRingScaleEnd = resolvedSettings.presentationRingScaleEnd;
+  const presentationRingColor = resolvedSettings.presentationRingColor;
+  const presentationRingShadowColor = resolvedSettings.presentationRingShadowColor;
+  const presentationRingEase = resolvedSettings.presentationRingEase;
+  const presentationRingDuration = resolvedSettings.presentationRingDuration;
+  const codeZoomStepPx = resolvedSettings.codeZoomStepPx;
+  const codeZoomMinPx = resolvedSettings.codeZoomMinPx;
+  const codeZoomMaxPx = resolvedSettings.codeZoomMaxPx;
+  const codeZoomHoldCount = resolvedSettings.codeZoomHoldCount;
+  const codeZoomBasePx = resolvedSettings.codeZoomBasePx;
+  const codeZoomLineHeightMinPx = resolvedSettings.codeZoomLineHeightMinPx;
+  const codeZoomLineHeightRatio = resolvedSettings.codeZoomLineHeightRatio;
+  const codeZoomLineHeightMaxOffsetPx = resolvedSettings.codeZoomLineHeightMaxOffsetPx;
   const rootStyle = document.documentElement?.style;
   if(rootStyle){
     const stepBorderValue = stepAnimationShowBorder
