@@ -12,7 +12,14 @@
   const safeConsoleLog = (value) => {
     if(!shouldMirrorConsoleLogs()) return;
     try{
-      console.log(value);
+      if(typeof value === "string"){
+        console.log(value);
+      }else{
+        const desc = value && typeof value === "object" && typeof value.description === "string"
+          ? value.description
+          : "[qrmaker log]";
+        console.log(desc, value);
+      }
     }catch(e){
       // ignore console errors
     }
