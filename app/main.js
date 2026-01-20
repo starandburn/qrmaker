@@ -2470,107 +2470,39 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     window.qrmaker = { public: {}, internal: {} };
     const qrmakerPublic = window.qrmaker.public;
     const qrmakerInternal = window.qrmaker.internal;
-    if(typeof window.shouldStepFunctions === "function"){
-      qrmakerInternal.shouldStepFunctions = window.shouldStepFunctions;
-    }
-    if(typeof window.makeStepThenable === "function"){
-      qrmakerInternal.makeStepThenable = window.makeStepThenable;
-    }
-    if(typeof window.drawBasePatternsStepped === "function"){
-      qrmakerInternal.drawBasePatternsStepped = window.drawBasePatternsStepped;
-    }
-    if(typeof window.drawDataPatternsStepped === "function"){
-      qrmakerInternal.drawDataPatternsStepped = window.drawDataPatternsStepped;
-    }
-    if(typeof window.stopCurrentRun === "function"){
-      qrmakerInternal.stopCurrentRun = window.stopCurrentRun;
-    }
-    if(typeof window.resetCommand === "function"){
-      qrmakerInternal.resetCommand = window.resetCommand;
-    }
-    if(typeof window.moveCursor === "function"){
-      qrmakerPublic.moveCursor = window.moveCursor;
-    }
-    if(typeof window.turnCursor === "function"){
-      qrmakerPublic.turnCursor = window.turnCursor;
-    }
-    if(typeof window.resetQRCode === "function"){
-      qrmakerPublic.resetQRCode = window.resetQRCode;
-    }
-    if(typeof window.pauseRunning === "function"){
-      qrmakerPublic.pauseRunning = window.pauseRunning;
-    }
-    if(typeof window.drawQRCode === "function"){
-      qrmakerPublic.drawQRCode = window.drawQRCode;
-    }
-    if(typeof window.drawBasePatterns === "function"){
-      qrmakerPublic.drawBasePatterns = window.drawBasePatterns;
-    }
-    if(typeof window.drawDataPatterns === "function"){
-      qrmakerPublic.drawDataPatterns = window.drawDataPatterns;
-    }
-    if(typeof window.applyMask === "function"){
-      qrmakerPublic.applyMask = window.applyMask;
-    }
-    if(typeof window.drawText === "function"){
-      qrmakerPublic.drawText = window.drawText;
-    }
-    if(typeof window.drawFinderPatterns === "function"){
-      qrmakerPublic.drawFinderPatterns = window.drawFinderPatterns;
-    }
-    if(typeof window.drawAlignmentPatterns === "function"){
-      qrmakerPublic.drawAlignmentPatterns = window.drawAlignmentPatterns;
-    }
-    if(typeof window.drawDarkModulePatterns === "function"){
-      qrmakerPublic.drawDarkModulePatterns = window.drawDarkModulePatterns;
-    }
-    if(typeof window.drawFormatPatterns === "function"){
-      qrmakerPublic.drawFormatPatterns = window.drawFormatPatterns;
-    }
-    if(typeof window.drawTimingPatterns === "function"){
-      qrmakerPublic.drawTimingPatterns = window.drawTimingPatterns;
-    }
-    if(typeof window.putCell === "function"){
-      qrmakerPublic.putCell = window.putCell;
-    }
-    if(typeof window.putFinderCells === "function"){
-      qrmakerPublic.putFinderCells = window.putFinderCells;
-    }
-    if(typeof window.putAlignmentCells === "function"){
-      qrmakerPublic.putAlignmentCells = window.putAlignmentCells;
-    }
-    if(typeof window.putDarkModuleCells === "function"){
-      qrmakerPublic.putDarkModuleCells = window.putDarkModuleCells;
-    }
-    if(typeof window.putFormatCells === "function"){
-      qrmakerPublic.putFormatCells = window.putFormatCells;
-    }
-    if(typeof window.putTimingCells === "function"){
-      qrmakerPublic.putTimingCells = window.putTimingCells;
-    }
-    if(typeof window.isEmpty === "function"){
-      qrmakerPublic.isEmpty = window.isEmpty;
-    }
-    if(typeof window.isMoveBlocked === "function"){
-      qrmakerPublic.isMoveBlocked = window.isMoveBlocked;
-    }
-    if(typeof window.isSkipZone === "function"){
-      qrmakerPublic.isSkipZone = window.isSkipZone;
-    }
-    if(typeof window.hasMoreData === "function"){
-      qrmakerPublic.hasMoreData = window.hasMoreData;
-    }
-    if(typeof window.getNextData === "function"){
-      qrmakerPublic.getNextData = window.getNextData;
-    }
-    if(typeof window.canContinueLoop === "function"){
-      qrmakerPublic.canContinueLoop = window.canContinueLoop;
-    }
-    if(typeof window.setSwitch === "function"){
-      qrmakerPublic.setSwitch = window.setSwitch;
-    }
-    if(typeof window.isSwitchOn === "function"){
-      qrmakerPublic.isSwitchOn = window.isSwitchOn;
-    }
+    assignIfFunction(qrmakerInternal, "shouldStepFunctions", window.shouldStepFunctions);
+    assignIfFunction(qrmakerInternal, "makeStepThenable", window.makeStepThenable);
+    assignIfFunction(qrmakerInternal, "drawBasePatternsStepped", window.drawBasePatternsStepped);
+    assignIfFunction(qrmakerInternal, "drawDataPatternsStepped", window.drawDataPatternsStepped);
+    assignIfFunction(qrmakerInternal, "stopCurrentRun", window.stopCurrentRun);
+    assignIfFunction(qrmakerInternal, "resetCommand", window.resetCommand);
+    assignIfFunction(qrmakerPublic, "moveCursor", window.moveCursor);
+    assignIfFunction(qrmakerPublic, "turnCursor", window.turnCursor);
+    assignIfFunction(qrmakerPublic, "resetQRCode", window.resetQRCode);
+    assignIfFunction(qrmakerPublic, "pauseRunning", window.pauseRunning);
+    assignIfFunction(qrmakerPublic, "drawQRCode", window.drawQRCode);
+    assignIfFunction(qrmakerPublic, "drawBasePatterns", window.drawBasePatterns);
+    assignIfFunction(qrmakerPublic, "drawDataPatterns", window.drawDataPatterns);
+    assignIfFunction(qrmakerPublic, "applyMask", window.applyMask);
+    assignIfFunction(qrmakerPublic, "drawText", window.drawText);
+    assignIfFunction(qrmakerPublic, "drawFinderPatterns", window.drawFinderPatterns);
+    assignIfFunction(qrmakerPublic, "drawAlignmentPatterns", window.drawAlignmentPatterns);
+    assignIfFunction(qrmakerPublic, "drawDarkModulePatterns", window.drawDarkModulePatterns);
+    assignIfFunction(qrmakerPublic, "drawFormatPatterns", window.drawFormatPatterns);
+    assignIfFunction(qrmakerPublic, "drawTimingPatterns", window.drawTimingPatterns);
+    assignIfFunction(qrmakerPublic, "putCell", window.putCell);
+    assignIfFunction(qrmakerPublic, "putFinderCells", window.putFinderCells);
+    assignIfFunction(qrmakerPublic, "putAlignmentCells", window.putAlignmentCells);
+    assignIfFunction(qrmakerPublic, "putDarkModuleCells", window.putDarkModuleCells);
+    assignIfFunction(qrmakerPublic, "putFormatCells", window.putFormatCells);
+    assignIfFunction(qrmakerPublic, "putTimingCells", window.putTimingCells);
+    assignIfFunction(qrmakerPublic, "isEmpty", window.isEmpty);
+    assignIfFunction(qrmakerPublic, "isMoveBlocked", window.isMoveBlocked);
+    assignIfFunction(qrmakerPublic, "isSkipZone", window.isSkipZone);
+    assignIfFunction(qrmakerPublic, "hasMoreData", window.hasMoreData);
+    assignIfFunction(qrmakerPublic, "getNextData", window.getNextData);
+    assignIfFunction(qrmakerPublic, "canContinueLoop", window.canContinueLoop);
+    assignIfFunction(qrmakerPublic, "setSwitch", window.setSwitch);
+    assignIfFunction(qrmakerPublic, "isSwitchOn", window.isSwitchOn);
   }
 }
