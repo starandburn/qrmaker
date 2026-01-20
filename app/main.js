@@ -714,18 +714,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     return detail;
   };
 
-  // Prevent accidental text selection or drag on buttons
-  const allButtons = document.querySelectorAll("button");
-  for(const btn of allButtons){
-    btn.setAttribute("draggable", "false");
-    btn.addEventListener("dragstart", (ev) => ev.preventDefault());
-    btn.addEventListener("selectstart", (ev) => ev.preventDefault());
-    btn.addEventListener("mousedown", (ev) => {
-      if(ev.detail > 1){
-        ev.preventDefault();
-      }
-    });
-  }
+  // moved to ui/bind-events.js (phase1)
 
   // Relative directions (turn relative to current)
   const globalScope = (typeof window !== "undefined")
@@ -2225,14 +2214,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       window.open(url, "_blank");
     });
   }
-  if(codePanel){
-    const codeTitle = codePanel.querySelector(".panel-title");
-    if(codeTitle){
-      codeTitle.addEventListener("dblclick", () => {
-        codePanel.classList.toggle("show-samples");
-      });
-    }
-  }
+  // moved to ui/bind-events.js (phase1)
 
   const initOfflineCodeEditor = () => {
     const ta = userCodeInput;
@@ -2376,6 +2358,15 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       callPutFormatCells,
     })
     : null;
+  const uiDeps = {
+    dom,
+    editor: (typeof window !== "undefined") ? window.__codeEditor : null,
+    windowApi,
+    qrmaker: (typeof window !== "undefined") ? window.qrmaker : null,
+  };
+  if(typeof window.bindSimpleUiEvents === "function"){
+    window.bindSimpleUiEvents(uiDeps);
+  }
   callIfFunction(window.registerGlobalApi, {
     windowApi,
     isStepModeOn,
