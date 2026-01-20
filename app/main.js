@@ -2349,36 +2349,33 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
   initOfflineCodeEditor();
 
-  const buildWindowApi = () => ({
-    applyMask: callApplyMask,
-    drawBasePatterns: callDrawBasePatterns,
-    drawBasePatternsStepped: callDrawBasePatternsStepped,
-    makeStepThenable,
-    shouldStepFunctions,
-    drawQRCode,
-    drawText: (typeof window !== "undefined") ? window.drawText : undefined,
-    drawDataPatterns,
-    drawFunctionalPatterns,
-    initializeQRCode,
-    resetQRCode,
-    clearBoard,
-    resetCommand,
-    stopCurrentRun,
-    drawFormatPatterns,
-    drawFinderPatterns,
-    drawAlignmentPatterns,
-    drawDarkModulePatterns,
-    drawTimingPatterns,
-    putFinderCells: callPutFinderCells,
-    putAlignmentCells: callPutAlignmentCells,
-    putTimingCells: callPutTimingCells,
-    putDarkModuleCells: callPutDarkModuleCells,
-    putFormatCells: callPutFormatCells,
-    syncViewToggles: typeof window.syncViewToggles === "function" ? window.syncViewToggles : undefined,
-    toggleInputs: window.toggleInputs,
-  });
-
-  const windowApi = buildWindowApi();
+  const windowApi = (typeof window.createWindowApi === "function")
+    ? window.createWindowApi(window, {
+      callApplyMask,
+      callDrawBasePatterns,
+      callDrawBasePatternsStepped,
+      makeStepThenable,
+      shouldStepFunctions,
+      drawQRCode,
+      drawDataPatterns,
+      drawFunctionalPatterns,
+      initializeQRCode,
+      resetQRCode,
+      clearBoard,
+      resetCommand,
+      stopCurrentRun,
+      drawFormatPatterns,
+      drawFinderPatterns,
+      drawAlignmentPatterns,
+      drawDarkModulePatterns,
+      drawTimingPatterns,
+      callPutFinderCells,
+      callPutAlignmentCells,
+      callPutTimingCells,
+      callPutDarkModuleCells,
+      callPutFormatCells,
+    })
+    : null;
   callIfFunction(window.registerGlobalApi, {
     windowApi,
     isStepModeOn,
