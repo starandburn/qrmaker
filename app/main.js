@@ -474,7 +474,14 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ? statusManager.setLastExecutionError
     : () => {};
   setExecutionStatus("stopped");
-  let inputLockToken = 0;
+  const uiState = (typeof window.createUiState === "function")
+    ? window.createUiState()
+    : {
+      inputLockToken: 0,
+      setInputLockToken(value){ this.inputLockToken = value; },
+      clearInputLockToken(){ this.inputLockToken = 0; },
+      hasInputLockToken(){ return this.inputLockToken !== 0; },
+    };
   const isInputLocked = () => Boolean(txtInput?.readOnly || userCodeInput?.readOnly);
   if(userCodeInput){
     const initialCode = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
@@ -1704,7 +1711,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(!inputCheck.ok){
       return;
     }
-    const lockToken = ++inputLockToken;
+    const lockToken = uiState.inputLockToken + 1;
+    uiState.setInputLockToken(lockToken);
     setExecutionStatus("running");
     setInputLock(true);
     let runOk = false;
@@ -1739,7 +1747,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
           }
         }
       }
-      if(lockToken === inputLockToken){
+      if(lockToken === uiState.inputLockToken){
         setInputLock(false);
       }
       if(typeof window.logEvent === "function"){
