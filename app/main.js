@@ -2351,13 +2351,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
   function buildQrmakerObject(win, api){
     const qrmaker = { public: {}, internal: {} };
-    const qrmakerInternal = qrmaker.internal;
-    assignIfFunction(qrmakerInternal, "shouldStepFunctions", win.shouldStepFunctions);
-    assignIfFunction(qrmakerInternal, "makeStepThenable", win.makeStepThenable);
-    assignIfFunction(qrmakerInternal, "drawBasePatternsStepped", win.drawBasePatternsStepped);
-    assignIfFunction(qrmakerInternal, "drawDataPatternsStepped", win.drawDataPatternsStepped);
-    assignIfFunction(qrmakerInternal, "stopCurrentRun", win.stopCurrentRun);
-    assignIfFunction(qrmakerInternal, "resetCommand", win.resetCommand);
+    const internalApi = (typeof win.createInternalApi === "function")
+      ? win.createInternalApi(win, api)
+      : null;
+    if(internalApi){
+      qrmaker.internal = internalApi;
+    }
     const commands = (typeof win.createCommands === "function")
       ? win.createCommands(win, api)
       : null;
