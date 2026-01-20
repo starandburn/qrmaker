@@ -904,9 +904,8 @@ function isStepModeDataOnly(){
 
 function isStepModeActive(){
   if(isStepModeEnabled()) return true;
-  if(typeof window !== "undefined" && typeof window.shouldStepFunctions === "function"){
-    return window.shouldStepFunctions();
-  }
+  const shouldStep = callWindowFunctionIfExists("shouldStepFunctions");
+  if(typeof shouldStep !== "undefined") return shouldStep;
   return false;
 }
 
@@ -1703,16 +1702,12 @@ function hasMoreData(){
     return hasData;
   }
   if(!dataPatternLogActive && hasData && dataSeqIndex === 0){
-    if(typeof window !== "undefined" && typeof window.logEvent === "function"){
-      window.logEvent("DrawDataPatterns", "", "データパターンの描画開始");
-    }
+    callWindowFunctionIfExists("logEvent", "DrawDataPatterns", "", "データパターンの描画開始");
     dataPatternLogActive = true;
     dataPatternLogCompleted = false;
   }
   if(dataPatternLogActive && !hasData && !dataPatternLogCompleted){
-    if(typeof window !== "undefined" && typeof window.logEvent === "function"){
-      window.logEvent("DrawDataPatterns", "", "データパターンの描画終了");
-    }
+    callWindowFunctionIfExists("logEvent", "DrawDataPatterns", "", "データパターンの描画終了");
     dataPatternLogCompleted = true;
     dataPatternLogActive = false;
   }
@@ -1934,8 +1929,8 @@ function putCell(encodedValue){
   }
   if(ok){
     highlightCursorForStepPutCell(valKind, treatGenericAsData);
-    if(isDataKind(valKind) && typeof window !== "undefined" && typeof window.updateDataPatternStatus === "function"){
-      window.updateDataPatternStatus(valKind);
+    if(isDataKind(valKind)){
+      callWindowFunctionIfExists("updateDataPatternStatus", valKind);
     }
     if(typeof window !== "undefined"
       && typeof window.isStepModeOn === "function"

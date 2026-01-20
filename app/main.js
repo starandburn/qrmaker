@@ -128,9 +128,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const DATA_DEFAULT_TEXT = configuredQrData !== null
     ? configuredQrData
     : (txtInput?.value ?? "Hello, World!");
-  if(typeof window !== "undefined" && typeof window.refreshPatternIfPanelOpen === "function"){
-    window.refreshPatternIfPanelOpen();
-  }
+  callWindowFunctionIfExists("refreshPatternIfPanelOpen");
   if(userCodeInput){
     userCodeInput.value = (typeof configDefaults.userCode === "string") ? configDefaults.userCode : "qrcode";
   }

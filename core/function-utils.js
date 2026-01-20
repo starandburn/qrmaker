@@ -21,4 +21,15 @@
 
     global.assignIfFunction = assignIfFunction;
   }
+  if(typeof global.callWindowFunctionIfExists !== "function"){
+    function callWindowFunctionIfExists(name, ...args){
+      if(typeof window === "undefined") return;
+      const fn = window[name];
+      if(typeof fn === "function"){
+        return fn(...args);
+      }
+    }
+
+    global.callWindowFunctionIfExists = callWindowFunctionIfExists;
+  }
 })(typeof window !== "undefined" ? window : globalThis);
