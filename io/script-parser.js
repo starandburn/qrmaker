@@ -223,6 +223,7 @@
     "repeat",
     "loop",
     "for",
+    "stop",
     "end",
     "endif",
     "endfor",
@@ -907,9 +908,9 @@
           if(exitMatch){
             return { singleLine: `if (${condFormatted}) break;`, indent: typeof raw === "string" ? raw.match(/^\s*/)[0] : "" };
           }
-          if(stopCommandPattern.test(rest)){
-            return { singleLine: `if (${condFormatted}) throw ABORT_ERR;`, indent: typeof raw === "string" ? raw.match(/^\s*/)[0] : "" };
-          }
+        if(stopCommandPattern.test(rest)){
+            return { singleLine: `if (${condFormatted}) return;`, indent: typeof raw === "string" ? raw.match(/^\s*/)[0] : "" };
+        }
           const bodyFormatted = formatStudentCodeLine(rest);
           if(!bodyFormatted) return null;
           const bodyStmt = bodyFormatted.endsWith(";") ? bodyFormatted : `${bodyFormatted};`;
@@ -1095,7 +1096,7 @@
       if(formatted){
         const stmt = formatted.endsWith(";") ? formatted : `${formatted};`;
         const commandName = getCommandName(formatted);
-        if(awaitCalls || ASYNC_COMMANDS.has(commandName)){
+        if((awaitCalls || ASYNC_COMMANDS.has(commandName)) && !/^return\b/i.test(formatted)){
           combined.push(`await ${stmt}`);
         }else{
           combined.push(stmt);
@@ -1148,6 +1149,9 @@
       ? global
       : (typeof globalThis !== "undefined" ? globalThis : null);
     const identifierPattern = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+    if(/^stop(?:\s+(?:for|while|repeat))?$/i.test(trimmed)){
+      return "return";
+    }
     if(trimmed.includes("(") && trimmed.includes(")")){
       return trimmed.replace(/,/g, " ");
     }
