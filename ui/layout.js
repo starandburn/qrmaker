@@ -99,9 +99,7 @@ function updateDataStatus(){
 function setInputValue(value){
   if(!txtInput) return;
   txtInput.value = value;
-  if(typeof window.stopCurrentRun === "function"){
-    window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
-  }
+  callIfFunction(window.stopCurrentRun, { resetCursor: false, clear: false, reason: STOP_REASON_DATA });
   refreshPatternIfPanelOpen();
   updateDataStatus();
   txtInput.focus();
@@ -155,9 +153,7 @@ function getKindColor(kind){
 }
 
 const safeConsoleLog = (value) => {
-  if(typeof window.safeConsoleLog === "function"){
-    window.safeConsoleLog(value);
-  }
+  callIfFunction(window.safeConsoleLog, value);
 };
 
 // Minimal logger stub (overridden later in main.js) to buffer early logs
@@ -379,9 +375,7 @@ function refreshPattern({ force = false } = {}){
   renderRow(patternRowB, groupB, { breakAfterTerminator: false });
   renderRow(patternRowC, groupC, { small: false });
   refreshGuide();
-  if(typeof window.resetData === "function"){
-    window.resetData();
-  }
+  callIfFunction(window.resetData);
   return true;
 }
 function refreshGuide(){
@@ -391,12 +385,8 @@ function refreshGuide(){
 }
 if(txtInput){
   txtInput.addEventListener("input", () => {
-    if(typeof window.logEvent === "function"){
-      window.logEvent("txtInput.input", txtInput.value ?? "", "テキスト入力が変更されました");
-    }
-    if(typeof window.stopCurrentRun === "function"){
-      window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
-    }
+    callIfFunction(window.logEvent, "txtInput.input", txtInput.value ?? "", "テキスト入力が変更されました");
+    callIfFunction(window.stopCurrentRun, { resetCursor: false, clear: false, reason: STOP_REASON_DATA });
     refreshPatternIfPanelOpen();
     updateDataStatus();
   });
@@ -434,12 +424,8 @@ if(userCodeTextarea){
 
 if(btnClear){
   btnClear.addEventListener("click", () => {
-    if(typeof window.logEvent === "function"){
-      window.logEvent("btnClear.click", "", "入力をゼロにクリアしました");
-    }
-    if(typeof window.stopCurrentRun === "function"){
-      window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_DATA });
-    }
+    callIfFunction(window.logEvent, "btnClear.click", "", "入力をゼロにクリアしました");
+    callIfFunction(window.stopCurrentRun, { resetCursor: false, clear: false, reason: STOP_REASON_DATA });
     txtInput.value = "";
     refreshPatternIfPanelOpen();
     txtInput.focus();
@@ -452,9 +438,12 @@ if(sampleDropdownToggle){
     ev.preventDefault();
     ev.stopPropagation();
     const willOpen = !(sampleDropdown?.classList.contains("is-open"));
-    if(typeof window.logEvent === "function"){
-      window.logEvent("sampleDropdown.toggle", { state: willOpen ? "open" : "close" }, willOpen ? "サンプルメニューを開きました" : "サンプルメニューを閉じました");
-    }
+    callIfFunction(
+      window.logEvent,
+      "sampleDropdown.toggle",
+      { state: willOpen ? "open" : "close" },
+      willOpen ? "サンプルメニューを開きました" : "サンプルメニューを閉じました",
+    );
     toggleSampleDropdown();
   });
 }
@@ -463,9 +452,7 @@ if(sampleDropdownMenu){
     const option = ev.target.closest("[data-sample-value]");
     if(!option) return;
     const value = option.getAttribute("data-sample-value") ?? "";
-    if(typeof window.logEvent === "function"){
-      window.logEvent("sampleDropdown.select", { value }, "サンプル入力が選択されました");
-    }
+    callIfFunction(window.logEvent, "sampleDropdown.select", { value }, "サンプル入力が選択されました");
     setInputValue(value);
     closeSampleDropdown();
   });
@@ -477,9 +464,7 @@ document.addEventListener("click", () => {
 const userCode = document.getElementById("userCode");
 if(userCode){
   userCode.addEventListener("input", () => {
-    if(typeof window.stopCurrentRun === "function"){
-      window.stopCurrentRun({ resetCursor: false, clear: false, reason: STOP_REASON_CODE });
-    }
+    callIfFunction(window.stopCurrentRun, { resetCursor: false, clear: false, reason: STOP_REASON_CODE });
   });
 }
 
@@ -514,9 +499,7 @@ function syncViewLayout(){
 
   sq.style.width = size + "px";
   sq.style.height = size + "px";
-  if(typeof window.updateCursor === "function"){
-    window.updateCursor();
-  }
+  callIfFunction(window.updateCursor);
 }
 
 window.addEventListener("resize", () => requestAnimationFrame(syncViewLayout));
@@ -624,9 +607,7 @@ if(toggleCursor){
 }
 if(btnSelectAllToggles){
   btnSelectAllToggles.addEventListener("click", () => {
-    if(typeof window.logEvent === "function"){
-      window.logEvent("btnSelectAllToggles.click", "", "表示トグルをすべてオンにしました");
-    }
+    callIfFunction(window.logEvent, "btnSelectAllToggles.click", "", "表示トグルをすべてオンにしました");
     for(const el of toggleInputs){
       el.checked = true;
     }
@@ -639,9 +620,7 @@ if(btnSelectAllToggles){
 }
 if(btnClearAllToggles){
   btnClearAllToggles.addEventListener("click", () => {
-    if(typeof window.logEvent === "function"){
-      window.logEvent("btnClearAllToggles.click", "", "表示トグルをすべてオフにしました");
-    }
+    callIfFunction(window.logEvent, "btnClearAllToggles.click", "", "表示トグルをすべてオフにしました");
     for(const el of toggleInputs){
       el.checked = false;
     }
@@ -670,9 +649,7 @@ if(asciiLink){
   asciiLink.addEventListener("click", (ev) => {
     ev.preventDefault();
     ev.stopPropagation();
-    if(typeof window.logEvent === "function"){
-      window.logEvent("asciiLink.click", "", "ASCII 表を開きました");
-    }
+    callIfFunction(window.logEvent, "asciiLink.click", "", "ASCII 表を開きました");
     openAsciiModal();
   });
   asciiLink.addEventListener("click", (ev) => ev.stopPropagation());
@@ -680,9 +657,7 @@ if(asciiLink){
 if(asciiClose){
   asciiClose.addEventListener("click", (ev) => {
     ev.preventDefault();
-    if(typeof window.logEvent === "function"){
-      window.logEvent("asciiClose.click", "", "ASCII 表を閉じました");
-    }
+    callIfFunction(window.logEvent, "asciiClose.click", "", "ASCII 表を閉じました");
     closeAsciiModal();
   });
 }

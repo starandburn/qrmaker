@@ -118,7 +118,7 @@
         const desc = (typeof buildSetSwitchDescription === "function")
           ? buildSetSwitchDescription(color, next)
           : "";
-        global.logEvent("setSwitch", JSON.stringify({ color, state: next }), desc);
+        callIfFunction(global.logEvent, "setSwitch", JSON.stringify({ color, state: next }), desc);
       }
       return next;
     };
@@ -131,7 +131,7 @@
         const desc = (typeof buildToggleSwitchDescription === "function")
           ? buildToggleSwitchDescription(color)
           : "";
-        global.logEvent("setSwitch", JSON.stringify({ color, flipped: true, state: next }), desc);
+        callIfFunction(global.logEvent, "setSwitch", JSON.stringify({ color, flipped: true, state: next }), desc);
       }
       return next;
     };

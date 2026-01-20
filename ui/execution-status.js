@@ -101,9 +101,9 @@
       target.textContent = buildExecutionStatusText(state, message, detail);
       executionStatusEl.className = `execution-status status-${state}`;
       if(typeof onAfterStatusUpdate === "function"){
-        onAfterStatusUpdate({ state, message, detail });
+        callIfFunction(onAfterStatusUpdate, { state, message, detail });
       }else if(typeof global.updateExecutionStatusCursor === "function"){
-        global.updateExecutionStatusCursor();
+        callIfFunction(global.updateExecutionStatusCursor);
       }
     };
 

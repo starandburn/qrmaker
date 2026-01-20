@@ -212,12 +212,12 @@
       let nextInfos = [];
       if(basePatternActive){
         if(typeof getNextBasePatternInfos === "function"){
-          nextInfos = getNextBasePatternInfos(NEXT_CELL_COUNT) || [];
+          nextInfos = callIfFunction(getNextBasePatternInfos, NEXT_CELL_COUNT) || [];
         }
       }else if(typeof getNextDataInfos === "function"){
-        nextInfos = getNextDataInfos(NEXT_CELL_COUNT) || [];
+        nextInfos = callIfFunction(getNextDataInfos, NEXT_CELL_COUNT) || [];
       }else{
-        const single = (typeof getNextDataInfo === "function") ? getNextDataInfo() : null;
+        const single = (typeof getNextDataInfo === "function") ? callIfFunction(getNextDataInfo) : null;
         if(single) nextInfos = [single];
       }
       for(let i = 0; i < nextCells.length; i++){

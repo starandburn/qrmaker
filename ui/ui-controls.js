@@ -87,18 +87,10 @@
       if(!footerCopy || !panel) return;
       footerCopy.addEventListener("dblclick", () => {
         const nextVisible = (typeof isDebugVisible === "function") ? !isDebugVisible() : true;
-        if(typeof applyDebugVisibility === "function"){
-          applyDebugVisibility(nextVisible);
-        }
-        if(typeof syncDebugOverlay === "function"){
-          syncDebugOverlay();
-        }
-        if(typeof syncDebugPanelLayout === "function"){
-          syncDebugPanelLayout();
-        }
-        if(typeof syncParsedCode === "function"){
-          syncParsedCode();
-        }
+        callIfFunction(applyDebugVisibility, nextVisible);
+        callIfFunction(syncDebugOverlay);
+        callIfFunction(syncDebugPanelLayout);
+        callIfFunction(syncParsedCode);
         if(typeof requestAnimationFrame === "function" && typeof syncViewLayout === "function"){
           requestAnimationFrame(syncViewLayout);
         }

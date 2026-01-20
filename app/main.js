@@ -321,13 +321,11 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     applyDebugVisibilityDom(visible);
   };
-  if(typeof window.bindUiEvents === "function"){
-    window.bindUiEvents({
-      setHistoryVisibility,
-      getHistoryVisible,
-      setPatternPanelOpen,
-    });
-  }
+  callIfFunction(window.bindUiEvents, {
+    setHistoryVisibility,
+    getHistoryVisible,
+    setPatternPanelOpen,
+  });
   const getDebugPanel = () => debugUI.debugPanel;
   if(!window.historyController){
     throw new Error("state/history-store.js must be loaded before main.js.");
@@ -336,17 +334,15 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const getCurrentCodeValue = () => {
     return userCodeInput ? userCodeInput.value ?? "" : "";
   };
-  if(typeof window.bindHistoryUI === "function"){
-    window.bindHistoryUI({
-      dom,
-      layoutUI,
-      store,
-      historyController,
-      getCurrentCodeValue,
-      setHistoryVisibility,
-      getHistoryVisible,
-    });
-  }
+  callIfFunction(window.bindHistoryUI, {
+    dom,
+    layoutUI,
+    store,
+    historyController,
+    getCurrentCodeValue,
+    setHistoryVisibility,
+    getHistoryVisible,
+  });
   const urlParams = urlState.params || new URLSearchParams(window.location.search || "");
   const presentationMode = urlParams.get("z") === "1";
   const {
@@ -477,9 +473,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       cycle.requestRender(reason);
       return;
     }
-    if(typeof window.flushRender === "function"){
-      window.flushRender();
-    }
+    callIfFunction(window.flushRender);
   };
   applyPatternOpenFromParam({ dataPatternPanel, setPatternPanelOpen });
   applyDebugFromParam({ debugPanel: getDebugPanel(), setDebugVisible });
@@ -1113,9 +1107,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     const modeSetter = typeof setRenderMode === "function"
       ? setRenderMode
       : (mode) => {
-        if(typeof window.setRenderMode === "function"){
-          window.setRenderMode(mode);
-        }
+        callIfFunction(window.setRenderMode, mode);
       };
     const baseRun = ctx.runId;
     const currentMaskRun = ++ctx.maskRunId;
@@ -1379,9 +1371,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     const runFunctionalPattern = async (fn, ...fnArgs) => {
       if(typeof window !== "undefined"){
         window.isDrawingBasePattern = true;
-        if(typeof window.setBasePatternLookahead === "function"){
-          window.setBasePatternLookahead([]);
-        }
+        callIfFunction(window.setBasePatternLookahead, []);
       }
       try{
         const result = await fn(...fnArgs);
@@ -1389,9 +1379,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }finally{
         if(typeof window !== "undefined"){
           window.isDrawingBasePattern = false;
-          if(typeof window.setBasePatternLookahead === "function"){
-            window.setBasePatternLookahead([]);
-          }
+          callIfFunction(window.setBasePatternLookahead, []);
         }
       }
     };
@@ -2239,9 +2227,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     });
   }
   historyController.pushHistorySnapshot("初期状態");
-  if(typeof window.setupSampleUI === "function"){
-    window.setupSampleUI({ dom, configDefaults, resolvedDataTemplates, historyController });
-  }
+  callIfFunction(window.setupSampleUI, { dom, configDefaults, resolvedDataTemplates, historyController });
   const clipboardApi = (typeof navigator !== "undefined" ? navigator.clipboard : null);
   if(btnCopyCode){
     if(clipboardApi && typeof clipboardApi.writeText === "function"){

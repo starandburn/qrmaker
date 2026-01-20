@@ -47,9 +47,7 @@
     if(colorToggleEl){
       colorToggleEl.addEventListener("change", () => {
         isColorEnabled = !!colorToggleEl.checked;
-        if(typeof onColorChange === "function"){
-          onColorChange(isColorEnabled);
-        }
+        callIfFunction(onColorChange, isColorEnabled);
       });
     }
 

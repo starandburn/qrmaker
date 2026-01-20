@@ -24,9 +24,7 @@
     const safeSettings = (settings && typeof settings === "object") ? settings : {};
     window.appSettings = safeSettings;
     runMainApp({ layoutUI, urlState, debugUI, settings: safeSettings });
-    if(typeof window.__qrmakerSelfCheck === "function"){
-      window.__qrmakerSelfCheck();
-    }
+    callIfFunction(window.__qrmakerSelfCheck);
   };
 
   loadSettings().then(startApp).catch(() => startApp({}));

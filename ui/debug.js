@@ -9,9 +9,7 @@
   const debugOnlyControlsList = Array.from(document.querySelectorAll(".debug-only"));
   const logBuffer = global._logBuffer || [];
   const safeConsoleLog = (value) => {
-    if(typeof window.safeConsoleLog === "function"){
-      window.safeConsoleLog(value);
-    }
+    callIfFunction(window.safeConsoleLog, value);
   };
   let lastLogBody = null;
 

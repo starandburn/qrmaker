@@ -51,22 +51,16 @@
           boardMatrix[r][c] = unplacedKind;
         }
       }
-      if(typeof setTimingRowIndex === "function"){
-        setTimingRowIndex(0);
-      }
+      callIfFunction(setTimingRowIndex, 0);
       if(typeof setTimingColIndex !== "function"){
         throw new Error("setTimingColIndex is required");
       }
       setTimingColIndex(0);
-      if(typeof setHasFormatPattern === "function"){
-        setHasFormatPattern(false);
+      callIfFunction(setHasFormatPattern, false);
+      if(resetDataFlag){
+        callIfFunction(resetData);
       }
-      if(resetDataFlag && typeof resetData === "function"){
-        resetData();
-      }
-      if(typeof resetSwitchStates === "function"){
-        resetSwitchStates();
-      }
+      callIfFunction(resetSwitchStates);
       return true;
     }
 
@@ -98,9 +92,7 @@
         return;
       }
       resetCursor();
-      if(typeof setPendingCursor === "function"){
-        setPendingCursor(null);
-      }
+      callIfFunction(setPendingCursor, null);
       requestRender("resetBoardState");
       if(typeof requestAnimationFrame === "function"){
         return {
@@ -130,9 +122,7 @@
         return false;
       }
       resetCursor();
-      if(typeof setPendingCursor === "function"){
-        setPendingCursor(null);
-      }
+      callIfFunction(setPendingCursor, null);
       requestRender("resetQRCode");
       if(typeof requestAnimationFrame === "function"){
         return {
@@ -161,9 +151,7 @@
       global.logEvent("resetCommand", "", logResetCommandMessage);
       showApiStatus("resetCommand");
       resetBoardState(options);
-      if(typeof resetSwitchStates === "function"){
-        resetSwitchStates();
-      }
+      callIfFunction(resetSwitchStates);
       requestRender("resetCommand");
       if(typeof requestAnimationFrame === "function"){
         await new Promise((resolve) => requestAnimationFrame(() => resolve(true)));
