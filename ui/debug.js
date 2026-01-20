@@ -8,20 +8,9 @@
   let debugLogElement = document.getElementById("debugLog");
   const debugOnlyControlsList = Array.from(document.querySelectorAll(".debug-only"));
   const logBuffer = global._logBuffer || [];
-  const shouldMirrorConsoleLogs = () => true;
   const safeConsoleLog = (value) => {
-    if(!shouldMirrorConsoleLogs()) return;
-    try{
-      if(typeof value === "string"){
-        console.log(value);
-      }else{
-        const desc = value && typeof value === "object" && typeof value.description === "string"
-          ? value.description
-          : "[qrmaker log]";
-        console.log(desc, value);
-      }
-    }catch(e){
-      // ignore console errors
+    if(typeof window.safeConsoleLog === "function"){
+      window.safeConsoleLog(value);
     }
   };
   let lastLogBody = null;
