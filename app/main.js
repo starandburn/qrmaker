@@ -55,9 +55,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   function isStepModeOn(){
     return !!(stepMode && stepMode.checked);
   }
-  if(typeof window !== "undefined"){
-    window.isStepModeOn = isStepModeOn;
-  }
   const toggleDebugValues = dom.toggleDebugValues;
   const titleIcon = dom.titleIcon;
   const toggleCursor = dom.toggleCursor;
@@ -392,21 +389,18 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const skipExistingCells = (skipExistingFromParam !== null)
     ? skipExistingFromParam
     : defaultSkipExistingCells;
-  window.skipExistingCells = skipExistingCells;
   const autoAvoidTimingFromParam = urlParams.has(TIMING_AUTO_PARAM_KEY)
     ? urlState.stringifyBool(urlParams.get(TIMING_AUTO_PARAM_KEY))
     : null;
   const autoAvoidTiming = (autoAvoidTimingFromParam !== null)
     ? autoAvoidTimingFromParam
     : defaultAutoAvoidTiming;
-  window.autoAvoidTiming = autoAvoidTiming;
   const useDirectionFromParam = urlParams.has(USE_DIRECTION_PARAM_KEY)
     ? urlState.stringifyBool(urlParams.get(USE_DIRECTION_PARAM_KEY))
     : null;
   const useDirection = (useDirectionFromParam !== null)
     ? useDirectionFromParam
     : defaultUseDirection;
-  window.useDirection = useDirection;
   if(document && document.body){
     document.body.classList.toggle("direction-disabled", !useDirection);
   }
@@ -552,20 +546,16 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       logEvent: (typeof window.logEvent === "function") ? window.logEvent : null,
     })
     : null;
-  if(typeof window !== "undefined"){
-    if(cursorUI && typeof cursorUI.updateExecutionStatusCursor === "function"){
-      window.updateExecutionStatusCursor = cursorUI.updateExecutionStatusCursor;
-    }
-    window.isDrawingBasePattern = false;
-    window.basePatternLookahead = [];
-    window.setBasePatternLookahead = (infos) => {
-      window.basePatternLookahead = Array.isArray(infos) ? infos : [];
-    };
-    window.getNextBasePatternInfos = (count = 4) => {
-      const list = Array.isArray(window.basePatternLookahead) ? window.basePatternLookahead : [];
-      return list.slice(0, Math.max(0, count));
-    };
-  }
+  const updateExecutionStatusCursor = (cursorUI && typeof cursorUI.updateExecutionStatusCursor === "function")
+    ? cursorUI.updateExecutionStatusCursor
+    : undefined;
+  const setBasePatternLookahead = (infos) => {
+    window.basePatternLookahead = Array.isArray(infos) ? infos : [];
+  };
+  const getNextBasePatternInfos = (count = 4) => {
+    const list = Array.isArray(window.basePatternLookahead) ? window.basePatternLookahead : [];
+    return list.slice(0, Math.max(0, count));
+  };
 
   let clearNoiseLayer = () => {};
   let isQRCodeReadable = false;
@@ -803,7 +793,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   ctx.RENDER_BUFFERED = RENDER_BUFFERED;
   ctx.ABORT_ERR = ABORT_ERR;
   ctx.RESET_DELAY_MS = RESET_DELAY_MS;
-  window.setRenderMode = setRenderMode;
   ctx.helpers = ctx.helpers || {};
   if(!window.domainQrParams){
     throw new Error("domain/qr-params.js must be loaded before main.js.");
@@ -845,9 +834,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       makeStepThenable: () => true,
       shouldStepFunctions: () => false,
     };
-  if(typeof window !== "undefined"){
-    window.shouldStepFunctions = shouldStepFunctions;
-  }
   const bumpPauseAbortVersion = () => {
     if(typeof window === "undefined") return;
     const current = Number.isFinite(window.__pauseAbortVersion) ? window.__pauseAbortVersion : 0;
@@ -1027,14 +1013,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     syncViewLayout: window.syncViewLayout,
   });
 
-  // Export helpers to window
-  window.RENDER_IMMEDIATE = RENDER_IMMEDIATE;
-  window.RENDER_BUFFERED = RENDER_BUFFERED;
-  window.updateCursor = updateCursor;
-  window.boardMatrix = boardMatrix;
-  window.getNextData = getNextData;
-  // Update board matrix directly: row/col 1-based, encoded value (encodeBit)
-  window.invertCell = invertCell;
   const wrapDrawApi = (name, fn, description) => {
     const wrapped = async function(...args){
       showApiStatus(name);
@@ -1384,11 +1362,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const drawTimingPatterns = wrapDrawApi("drawTimingPatterns", callDrawTimingPatterns, "タイミングパターンを描画");
   const drawFormatPatterns = wrapDrawApi("drawFormatPatterns", callDrawFormatPatterns, "フォーマットパターンを描画");
   ctx.drawFormatPatterns = drawFormatPatterns;
-  window.buildFunctionSet = buildFunctionSet;
-  window.parseCellRef = parseCellRef;
-  window.cellRefFromRowCol = cellRefFromRowCol;
-  window.moveCursor = moveCursor;
-  window.turnCursor = turnCursor;
   const drawFunctionalPatterns = () => callDrawBasePatterns({ deferFlush: false, currentRun: runId });
   const initializeQRCode = async () => {
     const current = ++runId;
@@ -1397,19 +1370,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     updateCursor(cursorPos.row, cursorPos.col, DIR_UP);
     return true;
   };
-  if(typeof window !== "undefined"){
-    window.setSwitch = setSwitch;
-    window.isSwitchOn = isSwitchOn;
-    window.toggleSwitchState = toggleSwitchState;
-    window.red = red;
-    window.blue = blue;
-    window.green = green;
-    window.yellow = yellow;
-    window.isRedOn = isRedOn;
-    window.isBlueOn = isBlueOn;
-    window.isGreenOn = isGreenOn;
-    window.isYellowOn = isYellowOn;
-  }
   async function drawDataPatterns({ currentRun } = {}){
     window.logEvent("drawDataPatterns", currentRun ?? "", "データパターン描画");
     showApiStatus("drawDataPatterns");
@@ -2389,19 +2349,108 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
   initOfflineCodeEditor();
 
-  const publishWindowApi = (api) => {
-    if(typeof window === "undefined" || !api) return;
+  function registerGlobalApi(api){
+    // A. Guard + window handle
+    if(typeof window === "undefined") return;
+    if(!api) return;
     const win = window;
-    win.qrmakerApi = api;
-    for(const [name, value] of Object.entries(api)){
-      if(typeof value === "function"){
-        win[name] = value;
+    // B. windowApi (legacy) expansion
+    const windowApi = api.windowApi;
+    if(typeof windowApi !== "undefined"){
+      win.qrmakerApi = windowApi;
+      for(const [name, value] of Object.entries(windowApi)){
+        assignIfFunction(win, name, value);
+      }
+      if(Array.isArray(windowApi.toggleInputs)){
+        win.toggleInputs = windowApi.toggleInputs;
       }
     }
-    if(Array.isArray(api.toggleInputs)){
-      win.toggleInputs = api.toggleInputs;
+    // C. Value exports
+    const valueKeys = [
+      "skipExistingCells",
+      "autoAvoidTiming",
+      "useDirection",
+      "isDrawingBasePattern",
+      "basePatternLookahead",
+      "RENDER_IMMEDIATE",
+      "RENDER_BUFFERED",
+      "boardMatrix",
+    ];
+    for(const key of valueKeys){
+      if(typeof api[key] !== "undefined"){
+        win[key] = api[key];
+      }
     }
-  };
+    // D. Function exports
+    const fnKeys = [
+      "isStepModeOn",
+      "updateExecutionStatusCursor",
+      "setBasePatternLookahead",
+      "getNextBasePatternInfos",
+      "setRenderMode",
+      "shouldStepFunctions",
+      "updateCursor",
+      "getNextData",
+      "invertCell",
+      "buildFunctionSet",
+      "parseCellRef",
+      "cellRefFromRowCol",
+      "moveCursor",
+      "turnCursor",
+      "setSwitch",
+      "isSwitchOn",
+      "toggleSwitchState",
+      "red",
+      "blue",
+      "green",
+      "yellow",
+      "isRedOn",
+      "isBlueOn",
+      "isGreenOn",
+      "isYellowOn",
+    ];
+    for(const key of fnKeys){
+      assignIfFunction(win, key, api[key]);
+    }
+    // E. qrmaker public/internal (keep current behavior)
+    win.qrmaker = { public: {}, internal: {} };
+    const qrmakerPublic = win.qrmaker.public;
+    const qrmakerInternal = win.qrmaker.internal;
+    assignIfFunction(qrmakerInternal, "shouldStepFunctions", win.shouldStepFunctions);
+    assignIfFunction(qrmakerInternal, "makeStepThenable", win.makeStepThenable);
+    assignIfFunction(qrmakerInternal, "drawBasePatternsStepped", win.drawBasePatternsStepped);
+    assignIfFunction(qrmakerInternal, "drawDataPatternsStepped", win.drawDataPatternsStepped);
+    assignIfFunction(qrmakerInternal, "stopCurrentRun", win.stopCurrentRun);
+    assignIfFunction(qrmakerInternal, "resetCommand", win.resetCommand);
+    assignIfFunction(qrmakerPublic, "moveCursor", win.moveCursor);
+    assignIfFunction(qrmakerPublic, "turnCursor", win.turnCursor);
+    assignIfFunction(qrmakerPublic, "resetQRCode", win.resetQRCode);
+    assignIfFunction(qrmakerPublic, "pauseRunning", win.pauseRunning);
+    assignIfFunction(qrmakerPublic, "drawQRCode", win.drawQRCode);
+    assignIfFunction(qrmakerPublic, "drawBasePatterns", win.drawBasePatterns);
+    assignIfFunction(qrmakerPublic, "drawDataPatterns", win.drawDataPatterns);
+    assignIfFunction(qrmakerPublic, "applyMask", win.applyMask);
+    assignIfFunction(qrmakerPublic, "drawText", win.drawText);
+    assignIfFunction(qrmakerPublic, "drawFinderPatterns", win.drawFinderPatterns);
+    assignIfFunction(qrmakerPublic, "drawAlignmentPatterns", win.drawAlignmentPatterns);
+    assignIfFunction(qrmakerPublic, "drawDarkModulePatterns", win.drawDarkModulePatterns);
+    assignIfFunction(qrmakerPublic, "drawFormatPatterns", win.drawFormatPatterns);
+    assignIfFunction(qrmakerPublic, "drawTimingPatterns", win.drawTimingPatterns);
+    assignIfFunction(qrmakerPublic, "putCell", win.putCell);
+    assignIfFunction(qrmakerPublic, "putFinderCells", win.putFinderCells);
+    assignIfFunction(qrmakerPublic, "putAlignmentCells", win.putAlignmentCells);
+    assignIfFunction(qrmakerPublic, "putDarkModuleCells", win.putDarkModuleCells);
+    assignIfFunction(qrmakerPublic, "putFormatCells", win.putFormatCells);
+    assignIfFunction(qrmakerPublic, "putTimingCells", win.putTimingCells);
+    assignIfFunction(qrmakerPublic, "isEmpty", win.isEmpty);
+    assignIfFunction(qrmakerPublic, "isMoveBlocked", win.isMoveBlocked);
+    assignIfFunction(qrmakerPublic, "isSkipZone", win.isSkipZone);
+    assignIfFunction(qrmakerPublic, "hasMoreData", win.hasMoreData);
+    assignIfFunction(qrmakerPublic, "getNextData", win.getNextData);
+    assignIfFunction(qrmakerPublic, "canContinueLoop", win.canContinueLoop);
+    assignIfFunction(qrmakerPublic, "setSwitch", win.setSwitch);
+    assignIfFunction(qrmakerPublic, "isSwitchOn", win.isSwitchOn);
+  }
 
   const buildWindowApi = () => ({
     applyMask: callApplyMask,
@@ -2433,44 +2482,40 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   });
 
   const windowApi = buildWindowApi();
-  publishWindowApi(windowApi);
-  if(typeof window !== "undefined"){
-    window.qrmaker = { public: {}, internal: {} };
-    const qrmakerPublic = window.qrmaker.public;
-    const qrmakerInternal = window.qrmaker.internal;
-    assignIfFunction(qrmakerInternal, "shouldStepFunctions", window.shouldStepFunctions);
-    assignIfFunction(qrmakerInternal, "makeStepThenable", window.makeStepThenable);
-    assignIfFunction(qrmakerInternal, "drawBasePatternsStepped", window.drawBasePatternsStepped);
-    assignIfFunction(qrmakerInternal, "drawDataPatternsStepped", window.drawDataPatternsStepped);
-    assignIfFunction(qrmakerInternal, "stopCurrentRun", window.stopCurrentRun);
-    assignIfFunction(qrmakerInternal, "resetCommand", window.resetCommand);
-    assignIfFunction(qrmakerPublic, "moveCursor", window.moveCursor);
-    assignIfFunction(qrmakerPublic, "turnCursor", window.turnCursor);
-    assignIfFunction(qrmakerPublic, "resetQRCode", window.resetQRCode);
-    assignIfFunction(qrmakerPublic, "pauseRunning", window.pauseRunning);
-    assignIfFunction(qrmakerPublic, "drawQRCode", window.drawQRCode);
-    assignIfFunction(qrmakerPublic, "drawBasePatterns", window.drawBasePatterns);
-    assignIfFunction(qrmakerPublic, "drawDataPatterns", window.drawDataPatterns);
-    assignIfFunction(qrmakerPublic, "applyMask", window.applyMask);
-    assignIfFunction(qrmakerPublic, "drawText", window.drawText);
-    assignIfFunction(qrmakerPublic, "drawFinderPatterns", window.drawFinderPatterns);
-    assignIfFunction(qrmakerPublic, "drawAlignmentPatterns", window.drawAlignmentPatterns);
-    assignIfFunction(qrmakerPublic, "drawDarkModulePatterns", window.drawDarkModulePatterns);
-    assignIfFunction(qrmakerPublic, "drawFormatPatterns", window.drawFormatPatterns);
-    assignIfFunction(qrmakerPublic, "drawTimingPatterns", window.drawTimingPatterns);
-    assignIfFunction(qrmakerPublic, "putCell", window.putCell);
-    assignIfFunction(qrmakerPublic, "putFinderCells", window.putFinderCells);
-    assignIfFunction(qrmakerPublic, "putAlignmentCells", window.putAlignmentCells);
-    assignIfFunction(qrmakerPublic, "putDarkModuleCells", window.putDarkModuleCells);
-    assignIfFunction(qrmakerPublic, "putFormatCells", window.putFormatCells);
-    assignIfFunction(qrmakerPublic, "putTimingCells", window.putTimingCells);
-    assignIfFunction(qrmakerPublic, "isEmpty", window.isEmpty);
-    assignIfFunction(qrmakerPublic, "isMoveBlocked", window.isMoveBlocked);
-    assignIfFunction(qrmakerPublic, "isSkipZone", window.isSkipZone);
-    assignIfFunction(qrmakerPublic, "hasMoreData", window.hasMoreData);
-    assignIfFunction(qrmakerPublic, "getNextData", window.getNextData);
-    assignIfFunction(qrmakerPublic, "canContinueLoop", window.canContinueLoop);
-    assignIfFunction(qrmakerPublic, "setSwitch", window.setSwitch);
-    assignIfFunction(qrmakerPublic, "isSwitchOn", window.isSwitchOn);
-  }
+  registerGlobalApi({
+    windowApi,
+    isStepModeOn,
+    skipExistingCells,
+    autoAvoidTiming,
+    useDirection,
+    updateExecutionStatusCursor,
+    isDrawingBasePattern: false,
+    basePatternLookahead: [],
+    setBasePatternLookahead,
+    getNextBasePatternInfos,
+    setRenderMode,
+    shouldStepFunctions,
+    RENDER_IMMEDIATE,
+    RENDER_BUFFERED,
+    updateCursor,
+    boardMatrix,
+    getNextData,
+    invertCell,
+    buildFunctionSet,
+    parseCellRef,
+    cellRefFromRowCol,
+    moveCursor,
+    turnCursor,
+    setSwitch,
+    isSwitchOn,
+    toggleSwitchState,
+    red,
+    blue,
+    green,
+    yellow,
+    isRedOn,
+    isBlueOn,
+    isGreenOn,
+    isYellowOn,
+  });
 }
