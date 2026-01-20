@@ -373,10 +373,10 @@ const FONT5 = {
     "01000",
   ],
   "W": [
-    "10010",
-    "10010",
-    "10110",
-    "10110",
+    "10001",
+    "10001",
+    "10101",
+    "10101",
     "01010",
   ],
   "X": [
@@ -2003,6 +2003,29 @@ function drawText(text){
   if(!raw){
     return makeStepResult(true);
   }
+  const drawTextSettings = (typeof window !== "undefined"
+    && window.appSettings
+    && window.appSettings.defaults
+    && window.appSettings.defaults.drawText)
+    ? window.appSettings.defaults.drawText
+    : null;
+  const forceUppercase = (drawTextSettings && typeof drawTextSettings.forceUppercase === "boolean")
+    ? drawTextSettings.forceUppercase
+    : true;
+  const skipNonAlnum = (drawTextSettings && typeof drawTextSettings.skipNonAlnum === "boolean")
+    ? drawTextSettings.skipNonAlnum
+    : true;
+  let normalized = raw;
+  if(forceUppercase){
+    normalized = normalized.toUpperCase();
+  }
+  if(skipNonAlnum){
+    const filter = forceUppercase ? /[^A-Z0-9]/g : /[^A-Za-z0-9]/g;
+    normalized = normalized.replace(filter, "");
+  }
+  if(!normalized){
+    return makeStepResult(true);
+  }
   let scanRow = cursorPos.row;
   let scanCol = cursorPos.col;
   let lastRow = scanRow;
@@ -2039,7 +2062,7 @@ function drawText(text){
   };
   const blackValue = GENERIC_BLACK;
   const whiteValue = GENERIC_WHITE;
-  for(let i = 0; i < raw.length; i++){
+  for(let i = 0; i < normalized.length; i++){
     let foundRow = null;
     let foundCol = null;
     let probeRow = scanRow;
@@ -2062,7 +2085,7 @@ function drawText(text){
     if(foundRow === null || foundCol === null){
       break;
     }
-    const glyph = resolveFontGlyph(raw.charAt(i));
+    const glyph = resolveFontGlyph(normalized.charAt(i));
     for(let r = 0; r < 5; r++){
       const rowPattern = (typeof glyph[r] === "string") ? glyph[r] : "00000";
       for(let c = 0; c < 5; c++){

@@ -70,6 +70,10 @@ window.appSettingsFromScript = {
       // デバッグ値表示
       "viewDebugValues": true
     },
+    "drawText": {
+      "forceUppercase": true,
+      "skipNonAlnum": true
+    },
     "useDirection": false,
     // カーソル初期方向
     "homeCursorDirection": "right",

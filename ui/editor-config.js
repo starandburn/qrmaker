@@ -29,6 +29,7 @@ window.OfflineCodeEditorConfig = {
     "base",
     "mask",
     "data",
+    "text",
     "qrcode",
     "put",
     "timing",
