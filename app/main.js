@@ -396,10 +396,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       console.error(detail);
     }
   };
-  const normalizeMaskCommandValue = (rawValue) => {
-    if(rawValue === undefined){
-      return { valid: true, index: defaultMaskIndex };
-    }
+    const normalizeMaskCommandValue = (rawValue) => {
+      if(rawValue === undefined){
+        return { valid: true, index: 0 };
+      }
     const numeric = Number(rawValue);
     if(!Number.isFinite(numeric)){
       return { valid: false, raw: rawValue };
