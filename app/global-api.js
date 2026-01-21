@@ -71,14 +71,6 @@
       "setSwitch",
       "isSwitchOn",
       "toggleSwitchState",
-      "red",
-      "blue",
-      "green",
-      "yellow",
-      "isRedOn",
-      "isBlueOn",
-      "isGreenOn",
-      "isYellowOn",
     ];
     for(const key of fnKeys){
       assignIfFunction(win, key, api[key]);

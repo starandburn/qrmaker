@@ -106,14 +106,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ? switchController.getSwitchStates
     : () => ({});
   const isSwitchOn = (color) => Boolean(getSwitchStates()[color]);
-  const red = (action) => setSwitch("red", action);
-  const blue = (action) => setSwitch("blue", action);
-  const green = (action) => setSwitch("green", action);
-  const yellow = (action) => setSwitch("yellow", action);
-  const isRedOn = () => isSwitchOn("red");
-  const isBlueOn = () => isSwitchOn("blue");
-  const isGreenOn = () => isSwitchOn("green");
-  const isYellowOn = () => isSwitchOn("yellow");
   const homeCursorDirectionOverride = (typeof configDefaults.homeCursorDirection === "string")
     ? configDefaults.homeCursorDirection
     : null;
@@ -2412,13 +2404,5 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     setSwitch,
     isSwitchOn,
     toggleSwitchState,
-    red,
-    blue,
-    green,
-    yellow,
-    isRedOn,
-    isBlueOn,
-    isGreenOn,
-    isYellowOn,
   });
 }
