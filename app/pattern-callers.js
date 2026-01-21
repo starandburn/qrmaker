@@ -24,6 +24,69 @@
       callIfFunction(window.logEvent, "format", detail, "command arguments invalid");
       callIfFunction(console.error, detail);
     };
+    const buildFormatsMaskErrorDetail = (raw) => {
+      const formatted = raw ? String(raw) : "(missing)";
+      return `formats のマスク番号が不正です: ${formatted}（有効範囲: 0～7、未指定はオール1）`;
+    };
+    const reportFormatsMaskWarning = (detail) => {
+      callIfFunction(window.setExecutionStatus, "warning", undefined, detail);
+      callIfFunction(window.logEvent, "formats", detail, "invalid mask index");
+      callIfFunction(console.error, detail);
+    };
+    const parseFormatsOverwriteToken = (value) => {
+      if(typeof value === "boolean"){
+        return value;
+      }
+      if(typeof value === "string"){
+        const lower = value.trim().toLowerCase();
+        if(lower === "on" || lower === "off"){
+          return lower === "on";
+        }
+      }
+      return undefined;
+    };
+    const normalizeFormatsCommandArgs = (args = []) => {
+      const filtered = args.filter((value) => value !== undefined && value !== null);
+      const tokens = [...filtered];
+      let overwrite = false;
+      if(tokens.length){
+        const last = tokens[tokens.length - 1];
+        const parsedOverwrite = parseFormatsOverwriteToken(last);
+        if(parsedOverwrite !== undefined){
+          overwrite = parsedOverwrite;
+          tokens.pop();
+        }
+      }
+      if(tokens.some((value) => (typeof value === "object" && value !== null) || typeof value === "function")){
+        return null;
+      }
+      let maskIndex = null;
+      let isInvalidMask = false;
+      let detail = null;
+      const buildRawValue = () => tokens.map((value) => formatPlacementArgValue(value)).join(" ");
+      if(tokens.length === 0){
+        maskIndex = null;
+      }else if(tokens.length === 1){
+        const raw = tokens[0];
+        const parsed = parseFormatNumberToken(raw);
+        if(parsed === null){
+          maskIndex = Number.NaN;
+          isInvalidMask = true;
+          detail = buildFormatsMaskErrorDetail(formatPlacementArgValue(raw));
+        }else if(parsed < 0 || parsed > 7){
+          maskIndex = parsed;
+          isInvalidMask = true;
+          detail = buildFormatsMaskErrorDetail(formatPlacementArgValue(raw));
+        }else{
+          maskIndex = parsed;
+        }
+      }else{
+        isInvalidMask = true;
+        detail = buildFormatsMaskErrorDetail(buildRawValue());
+        maskIndex = Number.NaN;
+      }
+      return { maskIndex, overwrite, isInvalidMask, detail };
+    };
     const parseFormatNumberToken = (value) => {
       const numeric = Number(value);
       if(!Number.isFinite(numeric)) return null;
@@ -347,8 +410,15 @@
       if(!ctx) return false;
       const pattern = window.formatPattern;
       if(pattern && typeof pattern.drawFormatPatterns === "function"){
-        const normalized = (args.length === 0) ? [] : args;
-        return pattern.drawFormatPatterns(ctx, ...normalized);
+        const normalized = normalizeFormatsCommandArgs(args);
+        if(!normalized){
+          const fallback = (args.length === 0) ? [] : args;
+          return pattern.drawFormatPatterns(ctx, ...fallback);
+        }
+        if(normalized.isInvalidMask && normalized.detail){
+          reportFormatsMaskWarning(normalized.detail);
+        }
+        return pattern.drawFormatPatterns(ctx, normalized.maskIndex, normalized.overwrite);
       }
       return false;
     };
