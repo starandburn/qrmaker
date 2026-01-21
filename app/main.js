@@ -1721,19 +1721,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     const generateToken = (typeof window.beginGenerateClick === "function")
       ? window.beginGenerateClick({ uiState, setExecutionStatus, setInputLock })
       : null;
-    const lockToken = generateToken
-      ? generateToken.lockToken
-      : (typeof window.acquireUiInputLock === "function")
-        ? window.acquireUiInputLock(uiState)
-        : (() => {
-          const fallbackToken = uiState.inputLockToken + 1;
-          uiState.setInputLockToken(fallbackToken);
-          return fallbackToken;
-        })();
-    if(!generateToken){
-      setExecutionStatus("running");
-      setInputLock(true);
-    }
+    const lockToken = generateToken ? generateToken.lockToken : null;
     let runOk = false;
     let verificationOutcome = null;
     const shouldStepRun = typeof isStepModeOn === "function" && isStepModeOn();
@@ -1768,15 +1756,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }
       if(typeof window.endGenerateClick === "function"){
         window.endGenerateClick({ uiState, setInputLock }, { lockToken });
-      }else{
-        if(lockToken === uiState.inputLockToken){
-          setInputLock(false);
-        }
-        if(typeof window.releaseUiInputLockIfMatched === "function"){
-          window.releaseUiInputLockIfMatched(uiState, lockToken);
-        }else if(lockToken === uiState.inputLockToken){
-          uiState.clearInputLockToken();
-        }
       }
       if(typeof window.logEvent === "function"){
         window.logEvent("perfRunUserCode", JSON.stringify({ ms: Math.round(runDurationMs) }), "実行時間");

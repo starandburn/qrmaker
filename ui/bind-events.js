@@ -55,13 +55,15 @@
     const uiState = ctx.uiState;
     const setInputLock = ctx.setInputLock;
     const lockToken = token.lockToken;
-    if(lockToken === uiState.inputLockToken && typeof setInputLock === "function"){
-      setInputLock(false);
-    }
-    if(typeof global.releaseUiInputLockIfMatched === "function"){
-      global.releaseUiInputLockIfMatched(uiState, lockToken);
-    }else if(lockToken === uiState.inputLockToken){
-      uiState.clearInputLockToken();
+    if(lockToken === uiState.inputLockToken){
+      if(typeof setInputLock === "function"){
+        setInputLock(false);
+      }
+      if(typeof global.releaseUiInputLockIfMatched === "function"){
+        global.releaseUiInputLockIfMatched(uiState, lockToken);
+      }else{
+        uiState.clearInputLockToken();
+      }
     }
   }
 
