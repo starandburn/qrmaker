@@ -31,6 +31,74 @@
     return DIR_RIGHT;
   };
 
+  const DEFAULT_FORMAT_BOARD_SIZE = 25;
+  const FORMAT_DEFAULT_BITS = 0xffff;
+  const FORMAT_COORDS_SIDE_0 = [
+    [8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [8, 7],
+    [8, 8], [7, 8], [5, 8], [4, 8], [3, 8], [2, 8], [1, 8], [0, 8],
+  ];
+  const normalizeBoardSize = (value) => {
+    const numeric = Number(value);
+    if(Number.isFinite(numeric)){
+      const truncated = Math.trunc(numeric);
+      if(truncated > 0){
+        return truncated;
+      }
+    }
+    return DEFAULT_FORMAT_BOARD_SIZE;
+  };
+  const buildFormatCoordsSide1 = (boardSize) => {
+    const size = normalizeBoardSize(boardSize);
+    const coords = [];
+    for(let offset = 1; offset <= 8; offset++){
+      coords.push([8, size - offset]);
+    }
+    for(let row = size - 7; row <= size - 1; row++){
+      coords.push([row, 8]);
+    }
+    return coords;
+  };
+  const FORMAT_COORDS_SIDE_1 = buildFormatCoordsSide1(DEFAULT_FORMAT_BOARD_SIZE);
+  const cloneCoords = (coords) => coords.map(([row, col]) => [row, col]);
+  const resolveFormatBoardSize = (ctx) => {
+    if(ctx && Array.isArray(ctx.boardMatrix) && ctx.boardMatrix.length > 0){
+      return normalizeBoardSize(ctx.boardMatrix.length);
+    }
+    return DEFAULT_FORMAT_BOARD_SIZE;
+  };
+  const getFormatCoords = (side, boardSize = DEFAULT_FORMAT_BOARD_SIZE) => {
+    const normalizedSide = (side === 1) ? 1 : 0;
+    if(normalizedSide === 1){
+      return buildFormatCoordsSide1(boardSize);
+    }
+    return cloneCoords(FORMAT_COORDS_SIDE_0);
+  };
+  const computeFormatBits = (ctx, maskIndex) => {
+    if(!ctx){
+      return FORMAT_DEFAULT_BITS;
+    }
+    if(maskIndex === null || maskIndex === undefined){
+      return FORMAT_DEFAULT_BITS;
+    }
+    const numeric = Number(maskIndex);
+    const idx = Number.isFinite(numeric) ? Math.trunc(numeric) : null;
+    if(idx === null){
+      return 0;
+    }
+    if(idx < 0 || idx > 7){
+      return 0;
+    }
+    if(ctx.FORMAT_L && Number.isFinite(ctx.FORMAT_L[idx])){
+      return ctx.FORMAT_L[idx];
+    }
+    return FORMAT_DEFAULT_BITS;
+  };
+  const renderFormatSide = (ctx, side, bits15, overwriteOrOpts = false, currentRunOrOpts, stepEnabled) => {
+    const boardSize = resolveFormatBoardSize(ctx);
+    const coords = getFormatCoords(side, boardSize);
+    return putFormatCells(ctx, bits15, coords, overwriteOrOpts, currentRunOrOpts, stepEnabled);
+  };
+
   /** Writes format bits over provided coordinates, honoring steps and aborts. */
   async function putFormatCells(ctx, bits15, coords, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     if(!ctx) return false;
@@ -110,45 +178,26 @@
     return true;
   }
 
-  /** Calculates coords for both format regions and delegates to putFormatCells. */
+  /** Draws both format regions through the shared helpers. */
   async function drawFormatPatterns(ctx, mask, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
     if(!ctx) return false;
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runToken = (typeof currentRun === "number") ? currentRun : ctx.runId;
-    const maskIsSpecified = mask !== undefined;
-    let idx = 0;
-    if(maskIsSpecified){
-      idx = Number(mask);
-      if(!Number.isFinite(idx) || idx < 0 || idx > 7){
-        idx = 0;
-      }
-    }
-    const bits15 = maskIsSpecified && ctx.FORMAT_L && ctx.FORMAT_L[idx]
-      ? ctx.FORMAT_L[idx]
-      : 0xffff;
-    /*
-     * [前提] Format patterns live in the standard two 15-cell lines around the top-left & top-right corners.
-     * [理由] QR format info is conventionally stored along these fixed paths on a 25x25 grid.
-     * [影響] Non-standard board sizes or versioning would require recalculating these lists.
-     * [将来] Derive coordinates from ctx.FORMAT_COORDS instead of hard-coded arrays.
-     */
-    const coordsA = [
-      [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],
-      [8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8],
-    ];
-    const n = 25;
-    const coordsB = [
-      [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
-      [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
-    ];
+    const bits15 = computeFormatBits(ctx, mask);
     const opts = { stepEnabled: resolvedStep, currentRun: runToken };
-    await putFormatCells(ctx, bits15, coordsA, overwrite, opts);
-    await putFormatCells(ctx, bits15, coordsB, overwrite, opts);
+    await renderFormatSide(ctx, 0, bits15, overwrite, opts);
+    await renderFormatSide(ctx, 1, bits15, overwrite, opts);
     hasFormatPattern = true;
     return true;
   }
 
   global.formatPattern = Object.assign(global.formatPattern || {}, {
+    FORMAT_COORDS_SIDE_0,
+    FORMAT_COORDS_SIDE_1,
+    FORMAT_DEFAULT_BITS,
+    computeFormatBits,
+    getFormatCoords,
+    renderFormatSide,
     putFormatCells,
     drawFormatPatterns,
   });

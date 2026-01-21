@@ -16,29 +16,6 @@
     const buildPlacementWarningDetail = (commandName, args = []) => (
       `${commandName} command location is invalid: ${formatPlacementArgsForMessage(args)} (use A1 style or row/col between 1 and ${BOARD_ROWS})`
     );
-    const FORMAT_BOARD_SIZE = BOARD_ROWS;
-    const FORMAT_COORDS_SIDE_0 = [
-      [8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [8, 7],
-      [8, 8], [7, 8], [5, 8], [4, 8], [3, 8], [2, 8], [1, 8], [0, 8],
-    ];
-    const FORMAT_COORDS_SIDE_1 = [
-      [8, FORMAT_BOARD_SIZE - 1],
-      [8, FORMAT_BOARD_SIZE - 2],
-      [8, FORMAT_BOARD_SIZE - 3],
-      [8, FORMAT_BOARD_SIZE - 4],
-      [8, FORMAT_BOARD_SIZE - 5],
-      [8, FORMAT_BOARD_SIZE - 6],
-      [8, FORMAT_BOARD_SIZE - 7],
-      [8, FORMAT_BOARD_SIZE - 8],
-      [FORMAT_BOARD_SIZE - 7, 8],
-      [FORMAT_BOARD_SIZE - 6, 8],
-      [FORMAT_BOARD_SIZE - 5, 8],
-      [FORMAT_BOARD_SIZE - 4, 8],
-      [FORMAT_BOARD_SIZE - 3, 8],
-      [FORMAT_BOARD_SIZE - 2, 8],
-      [FORMAT_BOARD_SIZE - 1, 8],
-    ];
-    const FORMAT_DEFAULT_BITS = 0xffff;
     const buildFormatWarningDetail = (args = []) => (
       `format command arguments are invalid: ${formatPlacementArgsForMessage(args)} (use side 0/1 and mask 0-7)`
     );
@@ -99,16 +76,13 @@
             detailInput: filtered,
           };
         }
-        if(parsed >= 0 && parsed <= 7){
-          return {
-            type: "ok",
-            side: 0,
-            value: parsed,
-            overwrite,
-            detailInput: filtered,
-          };
-        }
-        return invalid;
+        return {
+          type: "ok",
+          side: 0,
+          value: parsed,
+          overwrite,
+          detailInput: filtered,
+        };
       }
       const sideParsed = parseFormatNumberToken(tokens[0]);
       const valueParsed = parseFormatNumberToken(tokens[1]);
@@ -118,9 +92,6 @@
       if(sideParsed !== 0 && sideParsed !== 1){
         return invalid;
       }
-      if(valueParsed < 0 || valueParsed > 7){
-        return invalid;
-      }
       return {
         type: "ok",
         side: sideParsed,
@@ -128,19 +99,6 @@
         overwrite,
         detailInput: filtered,
       };
-    };
-    const resolveFormatBitsFromValue = (value) => {
-      if(value === null || value === undefined || !ctx){
-        return FORMAT_DEFAULT_BITS;
-      }
-      const idx = Number.isFinite(value) ? Math.trunc(value) : null;
-      if(idx === null || idx < 0 || idx > 7){
-        return FORMAT_DEFAULT_BITS;
-      }
-      if(ctx.FORMAT_L && Number.isFinite(ctx.FORMAT_L[idx])){
-        return ctx.FORMAT_L[idx];
-      }
-      return FORMAT_DEFAULT_BITS;
     };
     const parseCellAddress = (token) => {
       if(typeof token !== "string") return null;
@@ -373,8 +331,14 @@
           reportFormatCommandWarning(parsed.detail);
           return false;
         }
-        const bits = resolveFormatBitsFromValue(parsed.value);
-        const coords = (parsed.side === 1) ? FORMAT_COORDS_SIDE_1 : FORMAT_COORDS_SIDE_0;
+        const computeBitsFn = pattern.computeFormatBits;
+        const getCoordsFn = pattern.getFormatCoords;
+        const bits = (typeof computeBitsFn === "function")
+          ? computeBitsFn(ctx, parsed.value)
+          : (pattern.FORMAT_DEFAULT_BITS ?? 0xffff);
+        const coords = (typeof getCoordsFn === "function")
+          ? getCoordsFn(parsed.side, BOARD_ROWS)
+          : ((parsed.side === 1) ? pattern.FORMAT_COORDS_SIDE_1 : pattern.FORMAT_COORDS_SIDE_0);
         return pattern.putFormatCells(ctx, bits, coords, parsed.overwrite);
       }
       return false;
