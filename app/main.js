@@ -1,3 +1,5 @@
+// main.js is the bootstrap/orchestrator.
+// It wires UI, editor, and APIs together; heavy logic lives in modules.
 const REQUIRED_KEYS = [
   "DIR_UP",
   "DIR_RIGHT",

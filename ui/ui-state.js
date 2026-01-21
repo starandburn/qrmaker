@@ -5,10 +5,8 @@
 
   function createUiState(){
     const state = {
+      // UI input state
       inputLockToken: 0,
-      runId: 0,
-      maskRunId: 0,
-      isStepFillRunning: false,
       setInputLockToken(value){
         state.inputLockToken = value;
       },
@@ -18,6 +16,8 @@
       hasInputLockToken(){
         return state.inputLockToken !== 0;
       },
+      // Execution state
+      runId: 0,
       getRunId(){
         return state.runId;
       },
@@ -29,6 +29,7 @@
         state.runId += 1;
         return state.runId;
       },
+      maskRunId: 0,
       getMaskRunId(){
         return state.maskRunId;
       },
@@ -40,6 +41,7 @@
         state.maskRunId += 1;
         return state.maskRunId;
       },
+      isStepFillRunning: false,
       getIsStepFillRunning(){
         return state.isStepFillRunning;
       },

@@ -2,6 +2,7 @@
 (function(global){
   if(!global) return;
 
+  // Phase1: state-independent UI bindings
   function bindSimpleUiEvents(ctx){
     if(!ctx) return;
     const dom = ctx.dom;
@@ -29,6 +30,7 @@
     }
   }
 
+  // Phase4: generate click lifecycle helpers
   function beginGenerateClick(ctx){
     if(!ctx) return null;
     const uiState = ctx.uiState;
@@ -77,6 +79,7 @@
     global.endGenerateClick = endGenerateClick;
   }
 
+  // Phase3: UI input lock helpers
   if(typeof global.acquireUiInputLock !== "function"){
     global.acquireUiInputLock = (uiState) => {
       const lockToken = uiState.inputLockToken + 1;
