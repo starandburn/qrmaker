@@ -1,6 +1,8 @@
 // app/board-reset.js
 (function(global){
   if(!global) return;
+  const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
+  const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
 
   function createBoardReset(options = {}){
     const {
@@ -52,7 +54,7 @@
         }
       }
       callIfFunction(setTimingRowIndex, 0);
-      if(typeof setTimingColIndex !== "function"){
+      if(!isFunction(setTimingColIndex)){
         throw new Error("setTimingColIndex is required");
       }
       setTimingColIndex(0);
@@ -94,7 +96,7 @@
       resetCursor();
       callIfFunction(setPendingCursor, null);
       requestRender("resetBoardState");
-      if(typeof requestAnimationFrame === "function"){
+      if(isFunction(requestAnimationFrame)){
         return {
           then: (resolve, _reject) => {
             const waitFrame = () => new Promise((frameResolve) => {
@@ -124,7 +126,7 @@
       resetCursor();
       callIfFunction(setPendingCursor, null);
       requestRender("resetQRCode");
-      if(typeof requestAnimationFrame === "function"){
+      if(isFunction(requestAnimationFrame)){
         return {
           then: (resolve, _reject) => {
             const waitFrame = () => new Promise((frameResolve) => {
@@ -153,7 +155,7 @@
       resetBoardState(options);
       callIfFunction(resetSwitchStates);
       requestRender("resetCommand");
-      if(typeof requestAnimationFrame === "function"){
+      if(isFunction(requestAnimationFrame)){
         await new Promise((resolve) => requestAnimationFrame(() => resolve(true)));
       }
       await sleep(resetDelayMs);
