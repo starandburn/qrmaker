@@ -19,9 +19,18 @@
     const buildFormatWarningDetail = (args = []) => (
       `format command arguments are invalid: ${formatPlacementArgsForMessage(args)} (use side 0/1 and mask 0-7)`
     );
+    const buildFormatMaskErrorDetail = (raw) => {
+      const formatted = (typeof raw === "string" && raw) ? raw : String(raw ?? "(missing)");
+      return `format のマスク番号が不正です: ${formatted}（有効範囲: 0～7、未指定はオール1）`;
+    };
     const reportFormatCommandWarning = (detail) => {
       callIfFunction(window.setExecutionStatus, "warning", undefined, detail);
       callIfFunction(window.logEvent, "format", detail, "command arguments invalid");
+      callIfFunction(console.error, detail);
+    };
+    const reportMaskWarning = (detail, commandName = "formats") => {
+      callIfFunction(window.setExecutionStatus, "warning", undefined, detail);
+      callIfFunction(window.logEvent, commandName, detail, "invalid mask index");
       callIfFunction(console.error, detail);
     };
     const buildFormatsMaskErrorDetail = (raw) => {
@@ -29,9 +38,7 @@
       return `formats のマスク番号が不正です: ${formatted}（有効範囲: 0～7、未指定はオール1）`;
     };
     const reportFormatsMaskWarning = (detail) => {
-      callIfFunction(window.setExecutionStatus, "warning", undefined, detail);
-      callIfFunction(window.logEvent, "formats", detail, "invalid mask index");
-      callIfFunction(console.error, detail);
+      reportMaskWarning(detail, "formats");
     };
     const parseFormatsOverwriteToken = (value) => {
       if(typeof value === "boolean"){
@@ -120,6 +127,8 @@
           value: null,
           overwrite,
           detailInput: filtered,
+          isInvalidMask: false,
+          maskDetail: null,
         };
       }
       if(tokens.length > 2){
@@ -128,7 +137,15 @@
       if(tokens.length === 1){
         const parsed = parseFormatNumberToken(tokens[0]);
         if(parsed === null){
-          return invalid;
+          return {
+            type: "ok",
+            side: 0,
+            value: Number.NaN,
+            overwrite,
+            detailInput: filtered,
+            isInvalidMask: true,
+            maskDetail: buildFormatMaskErrorDetail(formatPlacementArgValue(tokens[0])),
+          };
         }
         if(parsed === 0 || parsed === 1){
           return {
@@ -137,6 +154,8 @@
             value: null,
             overwrite,
             detailInput: filtered,
+            isInvalidMask: false,
+            maskDetail: null,
           };
         }
         return {
@@ -145,22 +164,36 @@
           value: parsed,
           overwrite,
           detailInput: filtered,
+          isInvalidMask: (parsed < 0 || parsed > 7),
+          maskDetail: (parsed < 0 || parsed > 7)
+            ? buildFormatMaskErrorDetail(formatPlacementArgValue(tokens[0]))
+            : null,
         };
       }
       const sideParsed = parseFormatNumberToken(tokens[0]);
-      const valueParsed = parseFormatNumberToken(tokens[1]);
-      if(sideParsed === null || valueParsed === null){
+      if(sideParsed === null || (sideParsed !== 0 && sideParsed !== 1)){
         return invalid;
       }
-      if(sideParsed !== 0 && sideParsed !== 1){
-        return invalid;
+      const rawMask = tokens[1];
+      const valueParsed = parseFormatNumberToken(rawMask);
+      const maskDetailInfo = {
+        value: valueParsed,
+        isInvalidMask: false,
+        maskDetail: null,
+      };
+      if(valueParsed === null || valueParsed < 0 || valueParsed > 7){
+        maskDetailInfo.value = Number.NaN;
+        maskDetailInfo.isInvalidMask = true;
+        maskDetailInfo.maskDetail = buildFormatMaskErrorDetail(formatPlacementArgValue(rawMask));
       }
       return {
         type: "ok",
         side: sideParsed,
-        value: valueParsed,
+        value: maskDetailInfo.value,
         overwrite,
         detailInput: filtered,
+        isInvalidMask: maskDetailInfo.isInvalidMask,
+        maskDetail: maskDetailInfo.maskDetail,
       };
     };
     const parseCellAddress = (token) => {
@@ -396,9 +429,14 @@
         }
         const computeBitsFn = pattern.computeFormatBits;
         const getCoordsFn = pattern.getFormatCoords;
-        const bits = (typeof computeBitsFn === "function")
-          ? computeBitsFn(ctx, parsed.value)
-          : (pattern.FORMAT_DEFAULT_BITS ?? 0xffff);
+        if(parsed.isInvalidMask && parsed.maskDetail){
+          reportMaskWarning(parsed.maskDetail, "format");
+        }
+        const bits = parsed.isInvalidMask
+          ? 0
+          : ((typeof computeBitsFn === "function")
+            ? computeBitsFn(ctx, parsed.value)
+            : (pattern.FORMAT_DEFAULT_BITS ?? 0xffff));
         const coords = (typeof getCoordsFn === "function")
           ? getCoordsFn(parsed.side, BOARD_ROWS)
           : ((parsed.side === 1) ? pattern.FORMAT_COORDS_SIDE_1 : pattern.FORMAT_COORDS_SIDE_0);
