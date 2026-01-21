@@ -478,9 +478,19 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ? window.createUiState()
     : {
       inputLockToken: 0,
+      runId: 0,
+      maskRunId: 0,
+      isStepFillRunning: false,
       setInputLockToken(value){ this.inputLockToken = value; },
       clearInputLockToken(){ this.inputLockToken = 0; },
       hasInputLockToken(){ return this.inputLockToken !== 0; },
+      getRunId(){ return this.runId; },
+      setRunId(value){ this.runId = value; return this.runId; },
+      incrementRunId(){ this.runId += 1; return this.runId; },
+      getMaskRunId(){ return this.maskRunId; },
+      setMaskRunId(value){ this.maskRunId = value; return this.maskRunId; },
+      getIsStepFillRunning(){ return this.isStepFillRunning; },
+      setIsStepFillRunning(value){ this.isStepFillRunning = value; return this.isStepFillRunning; },
     };
   const isInputLocked = () => Boolean(txtInput?.readOnly || userCodeInput?.readOnly);
   if(userCodeInput){
@@ -758,9 +768,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     27713, // mask 6
     26998, // mask 7
   ];
-  let isStepFillRunning = false;
-  let runId = 0;
-  let maskRunId = 0;
   const originalSetRenderMode = window.setRenderMode;
   let renderModeState = RENDER_IMMEDIATE;
   const setRenderMode = (mode) => {
@@ -772,12 +779,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     return normalized;
   };
   const ctx = {
-    get runId(){ return runId; },
-    set runId(value){ runId = value; return runId; },
-    get maskRunId(){ return maskRunId; },
-    set maskRunId(value){ maskRunId = value; return maskRunId; },
-    get isStepFillRunning(){ return isStepFillRunning; },
-    set isStepFillRunning(value){ isStepFillRunning = value; return isStepFillRunning; },
+    get runId(){ return uiState.getRunId(); },
+    set runId(value){ return uiState.setRunId(value); },
+    get maskRunId(){ return uiState.getMaskRunId(); },
+    set maskRunId(value){ return uiState.setMaskRunId(value); },
+    get isStepFillRunning(){ return uiState.getIsStepFillRunning(); },
+    set isStepFillRunning(value){ return uiState.setIsStepFillRunning(value); },
     get renderMode(){ return renderModeState; },
     set renderMode(value){ renderModeState = value; return renderModeState; },
   };
@@ -799,9 +806,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     : () => false;
   ctx.FORMAT_L = FORMAT_L;
   const runIdAccessor = {
-    get: () => runId,
-    set: (value) => { runId = value; return runId; },
-    increment: () => ++runId,
+    get: () => uiState.getRunId(),
+    set: (value) => uiState.setRunId(value),
+    increment: () => uiState.incrementRunId(),
   };
   const H = ctx.helpers;
   const {
@@ -901,13 +908,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
   // Guarded cursor update for async flows: only applies if runToken matches current runId
   function updateCursorIfRun(runToken, row, col, dir = cursorPos.dir){
-    if(runToken !== runId) return false;
+    if(runToken !== uiState.getRunId()) return false;
     return updateCursor(row, col, dir);
   }
 
   const stepFillAccessor = {
-    get: () => isStepFillRunning,
-    set: (value) => { isStepFillRunning = value; },
+    get: () => uiState.getIsStepFillRunning(),
+    set: (value) => { uiState.setIsStepFillRunning(value); },
   };
 
   const {
@@ -1358,19 +1365,19 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const drawTimingPatterns = wrapDrawApi("drawTimingPatterns", callDrawTimingPatterns, "タイミングパターンを描画");
   const drawFormatPatterns = wrapDrawApi("drawFormatPatterns", callDrawFormatPatterns, "フォーマットパターンを描画");
   ctx.drawFormatPatterns = drawFormatPatterns;
-  const drawFunctionalPatterns = () => callDrawBasePatterns({ deferFlush: false, currentRun: runId });
+  const drawFunctionalPatterns = () => callDrawBasePatterns({ deferFlush: false, currentRun: uiState.getRunId() });
   const initializeQRCode = async () => {
-    const current = ++runId;
+    const current = uiState.incrementRunId();
     await callDrawBasePatterns({ deferFlush: false, currentRun: current });
-    if(current !== runId) return false;
+    if(current !== uiState.getRunId()) return false;
     updateCursor(cursorPos.row, cursorPos.col, DIR_UP);
     return true;
   };
   async function drawDataPatterns({ currentRun } = {}){
     window.logEvent("drawDataPatterns", currentRun ?? "", "データパターン描画");
     showApiStatus("drawDataPatterns");
-    const runToken = (typeof currentRun === "number") ? currentRun : runId;
-    const shouldAbort = () => runToken !== runId;
+    const runToken = (typeof currentRun === "number") ? currentRun : uiState.getRunId();
+    const shouldAbort = () => runToken !== uiState.getRunId();
     let dataPatternStageDirty = false;
     const perfNow = (typeof performance !== "undefined" && typeof performance.now === "function")
       ? () => performance.now()
@@ -1517,10 +1524,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
           }
           if(shouldAbort()) throw ABORT_ERR;
         }
-        if(runToken === runId && typeof resetData === "function"){
+        if(runToken === uiState.getRunId() && typeof resetData === "function"){
           resetData();
         }
-        return runToken === runId;
+        return runToken === uiState.getRunId();
       }finally{
         finalizeStage();
         if(!stepModeOn){
