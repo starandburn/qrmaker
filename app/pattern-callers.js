@@ -28,6 +28,18 @@
       callIfFunction(window.logEvent, "format", detail, "command arguments invalid");
       callIfFunction(console.error, detail);
     };
+    const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
+    const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
+    const isDefined = typeUtils.isDefined || ((value) => typeof value !== "undefined");
+    const callWithFallback = typeUtils.callWithFallback || ((primary, fallback, ...args) => {
+      if(isFunction(primary)){
+        return primary(...args);
+      }
+      if(isFunction(fallback)){
+        return fallback(...args);
+      }
+      return undefined;
+    });
     const reportMaskWarning = (detail, commandName = "formats") => {
       callIfFunction(window.setExecutionStatus, "warning", undefined, detail);
       callIfFunction(window.logEvent, commandName, detail, "invalid mask index");
@@ -64,7 +76,7 @@
           tokens.pop();
         }
       }
-      if(tokens.some((value) => (typeof value === "object" && value !== null) || typeof value === "function")){
+      if(tokens.some((value) => (typeof value === "object" && value !== null) || isFunction(value))){
         return null;
       }
       let maskIndex = null;
@@ -417,48 +429,50 @@
     const callPutFormatCells = (...args) => {
       if(!ctx) return false;
       const pattern = window.formatPattern;
-      if(pattern && typeof pattern.putFormatCells === "function"){
-        const parsed = normalizeFormatCommandArgs(args);
-        if(parsed.type === "legacy"){
-          const normalized = (args.length === 0) ? [false] : args;
-          return pattern.putFormatCells(ctx, ...normalized);
-        }
-        if(parsed.type === "invalid"){
-          reportFormatCommandWarning(parsed.detail);
-          return false;
-        }
-        const computeBitsFn = pattern.computeFormatBits;
-        const getCoordsFn = pattern.getFormatCoords;
-        if(parsed.isInvalidMask && parsed.maskDetail){
-          reportMaskWarning(parsed.maskDetail, "format");
-        }
-        const bits = parsed.isInvalidMask
-          ? 0
-          : ((typeof computeBitsFn === "function")
-            ? computeBitsFn(ctx, parsed.value)
-            : (pattern.FORMAT_DEFAULT_BITS ?? 0xffff));
-        const coords = (typeof getCoordsFn === "function")
-          ? getCoordsFn(parsed.side, BOARD_ROWS)
-          : ((parsed.side === 1) ? pattern.FORMAT_COORDS_SIDE_1 : pattern.FORMAT_COORDS_SIDE_0);
-        return pattern.putFormatCells(ctx, bits, coords, parsed.overwrite);
+      const putFormatFn = pattern && pattern.putFormatCells;
+      if(!isFunction(putFormatFn)){
+        return false;
       }
-      return false;
+      const parsed = normalizeFormatCommandArgs(args);
+      if(parsed.type === "legacy"){
+        const normalized = (args.length === 0) ? [false] : args;
+        return putFormatFn(ctx, ...normalized);
+      }
+      if(parsed.type === "invalid"){
+        reportFormatCommandWarning(parsed.detail);
+        return false;
+      }
+      if(parsed.isInvalidMask && isDefined(parsed.maskDetail)){
+        reportMaskWarning(parsed.maskDetail, "format");
+      }
+      const computeBitsFn = pattern.computeFormatBits;
+      const getCoordsFn = pattern.getFormatCoords;
+      const bits = parsed.isInvalidMask
+        ? 0
+        : ((isFunction(computeBitsFn))
+          ? computeBitsFn(ctx, parsed.value)
+          : (pattern.FORMAT_DEFAULT_BITS ?? 0xffff));
+      const coords = (isFunction(getCoordsFn))
+        ? getCoordsFn(parsed.side, BOARD_ROWS)
+        : ((parsed.side === 1) ? pattern.FORMAT_COORDS_SIDE_1 : pattern.FORMAT_COORDS_SIDE_0);
+      return putFormatFn(ctx, bits, coords, parsed.overwrite);
     };
     const callDrawFormatPatterns = (...args) => {
       if(!ctx) return false;
       const pattern = window.formatPattern;
-      if(pattern && typeof pattern.drawFormatPatterns === "function"){
-        const normalized = normalizeFormatsCommandArgs(args);
-        if(!normalized){
-          const fallback = (args.length === 0) ? [] : args;
-          return pattern.drawFormatPatterns(ctx, ...fallback);
-        }
-        if(normalized.isInvalidMask && normalized.detail){
-          reportFormatsMaskWarning(normalized.detail);
-        }
-        return pattern.drawFormatPatterns(ctx, normalized.maskIndex, normalized.overwrite);
+      const drawFn = pattern && pattern.drawFormatPatterns;
+      if(!isFunction(drawFn)){
+        return false;
       }
-      return false;
+      const normalized = normalizeFormatsCommandArgs(args);
+      if(!normalized){
+        const fallback = (args.length === 0) ? [] : args;
+        return drawFn(ctx, ...fallback);
+      }
+      if(normalized.isInvalidMask && isDefined(normalized.detail)){
+        reportFormatsMaskWarning(normalized.detail);
+      }
+      return drawFn(ctx, normalized.maskIndex, normalized.overwrite);
     };
 
     return {
