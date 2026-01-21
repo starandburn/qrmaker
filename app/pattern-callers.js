@@ -1,21 +1,20 @@
-// app/pattern-callers.js
 (function(global){
   if(!global) return;
 
   function createPatternCallers({ ctx } = {}){
-    const formatFinderArgValue = (value) => {
+    const formatPlacementArgValue = (value) => {
       if(value === undefined) return "undefined";
       if(value === null) return "null";
       return String(value);
     };
-    const formatFinderArgsForMessage = (args = []) => {
-      if(!args.length) return "（引数なし）";
+    const formatPlacementArgsForMessage = (args = []) => {
+      if(!args.length) return "(no args)";
       return args
-        .map((value) => formatFinderArgValue(value))
+        .map((value) => formatPlacementArgValue(value))
         .join(" ");
     };
-    const buildFinderWarningDetail = (args = []) => (
-      `finder コマンドの位置指定が不正です: ${formatFinderArgsForMessage(args)}（位置は A1 形式または 1 から ${BOARD_ROWS} までの row col で指定してください）`
+    const buildPlacementWarningDetail = (commandName, args = []) => (
+      `${commandName} command location is invalid: ${formatPlacementArgsForMessage(args)} (use A1 style or row/col between 1 and ${BOARD_ROWS})`
     );
     const parseCellAddress = (token) => {
       if(typeof token !== "string") return null;
@@ -37,12 +36,12 @@
       if(col < 1 || col > BOARD_COLS) return null;
       return { row, col };
     };
-    const normalizeFinderCommandArgs = (args = []) => {
+    const normalizePlacementCommandArgs = (args = [], commandName = "command") => {
       const filtered = args.filter((value) => value !== undefined && value !== null);
       const tokens = [...filtered];
       if(!tokens.length){
         return {
-          type: "finder",
+          type: "placement",
           overwrite: false,
           row: null,
           col: null,
@@ -66,25 +65,26 @@
       }
       if(tokens.length === 0){
         return {
-          type: "finder",
+          type: "placement",
           overwrite,
           row: null,
           col: null,
           detailInput: filtered,
         };
       }
+      const invalid = { type: "invalid", detail: buildPlacementWarningDetail(commandName, filtered) };
       if(tokens.length === 1){
         const parsed = parseCellAddress(tokens[0]);
         if(parsed){
           return {
-            type: "finder",
+            type: "placement",
             overwrite,
             row: parsed.row,
             col: parsed.col,
             detailInput: filtered,
           };
         }
-        return { type: "invalid", detail: buildFinderWarningDetail(filtered) };
+        return invalid;
       }
       if(tokens.length === 2){
         const [one, two] = tokens;
@@ -95,7 +95,7 @@
           const col = Math.trunc(colVal);
           if(row >= 1 && row <= BOARD_ROWS && col >= 1 && col <= BOARD_COLS){
             return {
-              type: "finder",
+              type: "placement",
               overwrite,
               row,
               col,
@@ -103,16 +103,16 @@
             };
           }
         }
-        return { type: "invalid", detail: buildFinderWarningDetail(filtered) };
+        return invalid;
       }
-      return { type: "invalid", detail: buildFinderWarningDetail(filtered) };
+      return invalid;
     };
-    const reportFinderCommandWarning = (detail) => {
+    const reportPlacementCommandWarning = (commandName, detail) => {
       callIfFunction(window.setExecutionStatus, "warning", undefined, detail);
-      callIfFunction(window.logEvent, "finder", detail, "位置指定が不正です");
+      callIfFunction(window.logEvent, commandName, detail, "command location invalid");
       callIfFunction(console.error, detail);
     };
-    const moveCursorToFinderPosition = (row, col) => {
+    const moveCursorToPosition = (row, col) => {
       const executionCtrl = (typeof window !== "undefined") ? window.executionControl : null;
       if(executionCtrl && typeof executionCtrl.updateCursorSafe === "function"){
         return Boolean(executionCtrl.updateCursorSafe(ctx.runId, ctx, row, col, DIR_RIGHT));
@@ -127,17 +127,17 @@
       if(!ctx) return false;
       const pattern = window.finderPattern;
       if(pattern && typeof pattern.putFinderCells === "function"){
-        const parsed = normalizeFinderCommandArgs(args);
+        const parsed = normalizePlacementCommandArgs(args, "finder");
         if(parsed.type === "legacy"){
           const normalized = (args.length === 0) ? [false] : args;
           return pattern.putFinderCells(ctx, ...normalized);
         }
         if(parsed.type === "invalid"){
-          reportFinderCommandWarning(parsed.detail);
+          reportPlacementCommandWarning("finder", parsed.detail);
           return false;
         }
         if(parsed.row !== null && parsed.col !== null){
-          if(!moveCursorToFinderPosition(parsed.row, parsed.col)){
+          if(!moveCursorToPosition(parsed.row, parsed.col)){
             return false;
           }
         }
@@ -158,8 +158,21 @@
       if(!ctx) return false;
       const pattern = window.alignmentPattern;
       if(pattern && typeof pattern.putAlignmentCells === "function"){
-        const normalized = (args.length === 0) ? [false] : args;
-        return pattern.putAlignmentCells(ctx, ...normalized);
+        const parsed = normalizePlacementCommandArgs(args, "alignment");
+        if(parsed.type === "legacy"){
+          const normalized = (args.length === 0) ? [false] : args;
+          return pattern.putAlignmentCells(ctx, ...normalized);
+        }
+        if(parsed.type === "invalid"){
+          reportPlacementCommandWarning("alignment", parsed.detail);
+          return false;
+        }
+        if(parsed.row !== null && parsed.col !== null){
+          if(!moveCursorToPosition(parsed.row, parsed.col)){
+            return false;
+          }
+        }
+        return pattern.putAlignmentCells(ctx, parsed.overwrite);
       }
       return false;
     };
