@@ -377,6 +377,39 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     return fallback;
   };
   const defaultMaskIndex = resolveMaskIndex(configDefaults.defaultMask, 0);
+  const MASK_INDEX_MIN = 0;
+  const MASK_INDEX_MAX = 7;
+  const formatMaskInputValue = (value) => {
+    if(value === undefined) return "undefined";
+    return String(value);
+  };
+  const buildMaskErrorDetail = (value) => (
+    `マスク番号が不正です: ${formatMaskInputValue(value)}（有効範囲: ${MASK_INDEX_MIN}～${MASK_INDEX_MAX}）`
+  );
+  const reportMaskCommandError = (value) => {
+    const detail = buildMaskErrorDetail(value);
+    setExecutionStatus("warning", undefined, detail);
+    if(typeof window !== "undefined" && typeof window.logEvent === "function"){
+      window.logEvent("applyMask", value ?? "", detail);
+    }
+    if(typeof console !== "undefined" && typeof console.error === "function"){
+      console.error(detail);
+    }
+  };
+  const normalizeMaskCommandValue = (rawValue) => {
+    if(rawValue === undefined){
+      return { valid: true, index: defaultMaskIndex };
+    }
+    const numeric = Number(rawValue);
+    if(!Number.isFinite(numeric)){
+      return { valid: false, raw: rawValue };
+    }
+    const truncated = Math.trunc(numeric);
+    if(truncated < MASK_INDEX_MIN || truncated > MASK_INDEX_MAX){
+      return { valid: false, raw: rawValue };
+    }
+    return { valid: true, index: truncated };
+  };
   const skipExistingFromParam = urlParams.has(SKIP_EXISTING_PARAM_KEY)
     ? urlState.stringifyBool(urlParams.get(SKIP_EXISTING_PARAM_KEY))
     : null;
@@ -1299,7 +1332,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
   const callApplyMask = (...args) => {
     if(!ctx) return false;
-    return applyMask(...args);
+    const rawValue = (args.length > 0) ? args[0] : undefined;
+    const normalized = normalizeMaskCommandValue(rawValue);
+    if(!normalized.valid){
+      reportMaskCommandError(rawValue);
+      return false;
+    }
+    return applyMask(normalized.index);
   };
   async function drawBasePatterns(ctx, { deferFlush = false, currentRun, resetDelay = false } = {}){
     if(!ctx) return false;
