@@ -2,7 +2,7 @@
  * [役割] Alignment pattern drawing
  * [入力] ctx, runToken, helpers
  * [副作用] writes 5x5 alignment cells, cursor updates when stepping
- * [中断] prefer executionControl.shouldAbort, fallback to runToken !== ctx.runId
+ * [中断] executionControl.shouldAbort のみで中断判定
  * [非対象] data placement, mask, UI, URL, history
  * [公開] window.alignmentPattern: putAlignmentCells, drawAlignmentPatterns
  */

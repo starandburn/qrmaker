@@ -25,17 +25,6 @@
     if(typeof window === "undefined") return;
     if(!api) return;
     const win = window;
-    // B. windowApi (legacy) expansion
-    const windowApi = api.windowApi;
-    if(typeof windowApi !== "undefined"){
-      win.qrmakerApi = windowApi;
-      for(const [name, value] of Object.entries(windowApi)){
-        assignIfFunction(win, name, value);
-      }
-      if(Array.isArray(windowApi.toggleInputs)){
-        win.toggleInputs = windowApi.toggleInputs;
-      }
-    }
     // C. Value exports
     const valueKeys = [
       "skipExistingCells",
@@ -71,6 +60,28 @@
       "setSwitch",
       "isSwitchOn",
       "toggleSwitchState",
+      "makeStepThenable",
+      "applyMask",
+      "drawBasePatterns",
+      "drawBasePatternsStepped",
+      "drawFunctionalPatterns",
+      "drawQRCode",
+      "drawDataPatterns",
+      "initializeQRCode",
+      "resetQRCode",
+      "clearBoard",
+      "resetCommand",
+      "stopCurrentRun",
+      "drawFormatPatterns",
+      "drawFinderPatterns",
+      "drawAlignmentPatterns",
+      "drawDarkModulePatterns",
+      "drawTimingPatterns",
+      "callPutFinderCells",
+      "callPutAlignmentCells",
+      "callPutTimingCells",
+      "callPutDarkModuleCells",
+      "callPutFormatCells",
     ];
     for(const key of fnKeys){
       assignIfFunction(win, key, api[key]);

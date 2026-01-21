@@ -2,7 +2,7 @@
  * [役割] Format pattern drawing (format bits)
  * [入力] ctx, runToken, coords, helpers
  * [副作用] draws format info cells, updates cursor when stepping
- * [中断] prefer executionControl.shouldAbort, fallback to runToken !== ctx.runId
+ * [中断] executionControl.shouldAbort のみで中断判定
  * [非対象] data placement, mask, UI, URL, history
  * [公開] window.formatPattern: putFormatCells, drawFormatPatterns
  */

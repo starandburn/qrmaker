@@ -127,7 +127,7 @@
           stepEnded = placementResult.stepEnded;
         }
         if(currentRun === runIdAccessor.get() && !stepEnabled){
-          requestRender("runGenerateLegacy");
+          requestRender("runGenerate");
         }
         if(currentRun === runIdAccessor.get() && Array.isArray(global.toggleInputs)){
           // do not auto-clear toggles; user can use 全解除 as needed

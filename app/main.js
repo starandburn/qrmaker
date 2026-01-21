@@ -2378,7 +2378,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     window.bindSimpleUiEvents(uiDeps);
   }
   callIfFunction(window.registerGlobalApi, {
-    windowApi,
     isStepModeOn,
     skipExistingCells,
     autoAvoidTiming,
@@ -2390,6 +2389,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     getNextBasePatternInfos,
     setRenderMode,
     shouldStepFunctions,
+    makeStepThenable,
     RENDER_IMMEDIATE,
     RENDER_BUFFERED,
     updateCursor,
@@ -2404,5 +2404,26 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     setSwitch,
     isSwitchOn,
     toggleSwitchState,
+    applyMask: callApplyMask,
+    drawBasePatterns: callDrawBasePatterns,
+    drawBasePatternsStepped: callDrawBasePatternsStepped,
+    drawFunctionalPatterns,
+    drawQRCode,
+    drawDataPatterns,
+    initializeQRCode,
+    resetQRCode,
+    clearBoard,
+    resetCommand,
+    stopCurrentRun,
+    drawFormatPatterns,
+    drawFinderPatterns,
+    drawAlignmentPatterns,
+    drawDarkModulePatterns,
+    drawTimingPatterns,
+    callPutFinderCells,
+    callPutAlignmentCells,
+    callPutTimingCells,
+    callPutDarkModuleCells,
+    callPutFormatCells,
   });
 }

@@ -2,7 +2,7 @@
  * [役割] Timing pattern drawing (horizontal/vertical lines)
  * [入力] ctx, runToken, direction/index, helpers
  * [副作用] writes timing bits, updates cursor when stepping
- * [中断] prefer executionControl.shouldAbort, fallback to runToken !== ctx.runId
+ * [中断] executionControl.shouldAbort のみで中断判定
  * [非対象] data placement, mask, UI, URL, history
  * [公開] window.timingPattern: putTimingCells, drawTimingPatterns
  */
@@ -20,6 +20,7 @@
     resolveFunctionalOptions,
     setBasePatternLookahead,
     shouldAbort,
+    updateCursorSafe,
   } = patternCommon;
   const PATTERN_STEP_SCALE = 1;
   if(typeof global.setTimingColIndex !== "function"){
@@ -84,13 +85,6 @@
         ? H.stepDelayAbort(runToken, { scale: PATTERN_STEP_SCALE })
         : Promise.resolve();
     };
-    const updateCursorSafe = (row, col, dir = DIR_RIGHT) => {
-      if(global.executionControl && typeof global.executionControl.updateCursorSafe === "function"){
-        return global.executionControl.updateCursorSafe(runToken, ctx, row, col, dir);
-      }
-      if(runToken !== ctx.runId) return false;
-      return updateCursor(row, col, dir);
-    };
     return (async () => {
       const prevRender = ctx.renderMode;
       ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
@@ -109,7 +103,7 @@
             window.updateCell(pos, col, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
           }
           setBasePatternLookahead(buildTimingLookahead(dirVal, col));
-          updateCursorSafe(pos, col, resolveStepDir(dirVal));
+          updateCursorSafe(runToken, ctx, pos, col, resolveStepDir(dirVal));
           const md = await delay();
           if(md === false) return false;
           col++;
@@ -129,7 +123,7 @@
             window.updateCell(row, pos, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
           }
           setBasePatternLookahead(buildTimingLookahead(dirVal, row));
-          updateCursorSafe(row, pos, resolveStepDir(dirVal));
+          updateCursorSafe(runToken, ctx, row, pos, resolveStepDir(dirVal));
           const md = await delay();
           if(md === false) return false;
           row++;
