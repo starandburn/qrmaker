@@ -2403,20 +2403,17 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     setSwitch,
     isSwitchOn,
     toggleSwitchState,
-  });
-  if(typeof window !== "undefined"){
-    const exposeWindowApi = {
-      applyMask: callApplyMask,
-      drawBasePatterns: callDrawBasePatterns,
-      drawBasePatternsStepped: callDrawBasePatternsStepped,
-      drawFunctionalPatterns,
-      drawQRCode,
-      drawDataPatterns,
-      initializeQRCode,
-      resetQRCode,
-      clearBoard,
-      resetCommand,
-      stopCurrentRun,
+    applyMask: callApplyMask,
+    drawBasePatterns: callDrawBasePatterns,
+    drawBasePatternsStepped: callDrawBasePatternsStepped,
+    drawFunctionalPatterns,
+    drawQRCode,
+    drawDataPatterns,
+    initializeQRCode,
+    resetQRCode,
+    clearBoard,
+    resetCommand,
+    stopCurrentRun,
     drawFormatPatterns,
     drawFinderPatterns,
     drawAlignmentPatterns,
@@ -2428,11 +2425,5 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     putDarkModuleCells: callPutDarkModuleCells,
     putFormatCells: callPutFormatCells,
     makeStepThenable,
-  };
-    for(const [name, fn] of Object.entries(exposeWindowApi)){
-      if(typeof fn === "function"){
-        window[name] = fn;
-      }
-    }
-  }
+  });
 }
