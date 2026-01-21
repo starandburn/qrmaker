@@ -207,8 +207,21 @@
       if(!ctx) return false;
       const pattern = window.darkModulePattern;
       if(pattern && typeof pattern.putDarkModuleCells === "function"){
-        const normalized = (args.length === 0) ? [false] : args;
-        return pattern.putDarkModuleCells(ctx, ...normalized);
+        const parsed = normalizePlacementCommandArgs(args, "dark");
+        if(parsed.type === "legacy"){
+          const normalized = (args.length === 0) ? [false] : args;
+          return pattern.putDarkModuleCells(ctx, ...normalized);
+        }
+        if(parsed.type === "invalid"){
+          reportPlacementCommandWarning("dark", parsed.detail);
+          return false;
+        }
+        if(parsed.row !== null && parsed.col !== null){
+          if(!moveCursorToPosition(parsed.row, parsed.col)){
+            return false;
+          }
+        }
+        return pattern.putDarkModuleCells(ctx, parsed.overwrite);
       }
       return false;
     };

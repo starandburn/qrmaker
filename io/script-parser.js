@@ -32,6 +32,7 @@
     alignment: "putAlignmentCells",
     alignments: "drawAlignmentPatterns",
     dark: "putDarkModuleCells",
+    darkmodule: "putDarkModuleCells",
     darkmodules: "drawDarkModulePatterns",
     format: "putFormatCells",
     formats: "drawFormatPatterns",

@@ -39,6 +39,7 @@ window.OfflineCodeEditorConfig = {
     "alignment",
     "alignments",
     "dark",
+    "darkmodule",
     "darkmodules",
     "format",
     "formats",

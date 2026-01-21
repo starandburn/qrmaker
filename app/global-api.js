@@ -80,6 +80,8 @@
       "putAlignmentCells",
       "putTimingCells",
       "putDarkModuleCells",
+      "dark",
+      "darkmodule",
       "putFormatCells",
       "makeStepThenable",
     ];

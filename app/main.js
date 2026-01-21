@@ -2462,6 +2462,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     putAlignmentCells: callPutAlignmentCells,
     putTimingCells: callPutTimingCells,
     putDarkModuleCells: callPutDarkModuleCells,
+    dark: callPutDarkModuleCells,
+    darkmodule: callPutDarkModuleCells,
     putFormatCells: callPutFormatCells,
     makeStepThenable,
   });
