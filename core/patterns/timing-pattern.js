@@ -54,7 +54,19 @@
     if(!Number.isFinite(pos) || !Number.isInteger(pos) || pos < 1 || pos > 25) return false;
     const step = !!resolvedStep;
     const allowOverwrite = overwrite !== false;
-    const canWriteTimingCell = (r, c) => shouldPlaceCell(r, c, allowOverwrite);
+    const hasExistingPatternCell = (row, col) => {
+      if(typeof window.getCell !== "function") return false;
+      const existing = window.getCell(row, col);
+      if(existing === null || existing === undefined) return false;
+      const kind = (typeof window.bitKind === "function")
+        ? window.bitKind(existing)
+        : Math.abs(existing);
+      return [BIT_FUNC_FINDER, BIT_FUNC_ALIGNMENT, BIT_FUNC_FORMAT, BIT_FUNC_DARK].includes(kind);
+    };
+    const canWriteTimingCell = (r, c) => {
+      if(hasExistingPatternCell(r, c)) return false;
+      return shouldPlaceCell(r, c, allowOverwrite);
+    };
     if(!step){
       const prevRender = ctx.renderMode;
       ctx.setRenderMode(ctx.RENDER_BUFFERED);

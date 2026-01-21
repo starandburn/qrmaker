@@ -821,6 +821,11 @@
       "pauseRunning",
       "resetCommand",
       "resetQRCode",
+      "drawFinderPatterns",
+      "drawAlignmentPatterns",
+      "drawDarkModulePatterns",
+      "drawFormatPatterns",
+      "drawTimingPatterns",
     ]);
     const getCommandName = (value) => {
       if(typeof value !== "string") return "";

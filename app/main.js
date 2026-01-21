@@ -2389,7 +2389,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     getNextBasePatternInfos,
     setRenderMode,
     shouldStepFunctions,
-    makeStepThenable,
     RENDER_IMMEDIATE,
     RENDER_BUFFERED,
     updateCursor,
@@ -2404,26 +2403,36 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     setSwitch,
     isSwitchOn,
     toggleSwitchState,
-    applyMask: callApplyMask,
-    drawBasePatterns: callDrawBasePatterns,
-    drawBasePatternsStepped: callDrawBasePatternsStepped,
-    drawFunctionalPatterns,
-    drawQRCode,
-    drawDataPatterns,
-    initializeQRCode,
-    resetQRCode,
-    clearBoard,
-    resetCommand,
-    stopCurrentRun,
+  });
+  if(typeof window !== "undefined"){
+    const exposeWindowApi = {
+      applyMask: callApplyMask,
+      drawBasePatterns: callDrawBasePatterns,
+      drawBasePatternsStepped: callDrawBasePatternsStepped,
+      drawFunctionalPatterns,
+      drawQRCode,
+      drawDataPatterns,
+      initializeQRCode,
+      resetQRCode,
+      clearBoard,
+      resetCommand,
+      stopCurrentRun,
     drawFormatPatterns,
     drawFinderPatterns,
     drawAlignmentPatterns,
     drawDarkModulePatterns,
     drawTimingPatterns,
-    callPutFinderCells,
-    callPutAlignmentCells,
-    callPutTimingCells,
-    callPutDarkModuleCells,
-    callPutFormatCells,
-  });
+    putFinderCells: callPutFinderCells,
+    putAlignmentCells: callPutAlignmentCells,
+    putTimingCells: callPutTimingCells,
+    putDarkModuleCells: callPutDarkModuleCells,
+    putFormatCells: callPutFormatCells,
+    makeStepThenable,
+  };
+    for(const [name, fn] of Object.entries(exposeWindowApi)){
+      if(typeof fn === "function"){
+        window[name] = fn;
+      }
+    }
+  }
 }

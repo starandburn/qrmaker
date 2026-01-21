@@ -7,7 +7,8 @@
       if(!ctx) return false;
       const pattern = window.finderPattern;
       if(pattern && typeof pattern.putFinderCells === "function"){
-        return pattern.putFinderCells(ctx, ...args);
+        const normalized = (args.length === 0) ? [false] : args;
+        return pattern.putFinderCells(ctx, ...normalized);
       }
       return false;
     };
@@ -15,7 +16,8 @@
       if(!ctx) return false;
       const pattern = window.finderPattern;
       if(pattern && typeof pattern.drawFinderPatterns === "function"){
-        return pattern.drawFinderPatterns(ctx, ...args);
+        const normalized = (args.length === 0) ? [false] : args;
+        return pattern.drawFinderPatterns(ctx, ...normalized);
       }
       return false;
     };
@@ -23,7 +25,8 @@
       if(!ctx) return false;
       const pattern = window.alignmentPattern;
       if(pattern && typeof pattern.putAlignmentCells === "function"){
-        return pattern.putAlignmentCells(ctx, ...args);
+        const normalized = (args.length === 0) ? [false] : args;
+        return pattern.putAlignmentCells(ctx, ...normalized);
       }
       return false;
     };
@@ -31,7 +34,8 @@
       if(!ctx) return false;
       const pattern = window.alignmentPattern;
       if(pattern && typeof pattern.drawAlignmentPatterns === "function"){
-        return pattern.drawAlignmentPatterns(ctx, ...args);
+        const normalized = (args.length === 0) ? [false] : args;
+        return pattern.drawAlignmentPatterns(ctx, ...normalized);
       }
       return false;
     };
@@ -39,7 +43,8 @@
       if(!ctx) return false;
       const pattern = window.timingPattern;
       if(pattern && typeof pattern.putTimingCells === "function"){
-        return pattern.putTimingCells(ctx, ...args);
+        const normalized = (args.length === 0) ? [false] : args;
+        return pattern.putTimingCells(ctx, ...normalized);
       }
       return false;
     };
@@ -47,7 +52,8 @@
       if(!ctx) return false;
       const pattern = window.timingPattern;
       if(pattern && typeof pattern.drawTimingPatterns === "function"){
-        return pattern.drawTimingPatterns(ctx, ...args);
+        const normalized = (args.length === 0) ? [false] : args;
+        return pattern.drawTimingPatterns(ctx, ...normalized);
       }
       return false;
     };
@@ -55,7 +61,8 @@
       if(!ctx) return false;
       const pattern = window.darkModulePattern;
       if(pattern && typeof pattern.putDarkModuleCells === "function"){
-        return pattern.putDarkModuleCells(ctx, ...args);
+        const normalized = (args.length === 0) ? [false] : args;
+        return pattern.putDarkModuleCells(ctx, ...normalized);
       }
       return false;
     };
@@ -63,7 +70,8 @@
       if(!ctx) return false;
       const pattern = window.darkModulePattern;
       if(pattern && typeof pattern.drawDarkModulePatterns === "function"){
-        return pattern.drawDarkModulePatterns(ctx, ...args);
+        const normalized = (args.length === 0) ? [false] : args;
+        return pattern.drawDarkModulePatterns(ctx, ...normalized);
       }
       return false;
     };
@@ -71,7 +79,8 @@
       if(!ctx) return false;
       const pattern = window.formatPattern;
       if(pattern && typeof pattern.putFormatCells === "function"){
-        return pattern.putFormatCells(ctx, ...args);
+        const normalized = (args.length === 0) ? [false] : args;
+        return pattern.putFormatCells(ctx, ...normalized);
       }
       return false;
     };
@@ -79,7 +88,8 @@
       if(!ctx) return false;
       const pattern = window.formatPattern;
       if(pattern && typeof pattern.drawFormatPatterns === "function"){
-        return pattern.drawFormatPatterns(ctx, ...args);
+        const normalized = (args.length === 0) ? [] : args;
+        return pattern.drawFormatPatterns(ctx, ...normalized);
       }
       return false;
     };
