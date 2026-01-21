@@ -36,6 +36,10 @@
         state.maskRunId = value;
         return state.maskRunId;
       },
+      incrementMaskRunId(){
+        state.maskRunId += 1;
+        return state.maskRunId;
+      },
       getIsStepFillRunning(){
         return state.isStepFillRunning;
       },

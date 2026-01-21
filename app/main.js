@@ -489,6 +489,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       incrementRunId(){ this.runId += 1; return this.runId; },
       getMaskRunId(){ return this.maskRunId; },
       setMaskRunId(value){ this.maskRunId = value; return this.maskRunId; },
+      incrementMaskRunId(){ this.maskRunId += 1; return this.maskRunId; },
       getIsStepFillRunning(){ return this.isStepFillRunning; },
       setIsStepFillRunning(value){ this.isStepFillRunning = value; return this.isStepFillRunning; },
     };
@@ -1059,7 +1060,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         callIfFunction(window.setRenderMode, mode);
       };
     const baseRun = ctx.runId;
-    const currentMaskRun = ++ctx.maskRunId;
+    const currentMaskRun = uiState.incrementMaskRunId();
     let idx = Number(maskIndex);
     if(!Number.isFinite(idx)){
       idx = defaultMaskIndex;
