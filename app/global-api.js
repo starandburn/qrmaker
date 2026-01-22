@@ -1,17 +1,20 @@
 // app/global-api.js
 (function(global){
   if(!global) return;
-  if(typeof global.registerGlobalApi === "function" && typeof global.buildQrmakerObject === "function") return;
+  const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
+  const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
+  const isDefined = typeUtils.isDefined || ((value) => typeof value !== "undefined");
+  if(isFunction(global.registerGlobalApi) && isFunction(global.buildQrmakerObject)) return;
 
   function buildQrmakerObject(win, api){
     const qrmaker = { public: {}, internal: {} };
-    const internalApi = (typeof win.createInternalApi === "function")
+    const internalApi = (isFunction(win.createInternalApi))
       ? win.createInternalApi(win, api)
       : null;
     if(internalApi){
       qrmaker.internal = internalApi;
     }
-    const commands = (typeof win.createCommands === "function")
+    const commands = (isFunction(win.createCommands))
       ? win.createCommands(win, api)
       : null;
     if(commands && commands.public){
@@ -37,7 +40,7 @@
       "boardMatrix",
     ];
     for(const key of valueKeys){
-      if(typeof api[key] !== "undefined"){
+      if(isDefined(api[key])){
         win[key] = api[key];
       }
     }

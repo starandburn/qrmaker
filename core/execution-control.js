@@ -1,9 +1,11 @@
 (function(){
   if(typeof window === "undefined") return;
+  const typeUtils = window.typeUtils || {};
+  const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
   const getRunId = (ctx) => (ctx && typeof ctx.runId === "number") ? ctx.runId : null;
 
   function shouldAbort(runToken, ctx, extraAbort){
-    if(typeof extraAbort === "function" && extraAbort()) return true;
+    if(isFunction(extraAbort) && extraAbort()) return true;
     const current = getRunId(ctx);
     if(current === null) return false;
     return runToken !== current;
@@ -16,11 +18,11 @@
 
   function stepActive({ helpers, ctx, runToken, stepEnabled } = {}){
     if(!helpers) return false;
-    const helperActive = (typeof helpers.shouldStepFunctions === "function")
+    const helperActive = isFunction(helpers.shouldStepFunctions)
       ? helpers.shouldStepFunctions()
       : false;
     if(!helperActive) return false;
-    if(typeof helpers.isStepModeOn === "function" && !helpers.isStepModeOn()){
+    if(isFunction(helpers.isStepModeOn) && !helpers.isStepModeOn()){
       return false;
     }
     if(stepEnabled === undefined){

@@ -1,7 +1,9 @@
 // core/log-utils.js
 (function(global){
   if(!global) return;
-  if(typeof global.safeConsoleLog === "function") return;
+  const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
+  const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
+  if(isFunction(global.safeConsoleLog)) return;
 
   const shouldMirrorConsoleLogs = () => true;
   const safeConsoleLog = (value) => {

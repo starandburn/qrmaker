@@ -5,6 +5,9 @@
 (function(global){
   if(!global) return;
 
+  const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
+  const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
+
   const drawBasePatternsService = async (deps = {}) => {
     const {
       isStepModeOn,
@@ -17,10 +20,10 @@
       currentRun,
       runIdAccessor,
     } = deps;
-    if(!setRenderMode || typeof runIdAccessor?.get !== "function"){
+    if(!setRenderMode || !isFunction(runIdAccessor?.get)){
       return { shouldAbort: true };
     }
-    let stepEnabled = typeof isStepModeOn === "function" ? isStepModeOn() : false;
+    let stepEnabled = isFunction(isStepModeOn) ? isStepModeOn() : false;
     const skipFunctions = stepEnabled && stepSkipFunctions && stepSkipFunctions.checked;
 
     setRenderMode(stepEnabled ? renderModeImmediate : renderModeBuffered);

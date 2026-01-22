@@ -4,6 +4,15 @@
 (function(global){
   if(!global) return;
 
+  const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
+  const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
+  const callIfFunction = typeUtils.callIfFunction || ((fn, ...args) => {
+    if(isFunction(fn)){
+      return fn(...args);
+    }
+    return undefined;
+  });
+
   const placeDataBits = async (deps = {}) => {
     const {
       bitsSeq = [],
@@ -39,7 +48,7 @@
         aborted = true;
         break;
       }
-      const timingColIndex = typeof getTimingColIndex === "function" ? getTimingColIndex() : 0;
+      const timingColIndex = isFunction(getTimingColIndex) ? getTimingColIndex() : 0;
       if(timingColIndex > 0 && col === timingColIndex){
         col--;
         continue;
@@ -58,9 +67,7 @@
           const r = startRow + i;
           return r <= 25 ? r : r - 25;
         })();
-        if(typeof updateCursor === "function"){
-          updateCursor(cursorPos.row, cursorPos.col, upward ? directionUp : directionDown);
-        }
+        callIfFunction(updateCursor, cursorPos.row, cursorPos.col, upward ? directionUp : directionDown);
         for(const cTarget of [col, colLeft]){
           if(bitIdx >= seq.length) break;
           if(cTarget < 1) continue;
@@ -68,9 +75,9 @@
           if(cTarget < 1 || cTarget > 25) continue;
           const moved = moveCursor(row, cTarget);
           if(!moved) continue;
-          if(typeof isEmpty === "function" && !isEmpty()){
+          if(isFunction(isEmpty) && !isEmpty()){
             if(stepEnabled){
-              const delay = typeof getStepDelay === "function" ? getStepDelay() : 0;
+              const delay = isFunction(getStepDelay) ? getStepDelay() : 0;
               const skipDelay = Math.max(0, Math.round(delay / 2));
               if(skipDelay > 0){
                 await sleep(skipDelay);
@@ -78,9 +85,9 @@
                   aborted = true;
                   break;
                 }
-                if(typeof isStepModeOn === "function" && !isStepModeOn()){
+                if(isFunction(isStepModeOn) && !isStepModeOn()){
                   stepEnabled = false;
-                  if(typeof setRenderMode === "function"){
+                  if(isFunction(setRenderMode)){
                     setRenderMode(renderModeBuffered);
                   }
                 }
@@ -89,8 +96,8 @@
             continue;
           }
           const { bit, kind } = seq[bitIdx];
-          const encoded = typeof encodeBit === "function" ? encodeBit(kind, bit === 1) : null;
-          if(encoded !== null && typeof updateCell === "function"){
+          const encoded = isFunction(encodeBit) ? encodeBit(kind, bit === 1) : null;
+          if(encoded !== null && isFunction(updateCell)){
             updateCell(cursorPos.row, cursorPos.col, encoded);
           }
           bitIdx++;
@@ -99,15 +106,15 @@
             break;
           }
           if(stepEnabled){
-            const delay = typeof getStepDelay === "function" ? getStepDelay() : 0;
+            const delay = isFunction(getStepDelay) ? getStepDelay() : 0;
             await sleep(Math.max(0, delay));
             if(currentRun !== runIdAccessor.get()){
               aborted = true;
               break;
             }
-            if(typeof isStepModeOn === "function" && !isStepModeOn()){
+            if(isFunction(isStepModeOn) && !isStepModeOn()){
               stepEnabled = false;
-              if(typeof setRenderMode === "function"){
+              if(isFunction(setRenderMode)){
                 setRenderMode(renderModeBuffered);
               }
             }

@@ -208,6 +208,43 @@
         maskDetail: maskDetailInfo.maskDetail,
       };
     };
+    const getFormatDefaultBits = (pattern) => {
+      const bits = pattern && pattern.FORMAT_DEFAULT_BITS;
+      return Number.isFinite(bits) ? bits : 0xffff;
+    };
+    const resolveFormatBitsFromPattern = (pattern, ctx, maskIndex) => {
+      const defaultBits = getFormatDefaultBits(pattern);
+      if(!pattern){
+        return defaultBits;
+      }
+      const computeBitsFn = pattern.computeFormatBits;
+      if(isFunction(computeBitsFn)){
+        return computeBitsFn(ctx, maskIndex);
+      }
+      if(maskIndex === null || maskIndex === undefined){
+        return defaultBits;
+      }
+      const numeric = Number(maskIndex);
+      if(!Number.isFinite(numeric)){
+        return 0;
+      }
+      const idx = Math.trunc(numeric);
+      if(idx < 0 || idx > 7){
+        return 0;
+      }
+      return defaultBits;
+    };
+    const resolveFormatCoordsFromPattern = (pattern, side) => {
+      if(!pattern){
+        return [];
+      }
+      const getCoordsFn = pattern.getFormatCoords;
+      if(isFunction(getCoordsFn)){
+        return getCoordsFn(side, BOARD_ROWS);
+      }
+      const coords = (side === 1) ? pattern.FORMAT_COORDS_SIDE_1 : pattern.FORMAT_COORDS_SIDE_0;
+      return Array.isArray(coords) ? coords : [];
+    };
     const parseCellAddress = (token) => {
       if(typeof token !== "string") return null;
       const trimmed = token.trim();
@@ -445,32 +482,35 @@
       if(parsed.isInvalidMask && isDefined(parsed.maskDetail)){
         reportMaskWarning(parsed.maskDetail, "format");
       }
-      const computeBitsFn = pattern.computeFormatBits;
-      const getCoordsFn = pattern.getFormatCoords;
-      const bits = parsed.isInvalidMask
-        ? 0
-        : ((isFunction(computeBitsFn))
-          ? computeBitsFn(ctx, parsed.value)
-          : (pattern.FORMAT_DEFAULT_BITS ?? 0xffff));
-      const coords = (isFunction(getCoordsFn))
-        ? getCoordsFn(parsed.side, BOARD_ROWS)
-        : ((parsed.side === 1) ? pattern.FORMAT_COORDS_SIDE_1 : pattern.FORMAT_COORDS_SIDE_0);
+      const bits = resolveFormatBitsFromPattern(pattern, ctx, parsed.value);
+      const coords = resolveFormatCoordsFromPattern(pattern, parsed.side);
       return putFormatFn(ctx, bits, coords, parsed.overwrite);
     };
-    const callDrawFormatPatterns = (...args) => {
+    const callDrawFormatPatterns = async (...args) => {
       if(!ctx) return false;
       const pattern = window.formatPattern;
-      const drawFn = pattern && pattern.drawFormatPatterns;
-      if(!isFunction(drawFn)){
-        return false;
-      }
+      if(!pattern) return false;
+      const drawFn = pattern.drawFormatPatterns;
       const normalized = normalizeFormatsCommandArgs(args);
       if(!normalized){
+        if(!isFunction(drawFn)){
+          return false;
+        }
         const fallback = (args.length === 0) ? [] : args;
         return drawFn(ctx, ...fallback);
       }
       if(normalized.isInvalidMask && isDefined(normalized.detail)){
         reportFormatsMaskWarning(normalized.detail);
+      }
+      const bits = resolveFormatBitsFromPattern(pattern, ctx, normalized.maskIndex);
+      const renderSideFn = pattern.renderFormatSide;
+      if(isFunction(renderSideFn)){
+        const first = await renderSideFn(ctx, 0, bits, normalized.overwrite);
+        const second = await renderSideFn(ctx, 1, bits, normalized.overwrite);
+        return (first !== false && second !== false);
+      }
+      if(!isFunction(drawFn)){
+        return false;
       }
       return drawFn(ctx, normalized.maskIndex, normalized.overwrite);
     };

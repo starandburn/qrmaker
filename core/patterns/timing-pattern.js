@@ -8,6 +8,8 @@
  */
 (function(global){
   if(!global) return;
+  const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
+  const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
   const requireMessage = "pattern-common.js must be loaded before timing-pattern.js.";
   const requireUtils = global.requireUtils;
   if(!requireUtils){
@@ -23,7 +25,7 @@
     updateCursorSafe,
   } = patternCommon;
   const PATTERN_STEP_SCALE = 1;
-  if(typeof global.setTimingColIndex !== "function"){
+  if(!isFunction(global.setTimingColIndex)){
     throw new Error("setTimingColIndex is required");
   }
   const setTimingColIndex = global.setTimingColIndex;
@@ -55,10 +57,10 @@
     const step = !!resolvedStep;
     const allowOverwrite = overwrite !== false;
     const hasExistingPatternCell = (row, col) => {
-      if(typeof window.getCell !== "function") return false;
+      if(!isFunction(window.getCell)) return false;
       const existing = window.getCell(row, col);
       if(existing === null || existing === undefined) return false;
-      const kind = (typeof window.bitKind === "function")
+      const kind = (isFunction(window.bitKind))
         ? window.bitKind(existing)
         : Math.abs(existing);
       return [BIT_FUNC_FINDER, BIT_FUNC_ALIGNMENT, BIT_FUNC_FORMAT, BIT_FUNC_DARK].includes(kind);

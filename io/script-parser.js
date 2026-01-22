@@ -11,6 +11,9 @@
   requireUtils.requireGlobalProp(global, "ABORT_ERR", missingAbortMsg);
   const ABORT_ERR = global.ABORT_ERR;
   global.ABORT_ERR = ABORT_ERR;
+  const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
+  const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
+  const isDefined = typeUtils.isDefined || ((value) => typeof value !== "undefined");
 
   const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const ALIAS_MAP = {
@@ -46,7 +49,7 @@
     const doc = (global && global.document) ? global.document : null;
     if(!doc || !doc.documentElement) return null;
     const view = doc.defaultView || global;
-    if(view && typeof view.getComputedStyle === "function"){
+    if(view && isFunction(view.getComputedStyle)){
       return view.getComputedStyle(doc.documentElement);
     }
     return null;
@@ -63,7 +66,7 @@
       return CSS_DARK_COLOR_CACHE.get(normalized);
     }
     const rootStyle = resolveRootComputedStyle();
-    if(!rootStyle || typeof rootStyle.getPropertyValue !== "function"){
+    if(!rootStyle || !isFunction(rootStyle.getPropertyValue)){
       throw new Error("Unable to read CSS variables for dark colors");
     }
     const varName = `--col-${normalized}-dark`;
@@ -98,10 +101,10 @@
   };
   const resolveKindConstant = (name) => {
     if(typeof name !== "string" || !name) return null;
-    if(typeof global !== "undefined" && typeof global[name] === "number"){
+    if(isDefined(global) && typeof global[name] === "number"){
       return name;
     }
-    if(typeof globalThis !== "undefined" && typeof globalThis[name] === "number"){
+    if(isDefined(globalThis) && typeof globalThis[name] === "number"){
       return name;
     }
     return null;
@@ -1151,9 +1154,9 @@
     const rawLine = (typeof line === "string") ? line : "";
     const trimmed = rawLine.trim();
     if(!trimmed) return "";
-    const globalEnv = typeof global !== "undefined"
+    const globalEnv = isDefined(global)
       ? global
-      : (typeof globalThis !== "undefined" ? globalThis : null);
+      : (isDefined(globalThis) ? globalThis : null);
     const identifierPattern = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
     if(/^stop(?:\s+(?:for|while|repeat))?$/i.test(trimmed)){
       return "return";
@@ -1173,7 +1176,7 @@
     if(parts.length === 0) return "";
     const fn = parts.shift();
     const fnLower = typeof fn === "string" ? fn.toLowerCase() : "";
-    const directionEnabled = (typeof global !== "undefined" && global.useDirection === true);
+    const directionEnabled = (isDefined(global) && global.useDirection === true);
     const isConditionContext = context === "condition";
     const normalizeArgValue = (value) => {
       if(typeof value !== "string") return "";
@@ -1246,7 +1249,7 @@
       }
     }
     if(identifierPattern.test(fn)){
-      if(!globalEnv || typeof globalEnv[fn] !== "function"){
+      if(!globalEnv || !isFunction(globalEnv[fn])){
         throw new Error(`不明なコマンド: ${fn}`);
       }
     }
@@ -1268,7 +1271,7 @@
       if(/^["'].+["']$/.test(t)) return t;
       if(identifierPattern.test(t) && globalEnv){
         const value = globalEnv[t];
-        if(typeof value === "function"){
+        if(isFunction(value)){
           return `${t}()`;
         }
       }

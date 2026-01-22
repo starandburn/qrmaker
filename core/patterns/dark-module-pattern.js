@@ -8,6 +8,14 @@
  */
 (function(global){
   if(!global) return;
+  const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
+  const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
+  const callIfFunction = typeUtils.callIfFunction || ((fn, ...args) => {
+    if(isFunction(fn)){
+      return fn(...args);
+    }
+    return undefined;
+  });
   const requireMessage = "pattern-common.js must be loaded before dark-module-pattern.js.";
   const requireUtils = global.requireUtils;
   if(!requireUtils){
@@ -49,15 +57,15 @@
       return true;
     }
     if(!step){
-      if(typeof window.updateCell === "function"){
-        window.updateCell(baseRow, baseCol, window.encodeBit(BIT_FUNC_DARK, true));
+      if(isFunction(window.updateCell)){
+        callIfFunction(window.updateCell, baseRow, baseCol, window.encodeBit(BIT_FUNC_DARK, true));
       }
       return true;
     }
     if(shouldAbort(runToken, ctx)) return false;
     ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
-    if(typeof window.updateCell === "function"){
-      window.updateCell(baseRow, baseCol, window.encodeBit(BIT_FUNC_DARK, true));
+    if(isFunction(window.updateCell)){
+      callIfFunction(window.updateCell, baseRow, baseCol, window.encodeBit(BIT_FUNC_DARK, true));
     }
     setBasePatternLookahead([]);
     updateCursorSafe(runToken, ctx, baseRow, baseCol, DIR_RIGHT);

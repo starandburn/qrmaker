@@ -3,8 +3,10 @@
  */
 (function(global){
   if(!global) return;
+  const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
+  const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
 
-  const requestAnimationFrameFn = typeof global.requestAnimationFrame === "function"
+  const requestAnimationFrameFn = isFunction(global.requestAnimationFrame)
     ? global.requestAnimationFrame.bind(global)
     : null;
   const pendingReasons = new Set();
@@ -12,7 +14,7 @@
 
   const flushRenderNow = () => {
     pendingReasons.clear();
-    if(typeof global.flushRender === "function"){
+    if(isFunction(global.flushRender)){
       global.flushRender();
     }
   };
@@ -28,7 +30,7 @@
     };
     if(requestAnimationFrameFn){
       requestAnimationFrameFn(runner);
-    }else if(typeof global.setTimeout === "function"){
+    }else if(isFunction(global.setTimeout)){
       global.setTimeout(runner, 16);
     }
   };

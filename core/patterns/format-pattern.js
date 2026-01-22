@@ -8,6 +8,14 @@
  */
 (function(global){
   if(!global) return;
+  const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
+  const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
+  const callIfFunction = typeUtils.callIfFunction || ((fn, ...args) => {
+    if(isFunction(fn)){
+      return fn(...args);
+    }
+    return undefined;
+  });
   const requireMessage = "pattern-common.js must be loaded before format-pattern.js.";
   const requireUtils = global.requireUtils;
   if(!requireUtils){
@@ -117,13 +125,13 @@
         const row = r1 + 1;
         const col = c1 + 1;
         if(!shouldDrawCell(row, col)) continue;
-        if(typeof window.updateCell === "function"){
-          const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
-          window.updateCell(row, col, enc);
-          if(typeof window.animateCellPlacement === "function"){
-            window.animateCellPlacement(row, col, BIT_FUNC_FORMAT);
-          }
+      if(isFunction(window.updateCell)){
+        const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
+        callIfFunction(window.updateCell, row, col, enc);
+        if(isFunction(window.animateCellPlacement)){
+          callIfFunction(window.animateCellPlacement, row, col, BIT_FUNC_FORMAT);
         }
+      }
       }
       hasFormatPattern = true;
       ctx.requestRender("putFormatCells");
@@ -162,11 +170,11 @@
       const nextCol = nextC + 1;
       const stepDir = resolveStepDir(row, col, nextRow, nextCol);
       const canDraw = shouldDrawCell(row, col);
-      if(canDraw && typeof window.updateCell === "function"){
+      if(canDraw && isFunction(window.updateCell)){
         const enc = window.encodeBit(BIT_FUNC_FORMAT, bit === 1);
-        window.updateCell(row, col, enc);
-        if(typeof window.animateCellPlacement === "function"){
-          window.animateCellPlacement(row, col, BIT_FUNC_FORMAT);
+        callIfFunction(window.updateCell, row, col, enc);
+        if(isFunction(window.animateCellPlacement)){
+          callIfFunction(window.animateCellPlacement, row, col, BIT_FUNC_FORMAT);
         }
       }
       setBasePatternLookahead(buildLookahead(i));

@@ -1,10 +1,12 @@
 (function(global){
   if(!global) return;
+  const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
+  const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
 
   const ensureHelpers = (ctx) => (ctx && ctx.helpers) ? ctx.helpers : {};
 
   const setBasePatternLookahead = (infos) => {
-    if(typeof global.setBasePatternLookahead !== "function"){
+    if(!isFunction(global.setBasePatternLookahead)){
       throw new Error("global.setBasePatternLookahead is required");
     }
     global.setBasePatternLookahead(infos);
@@ -41,7 +43,7 @@
 
   function shouldAbort(runToken, ctx){
     const executionControl = ensureExecutionControl();
-    if(typeof executionControl.shouldAbort !== "function"){
+    if(!isFunction(executionControl.shouldAbort)){
       throw new Error("executionControl.shouldAbort is required");
     }
     return executionControl.shouldAbort(runToken, ctx);
@@ -49,7 +51,7 @@
 
   function updateCursorSafe(runToken, ctx, row, col, dir = DIR_RIGHT){
     const executionControl = ensureExecutionControl();
-    if(typeof executionControl.updateCursorSafe !== "function"){
+    if(!isFunction(executionControl.updateCursorSafe)){
       throw new Error("executionControl.updateCursorSafe is required");
     }
     return executionControl.updateCursorSafe(runToken, ctx, row, col, dir);
