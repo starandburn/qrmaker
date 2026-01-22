@@ -1,5 +1,24 @@
 // main.js is the bootstrap/orchestrator.
 // It wires UI, editor, and APIs together; heavy logic lives in modules.
+const safeWindow = (typeof window !== "undefined") ? window : null;
+const typeUtils = (safeWindow && safeWindow.typeUtils) ? safeWindow.typeUtils : {};
+const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
+const isDefined = typeUtils.isDefined || ((value) => typeof value !== "undefined");
+const callIfFunction = typeUtils.callIfFunction || ((fn, ...args) => {
+  if(isFunction(fn)){
+    return fn(...args);
+  }
+  return undefined;
+});
+const callWithFallback = typeUtils.callWithFallback || ((primary, fallback, ...args) => {
+  if(isFunction(primary)){
+    return primary(...args);
+  }
+  if(isFunction(fallback)){
+    return fallback(...args);
+  }
+  return undefined;
+});
 const REQUIRED_KEYS = [
   "DIR_UP",
   "DIR_RIGHT",
@@ -27,8 +46,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   if(!debugUI){
     debugUI = {};
   }
-  const dom = (typeof window !== "undefined" && typeof window.createDomRefs === "function")
-    ? window.createDomRefs()
+  const dom = (safeWindow && isFunction(safeWindow.createDomRefs))
+    ? safeWindow.createDomRefs()
     : {};
   const btnGenerate = dom.btnGenerate;
   const btnInit = dom.btnInit;
@@ -81,8 +100,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     const desc = `スイッチを反転`.replace("スイッチ", `${label}スイッチ`);
     return desc;
   };
-  const switchController = (typeof window !== "undefined" && typeof window.createSwitchController === "function")
-    ? window.createSwitchController({
+  const switchController = (safeWindow && isFunction(safeWindow.createSwitchController))
+    ? safeWindow.createSwitchController({
       configDefaults,
       executionStatusEl: dom.executionStatusEl,
       executionStatusTextEl: dom.executionStatusTextEl,
@@ -109,8 +128,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const homeCursorDirectionOverride = (typeof configDefaults.homeCursorDirection === "string")
     ? configDefaults.homeCursorDirection
     : null;
-  if(homeCursorDirectionOverride && typeof window.setHomeCursor === "function"){
-    window.setHomeCursor({ dir: homeCursorDirectionOverride });
+  if(homeCursorDirectionOverride && isFunction(safeWindow?.setHomeCursor)){
+    safeWindow.setHomeCursor({ dir: homeCursorDirectionOverride });
   }
   const configuredQrData = (typeof configDefaults.qrData === "string") ? configDefaults.qrData : null;
   if(txtInput && configuredQrData !== null){
@@ -131,13 +150,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     stepSpeed.value = normalizedStepSpeedOverride;
     stepSpeed.defaultValue = normalizedStepSpeedOverride;
   }
-  const settingsNormalizer = (typeof window.createSettingsNormalizer === "function")
-    ? window.createSettingsNormalizer()
+  const settingsNormalizer = (safeWindow && isFunction(safeWindow.createSettingsNormalizer))
+    ? safeWindow.createSettingsNormalizer()
     : null;
   const resolvedSettings = (settingsNormalizer && typeof settingsNormalizer.resolveSettings === "function")
     ? settingsNormalizer.resolveSettings(configDefaults)
     : null;
-  if(settingsNormalizer && typeof settingsNormalizer.applyWindowSettings === "function"){
+  if(settingsNormalizer && isFunction(settingsNormalizer.applyWindowSettings)){
     settingsNormalizer.applyWindowSettings(resolvedSettings);
   }
   const stepAnimationEnabledOverride = resolvedSettings.stepAnimationEnabledOverride;
@@ -200,13 +219,14 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
   }
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
-  const store = (window.appState && typeof window.appState.getStore === "function")
-    ? window.appState.getStore({ historyVisible: false, patternPanelOpen: false, debugVisible: false })
+  const appState = safeWindow?.appState;
+  const store = (appState && isFunction(appState.getStore))
+    ? appState.getStore({ historyVisible: false, patternPanelOpen: false, debugVisible: false })
     : null;
   const getHistoryVisible = () => (store ? Boolean(store.getState().historyVisible) : false);
   const getPatternPanelOpen = () => (store ? Boolean(store.getState().patternPanelOpen) : Boolean(dataPatternPanel?.open));
-  const debugViewApply = (typeof debugUI.applyDebugVisibility === "function") ? debugUI.applyDebugVisibility : (() => {});
-  const debugViewIsVisible = (typeof debugUI.isDebugVisible === "function") ? debugUI.isDebugVisible : (() => false);
+  const debugViewApply = isFunction(debugUI.applyDebugVisibility) ? debugUI.applyDebugVisibility : (() => {});
+  const debugViewIsVisible = isFunction(debugUI.isDebugVisible) ? debugUI.isDebugVisible : (() => false);
   const getDebugVisible = () => (store ? Boolean(store.getState().debugVisible) : debugViewIsVisible());
   const isDebugVisible = () => getDebugVisible();
   const applyDebugVisibilityDom = (visible) => {
@@ -478,8 +498,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     setHistoryVisibility(defaultHistoryVisible);
   }
   if(!btnGenerate || !btnInit) return;
-  const statusManager = (typeof window !== "undefined" && typeof window.createExecutionStatusManager === "function")
-    ? window.createExecutionStatusManager({
+  const statusManager = (safeWindow && isFunction(safeWindow.createExecutionStatusManager))
+    ? safeWindow.createExecutionStatusManager({
       dom,
       inputMaxLength: Number(txtInput?.getAttribute("maxlength")) || 32,
       isStepModeOn,
@@ -501,8 +521,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ? statusManager.setLastExecutionError
     : () => {};
   setExecutionStatus("stopped");
-  const uiState = (typeof window.createUiState === "function")
-    ? window.createUiState()
+  const uiState = (isFunction(safeWindow?.createUiState))
+    ? safeWindow.createUiState()
     : {
       inputLockToken: 0,
       runId: 0,
@@ -540,12 +560,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     verify: { l2: "QRコード検証", l3: "作成中" },
     applyMask: (maskIndex) => ({ l2: "マスク", l3: `マスク${maskIndex}を適用しています。` }),
   };
-  const cursorUI = (typeof window.createExecutionStatusCursor === "function")
-    ? window.createExecutionStatusCursor({
+  const cursorUI = (isFunction(safeWindow?.createExecutionStatusCursor))
+    ? safeWindow.createExecutionStatusCursor({
       dom,
       getCursorState: () => {
         const ref = (typeof window.cellRefFromRowCol === "function")
-          ? window.cellRefFromRowCol(cursorPos.row, cursorPos.col)
+          ? safeWindow?.cellRefFromRowCol(cursorPos.row, cursorPos.col)
           : "";
         return {
           row: cursorPos.row,
@@ -554,41 +574,41 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
           ref,
           directionEnabled: useDirection === true,
           dirConstants: {
-            DIR_UP: window.DIR_UP,
-            DIR_RIGHT: window.DIR_RIGHT,
-            DIR_DOWN: window.DIR_DOWN,
-            DIR_LEFT: window.DIR_LEFT,
+            DIR_UP: safeWindow?.DIR_UP,
+            DIR_RIGHT: safeWindow?.DIR_RIGHT,
+            DIR_DOWN: safeWindow?.DIR_DOWN,
+            DIR_LEFT: safeWindow?.DIR_LEFT,
           },
           switchIndicatorGroupEl: ensureSwitchIndicators(),
         };
       },
       getBoardCellInfo: () => ({
         getCurrentValue: () => (typeof window.getCell === "function")
-          ? window.getCell(cursorPos.row, cursorPos.col)
+          ? safeWindow?.getCell(cursorPos.row, cursorPos.col)
           : null,
         getCurrentKind: (value) => (typeof window.bitKind === "function" && typeof value === "number")
-          ? window.bitKind(value)
+          ? safeWindow?.bitKind(value)
           : (typeof value === "number" ? Math.abs(value) : null),
         colorsForKind: (kind) => (typeof window.colorsForKind === "function")
-          ? window.colorsForKind(kind)
+          ? safeWindow?.colorsForKind(kind)
           : "black",
         isBlackBit: (value) => (typeof window.isBlackBit === "function")
-          ? window.isBlackBit(value)
+          ? safeWindow?.isBlackBit(value)
           : value > 0,
         unplacedKind: (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1,
         isDrawingBasePattern: Boolean(window.isDrawingBasePattern),
         getNextBasePatternInfos: (count) => (typeof window.getNextBasePatternInfos === "function")
-          ? window.getNextBasePatternInfos(count)
+          ? safeWindow?.getNextBasePatternInfos(count)
           : [],
         getNextDataInfos: (count) => (typeof window.getNextDataInfos === "function")
-          ? window.getNextDataInfos(count)
+          ? safeWindow?.getNextDataInfos(count)
           : [],
         getNextDataInfo: () => (typeof window.getNextDataInfo === "function")
-          ? window.getNextDataInfo()
+          ? safeWindow?.getNextDataInfo()
           : null,
       }),
       isCursorVisible: () => true,
-      logEvent: (typeof window.logEvent === "function") ? window.logEvent : null,
+      logEvent: isFunction(safeWindow?.logEvent) ? safeWindow.logEvent : null,
     })
     : null;
   const updateExecutionStatusCursor = (cursorUI && typeof cursorUI.updateExecutionStatusCursor === "function")
@@ -2380,8 +2400,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
   initOfflineCodeEditor();
 
-  const windowApi = (typeof window.createWindowApi === "function")
-    ? window.createWindowApi(window, {
+  const windowApi = (safeWindow && isFunction(safeWindow.createWindowApi))
+    ? safeWindow.createWindowApi(safeWindow, {
       callApplyMask,
       callDrawBasePatterns,
       callDrawBasePatternsStepped,
