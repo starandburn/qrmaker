@@ -22,6 +22,15 @@
 
   const startApp = (settings) => {
     const safeSettings = (settings && typeof settings === "object") ? settings : {};
+
+  const injected = window.appCodeSamplesFromScript;
+  if (Array.isArray(injected)) {
+    safeSettings.defaults = safeSettings.defaults && typeof safeSettings.defaults === "object"
+      ? safeSettings.defaults
+      : {};
+    safeSettings.defaults.codeSamples = injected;
+  }
+
     window.appSettings = safeSettings;
     runMainApp({ layoutUI, urlState, debugUI, settings: safeSettings });
     callIfFunction(window.__qrmakerSelfCheck);
