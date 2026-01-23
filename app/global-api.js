@@ -68,7 +68,6 @@
       "drawBasePatternsStepped",
       "drawQRCode",
       "drawDataPatterns",
-      "initializeQRCode",
       "resetQRCode",
       "clearBoard",
       "resetCommand",

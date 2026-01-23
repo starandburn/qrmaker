@@ -819,7 +819,6 @@
       "drawBasePatternsStepped",
       "drawDataPatterns",
       "drawQRCode",
-      "initializeQRCode",
       "pauseRunning",
       "resetCommand",
       "resetQRCode",

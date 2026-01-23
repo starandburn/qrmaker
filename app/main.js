@@ -1453,13 +1453,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const drawTimingPatterns = wrapDrawApi("drawTimingPatterns", callDrawTimingPatterns, "タイミングパターンを描画");
   const drawFormatPatterns = wrapDrawApi("drawFormatPatterns", callDrawFormatPatterns, "フォーマットパターンを描画");
   ctx.drawFormatPatterns = drawFormatPatterns;
-  const initializeQRCode = async () => {
-    const current = uiState.incrementRunId();
-    await callDrawBasePatterns({ deferFlush: false, currentRun: current });
-    if(current !== uiState.getRunId()) return false;
-    updateCursor(cursorPos.row, cursorPos.col, DIR_UP);
-    return true;
-  };
   async function drawDataPatterns({ currentRun } = {}){
     window.logEvent("drawDataPatterns", currentRun ?? "", "データパターン描画");
     showApiStatus("drawDataPatterns");
@@ -2463,7 +2456,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       shouldStepFunctions,
       drawQRCode,
       drawDataPatterns,
-      initializeQRCode,
       resetQRCode,
       clearBoard,
       resetCommand,
@@ -2520,7 +2512,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     drawBasePatternsStepped: callDrawBasePatternsStepped,
     drawQRCode,
     drawDataPatterns,
-    initializeQRCode,
     resetQRCode,
     clearBoard,
     resetCommand,
