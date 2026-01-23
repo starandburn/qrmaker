@@ -13,7 +13,7 @@
       unplacedKind,
       setTimingColIndex,
       setTimingRowIndex,
-      setHasFormatPattern,
+      setFormatWrittenMask,
       resetData,
       resetCursor,
       requestRender,
@@ -58,7 +58,7 @@
         throw new Error("setTimingColIndex is required");
       }
       setTimingColIndex(0);
-      callIfFunction(setHasFormatPattern, false);
+      callIfFunction(setFormatWrittenMask, 0);
       if(resetDataFlag){
         callIfFunction(resetData);
       }

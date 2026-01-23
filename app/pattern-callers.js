@@ -245,6 +245,16 @@
       const coords = (side === 1) ? pattern.FORMAT_COORDS_SIDE_1 : pattern.FORMAT_COORDS_SIDE_0;
       return Array.isArray(coords) ? coords : [];
     };
+    const markFormatSideState = (side) => {
+      if(!ctx) return;
+      if(typeof ctx.markFormatSideWritten === "function"){
+        ctx.markFormatSideWritten(side);
+      }
+    };
+    const markBothFormatSides = () => {
+      markFormatSideState(0);
+      markFormatSideState(1);
+    };
     const parseCellAddress = (token) => {
       if(typeof token !== "string") return null;
       const trimmed = token.trim();
@@ -484,7 +494,17 @@
       }
       const bits = resolveFormatBitsFromPattern(pattern, ctx, parsed.value);
       const coords = resolveFormatCoordsFromPattern(pattern, parsed.side);
-      return putFormatFn(ctx, bits, coords, parsed.overwrite);
+      const markResult = (value) => {
+        if(value !== false){
+          markFormatSideState(parsed.side);
+        }
+        return value;
+      };
+      const result = putFormatFn(ctx, bits, coords, parsed.overwrite);
+      if(result && typeof result.then === "function"){
+        return result.then(markResult);
+      }
+      return markResult(result);
     };
     const callDrawFormatPatterns = async (...args) => {
       if(!ctx) return false;
@@ -507,12 +527,35 @@
       if(isFunction(renderSideFn)){
         const first = await renderSideFn(ctx, 0, bits, normalized.overwrite);
         const second = await renderSideFn(ctx, 1, bits, normalized.overwrite);
-        return (first !== false && second !== false);
+        const success = (first !== false && second !== false);
+        if(success){
+          markBothFormatSides();
+        }
+        return success;
       }
       if(!isFunction(drawFn)){
         return false;
       }
-      return drawFn(ctx, normalized.maskIndex, normalized.overwrite);
+      const result = await drawFn(ctx, normalized.maskIndex, normalized.overwrite);
+      if(result !== false){
+        markBothFormatSides();
+      }
+      return result;
+    };
+    const callRenderFormatSide = async (side, maskIndex, overwrite = false) => {
+      if(!ctx) return false;
+      const pattern = window.formatPattern;
+      if(!pattern) return false;
+      const bits = resolveFormatBitsFromPattern(pattern, ctx, maskIndex);
+      const renderSideFn = pattern.renderFormatSide;
+      if(isFunction(renderSideFn)){
+        return renderSideFn(ctx, side, bits, overwrite, { currentRun: ctx.runId });
+      }
+      const drawFn = pattern.drawFormatPatterns;
+      if(!isFunction(drawFn)){
+        return false;
+      }
+      return drawFn(ctx, maskIndex, overwrite);
     };
 
     return {
@@ -525,6 +568,7 @@
       callPutDarkModuleCells,
       callDrawDarkModulePatterns,
       callPutFormatCells,
+      callRenderFormatSide,
       callDrawFormatPatterns,
     };
   }

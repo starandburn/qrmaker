@@ -103,7 +103,6 @@ if(globalScope){
   globalScope.setTimingColIndex = setTimingColIndex;
 }
 setTimingColIndex(0);
-let hasFormatPattern = false;
 let lastMoveBlocked = false;
 const BOARD_ROWS = 25;
 const BOARD_COLS = 25;

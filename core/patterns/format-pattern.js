@@ -133,7 +133,6 @@
         }
       }
       }
-      hasFormatPattern = true;
       ctx.requestRender("putFormatCells");
       ctx.setRenderMode(ctx.RENDER_IMMEDIATE);
       return true;
@@ -181,7 +180,6 @@
       updateCursorSafe(runToken, ctx, row, col, stepDir);
       await delay();
     }
-    hasFormatPattern = true;
     ctx.setRenderMode(prevRender);
     return true;
   }
@@ -195,7 +193,6 @@
     const opts = { stepEnabled: resolvedStep, currentRun: runToken };
     await renderFormatSide(ctx, 0, bits15, overwrite, opts);
     await renderFormatSide(ctx, 1, bits15, overwrite, opts);
-    hasFormatPattern = true;
     return true;
   }
 

@@ -841,6 +841,37 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   ctx.ABORT_ERR = ABORT_ERR;
   ctx.RESET_DELAY_MS = RESET_DELAY_MS;
   ctx.helpers = ctx.helpers || {};
+  let formatWrittenMaskValue = 0;
+  const normalizeFormatMaskValue = (value) => {
+    if(Number.isFinite(value)){
+      return Number(value) & 3;
+    }
+    const numeric = Number(value);
+    if(Number.isFinite(numeric)){
+      return Math.trunc(numeric) & 3;
+    }
+    return 0;
+  };
+  const getFormatWrittenMask = () => formatWrittenMaskValue;
+  const setFormatWrittenMask = (value) => {
+    formatWrittenMaskValue = normalizeFormatMaskValue(value);
+    return formatWrittenMaskValue;
+  };
+  const markFormatSideWritten = (side) => {
+    const bit = (side === 1) ? 2 : (side === 0 ? 1 : 0);
+    if(bit){
+      formatWrittenMaskValue |= bit;
+    }
+    return formatWrittenMaskValue;
+  };
+  const markAllFormatWritten = () => setFormatWrittenMask(3);
+  const clearFormatWritten = () => setFormatWrittenMask(0);
+
+  ctx.getFormatWrittenMask = getFormatWrittenMask;
+  ctx.setFormatWrittenMask = setFormatWrittenMask;
+  ctx.markFormatSideWritten = markFormatSideWritten;
+  ctx.markAllFormatWritten = markAllFormatWritten;
+  ctx.clearFormatWritten = clearFormatWritten;
   if(!window.domainQrParams){
     throw new Error("domain/qr-params.js must be loaded before main.js.");
   }
@@ -887,7 +918,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     window.__pauseAbortVersion = current + 1;
   };
   const setTimingRowIndex = (value) => { timingRowIndex = value; };
-  const setHasFormatPattern = (value) => { hasFormatPattern = value; };
   const setPendingCursor = (value) => { pendingCursor = value; };
   const boardReset = (typeof window !== "undefined" && typeof window.createBoardReset === "function")
     ? window.createBoardReset({
@@ -898,7 +928,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       unplacedKind: UNPLACED_KIND,
       setTimingColIndex: window.setTimingColIndex,
       setTimingRowIndex,
-      setHasFormatPattern,
+      setFormatWrittenMask: ctx.setFormatWrittenMask,
       resetData,
       resetCursor,
       requestRender,
@@ -1082,6 +1112,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     callPutDarkModuleCells = () => false,
     callDrawDarkModulePatterns = () => false,
     callPutFormatCells = () => false,
+    callRenderFormatSide = () => false,
     callDrawFormatPatterns = () => false,
   } = patternCallers;
 
@@ -1314,12 +1345,18 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }
       completed = !shouldAbort();
       }
-      if(completed && hasFormatPattern){
+      const formatWrittenMask = (typeof ctx.getFormatWrittenMask === "function") ? ctx.getFormatWrittenMask() : 0;
+      if(completed && formatWrittenMask){
         showApiStatus("applyMaskFormat");
         const formatBits = (ctx.FORMAT_L && Number.isFinite(ctx.FORMAT_L[idx])) ? ctx.FORMAT_L[idx] : null;
         const formatHex = Number.isFinite(formatBits) ? formatBits.toString(16).toUpperCase().padStart(4, "0") : "----";
         window.logEvent("applyMask", idx, `フォーマットパターンを更新（${formatHex}）`);
-        await callDrawFormatPatterns(idx, true);
+        if(formatWrittenMask & 1){
+          await callRenderFormatSide(0, idx, true);
+        }
+        if(formatWrittenMask & 2){
+          await callRenderFormatSide(1, idx, true);
+        }
         showApiStatus("applyMask", idx);
       }
     }finally{
@@ -1387,6 +1424,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     await runFunctionalPattern(drawAlignmentPatterns, opts.overwrite, opts.currentRun);
     await runFunctionalPattern(drawDarkModulePatterns, opts.overwrite, opts.currentRun);
     await runFunctionalPattern(drawFormatPatterns, undefined, opts.overwrite, opts.currentRun);
+    ctx.markAllFormatWritten?.();
     window.logEvent("drawBasePatterns", currentRun ?? "", "基本パターン描画完了");
     if(!deferFlush){
       requestRender("drawBasePatterns");
@@ -1415,7 +1453,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const drawTimingPatterns = wrapDrawApi("drawTimingPatterns", callDrawTimingPatterns, "タイミングパターンを描画");
   const drawFormatPatterns = wrapDrawApi("drawFormatPatterns", callDrawFormatPatterns, "フォーマットパターンを描画");
   ctx.drawFormatPatterns = drawFormatPatterns;
-  const drawFunctionalPatterns = () => callDrawBasePatterns({ deferFlush: false, currentRun: uiState.getRunId() });
   const initializeQRCode = async () => {
     const current = uiState.incrementRunId();
     await callDrawBasePatterns({ deferFlush: false, currentRun: current });
@@ -2411,7 +2448,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       shouldStepFunctions,
       drawQRCode,
       drawDataPatterns,
-      drawFunctionalPatterns,
       initializeQRCode,
       resetQRCode,
       clearBoard,
@@ -2467,7 +2503,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     applyMask: callApplyMask,
     drawBasePatterns: callDrawBasePatterns,
     drawBasePatternsStepped: callDrawBasePatternsStepped,
-    drawFunctionalPatterns,
     drawQRCode,
     drawDataPatterns,
     initializeQRCode,

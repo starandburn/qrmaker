@@ -47,7 +47,6 @@
     "drawBasePatterns",
     "drawBasePatternsStepped",
     "drawDataPatterns",
-    "drawFunctionalPatterns",
     "drawText",
     "drawFormatPatterns",
     "drawFinderPatterns",

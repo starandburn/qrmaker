@@ -819,7 +819,6 @@
       "drawBasePatterns",
       "drawBasePatternsStepped",
       "drawDataPatterns",
-      "drawFunctionalPatterns",
       "drawQRCode",
       "initializeQRCode",
       "pauseRunning",

@@ -66,7 +66,6 @@
       "applyMask",
       "drawBasePatterns",
       "drawBasePatternsStepped",
-      "drawFunctionalPatterns",
       "drawQRCode",
       "drawDataPatterns",
       "initializeQRCode",
