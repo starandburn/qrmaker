@@ -362,7 +362,7 @@
       }
       return false;
     };
-    const callPutFinderCells = (...args) => {
+    const putFinderCellsCore = (...args) => {
       if(!ctx) return false;
       const pattern = window.finderPattern;
       if(pattern && typeof pattern.putFinderCells === "function"){
@@ -380,11 +380,11 @@
             return false;
           }
         }
-        return pattern.putFinderCells(ctx, parsed.overwrite);
+      return pattern.putFinderCells(ctx, parsed.overwrite);
       }
       return false;
     };
-    const callDrawFinderPatterns = (...args) => {
+    const drawFinderPatternsCore = (...args) => {
       if(!ctx) return false;
       const pattern = window.finderPattern;
       if(pattern && typeof pattern.drawFinderPatterns === "function"){
@@ -393,7 +393,7 @@
       }
       return false;
     };
-    const callPutAlignmentCells = (...args) => {
+    const putAlignmentCellsCore = (...args) => {
       if(!ctx) return false;
       const pattern = window.alignmentPattern;
       if(pattern && typeof pattern.putAlignmentCells === "function"){
@@ -415,7 +415,7 @@
       }
       return false;
     };
-    const callDrawAlignmentPatterns = (...args) => {
+    const drawAlignmentPatternsCore = (...args) => {
       if(!ctx) return false;
       const pattern = window.alignmentPattern;
       if(pattern && typeof pattern.drawAlignmentPatterns === "function"){
@@ -424,7 +424,7 @@
       }
       return false;
     };
-    const callPutTimingCells = (...args) => {
+    const putTimingCellsCore = (...args) => {
       if(!ctx) return false;
       const pattern = window.timingPattern;
       if(pattern && typeof pattern.putTimingCells === "function"){
@@ -433,7 +433,7 @@
       }
       return false;
     };
-    const callDrawTimingPatterns = (...args) => {
+    const drawTimingPatternsCore = (...args) => {
       if(!ctx) return false;
       const pattern = window.timingPattern;
       if(pattern && typeof pattern.drawTimingPatterns === "function"){
@@ -442,7 +442,7 @@
       }
       return false;
     };
-    const callPutDarkModuleCells = (...args) => {
+    const putDarkModuleCellsCore = (...args) => {
       if(!ctx) return false;
       const pattern = window.darkModulePattern;
       if(pattern && typeof pattern.putDarkModuleCells === "function"){
@@ -464,7 +464,7 @@
       }
       return false;
     };
-    const callDrawDarkModulePatterns = (...args) => {
+    const drawDarkModulePatternsCore = (...args) => {
       if(!ctx) return false;
       const pattern = window.darkModulePattern;
       if(pattern && typeof pattern.drawDarkModulePatterns === "function"){
@@ -473,7 +473,7 @@
       }
       return false;
     };
-    const callPutFormatCells = (...args) => {
+    const putFormatCellsCore = (...args) => {
       if(!ctx) return false;
       const pattern = window.formatPattern;
       const putFormatFn = pattern && pattern.putFormatCells;
@@ -506,7 +506,7 @@
       }
       return markResult(result);
     };
-    const callDrawFormatPatterns = async (...args) => {
+    const drawFormatPatternsCore = async (...args) => {
       if(!ctx) return false;
       const pattern = window.formatPattern;
       if(!pattern) return false;
@@ -559,17 +559,17 @@
     };
 
     return {
-      callPutFinderCells,
-      callDrawFinderPatterns,
-      callPutAlignmentCells,
-      callDrawAlignmentPatterns,
-      callPutTimingCells,
-      callDrawTimingPatterns,
-      callPutDarkModuleCells,
-      callDrawDarkModulePatterns,
-      callPutFormatCells,
+      putFinderCellsCore,
+      drawFinderPatternsCore,
+      putAlignmentCellsCore,
+      drawAlignmentPatternsCore,
+      putTimingCellsCore,
+      drawTimingPatternsCore,
+      putDarkModuleCellsCore,
+      drawDarkModulePatternsCore,
+      putFormatCellsCore,
       callRenderFormatSide,
-      callDrawFormatPatterns,
+      drawFormatPatternsCore,
     };
   }
 

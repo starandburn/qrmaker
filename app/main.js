@@ -1103,20 +1103,26 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ? window.createPatternCallers({ ctx })
     : {};
   const {
-    callPutFinderCells = () => false,
-    callDrawFinderPatterns = () => false,
-    callPutAlignmentCells = () => false,
-    callDrawAlignmentPatterns = () => false,
-    callPutTimingCells = () => false,
-    callDrawTimingPatterns = () => false,
-    callPutDarkModuleCells = () => false,
-    callDrawDarkModulePatterns = () => false,
-    callPutFormatCells = () => false,
+    putFinderCellsCore = () => false,
+    drawFinderPatternsCore = () => false,
+    putAlignmentCellsCore = () => false,
+    drawAlignmentPatternsCore = () => false,
+    putTimingCellsCore = () => false,
+    drawTimingPatternsCore = () => false,
+    putDarkModuleCellsCore = () => false,
+    drawDarkModulePatternsCore = () => false,
+    putFormatCellsCore = () => false,
     callRenderFormatSide = () => false,
-    callDrawFormatPatterns = () => false,
+    drawFormatPatternsCore = () => false,
   } = patternCallers;
 
-  async function applyMask(maskIndex = defaultMaskIndex){
+  const putFinderCells = (...args) => putFinderCellsCore(...args);
+  const putAlignmentCells = (...args) => putAlignmentCellsCore(...args);
+  const putTimingCells = (...args) => putTimingCellsCore(...args);
+  const putDarkModuleCells = (...args) => putDarkModuleCellsCore(...args);
+  const putFormatCells = (...args) => putFormatCellsCore(...args);
+
+  async function applyMaskCore(maskIndex = defaultMaskIndex){
     if(!ctx) return false;
     const {
       isStepModeOn,
@@ -1383,7 +1389,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     return completed;
   }
-  const callApplyMask = (...args) => {
+  const applyMask = (...args) => {
     if(!ctx) return false;
     const rawValue = (args.length > 0) ? args[0] : undefined;
     const normalized = normalizeMaskCommandValue(rawValue);
@@ -1391,9 +1397,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       reportMaskCommandError(rawValue);
       return false;
     }
-    return applyMask(normalized.index);
+    return applyMaskCore(normalized.index);
   };
-  async function drawBasePatterns(ctx, { deferFlush = false, currentRun, resetDelay = false } = {}){
+  async function drawBasePatternsCore(ctx, { deferFlush = false, currentRun, resetDelay = false } = {}){
     if(!ctx) return false;
     window.logEvent("drawBasePatterns", currentRun ?? "", "基本パターン描画開始");
     const { setRenderMode, resetCursor, requestRender, RESET_DELAY_MS, RENDER_BUFFERED, RENDER_IMMEDIATE } = ctx;
@@ -1435,23 +1441,23 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     resetCursor();
     return true;
   }
-  async function drawBasePatternsStepped(ctx, { currentRun } = {}){
-    const ok = await drawBasePatterns(ctx, { currentRun, resetDelay: true });
+  async function drawBasePatternsSteppedCore(ctx, { currentRun } = {}){
+    const ok = await drawBasePatternsCore(ctx, { currentRun, resetDelay: true });
     return { ok: Boolean(ok), fastForwarded: false };
   }
-  const callDrawBasePatterns = (...args) => {
+  const drawBasePatterns = (...args) => {
     if(!ctx) return false;
-    return drawBasePatterns(ctx, ...args);
+    return drawBasePatternsCore(ctx, ...args);
   };
-  const callDrawBasePatternsStepped = (...args) => {
+  const drawBasePatternsStepped = (...args) => {
     if(!ctx) return { ok: false, fastForwarded: false };
-    return drawBasePatternsStepped(ctx, ...args);
+    return drawBasePatternsSteppedCore(ctx, ...args);
   };
-  const drawFinderPatterns = wrapDrawApi("drawFinderPatterns", callDrawFinderPatterns, "ファインダーパターンを描画");
-  const drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", callDrawAlignmentPatterns, "アライメントパターンを描画");
-  const drawDarkModulePatterns = wrapDrawApi("drawDarkModulePatterns", callDrawDarkModulePatterns, "ダークモジュールを描画");
-  const drawTimingPatterns = wrapDrawApi("drawTimingPatterns", callDrawTimingPatterns, "タイミングパターンを描画");
-  const drawFormatPatterns = wrapDrawApi("drawFormatPatterns", callDrawFormatPatterns, "フォーマットパターンを描画");
+  const drawFinderPatterns = wrapDrawApi("drawFinderPatterns", drawFinderPatternsCore, "ファインダーパターンを描画");
+  const drawAlignmentPatterns = wrapDrawApi("drawAlignmentPatterns", drawAlignmentPatternsCore, "アライメントパターンを描画");
+  const drawDarkModulePatterns = wrapDrawApi("drawDarkModulePatterns", drawDarkModulePatternsCore, "ダークモジュールを描画");
+  const drawTimingPatterns = wrapDrawApi("drawTimingPatterns", drawTimingPatternsCore, "タイミングパターンを描画");
+  const drawFormatPatterns = wrapDrawApi("drawFormatPatterns", drawFormatPatternsCore, "フォーマットパターンを描画");
   ctx.drawFormatPatterns = drawFormatPatterns;
   async function drawDataPatterns({ currentRun } = {}){
     window.logEvent("drawDataPatterns", currentRun ?? "", "データパターン描画");
@@ -1635,17 +1641,17 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   async function composeQRCode(arg){
     const resetOk = await resetQRCode();
     if(resetOk === false) return false;
-    const baseOk = await callDrawBasePatterns();
+    const baseOk = await drawBasePatterns();
     if(!baseOk) return false;
     const dataOk = await drawDataPatterns();
     if(!dataOk) return false;
     let maskOk;
     if(arg === undefined){
-      maskOk = await callApplyMask();
+      maskOk = await applyMask();
     }else if(typeof arg === "object" && arg !== null){
-      maskOk = await callApplyMask(arg.maskIndex);
+      maskOk = await applyMask(arg.maskIndex);
     }else{
-      maskOk = await callApplyMask(arg);
+      maskOk = await applyMask(arg);
     }
     if(!maskOk) return false;
     return true;
@@ -1973,11 +1979,11 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   H.shouldStepFunctions = shouldStepFunctions;
   H.updateCursorIfRun = updateCursorIfRun;
   H.stepDelayAbort = stepDelayAbort;
-  H.drawFinderPatterns = callDrawFinderPatterns;
-  H.drawTimingPatterns = callDrawTimingPatterns;
-  H.drawAlignmentPatterns = callDrawAlignmentPatterns;
-  H.drawFormatPatterns = callDrawFormatPatterns;
-  H.drawDarkModulePatterns = callDrawDarkModulePatterns;
+  H.drawFinderPatterns = drawFinderPatterns;
+  H.drawTimingPatterns = drawTimingPatterns;
+  H.drawAlignmentPatterns = drawAlignmentPatterns;
+  H.drawFormatPatterns = drawFormatPatterns;
+  H.drawDarkModulePatterns = drawDarkModulePatterns;
   H.sleep = sleep;
   H.requestAnimationFrame = requestAnimationFrame;
   H.requestRender = requestRender;
@@ -2449,9 +2455,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
   const windowApi = (safeWindow && isFunction(safeWindow.createWindowApi))
     ? safeWindow.createWindowApi(safeWindow, {
-      callApplyMask,
-      callDrawBasePatterns,
-      callDrawBasePatternsStepped,
+      applyMask,
+      drawBasePatterns,
+      drawBasePatternsStepped,
       makeStepThenable,
       shouldStepFunctions,
       drawQRCode,
@@ -2465,11 +2471,11 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       drawAlignmentPatterns,
       drawDarkModulePatterns,
       drawTimingPatterns,
-      callPutFinderCells,
-      callPutAlignmentCells,
-      callPutTimingCells,
-      callPutDarkModuleCells,
-      callPutFormatCells,
+      putFinderCells,
+      putAlignmentCells,
+      putTimingCells,
+      putDarkModuleCells,
+      putFormatCells,
     })
     : null;
   const uiDeps = {
@@ -2507,9 +2513,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     setSwitch,
     isSwitchOn,
     toggleSwitchState,
-    applyMask: callApplyMask,
-    drawBasePatterns: callDrawBasePatterns,
-    drawBasePatternsStepped: callDrawBasePatternsStepped,
+    applyMask,
+    drawBasePatterns,
+    drawBasePatternsStepped,
     drawQRCode,
     drawDataPatterns,
     resetQRCode,
@@ -2521,13 +2527,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     drawAlignmentPatterns,
     drawDarkModulePatterns,
     drawTimingPatterns,
-    putFinderCells: callPutFinderCells,
-    putAlignmentCells: callPutAlignmentCells,
-    putTimingCells: callPutTimingCells,
-    putDarkModuleCells: callPutDarkModuleCells,
-    dark: callPutDarkModuleCells,
-    darkmodule: callPutDarkModuleCells,
-    putFormatCells: callPutFormatCells,
+    putFinderCells,
+    putAlignmentCells,
+    putTimingCells,
+    putDarkModuleCells,
+    dark: putDarkModuleCells,
+    darkmodule: putDarkModuleCells,
+    putFormatCells,
     makeStepThenable,
   });
 }
