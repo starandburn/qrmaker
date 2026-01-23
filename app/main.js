@@ -409,12 +409,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const reportMaskCommandError = (value) => {
     const detail = buildMaskErrorDetail(value);
     setExecutionStatus("warning", undefined, detail);
-    if(typeof window !== "undefined" && typeof window.logEvent === "function"){
-      window.logEvent("applyMask", value ?? "", detail);
-    }
-    if(typeof console !== "undefined" && typeof console.error === "function"){
-      console.error(detail);
-    }
+    callIfFunction(safeWindow?.logEvent, "applyMask", value ?? "", detail);
+    callIfFunction(console?.error, detail);
   };
     const normalizeMaskCommandValue = (rawValue) => {
       if(rawValue === undefined){
@@ -611,7 +607,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       logEvent: isFunction(safeWindow?.logEvent) ? safeWindow.logEvent : null,
     })
     : null;
-  const updateExecutionStatusCursor = (cursorUI && typeof cursorUI.updateExecutionStatusCursor === "function")
+  const updateExecutionStatusCursor = isFunction(cursorUI?.updateExecutionStatusCursor)
     ? cursorUI.updateExecutionStatusCursor
     : undefined;
   const setBasePatternLookahead = (infos) => {
@@ -1025,7 +1021,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       requestRender,
       setRenderMode,
       RENDER_IMMEDIATE,
-      logEvent: (typeof window.logEvent === "function") ? window.logEvent : null,
+      logEvent: isFunction(window.logEvent) ? window.logEvent : null,
       onColorChange: (enabled) => {
         isColorEnabled = enabled;
         reapplyCellColors();
@@ -1590,21 +1586,17 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
           if(typeof window !== "undefined"){
             window.suppressCursorUpdates = prevSuppressCursorUpdates;
             window.suppressDataPatternLog = prevSuppressDataPatternLog;
-            if(cursorUI && typeof cursorUI.updateExecutionStatusCursor === "function"){
-              cursorUI.updateExecutionStatusCursor();
-            }
+            callIfFunction(cursorUI?.updateExecutionStatusCursor);
           }
         }else if(typeof window !== "undefined"){
           window.suppressDataPatternLog = prevSuppressDataPatternLog;
         }
-        if(typeof window.logEvent === "function"){
-          const payload = {
-            steps: perfStats.steps,
-            putMs: Math.round(perfStats.putMs),
-            moveMs: Math.round(perfStats.moveMs),
-          };
-          window.logEvent("perfDataPattern", JSON.stringify(payload), "data内訳");
-        }
+        const payload = {
+          steps: perfStats.steps,
+          putMs: Math.round(perfStats.putMs),
+          moveMs: Math.round(perfStats.moveMs),
+        };
+        callIfFunction(window.logEvent, "perfDataPattern", JSON.stringify(payload), "data内訳");
       }
     });
   }
@@ -1802,9 +1794,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         setRenderMode(prevRenderMode);
         if(typeof window !== "undefined"){
           window.suppressCursorUpdates = prevSuppressCursorUpdates;
-          if(cursorUI && isFunction(cursorUI.updateExecutionStatusCursor)){
-            cursorUI.updateExecutionStatusCursor();
-          }
+          callIfFunction(cursorUI?.updateExecutionStatusCursor);
         }
       }
       callIfFunction(
@@ -1900,7 +1890,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   };
   document.addEventListener("contextmenu", (ev) => {
     const target = ev.target;
-    if(target && typeof target.closest === "function"){
+    if(target && isFunction(target.closest)){
       const allowed = target.closest("input, textarea");
       if(allowed){
         return;
@@ -1988,7 +1978,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     colorToggleElement: colorToggleEl,
     debugToggleElement: toggleDebugValues,
     applyToggleFlags,
-    syncViewToggles: typeof window.syncViewToggles === "function" ? window.syncViewToggles : undefined,
+    syncViewToggles: isFunction(window.syncViewToggles) ? window.syncViewToggles : undefined,
     syncDebugOverlay,
     syncStepControls,
   });
@@ -1999,7 +1989,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     dataPatternPanel.addEventListener("toggle", () => {
       syncDebugPanelLayout();
       scheduleSyncParsedCode();
-      if(typeof window.syncViewLayout === "function"){
+      if(isFunction(window.syncViewLayout)){
         requestAnimationFrame(window.syncViewLayout);
       }
     });
@@ -2226,7 +2216,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   callIfFunction(window.setupSampleUI, { dom, configDefaults, resolvedDataTemplates, historyController });
   const clipboardApi = (typeof navigator !== "undefined" ? navigator.clipboard : null);
   if(btnCopyCode){
-    if(clipboardApi && typeof clipboardApi.writeText === "function"){
+    if(clipboardApi && isFunction(clipboardApi.writeText)){
       btnCopyCode.addEventListener("click", async () => {
         if(!userCodeInput) return;
         try{
@@ -2240,7 +2230,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
   }
   if(btnPasteCode){
-    if(clipboardApi && typeof clipboardApi.readText === "function"){
+    if(clipboardApi && isFunction(clipboardApi.readText)){
       btnPasteCode.addEventListener("click", async () => {
         if(!userCodeInput) return;
         try{
@@ -2260,7 +2250,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
   if(titleIcon){
     titleIcon.addEventListener("click", () => {
-      const buildFn = typeof buildStateUrlFromState === "function"
+      const buildFn = isFunction(buildStateUrlFromState)
         ? buildStateUrlFromState
         : (() => window.location.href);
       const url = buildFn({
@@ -2443,7 +2433,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     windowApi,
     qrmaker: (typeof window !== "undefined") ? window.qrmaker : null,
   };
-  if(typeof window.bindSimpleUiEvents === "function"){
+  if(isFunction(window.bindSimpleUiEvents)){
     window.bindSimpleUiEvents(uiDeps);
   }
   callIfFunction(window.registerGlobalApi, {
