@@ -1752,12 +1752,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   btnGenerate.addEventListener("click", async () => {
     historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
-    const patternUpdated = (typeof window.refreshPatternForCreate === "function")
-      ? window.refreshPatternForCreate()
-      : false;
+    const patternUpdated = callIfFunction(window.refreshPatternForCreate) ?? false;
     if(isInputLocked()){
       const resetWait = stopCurrentRun({ resetCursor: true, clear: true, resetData: Boolean(patternUpdated) });
-      if(resetWait && typeof resetWait.then === "function"){
+      if(resetWait && isFunction(resetWait.then)){
         await resetWait;
       }
     }
@@ -1772,16 +1770,17 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(!inputCheck.ok){
       return;
     }
-    const generateToken = (typeof window.beginGenerateClick === "function")
-      ? window.beginGenerateClick({ uiState, setExecutionStatus, setInputLock })
-      : null;
+    const generateToken = callIfFunction(
+      window.beginGenerateClick,
+      { uiState, setExecutionStatus, setInputLock },
+    ) ?? null;
     const lockToken = generateToken ? generateToken.lockToken : null;
     let runOk = false;
     let verificationOutcome = null;
-    const shouldStepRun = typeof isStepModeOn === "function" && isStepModeOn();
+    const shouldStepRun = isFunction(isStepModeOn) && isStepModeOn();
     const prevRenderMode = ctx.renderMode;
     const prevSuppressCursorUpdates = typeof window !== "undefined" ? window.suppressCursorUpdates : false;
-    const perfNow = (typeof performance !== "undefined" && typeof performance.now === "function")
+    const perfNow = (typeof performance !== "undefined" && isFunction(performance.now))
       ? () => performance.now()
       : () => Date.now();
     let runDurationMs = 0;
@@ -1803,17 +1802,22 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         setRenderMode(prevRenderMode);
         if(typeof window !== "undefined"){
           window.suppressCursorUpdates = prevSuppressCursorUpdates;
-          if(cursorUI && typeof cursorUI.updateExecutionStatusCursor === "function"){
+          if(cursorUI && isFunction(cursorUI.updateExecutionStatusCursor)){
             cursorUI.updateExecutionStatusCursor();
           }
         }
       }
-      if(typeof window.endGenerateClick === "function"){
-        window.endGenerateClick({ uiState, setInputLock }, { lockToken });
-      }
-      if(typeof window.logEvent === "function"){
-        window.logEvent("perfRunUserCode", JSON.stringify({ ms: Math.round(runDurationMs) }), "実行時間");
-      }
+      callIfFunction(
+        window.endGenerateClick,
+        { uiState, setInputLock },
+        { lockToken },
+      );
+      callIfFunction(
+        window.logEvent,
+        "perfRunUserCode",
+        JSON.stringify({ ms: Math.round(runDurationMs) }),
+        "実行時間",
+      );
       const applyExecutionStatus = (outcome) => {
         if(runOk){
           const verificationDetail = outcome
@@ -1844,14 +1848,20 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
             const verifyStart = perfNow();
             verificationOutcome = logVerificationOutcome();
             verifyDurationMs = Math.max(0, perfNow() - verifyStart);
-            if(typeof window.logEvent === "function"){
-              window.logEvent("perfVerify", JSON.stringify({ ms: Math.round(verifyDurationMs) }), "検証時間");
-            }
+            callIfFunction(
+              window.logEvent,
+              "perfVerify",
+              JSON.stringify({ ms: Math.round(verifyDurationMs) }),
+              "検証時間",
+            );
             applyExecutionStatus(verificationOutcome);
           }catch(err){
-            if(typeof window.logEvent === "function"){
-              window.logEvent("perfVerify", JSON.stringify({ error: String(err) }), "検証失敗");
-            }
+            callIfFunction(
+              window.logEvent,
+              "perfVerify",
+              JSON.stringify({ error: String(err) }),
+              "検証失敗",
+            );
           }
         })();
       }
