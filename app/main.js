@@ -1639,8 +1639,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }
     });
   }
-  async function drawQRCode(arg){
-    window.logEvent("drawQRCode", arg ?? "", "QRコード描画開始");
+  async function composeQRCode(arg){
     const resetOk = await resetQRCode();
     if(resetOk === false) return false;
     const baseOk = await callDrawBasePatterns();
@@ -1656,6 +1655,22 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       maskOk = await callApplyMask(arg);
     }
     if(!maskOk) return false;
+    return true;
+  }
+
+  const renderQRCode = () => {
+    if(typeof requestRender === "function"){
+      requestRender("drawQRCode");
+      return;
+    }
+    callIfFunction(window.flushRender);
+  };
+
+  async function drawQRCode(arg){
+    window.logEvent("drawQRCode", arg ?? "", "QRコード描画開始");
+    const composed = await composeQRCode(arg);
+    if(!composed) return false;
+    renderQRCode();
     window.logEvent("drawQRCode", arg ?? "", "QRコード描画完了");
     return true;
   }

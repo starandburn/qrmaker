@@ -53,7 +53,7 @@
 ## B. window へ公開する API
 ### B.1 実装 `app/main.js`
 - `window.__deferredWindowApi` 経由で `applyMask` などを公開し、`publishWindowApi()` で `window` にコピーされます。
-- `drawBasePatterns`/`drawBasePatternsStepped`/`buildQRCode`/`drawQRCode`/`drawDataPatterns` もここから渡されます。
+- `drawBasePatterns`/`drawBasePatternsStepped`/`drawQRCode`/`drawDataPatterns` もここから渡されます。
 - `putFinderCells`/`putAlignmentCells`/`putTimingCells`/`putDarkModuleCells`/`putFormatCells` により機能パターンも制御できます。
 - `syncViewToggles` や `toggleInputs` も公開されており、UI 側のビュー状態と同調します。
 - `app/bootstrap.js` が `runMainApp` を起動し、必要な依存（`layoutUI`, `urlState`, `debugUI`, `settings`）を渡します。

@@ -815,7 +815,6 @@
     const preparedLines = expandInlineElseLines(formattedLines);
     const ASYNC_COMMANDS = new Set([
       "applyMask",
-      "buildQRCode",
       "drawBasePatterns",
       "drawBasePatternsStepped",
       "drawDataPatterns",
