@@ -1591,12 +1591,14 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         }else if(typeof window !== "undefined"){
           window.suppressDataPatternLog = prevSuppressDataPatternLog;
         }
-        const payload = {
-          steps: perfStats.steps,
-          putMs: Math.round(perfStats.putMs),
-          moveMs: Math.round(perfStats.moveMs),
-        };
-        callIfFunction(window.logEvent, "perfDataPattern", JSON.stringify(payload), "data内訳");
+        if(isFunction(window.logEvent)){
+          const payload = {
+            steps: perfStats.steps,
+            putMs: Math.round(perfStats.putMs),
+            moveMs: Math.round(perfStats.moveMs),
+          };
+          window.logEvent("perfDataPattern", JSON.stringify(payload), "data内訳");
+        }
       }
     });
   }
