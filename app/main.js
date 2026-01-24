@@ -330,19 +330,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     buildStateUrl: buildStateUrlFromState,
     PARAM_KEYS = {},
   } = urlState;
-  const {
-    DATA: DATA_PARAM_KEY = "d",
-    HISTORY: HISTORY_PARAM_KEY = "h",
-    DEBUG: DEBUG_PARAM_KEY = "g",
-    SAMPLES: SAMPLES_PARAM_KEY = "m",
-    PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY = "p",
-    STEP_SPEED: STEP_SPEED_PARAM_KEY = "e",
-    STEP_FLAGS: STEP_FLAGS_PARAM_KEY = "s",
-    SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY = "x",
-    AUTO_AVOID_TIMING: TIMING_AUTO_PARAM_KEY = "t",
-    USE_DIRECTION: USE_DIRECTION_PARAM_KEY = "useDirection",
-  } = PARAM_KEYS;
-  const initialDebugParamPresent = urlParams.has(DEBUG_PARAM_KEY);
+  const initialDebugParamPresent = urlParams.has(PARAM_KEYS.DEBUG ?? "g");
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
     ? configDefaults.historyVisible
     : getHistoryVisible();
@@ -420,20 +408,20 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     return { valid: true, index: truncated };
   };
-  const skipExistingFromParam = urlParams.has(SKIP_EXISTING_PARAM_KEY)
-    ? urlState.stringifyBool(urlParams.get(SKIP_EXISTING_PARAM_KEY))
+  const skipExistingFromParam = urlParams.has(PARAM_KEYS.SKIP_EXISTING ?? "x")
+    ? urlState.stringifyBool(urlParams.get(PARAM_KEYS.SKIP_EXISTING ?? "x"))
     : null;
   const skipExistingCells = (skipExistingFromParam !== null)
     ? skipExistingFromParam
     : defaultSkipExistingCells;
-  const autoAvoidTimingFromParam = urlParams.has(TIMING_AUTO_PARAM_KEY)
-    ? urlState.stringifyBool(urlParams.get(TIMING_AUTO_PARAM_KEY))
+  const autoAvoidTimingFromParam = urlParams.has(PARAM_KEYS.AUTO_AVOID_TIMING ?? "t")
+    ? urlState.stringifyBool(urlParams.get(PARAM_KEYS.AUTO_AVOID_TIMING ?? "t"))
     : null;
   const autoAvoidTiming = (autoAvoidTimingFromParam !== null)
     ? autoAvoidTimingFromParam
     : defaultAutoAvoidTiming;
-  const useDirectionFromParam = urlParams.has(USE_DIRECTION_PARAM_KEY)
-    ? urlState.stringifyBool(urlParams.get(USE_DIRECTION_PARAM_KEY))
+  const useDirectionFromParam = urlParams.has(PARAM_KEYS.USE_DIRECTION ?? "useDirection")
+    ? urlState.stringifyBool(urlParams.get(PARAM_KEYS.USE_DIRECTION ?? "useDirection"))
     : null;
   const useDirection = (useDirectionFromParam !== null)
     ? useDirectionFromParam
@@ -478,13 +466,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   applyDebugFromParam({ debugPanel: getDebugPanel(), setDebugVisible });
   applyHistoryFromParam({ codePanel, setHistoryVisibility });
   applySampleParam({ codePanel });
-  if(!urlParams.has(PATTERN_PANEL_PARAM_KEY)){
+  if(!urlParams.has(PARAM_KEYS.PATTERN_PANEL ?? "p")){
     setPatternPanelOpen(defaultPatternOpen);
   }
-  if(!urlParams.has(DEBUG_PARAM_KEY)){
+  if(!urlParams.has(PARAM_KEYS.DEBUG ?? "g")){
     setDebugVisible(defaultDebugVisible);
   }
-  if(!urlParams.has(HISTORY_PARAM_KEY)){
+  if(!urlParams.has(PARAM_KEYS.HISTORY ?? "h")){
     setHistoryVisibility(defaultHistoryVisible);
   }
   if(!btnGenerate || !btnInit) return;
@@ -2004,7 +1992,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   applyDataParam({
     txtInput,
     urlParams,
-    DATA_PARAM_KEY,
+    DATA_PARAM_KEY: PARAM_KEYS.DATA ?? "d",
     decodeDataParamValue,
   });
   const urlControlToggleConfig = [
