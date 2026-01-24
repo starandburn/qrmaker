@@ -32,7 +32,6 @@
 
     const logResetBoardStateMessage = logMessages.resetBoardState || "";
     const logResetBoardMessage = logMessages.resetBoard || "";
-    const logResetCommandMessage = logMessages.resetCommand || "";
     const logClearBoardMessage = logMessages.clearBoard || "";
 
     function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
@@ -118,9 +117,9 @@
       }
     }
 
-    function resetBoard(){
+    function resetBoard({ resetData: resetDataFlag = true } = {}){
       global.logEvent("resetBoard", "", logResetBoardMessage);
-      if(!clearBoardSurface()){
+      if(!clearBoardSurface({ resetData: resetDataFlag })){
         return false;
       }
       resetCursor();
@@ -149,24 +148,11 @@
       return true;
     }
 
-    async function resetCommand(options = {}){
-      global.logEvent("resetCommand", "", logResetCommandMessage);
-      showApiStatus("resetCommand");
-      resetBoardState(options);
-      callIfFunction(resetSwitchStates);
-      requestRender("resetCommand");
-      if(isFunction(requestAnimationFrame)){
-        await new Promise((resolve) => requestAnimationFrame(() => resolve(true)));
-      }
-      await sleep(resetDelayMs);
-    }
-
     return {
       clearBoardSurface,
       clearBoard,
       resetBoardState,
       resetBoard,
-      resetCommand,
     };
   }
 

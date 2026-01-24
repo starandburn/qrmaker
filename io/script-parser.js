@@ -820,7 +820,6 @@
       "drawDataPatterns",
       "drawQRCode",
       "pauseRunning",
-      "resetCommand",
       "resetBoard",
       "drawFinderPatterns",
       "drawAlignmentPatterns",

@@ -543,7 +543,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
 
   const API_STATUS_DESCRIPTIONS = {
-    resetCommand: { l2: "リセット", l3: "盤面" },
     drawQRCode: { l2: "QRコード描画", l3: "QRコードを描画しています。" },
     drawBasePatterns: { l2: "基本パターン", l3: "基本パターンを描画しています。" },
     drawDataPatterns: { l2: "データパターン", l3: "データパターンを描画しています。" },
@@ -945,7 +944,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       logMessages: {
         resetBoardState: "盤面状態をリセット",
         resetBoard: "盤面状態をリセット",
-        resetCommand: "盤面をリセット",
         clearBoard: "盤面をクリア",
       },
     })
@@ -954,7 +952,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const clearBoard = boardReset ? boardReset.clearBoard : () => false;
   const resetBoardState = boardReset ? boardReset.resetBoardState : () => {};
   const resetBoard = boardReset ? boardReset.resetBoard : () => false;
-  const resetCommand = boardReset ? boardReset.resetCommand : async () => {};
   function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false, reason = "", resetData: resetDataFlag = true } = {}){
     bumpPauseAbortVersion();
     ctx.runId++;
@@ -1746,9 +1743,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     return set;
   }
 
-  const stopAndReset = () => {
+  const stopAndReset = ({ resetData: resetDataFlag = true } = {}) => {
     window.logEvent("btnInit", "", "初期化ボタン押下");
-    stopCurrentRun({ resetCursor: true, clear: true });
+    stopCurrentRun({ resetCursor: false, clear: false });
+    const resetResult = resetBoard({ resetData: resetDataFlag });
     if(userCodeInput){
       const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
       btnGenerate.disabled = !codeText;
@@ -1762,6 +1760,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(!userCodeInput || (typeof userCodeInput.value === "string" && userCodeInput.value.trim())){
       setExecutionStatus("stopped");
     }
+    return resetResult;
   };
   btnInit.addEventListener("click", stopAndReset);
   document.addEventListener("keydown", (ev) => {
@@ -1799,7 +1798,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
     const patternUpdated = callIfFunction(window.refreshPatternForCreate) ?? false;
     if(isInputLocked()){
-      const resetWait = stopCurrentRun({ resetCursor: true, clear: true, resetData: Boolean(patternUpdated) });
+      const resetWait = stopAndReset({ resetData: Boolean(patternUpdated) });
       if(resetWait && isFunction(resetWait.then)){
         await resetWait;
       }
@@ -2464,7 +2463,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       drawDataPatterns,
       resetBoard,
       clearBoard,
-      resetCommand,
       stopCurrentRun,
       drawFormatPatterns,
       drawFinderPatterns,
@@ -2520,7 +2518,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     drawDataPatterns,
     resetBoard,
     clearBoard,
-    resetCommand,
     stopCurrentRun,
     drawFormatPatterns,
     drawFinderPatterns,

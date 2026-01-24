@@ -14,7 +14,6 @@
     // Run Control
     assignIfFunction(internal, "stopCurrentRun", win.stopCurrentRun);
     // Reset / State
-    assignIfFunction(internal, "resetCommand", win.resetCommand);
     return internal;
   }
 

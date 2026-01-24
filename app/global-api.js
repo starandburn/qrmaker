@@ -70,7 +70,6 @@
       "drawDataPatterns",
       "resetBoard",
       "clearBoard",
-      "resetCommand",
       "stopCurrentRun",
       "drawFormatPatterns",
       "drawFinderPatterns",

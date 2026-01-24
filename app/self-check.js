@@ -40,7 +40,6 @@
     "drawQRCode",
     "resetBoard",
     "clearBoard",
-    "resetCommand",
     "stopCurrentRun",
     "syncViewToggles",
     "applyMask",
