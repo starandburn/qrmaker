@@ -1992,7 +1992,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   applyDataParam({
     txtInput,
     urlParams,
-    DATA_PARAM_KEY: PARAM_KEYS.DATA ?? "d",
+    DATA_PARAM_KEY: (PARAM_KEYS.DATA ?? "d"),
     decodeDataParamValue,
   });
   const urlControlToggleConfig = [
