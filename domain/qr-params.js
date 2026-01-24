@@ -31,12 +31,15 @@
   const applyDataParam = ({
     txtInput,
     urlParams,
+    paramKeys,
     DATA_PARAM_KEY,
     decodeDataParamValue,
   } = {}) => {
-    if(!txtInput || !urlParams || !DATA_PARAM_KEY) return false;
-    if(!urlParams.has(DATA_PARAM_KEY)) return false;
-    const rawValue = urlParams.get(DATA_PARAM_KEY);
+    if(!txtInput || !urlParams) return false;
+    const dataKey = (paramKeys && paramKeys.DATA) ?? DATA_PARAM_KEY ?? "d";
+    if(!dataKey) return false;
+    if(!urlParams.has(dataKey)) return false;
+    const rawValue = urlParams.get(dataKey);
     if(rawValue === null) return false;
     const maxLength = Number(txtInput.getAttribute("maxlength")) || 32;
     const decodedValue = typeof decodeDataParamValue === "function" ? decodeDataParamValue(rawValue) : rawValue;
