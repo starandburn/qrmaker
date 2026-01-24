@@ -1,7 +1,7 @@
 window.appSettingsFromScript = {
   "defaults": {
     // QR入力欄の初期値
-    "qrData": "Hello, World!",
+    "qrData": "HelloWorld",
     // ユーザーコード欄の初期値
     "userCode": "text",
     // 履歴パネルの初期表示
@@ -71,15 +71,15 @@ window.appSettingsFromScript = {
       "viewDebugValues": true
     },
     "drawText": {
-      "forceUppercase": true,
-      "skipNonAlnum": true
+      "forceUppercase": false,
+      "skipNonAlnum": false
     },
     "useDirection": false,
     // カーソル初期方向
     "homeCursorDirection": "right",
     // サンプル入力の候補
     "dataTemplates": [
-      { "value": "Hello, World!" },
+      { "value": "HelloWorld" },
       { "value": "https://www.nkk.ac.jp/" },
       { "value": "Cwm fjord-bank glyphs vext quiz." },
       { "value": "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU" }
