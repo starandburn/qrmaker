@@ -944,7 +944,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       resetDelayMs: RESET_DELAY_MS,
       logMessages: {
         resetBoardState: "盤面状態をリセット",
-        resetQRCode: "盤面状態をリセット",
+        resetBoard: "盤面状態をリセット",
         resetCommand: "盤面をリセット",
         clearBoard: "盤面をクリア",
       },
@@ -953,7 +953,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const clearBoardSurface = boardReset ? boardReset.clearBoardSurface : () => false;
   const clearBoard = boardReset ? boardReset.clearBoard : () => false;
   const resetBoardState = boardReset ? boardReset.resetBoardState : () => {};
-  const resetQRCode = boardReset ? boardReset.resetQRCode : () => false;
+  const resetBoard = boardReset ? boardReset.resetBoard : () => false;
   const resetCommand = boardReset ? boardReset.resetCommand : async () => {};
   function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false, reason = "", resetData: resetDataFlag = true } = {}){
     bumpPauseAbortVersion();
@@ -977,7 +977,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
 
   let cellsInitialized = false;
-  ctx.resetQRCode = resetQRCode;
+  ctx.resetBoard = resetBoard;
   ctx.resetCursor = resetCursor;
 
   // Guarded cursor update for async flows: only applies if runToken matches current runId
@@ -1639,7 +1639,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     });
   }
   async function composeQRCode(arg){
-    const resetOk = await resetQRCode();
+    const resetOk = await resetBoard();
     if(resetOk === false) return false;
     const baseOk = await drawBasePatterns();
     if(!baseOk) return false;
@@ -1746,7 +1746,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     return set;
   }
 
-  const handleResetAction = () => {
+  const stopAndReset = () => {
     window.logEvent("btnInit", "", "初期化ボタン押下");
     stopCurrentRun({ resetCursor: true, clear: true });
     if(userCodeInput){
@@ -1763,13 +1763,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       setExecutionStatus("stopped");
     }
   };
-  btnInit.addEventListener("click", handleResetAction);
+  btnInit.addEventListener("click", stopAndReset);
   document.addEventListener("keydown", (ev) => {
     if(ev.key !== "Escape") return;
     if(ev.repeat) return;
     const asciiModal = document.getElementById("asciiModal");
     if(asciiModal && !asciiModal.classList.contains("hidden")) return;
-    handleResetAction();
+    stopAndReset();
     ev.preventDefault();
   });
 
@@ -2462,7 +2462,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       shouldStepFunctions,
       drawQRCode,
       drawDataPatterns,
-      resetQRCode,
+      resetBoard,
       clearBoard,
       resetCommand,
       stopCurrentRun,
@@ -2518,7 +2518,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     drawBasePatternsStepped,
     drawQRCode,
     drawDataPatterns,
-    resetQRCode,
+    resetBoard,
     clearBoard,
     resetCommand,
     stopCurrentRun,

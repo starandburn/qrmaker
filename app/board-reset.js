@@ -31,7 +31,7 @@
     } = options;
 
     const logResetBoardStateMessage = logMessages.resetBoardState || "";
-    const logResetQRCodeMessage = logMessages.resetQRCode || "";
+    const logResetBoardMessage = logMessages.resetBoard || "";
     const logResetCommandMessage = logMessages.resetCommand || "";
     const logClearBoardMessage = logMessages.clearBoard || "";
 
@@ -79,7 +79,7 @@
         stopStep = abortRun,
         resetData: resetDataFlag = true,
       } = options;
-      global.logEvent("resetQRCode", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, logResetBoardStateMessage);
+      global.logEvent("resetBoardState", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, logResetBoardStateMessage);
       if(abortRun){
         ctx.runId++;
         ctx.maskRunId++;
@@ -118,14 +118,14 @@
       }
     }
 
-    function resetQRCode(){
-      global.logEvent("resetQRCode", "", logResetQRCodeMessage);
+    function resetBoard(){
+      global.logEvent("resetBoard", "", logResetBoardMessage);
       if(!clearBoardSurface()){
         return false;
       }
       resetCursor();
       callIfFunction(setPendingCursor, null);
-      requestRender("resetQRCode");
+      requestRender("resetBoard");
       if(isFunction(requestAnimationFrame)){
         return {
           then: (resolve, _reject) => {
@@ -165,7 +165,7 @@
       clearBoardSurface,
       clearBoard,
       resetBoardState,
-      resetQRCode,
+      resetBoard,
       resetCommand,
     };
   }

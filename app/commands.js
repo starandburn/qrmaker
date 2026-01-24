@@ -6,7 +6,7 @@
   function createCommands(win){
     const commandsPublic = {};
     // Basic Control
-    assignIfFunction(commandsPublic, "resetQRCode", win.resetQRCode);
+    assignIfFunction(commandsPublic, "resetBoard", win.resetBoard);
     assignIfFunction(commandsPublic, "pauseRunning", win.pauseRunning);
     // Cursor & Movement
     assignIfFunction(commandsPublic, "moveCursor", win.moveCursor);

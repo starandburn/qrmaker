@@ -38,7 +38,7 @@
 
   const REQUIRED_WINDOW_APIS = [
     "drawQRCode",
-    "resetQRCode",
+    "resetBoard",
     "clearBoard",
     "resetCommand",
     "stopCurrentRun",

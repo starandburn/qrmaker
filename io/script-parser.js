@@ -19,7 +19,7 @@
   const ALIAS_MAP = {
     move: "moveCursor",
     turn: "turnCursor",
-    reset: "resetQRCode",
+    reset: "resetBoard",
     base: "drawBasePatterns",
     mask: "applyMask",
     data: "drawDataPatterns",
@@ -821,7 +821,7 @@
       "drawQRCode",
       "pauseRunning",
       "resetCommand",
-      "resetQRCode",
+      "resetBoard",
       "drawFinderPatterns",
       "drawAlignmentPatterns",
       "drawDarkModulePatterns",
