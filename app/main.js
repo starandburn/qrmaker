@@ -54,8 +54,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const btnClearCode = dom.btnClearCode;
   const btnCopyCode = dom.btnCopyCode;
   const btnPasteCode = dom.btnPasteCode;
-  const btnClear = dom.btnClear;
-  const btnSampleDropdown = dom.btnSampleDropdown;
   const debugLog = dom.debugLog;
   const dataPatternPanel = dom.dataPatternPanel;
   const codePanel = dom.codePanel;
@@ -66,9 +64,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const footerCopy = dom.footerCopy;
   const versionInfo = dom.versionInfo;
   const userCodeInput = dom.userCodeInput;
-  const btnToggleHistory = dom.btnToggleHistory;
-  const btnPruneHistory = dom.btnPruneHistory;
-  const codeHistoryList = dom.codeHistoryList;
   const stepMode = dom.stepMode;
   const stepSkipFunctions = dom.stepSkipFunctions;
   const stepSpeed = dom.stepSpeed;
@@ -159,7 +154,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   if(settingsNormalizer && isFunction(settingsNormalizer.applyWindowSettings)){
     settingsNormalizer.applyWindowSettings(resolvedSettings);
   }
-  const stepAnimationEnabledOverride = resolvedSettings.stepAnimationEnabledOverride;
   const stepAnimationShowBorder = resolvedSettings.stepAnimationShowBorder;
   const stepAnimationDurationMs = resolvedSettings.stepAnimationDurationMs;
   const stepAnimationStartOpacity = resolvedSettings.stepAnimationStartOpacity;
