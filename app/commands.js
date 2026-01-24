@@ -34,7 +34,7 @@
     assignIfFunction(commandsPublic, "isEmpty", win.isEmpty);
     assignIfFunction(commandsPublic, "isMoveBlocked", win.isMoveBlocked);
     assignIfFunction(commandsPublic, "isSkipZone", win.isSkipZone);
-    assignIfFunction(commandsPublic, "hasMoreData", win.hasMoreData);
+    assignIfFunction(commandsPublic, "hasNextData", win.hasNextData);
     assignIfFunction(commandsPublic, "getNextData", win.getNextData);
     assignIfFunction(commandsPublic, "canContinueLoop", win.canContinueLoop);
     // Switch / Color Helpers

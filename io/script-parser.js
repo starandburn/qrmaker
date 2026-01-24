@@ -425,7 +425,7 @@
         expr = "isMoveBlocked";
         negationCount += 1;
       }else if(lower === "last"){
-        expr = "hasMoreData";
+        expr = "hasNextData";
         negationCount += 1;
       }else if(lower === "timing"){
         expr = "isSkipZone";
@@ -730,7 +730,7 @@
         const lower = base.toLowerCase();
         if(lower === "last"){
           negationCount++;
-          base = "hasMoreData";
+          base = "hasNextData";
         }
         if(!base) return null;
         return { base, negationCount };
@@ -1184,11 +1184,11 @@
       return value ? value.toLowerCase() : "";
     };
     if(fnLower === "next?"){
-      return "hasMoreData()";
+      return "hasNextData()";
     }
     if(fnLower === "next"){
       if(isConditionContext){
-        return "hasMoreData()";
+        return "hasNextData()";
       }
       throw new Error("next は put の引数、または条件式（if/while/until/repeat、next?）でのみ使用できます");
     }

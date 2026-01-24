@@ -1695,7 +1695,7 @@ function encodeBitPair(kind, bit){
   }
   return bit === 1 ? Math.abs(kind) : -Math.abs(kind || 0);
 }
-function hasMoreData(){
+function hasNextData(){
   const hasData = Array.isArray(dataSeq) && dataSeqIndex < dataSeq.length;
   if(typeof window !== "undefined" && window.suppressDataPatternLog){
     return hasData;
@@ -1713,7 +1713,7 @@ function hasMoreData(){
   return hasData;
 }
 function getNextData(){
-  if(!hasMoreData()){
+  if(!hasNextData()){
     return null;
   }
   const entry = dataSeq[dataSeqIndex++];
@@ -2231,7 +2231,7 @@ window.flushRender = flushRender;
 window.setRenderMode = setRenderMode;
 window.reapplyCellColors = reapplyCellColors;
 window.resetData = resetData;
-window.hasMoreData = hasMoreData;
+window.hasNextData = hasNextData;
 window.getNextData = getNextData;
 window.getNextDataKind = getNextDataKind;
 window.getNextDataInfo = getNextDataInfo;

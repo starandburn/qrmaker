@@ -1595,7 +1595,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       try{
         resetLoopGuard();
         updateCursor(BOARD_ROWS, BOARD_COLS, DIR_UP);
-        while(hasMoreData()){
+    while(hasNextData()){
           if(shouldAbort()) throw ABORT_ERR;
           if(!canContinueLoop()) return false;
           const nextKind = (typeof window.getNextDataKind === "function") ? window.getNextDataKind() : null;
