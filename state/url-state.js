@@ -102,6 +102,17 @@
     }
     stateParams.set(key, String(strOrNull));
   };
+  const getDataParam = (decodeFn) => {
+    const raw = getParam(PARAM_KEYS.DATA);
+    if(raw === null) return null;
+    if(typeof decodeFn === "function"){
+      return decodeFn(raw);
+    }
+    return raw;
+  };
+  const setDataParam = (stateParams, encodedOrNull) => {
+    setStringParam(stateParams, PARAM_KEYS.DATA, encodedOrNull);
+  };
 
   function encodeDataParamValue(value){
     const normalized = value ?? "";
@@ -338,7 +349,7 @@
       const defaultValue = typeof defaultDataValue === "string" ? defaultDataValue : "";
       if(value !== defaultValue){
         const encoded = encodeDataParamValue(value);
-        setStringParam(stateParams, PARAM_KEYS.DATA, encoded);
+        setDataParam(stateParams, encoded);
       }
     }
     if(typeof flagString === "string" && flagString.length){
@@ -417,6 +428,8 @@
     setBoolParam,
     setNumberParam,
     setStringParam,
+    getDataParam,
+    setDataParam,
     encodeDataParamValue,
     decodeDataParamValue,
     applyPatternOpenFromParam,

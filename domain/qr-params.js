@@ -30,17 +30,13 @@
 
   const applyDataParam = ({
     txtInput,
-    paramKeys,
-    getParam,
+    getDataParam,
     decodeDataParamValue,
   } = {}) => {
-    if(!txtInput || !paramKeys || !getParam) return false;
-    const dataKey = paramKeys.DATA;
-    if(!dataKey) return false;
-    const rawValue = getParam(dataKey);
-    if(rawValue === null) return false;
+    if(!txtInput || typeof getDataParam !== "function") return false;
+    const decodedValue = getDataParam(decodeDataParamValue);
+    if(decodedValue === null) return false;
     const maxLength = Number(txtInput.getAttribute("maxlength")) || 32;
-    const decodedValue = typeof decodeDataParamValue === "function" ? decodeDataParamValue(rawValue) : rawValue;
     const safeValue = (typeof decodedValue === "string") ? decodedValue : String(decodedValue ?? "");
     const nextValue = safeValue.length > maxLength ? safeValue.slice(0, maxLength) : safeValue;
     if(txtInput.value !== nextValue){

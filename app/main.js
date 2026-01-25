@@ -331,6 +331,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     hasParam,
     getParam,
     getBoolParam,
+    getDataParam,
   } = urlState;
   const presentationMode = getParam(INTERNAL_PARAM_KEYS.PRESENTATION_MODE) === "1";
   const initialDebugParamPresent = hasParam(PARAM_KEYS.DEBUG);
@@ -1988,8 +1989,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
   applyDataParam({
     txtInput,
-    paramKeys: PARAM_KEYS,
-    getParam,
+    getDataParam,
     decodeDataParamValue,
   });
   const urlControlToggleConfig = [
