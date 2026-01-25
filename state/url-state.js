@@ -42,11 +42,6 @@
   };
   const PARAM_KEYS = normalizeParamKeys(DEFAULT_PARAM_KEYS);
 
-  const lookupParam = (primary) => {
-    if(primary && params.has(primary)) return params.get(primary);
-    return null;
-  };
-
   const stringifyBool = (value) => {
     if(value === null) return null;
     if(typeof value !== "string") return null;
@@ -86,7 +81,7 @@
 
   const applyPatternOpenFromParam = ({ dataPatternPanel, setPatternPanelOpen } = {}) => {
     if(!dataPatternPanel && typeof setPatternPanelOpen !== "function") return false;
-    const spec = lookupParam(PATTERN_PANEL_PARAM_KEY);
+    const spec = getParam(PATTERN_PANEL_PARAM_KEY);
     if(spec === null) return false;
     const parsed = stringifyBool(spec);
     if(parsed === null) return false;
@@ -105,7 +100,7 @@
 
   const applyDebugFromParam = ({ debugPanel, applyDebugVisibility, setDebugVisible } = {}) => {
     if(!debugPanel && typeof setDebugVisible !== "function") return false;
-    const spec = lookupParam(DEBUG_PARAM_KEY);
+    const spec = getParam(DEBUG_PARAM_KEY);
     if(spec === null) return false;
     const parsed = stringifyBool(spec);
     if(parsed === null) return false;
@@ -369,7 +364,6 @@
 
   const urlState = {
     params,
-    lookupParam,
     stringifyBool,
     getBoolParam,
     getParam,
