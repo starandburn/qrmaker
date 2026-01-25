@@ -34,8 +34,7 @@
     paramKeys,
     decodeDataParamValue,
   } = {}) => {
-    if(!txtInput || !urlParams) return false;
-    if(!paramKeys || typeof paramKeys !== "object") return false;
+    if(!txtInput || !urlParams || !paramKeys) return false;
     const dataKey = paramKeys.DATA;
     if(!dataKey) return false;
     if(!urlParams.has(dataKey)) return false;
