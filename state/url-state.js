@@ -30,6 +30,13 @@
     USE_DIRECTION: "useDirection",
   };
 
+  // PARAM_KEYS 管理外の内部/実験用 URL パラメータキー。
+  // 通常の URL パラメータは DEFAULT_PARAM_KEYS で管理するが、
+  // 互換や公開仕様の対象外にしたいフラグは例外としてここに置く。
+  const INTERNAL_PARAM_KEYS = {
+    PRESENTATION_MODE: "z",
+  };
+
   const normalizeParamKeys = (raw = {}) => {
     const source = (raw && typeof raw === "object") ? raw : {};
     const normalized = Object.assign({}, DEFAULT_PARAM_KEYS);
@@ -380,6 +387,7 @@
     buildStateUrl,
     normalizeParamKeys,
     PARAM_KEYS,
+    INTERNAL_PARAM_KEYS,
   };
 
   window.urlState = urlState;

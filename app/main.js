@@ -327,11 +327,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     applyUrlControlStates,
     buildStateUrl: buildStateUrlFromState,
     PARAM_KEYS,
+    INTERNAL_PARAM_KEYS,
     hasParam,
     getParam,
     getBoolParam,
   } = urlState;
-  const presentationMode = getParam("z") === "1";
+  const presentationMode = getParam(INTERNAL_PARAM_KEYS.PRESENTATION_MODE) === "1";
   const initialDebugParamPresent = hasParam(PARAM_KEYS.DEBUG);
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
     ? configDefaults.historyVisible
