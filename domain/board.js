@@ -1397,12 +1397,22 @@ function moveCursor(...args){
         lastMoveBlocked = true;
         return false;
       }
+      const prevRow = cursorPos.row;
+      const prevCol = cursorPos.col;
       const ok = updateCursor(targetRow, targetCol, finalDir);
       if(!ok){
         lastMoveBlocked = true;
         return false;
       }
       recordLoopOccupiedTarget(targetRow, targetCol);
+      const rowDelta = targetRow - prevRow;
+      const colDelta = targetCol - prevCol;
+      const moveDir = rowDelta > 0 ? DIR_DOWN
+        : rowDelta < 0 ? DIR_UP
+        : colDelta > 0 ? DIR_RIGHT
+        : colDelta < 0 ? DIR_LEFT
+        : finalDir;
+      handleAutoAvoidStep(moveDir);
     }
   if(logLabel && logPositionOnly){
     const payload = {

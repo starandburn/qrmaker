@@ -27,7 +27,6 @@
     HISTORY: HISTORY_PARAM_KEY,
     SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY,
     AUTO_AVOID_TIMING: TIMING_AUTO_PARAM_KEY,
-    TIMING_AUTO: TIMING_AUTO_PARAM_KEY,
     USE_DIRECTION: USE_DIRECTION_PARAM_KEY,
   };
 
@@ -38,8 +37,15 @@
         if(raw[key] === undefined || raw[key] === null){
           return;
         }
+        if(key === "TIMING_AUTO"){
+          return;
+        }
         normalized[key] = raw[key];
       });
+      if((normalized.AUTO_AVOID_TIMING === undefined || normalized.AUTO_AVOID_TIMING === null)
+        && raw.TIMING_AUTO !== undefined && raw.TIMING_AUTO !== null){
+        normalized.AUTO_AVOID_TIMING = raw.TIMING_AUTO;
+      }
     }
     return normalized;
   };
