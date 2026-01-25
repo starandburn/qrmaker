@@ -37,7 +37,4 @@
     }
   };
 
-  global.executionCoordinatorService = Object.assign(global.executionCoordinatorService || {}, {
-    runWithCoordinator,
-  });
 })(typeof window !== "undefined" ? window : globalThis);

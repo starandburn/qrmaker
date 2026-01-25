@@ -62,15 +62,14 @@
   - 存在理由: `drawBasePatternsService` を1箇所だけ公開する構成へ移行し、重複ロードを検知できるようにした。
   - 削除難易度: Low
   - 削除手順案: 警告が不要になったら `if(global.basePatternService)` まわりを削除し、ローカルで `drawBasePatternsService` を共有。
-- **Unused / core/execution-coordinator-service.js:40-42**
-  - 内容: `global.executionCoordinatorService = Object.assign(global.executionCoordinatorService || {}, { coordinateExecution });`
-  - 存在理由: docs に説明はあるがコード内に参照が見つからないため、不要な公開。
+**Removed / core/execution-coordinator-service.js**
+  - 内容: `executionCoordinatorService` のグローバル定義を削除し、今はこのファイル内部だけで `runWithCoordinator` を保持。
+  - 存在理由: ドキュメント以外に参照がないため、unused となった global 公開を撤去。
   - 削除難易度: Low
-  - 削除手順案: 依存先を調査し、内部 API に移行するか完全削除。
+  - 削除手順案: `runWithCoordinator` を外部提供したい場合、新しい依存ルートを明記して再度公開する。
 
 ## 4. 優先度付きTODO（次の削除候補）
-1. `core/execution-coordinator-service.js` `executionCoordinatorService`（Low）：ドキュメントだけの存在なので実体のない公開を削除する。
-2. `ui/debug.js` の `window.debugUI` / `window.layoutUI` マージ（Mid）：デバッグ UI が不要なビルドでは完全に省略できるよう名前空間を整理。
+1. `ui/debug.js` の `window.debugUI` / `window.layoutUI` マージ（Mid）：デバッグ UI が不要なビルドでは完全に省略できるよう名前空間を整理。
 
 ## 5. ルール（削除手順テンプレ）
 1. 全体検索で参照を洗う  
