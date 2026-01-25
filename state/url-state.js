@@ -64,6 +64,44 @@
     if(!hasParam(key)) return null;
     return stringifyBool(params.get(key));
   };
+  const setParam = (stateParams, key, valueOrNull) => {
+    if(!stateParams || !key) return;
+    if(valueOrNull === null || valueOrNull === undefined){
+      stateParams.delete(key);
+      return;
+    }
+    stateParams.set(key, String(valueOrNull));
+  };
+  const setBoolParam = (stateParams, key, boolOrNull) => {
+    if(!stateParams || !key) return;
+    if(boolOrNull === null || boolOrNull === undefined){
+      stateParams.delete(key);
+      return;
+    }
+    const normalized = boolOrNull ? "1" : "0";
+    stateParams.set(key, normalized);
+  };
+  const setNumberParam = (stateParams, key, numOrNull) => {
+    if(!stateParams || !key) return;
+    if(numOrNull === null || numOrNull === undefined){
+      stateParams.delete(key);
+      return;
+    }
+    const numeric = Number(numOrNull);
+    if(!Number.isFinite(numeric)){
+      stateParams.delete(key);
+      return;
+    }
+    stateParams.set(key, String(numeric));
+  };
+  const setStringParam = (stateParams, key, strOrNull) => {
+    if(!stateParams || !key) return;
+    if(strOrNull === null || strOrNull === undefined){
+      stateParams.delete(key);
+      return;
+    }
+    stateParams.set(key, String(strOrNull));
+  };
 
   function encodeDataParamValue(value){
     const normalized = value ?? "";
@@ -300,32 +338,32 @@
       const defaultValue = typeof defaultDataValue === "string" ? defaultDataValue : "";
       if(value !== defaultValue){
         const encoded = encodeDataParamValue(value);
-        stateParams.set(PARAM_KEYS.DATA, encoded);
+        setStringParam(stateParams, PARAM_KEYS.DATA, encoded);
       }
     }
     if(typeof flagString === "string" && flagString.length){
       const flagDefault = typeof defaultFlagString === "string" && defaultFlagString.length ? defaultFlagString : "";
       if(flagString !== flagDefault){
-        stateParams.set(PARAM_KEYS.VIEW_FLAGS, flagString);
+        setStringParam(stateParams, PARAM_KEYS.VIEW_FLAGS, flagString);
       }
     }
     if(debugPanel && typeof isDebugVisible === "function"){
       const visible = isDebugVisible();
       const shouldIncludeDebug = initialDebugParamPresent || visible !== Boolean(defaultDebugVisible);
       if(shouldIncludeDebug){
-        stateParams.set(PARAM_KEYS.DEBUG, visible ? "1" : "0");
+        setBoolParam(stateParams, PARAM_KEYS.DEBUG, Boolean(visible));
       }
     }
     if(dataPatternPanel){
       const patternOpen = dataPatternPanel.open;
       if(patternOpen !== Boolean(defaultPatternOpen)){
-        stateParams.set(PARAM_KEYS.PATTERN_PANEL, patternOpen ? "1" : "0");
+        setBoolParam(stateParams, PARAM_KEYS.PATTERN_PANEL, Boolean(patternOpen));
       }
     }
     if(codePanel){
       const sampleVisible = codePanel.classList.contains("show-samples");
       if(sampleVisible){
-        stateParams.set(PARAM_KEYS.SAMPLES, "1");
+        setStringParam(stateParams, PARAM_KEYS.SAMPLES, "1");
       }
     }
     const currentSpeed = stepSpeed
@@ -333,7 +371,7 @@
       : "";
     const normalizedDefaultSpeed = String(defaultStepSpeed ?? (stepSpeed ? (stepSpeed.defaultValue ?? "") : ""));
     if(currentSpeed !== normalizedDefaultSpeed){
-      stateParams.set(PARAM_KEYS.STEP_SPEED, currentSpeed);
+      setStringParam(stateParams, PARAM_KEYS.STEP_SPEED, currentSpeed);
     }
     const flagsValue = buildStepFlagsParamValue({ stepMode, stepSkipFunctions });
     const defaultFlagsValue = buildStepFlagsParamValue({
@@ -341,28 +379,28 @@
       stepSkipFunctions: { checked: Boolean(defaultStepSkipFunctions) },
     });
     if(flagsValue !== defaultFlagsValue){
-      stateParams.set(PARAM_KEYS.STEP_FLAGS, flagsValue);
+      setStringParam(stateParams, PARAM_KEYS.STEP_FLAGS, flagsValue);
     }
     if(historyVisible !== Boolean(defaultHistoryVisible)){
-      stateParams.set(PARAM_KEYS.HISTORY, historyVisible ? "1" : "0");
+      setBoolParam(stateParams, PARAM_KEYS.HISTORY, Boolean(historyVisible));
     }
     const normalizedSkipExisting = Boolean(skipExistingCells);
     const normalizedSkipDefault = Boolean(defaultSkipExistingCells);
     if(normalizedSkipExisting !== normalizedSkipDefault){
-      stateParams.set(PARAM_KEYS.SKIP_EXISTING, normalizedSkipExisting ? "1" : "0");
+      setBoolParam(stateParams, PARAM_KEYS.SKIP_EXISTING, normalizedSkipExisting);
     }
     const normalizedAutoAvoid = Boolean(autoAvoidTiming);
     const normalizedAutoDefault = Boolean(defaultAutoAvoidTiming);
     if(normalizedAutoAvoid !== normalizedAutoDefault){
-      stateParams.set(PARAM_KEYS.AUTO_AVOID_TIMING, normalizedAutoAvoid ? "1" : "0");
+      setBoolParam(stateParams, PARAM_KEYS.AUTO_AVOID_TIMING, normalizedAutoAvoid);
     }
     const normalizedDirection = Boolean(useDirection);
     const normalizedDefaultDirection = Boolean(defaultUseDirection);
     if(normalizedDirection !== normalizedDefaultDirection){
-      stateParams.set(PARAM_KEYS.USE_DIRECTION, normalizedDirection ? "1" : "0");
+      setBoolParam(stateParams, PARAM_KEYS.USE_DIRECTION, normalizedDirection);
     }
     if(params.get("z") === "1"){
-      stateParams.set("z", "1");
+      setStringParam(stateParams, INTERNAL_PARAM_KEYS.PRESENTATION_MODE, "1");
     }
     const baseUrl = `${window.location.origin}${window.location.pathname}`;
     const query = stateParams.toString();
@@ -375,6 +413,10 @@
     getBoolParam,
     getParam,
     hasParam,
+    setParam,
+    setBoolParam,
+    setNumberParam,
+    setStringParam,
     encodeDataParamValue,
     decodeDataParamValue,
     applyPatternOpenFromParam,
