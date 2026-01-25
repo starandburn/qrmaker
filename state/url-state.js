@@ -10,7 +10,7 @@
   const DATA_EMPTY_TOKEN = "_";
   const HISTORY_PARAM_KEY = "h";
   const SAMPLES_PARAM_KEY = "m";
-  const TIMING_AUTO_PARAM_KEY = "t";
+  const AUTO_AVOID_TIMING_PARAM_KEY = "t";
   const SKIP_EXISTING_PARAM_KEY = "x";
   const STEP_SPEED_PARAM_KEY = "e";
   const STEP_FLAGS_PARAM_KEY = "s";
@@ -26,7 +26,7 @@
     DATA: DATA_PARAM_KEY,
     HISTORY: HISTORY_PARAM_KEY,
     SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY,
-    AUTO_AVOID_TIMING: TIMING_AUTO_PARAM_KEY,
+    AUTO_AVOID_TIMING: AUTO_AVOID_TIMING_PARAM_KEY,
     USE_DIRECTION: USE_DIRECTION_PARAM_KEY,
   };
 
@@ -37,15 +37,8 @@
         if(raw[key] === undefined || raw[key] === null){
           return;
         }
-        if(key === "TIMING_AUTO"){
-          return;
-        }
         normalized[key] = raw[key];
       });
-      if((normalized.AUTO_AVOID_TIMING === undefined || normalized.AUTO_AVOID_TIMING === null)
-        && raw.TIMING_AUTO !== undefined && raw.TIMING_AUTO !== null){
-        normalized.AUTO_AVOID_TIMING = raw.TIMING_AUTO;
-      }
     }
     return normalized;
   };
@@ -354,7 +347,7 @@
     const normalizedAutoAvoid = Boolean(autoAvoidTiming);
     const normalizedAutoDefault = Boolean(defaultAutoAvoidTiming);
     if(normalizedAutoAvoid !== normalizedAutoDefault){
-      stateParams.set(TIMING_AUTO_PARAM_KEY, normalizedAutoAvoid ? "1" : "0");
+      stateParams.set(AUTO_AVOID_TIMING_PARAM_KEY, normalizedAutoAvoid ? "1" : "0");
     }
     const normalizedDirection = Boolean(useDirection);
     const normalizedDefaultDirection = Boolean(defaultUseDirection);
