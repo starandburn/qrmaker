@@ -40,6 +40,7 @@
     });
     return normalized;
   };
+  const PARAM_KEYS = normalizeParamKeys(DEFAULT_PARAM_KEYS);
 
   const lookupParam = (primary) => {
     if(primary && params.has(primary)) return params.get(primary);
@@ -291,32 +292,32 @@
       const defaultValue = typeof defaultDataValue === "string" ? defaultDataValue : "";
       if(value !== defaultValue){
         const encoded = encodeDataParamValue(value);
-        stateParams.set(DATA_PARAM_KEY, encoded);
+        stateParams.set(PARAM_KEYS.DATA, encoded);
       }
     }
     if(typeof flagString === "string" && flagString.length){
       const flagDefault = typeof defaultFlagString === "string" && defaultFlagString.length ? defaultFlagString : "";
       if(flagString !== flagDefault){
-        stateParams.set(VIEW_FLAGS_PARAM_KEY, flagString);
+        stateParams.set(PARAM_KEYS.VIEW_FLAGS, flagString);
       }
     }
     if(debugPanel && typeof isDebugVisible === "function"){
       const visible = isDebugVisible();
       const shouldIncludeDebug = initialDebugParamPresent || visible !== Boolean(defaultDebugVisible);
       if(shouldIncludeDebug){
-        stateParams.set(DEBUG_PARAM_KEY, visible ? "1" : "0");
+        stateParams.set(PARAM_KEYS.DEBUG, visible ? "1" : "0");
       }
     }
     if(dataPatternPanel){
       const patternOpen = dataPatternPanel.open;
       if(patternOpen !== Boolean(defaultPatternOpen)){
-        stateParams.set(PATTERN_PANEL_PARAM_KEY, patternOpen ? "1" : "0");
+        stateParams.set(PARAM_KEYS.PATTERN_PANEL, patternOpen ? "1" : "0");
       }
     }
     if(codePanel){
       const sampleVisible = codePanel.classList.contains("show-samples");
       if(sampleVisible){
-        stateParams.set(SAMPLES_PARAM_KEY, "1");
+        stateParams.set(PARAM_KEYS.SAMPLES, "1");
       }
     }
     const currentSpeed = stepSpeed
@@ -324,7 +325,7 @@
       : "";
     const normalizedDefaultSpeed = String(defaultStepSpeed ?? (stepSpeed ? (stepSpeed.defaultValue ?? "") : ""));
     if(currentSpeed !== normalizedDefaultSpeed){
-      stateParams.set(STEP_SPEED_PARAM_KEY, currentSpeed);
+      stateParams.set(PARAM_KEYS.STEP_SPEED, currentSpeed);
     }
     const flagsValue = buildStepFlagsParamValue({ stepMode, stepSkipFunctions });
     const defaultFlagsValue = buildStepFlagsParamValue({
@@ -332,25 +333,25 @@
       stepSkipFunctions: { checked: Boolean(defaultStepSkipFunctions) },
     });
     if(flagsValue !== defaultFlagsValue){
-      stateParams.set(STEP_FLAGS_PARAM_KEY, flagsValue);
+      stateParams.set(PARAM_KEYS.STEP_FLAGS, flagsValue);
     }
     if(historyVisible !== Boolean(defaultHistoryVisible)){
-      stateParams.set(HISTORY_PARAM_KEY, historyVisible ? "1" : "0");
+      stateParams.set(PARAM_KEYS.HISTORY, historyVisible ? "1" : "0");
     }
     const normalizedSkipExisting = Boolean(skipExistingCells);
     const normalizedSkipDefault = Boolean(defaultSkipExistingCells);
     if(normalizedSkipExisting !== normalizedSkipDefault){
-      stateParams.set(SKIP_EXISTING_PARAM_KEY, normalizedSkipExisting ? "1" : "0");
+      stateParams.set(PARAM_KEYS.SKIP_EXISTING, normalizedSkipExisting ? "1" : "0");
     }
     const normalizedAutoAvoid = Boolean(autoAvoidTiming);
     const normalizedAutoDefault = Boolean(defaultAutoAvoidTiming);
     if(normalizedAutoAvoid !== normalizedAutoDefault){
-      stateParams.set(AUTO_AVOID_TIMING_PARAM_KEY, normalizedAutoAvoid ? "1" : "0");
+      stateParams.set(PARAM_KEYS.AUTO_AVOID_TIMING, normalizedAutoAvoid ? "1" : "0");
     }
     const normalizedDirection = Boolean(useDirection);
     const normalizedDefaultDirection = Boolean(defaultUseDirection);
     if(normalizedDirection !== normalizedDefaultDirection){
-      stateParams.set(USE_DIRECTION_PARAM_KEY, normalizedDirection ? "1" : "0");
+      stateParams.set(PARAM_KEYS.USE_DIRECTION, normalizedDirection ? "1" : "0");
     }
     if(params.get("z") === "1"){
       stateParams.set("z", "1");
@@ -375,7 +376,7 @@
     applyUrlControlStates,
     buildStateUrl,
     normalizeParamKeys,
-    PARAM_KEYS: normalizeParamKeys(DEFAULT_PARAM_KEYS),
+    PARAM_KEYS,
   };
 
   window.urlState = urlState;
