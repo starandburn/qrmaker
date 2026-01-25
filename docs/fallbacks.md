@@ -27,11 +27,11 @@
   - 存在理由: `app/main.js` から `window.domainQrParams` を期待して有効化済み。外部スクリプトでも `applyDataParam` などのハンドラを拡張可能。
   - 削除難易度: Mid（`app/main.js` 側の依存が明確なため即削除は不可だが、将来的には dependency injection への置き換えを検討）。
   - 削除手順案: `applyDataParam` を main 内部関数に統合し、`window.domainQrParams` の参照を消去→上書きハンドル捨てる。
-- **Fallback-Global / ui/debug.js:198-201**
-  - 内容: `window.debugUI = Object.assign({}, window.debugUI || {}, debugUI); window.layoutUI = Object.assign({}, existingLayoutUI, {...});`
-  - 存在理由: デバッグ UI をオプションで上書きしたり、レイアウト UI にデバッグ分岐を混ぜたりするフック。
-  - 削除難易度: Mid/High（デバッグ UI の拡張性を狭めないように慎重に進める必要）。
-  - 削除手順案: `window.debugUI` を常駐オブジェクトから明示的な引数に切り替え、`layoutUI` へのマージも同時に整理。
+- **Compat-Guard / ui/debug.js:198-206**
+  - 内容: `window.debugUI` を警告付きで再定義し、`window.layoutUI` があれば `applyDebugVisibility` を追加する流れ。`debugUI`/`layoutUI` は optional として扱う。
+  - 存在理由: デバッグ UI は任意の拡張なので、存在すれば hook を追加し、同じファイルの複数ロード時は warn を出して重複を検知する。
+  - 削除難易度: Mid
+  - 削除手順案: デバッグ UI を不要なビルドでは `ui/debug.js` を読み込まず、`runMainApp` に引数で `debugUI`/`layoutUI` を渡す構造にする。
 - **Compat-Guard / app/commands.js:3-5**
   - 内容: `if(typeof global.createCommands === "function") return;`
   - 存在理由: 複数のスクリプトが依存する `createCommands` を再定義しないようガード。
@@ -69,7 +69,7 @@
   - 削除手順案: `runWithCoordinator` を外部提供したい場合、新しい依存ルートを明記して再度公開する。
 
 ## 4. 優先度付きTODO（次の削除候補）
-1. `ui/debug.js` の `window.debugUI` / `window.layoutUI` マージ（Mid）：デバッグ UI が不要なビルドでは完全に省略できるよう名前空間を整理。
+- 現在、優先度の高い候補はありません。
 
 ## 5. ルール（削除手順テンプレ）
 1. 全体検索で参照を洗う  

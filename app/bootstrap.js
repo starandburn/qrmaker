@@ -12,7 +12,7 @@
   }
   const layoutUI = window.layoutUI;
   const urlState = window.urlState;
-  const debugUI = window.debugUI || {};
+  const debugUI = window.debugUI;
   const loadSettings = async () => {
     if(typeof window.appSettingsFromScript === "object" && window.appSettingsFromScript !== null){
       return window.appSettingsFromScript;

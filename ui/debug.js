@@ -195,10 +195,15 @@
     },
   };
 
-  window.debugUI = Object.assign({}, window.debugUI || {}, debugUI);
-  const existingLayoutUI = window.layoutUI || {};
-  window.layoutUI = Object.assign({}, existingLayoutUI, {
-    applyDebugVisibility,
-  });
+  if(window.debugUI){
+    console.warn("debugUI is already defined; duplicate load detected");
+  }
+  window.debugUI = debugUI;
+  if(window.layoutUI){
+    if(typeof window.layoutUI.applyDebugVisibility === "function"){
+      console.warn("layoutUI.applyDebugVisibility is already defined; duplicate load detected");
+    }
+    window.layoutUI.applyDebugVisibility = applyDebugVisibility;
+  }
   window.createDebugSync = createDebugSync;
 })(typeof window !== "undefined" ? window : globalThis);
