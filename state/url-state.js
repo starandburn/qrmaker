@@ -58,7 +58,6 @@
   };
   const hasParam = (key) => Boolean(key) && params.has(key);
   const getParam = (key) => (hasParam(key) ? params.get(key) : null);
-  const getStringParam = (key) => getParam(key);
   const getBoolParam = (key) => {
     if(!hasParam(key)) return null;
     return stringifyBool(params.get(key));
@@ -372,7 +371,6 @@
     params,
     lookupParam,
     stringifyBool,
-    getStringParam,
     getBoolParam,
     getParam,
     hasParam,
