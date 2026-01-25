@@ -328,12 +328,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     applyStepSpeedParam,
     applyUrlControlStates,
     buildStateUrl: buildStateUrlFromState,
-    PARAM_KEYS: rawParamKeys = {},
-    normalizeParamKeys,
+    PARAM_KEYS,
   } = urlState;
-  const PARAM_KEYS = (typeof normalizeParamKeys === "function")
-    ? normalizeParamKeys(rawParamKeys)
-    : rawParamKeys;
   const initialDebugParamPresent = urlParams.has(PARAM_KEYS.DEBUG);
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
     ? configDefaults.historyVisible
