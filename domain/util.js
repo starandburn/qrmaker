@@ -8,7 +8,10 @@
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
-  global.domainUtil = Object.assign(global.domainUtil || {}, {
+  if(global.domainUtil){
+    console.warn("domainUtil is already defined; duplicate load detected");
+  }
+  global.domainUtil = {
     randomInt,
-  });
+  };
 })(typeof window !== "undefined" ? window : globalThis);

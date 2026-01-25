@@ -47,11 +47,11 @@
   - 存在理由: —
   - 削除難易度: —
   - 削除手順案: —
-- **Unused / domain/util.js:11-13**
-  - 内容: `global.domainUtil = Object.assign(global.domainUtil || {}, { randomInt });`
-  - 存在理由: このスコープから `domainUtil` を参照している箇所が `rg` で見つからず、旧ドキュメントにも `domainUtil` の記述のみ。
+- **Compat-Guard / domain/util.js:11-14**
+  - 内容: 重複読み込み時に `console.warn("domainUtil is already defined; duplicate load detected");` を出し、`global.domainUtil = { randomInt };` で単一初期化。
+  - 存在理由: 後続のロードを検知するロギングだけを残しつつ、`domainUtil` を確実に1回だけセットするようになった。
   - 削除難易度: Low
-  - 削除手順案: `rg domainUtil` → 参照なしを確認 → ドキュメントからも削除。
+  - 削除手順案: 警告が不要になったら `if(global.domainUtil)` と `console.warn` を削除し、`domainUtil` をモジュールスコープだけで扱う。
 - **Unused / core/data-encoding-service.js:22-24**
   - 内容: `global.dataEncodingService = Object.assign(global.dataEncodingService || {}, { prepareDataBits });`
   - 存在理由: これも同様に定義しかなく、参照なし。今は内部でしか使われていない処理を旧 API として公開している状態。
@@ -74,12 +74,11 @@
   - 削除手順案: 依存先を調査し、内部 API に移行するか完全削除。
 
 ## 4. 優先度付きTODO（次の削除候補）
-1. `domain/util.js` の `global.domainUtil` 公開（Low）：`rg domainUtil` で再確認してから `Object.assign` を削除し、`randomInt` を直接モジュールで `export` あるいは内包。
-2. `core/data-encoding-service.js` `dataEncodingService`（Low）：外部参照0 なので `global` マージをやめ、必要なら module 内で `prepareDataBits` を共有。
-3. `core/data-placement-service.js` `dataPlacementService`（Low）：同様に `global` 依存を排除して内部 API に収束。
-4. `core/base-pattern-service.js` `basePatternService`（Low）：描画モジュールだけで使うため `global` への公開を取っ払う。
-5. `core/execution-coordinator-service.js` `executionCoordinatorService`（Low）：ドキュメントだけの存在なので実体のない公開を削除する。
-6. `ui/debug.js` の `window.debugUI` / `window.layoutUI` マージ（Mid）：デバッグ UI が不要なビルドでは完全に省略できるよう名前空間を整理。
+1. `core/data-encoding-service.js` `dataEncodingService`（Low）：外部参照0 なので `global` マージをやめ、必要なら module 内で `prepareDataBits` を共有。
+2. `core/data-placement-service.js` `dataPlacementService`（Low）：同様に `global` 依存を排除して内部 API に収束。
+3. `core/base-pattern-service.js` `basePatternService`（Low）：描画モジュールだけで使うため `global` への公開を取っ払う。
+4. `core/execution-coordinator-service.js` `executionCoordinatorService`（Low）：ドキュメントだけの存在なので実体のない公開を削除する。
+5. `ui/debug.js` の `window.debugUI` / `window.layoutUI` マージ（Mid）：デバッグ UI が不要なビルドでは完全に省略できるよう名前空間を整理。
 
 ## 5. ルール（削除手順テンプレ）
 1. 全体検索で参照を洗う  
