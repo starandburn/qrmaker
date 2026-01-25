@@ -19,7 +19,10 @@
     return { funcSet, bitsSeq };
   };
 
-  global.dataEncodingService = Object.assign(global.dataEncodingService || {}, {
+  if(global.dataEncodingService){
+    console.warn("dataEncodingService is already defined; duplicate load detected");
+  }
+  global.dataEncodingService = {
     prepareDataBits,
-  });
+  };
 })(typeof window !== "undefined" ? window : globalThis);
