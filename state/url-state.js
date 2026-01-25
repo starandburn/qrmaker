@@ -16,6 +16,34 @@
   const STEP_FLAGS_PARAM_KEY = "s";
   const USE_DIRECTION_PARAM_KEY = "useDirection";
 
+  const DEFAULT_PARAM_KEYS = {
+    VIEW_FLAGS: VIEW_FLAGS_PARAM_KEY,
+    DEBUG: DEBUG_PARAM_KEY,
+    PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY,
+    STEP_SPEED: STEP_SPEED_PARAM_KEY,
+    STEP_FLAGS: STEP_FLAGS_PARAM_KEY,
+    SAMPLES: SAMPLES_PARAM_KEY,
+    DATA: DATA_PARAM_KEY,
+    HISTORY: HISTORY_PARAM_KEY,
+    SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY,
+    AUTO_AVOID_TIMING: TIMING_AUTO_PARAM_KEY,
+    TIMING_AUTO: TIMING_AUTO_PARAM_KEY,
+    USE_DIRECTION: USE_DIRECTION_PARAM_KEY,
+  };
+
+  const normalizeParamKeys = (raw = {}) => {
+    const normalized = Object.assign({}, DEFAULT_PARAM_KEYS);
+    if(raw && typeof raw === "object"){
+      Object.keys(raw).forEach((key) => {
+        if(raw[key] === undefined || raw[key] === null){
+          return;
+        }
+        normalized[key] = raw[key];
+      });
+    }
+    return normalized;
+  };
+
   const lookupParam = (primary) => {
     if(primary && params.has(primary)) return params.get(primary);
     return null;
@@ -349,19 +377,8 @@
     applyStepSpeedParam,
     applyUrlControlStates,
     buildStateUrl,
-    PARAM_KEYS: {
-      VIEW_FLAGS: VIEW_FLAGS_PARAM_KEY,
-      DEBUG: DEBUG_PARAM_KEY,
-      PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY,
-      STEP_SPEED: STEP_SPEED_PARAM_KEY,
-      STEP_FLAGS: STEP_FLAGS_PARAM_KEY,
-      SAMPLES: SAMPLES_PARAM_KEY,
-      DATA: DATA_PARAM_KEY,
-      HISTORY: HISTORY_PARAM_KEY,
-      SKIP_EXISTING: SKIP_EXISTING_PARAM_KEY,
-      TIMING_AUTO: TIMING_AUTO_PARAM_KEY,
-      USE_DIRECTION: USE_DIRECTION_PARAM_KEY,
-    },
+    normalizeParamKeys,
+    PARAM_KEYS: normalizeParamKeys(DEFAULT_PARAM_KEYS),
   };
 
   window.urlState = urlState;

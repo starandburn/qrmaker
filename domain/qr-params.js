@@ -32,11 +32,10 @@
     txtInput,
     urlParams,
     paramKeys,
-    DATA_PARAM_KEY,
     decodeDataParamValue,
   } = {}) => {
     if(!txtInput || !urlParams) return false;
-    const dataKey = (paramKeys && paramKeys.DATA) ?? DATA_PARAM_KEY ?? "d";
+    const dataKey = paramKeys && paramKeys.DATA;
     if(!dataKey) return false;
     if(!urlParams.has(dataKey)) return false;
     const rawValue = urlParams.get(dataKey);
