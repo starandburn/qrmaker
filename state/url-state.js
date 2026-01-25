@@ -56,6 +56,13 @@
     if(/^(?:0|false|no|off|close|closed|hide)$/i.test(trimmed)) return false;
     return null;
   };
+  const hasParam = (key) => Boolean(key) && params.has(key);
+  const getParam = (key) => (hasParam(key) ? params.get(key) : null);
+  const getStringParam = (key) => getParam(key);
+  const getBoolParam = (key) => {
+    if(!hasParam(key)) return null;
+    return stringifyBool(params.get(key));
+  };
 
   function encodeDataParamValue(value){
     const normalized = value ?? "";
@@ -365,6 +372,10 @@
     params,
     lookupParam,
     stringifyBool,
+    getStringParam,
+    getBoolParam,
+    getParam,
+    hasParam,
     encodeDataParamValue,
     decodeDataParamValue,
     applyPatternOpenFromParam,

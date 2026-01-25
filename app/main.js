@@ -316,8 +316,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     setHistoryVisibility,
     getHistoryVisible,
   });
-  const urlParams = urlState.params || new URLSearchParams(window.location.search || "");
-  const presentationMode = urlParams.get("z") === "1";
   const {
     decodeDataParamValue,
     applyPatternOpenFromParam,
@@ -329,8 +327,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     applyUrlControlStates,
     buildStateUrl: buildStateUrlFromState,
     PARAM_KEYS,
+    hasParam,
+    getParam,
+    getBoolParam,
   } = urlState;
-  const initialDebugParamPresent = urlParams.has(PARAM_KEYS.DEBUG);
+  const presentationMode = getParam("z") === "1";
+  const initialDebugParamPresent = hasParam(PARAM_KEYS.DEBUG);
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
     ? configDefaults.historyVisible
     : getHistoryVisible();
@@ -408,21 +410,15 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     return { valid: true, index: truncated };
   };
-  const skipExistingFromParam = urlParams.has(PARAM_KEYS.SKIP_EXISTING)
-    ? urlState.stringifyBool(urlParams.get(PARAM_KEYS.SKIP_EXISTING))
-    : null;
+  const skipExistingFromParam = getBoolParam(PARAM_KEYS.SKIP_EXISTING);
   const skipExistingCells = (skipExistingFromParam !== null)
     ? skipExistingFromParam
     : defaultSkipExistingCells;
-  const autoAvoidTimingFromParam = urlParams.has(PARAM_KEYS.AUTO_AVOID_TIMING)
-    ? urlState.stringifyBool(urlParams.get(PARAM_KEYS.AUTO_AVOID_TIMING))
-    : null;
+  const autoAvoidTimingFromParam = getBoolParam(PARAM_KEYS.AUTO_AVOID_TIMING);
   const autoAvoidTiming = (autoAvoidTimingFromParam !== null)
     ? autoAvoidTimingFromParam
     : defaultAutoAvoidTiming;
-  const useDirectionFromParam = urlParams.has(PARAM_KEYS.USE_DIRECTION)
-    ? urlState.stringifyBool(urlParams.get(PARAM_KEYS.USE_DIRECTION))
-    : null;
+  const useDirectionFromParam = getBoolParam(PARAM_KEYS.USE_DIRECTION);
   const useDirection = (useDirectionFromParam !== null)
     ? useDirectionFromParam
     : defaultUseDirection;
@@ -466,13 +462,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   applyDebugFromParam({ debugPanel: getDebugPanel(), setDebugVisible });
   applyHistoryFromParam({ codePanel, setHistoryVisibility });
   applySampleParam({ codePanel });
-  if(!urlParams.has(PARAM_KEYS.PATTERN_PANEL)){
+  if(!hasParam(PARAM_KEYS.PATTERN_PANEL)){
     setPatternPanelOpen(defaultPatternOpen);
   }
-  if(!urlParams.has(PARAM_KEYS.DEBUG)){
+  if(!hasParam(PARAM_KEYS.DEBUG)){
     setDebugVisible(defaultDebugVisible);
   }
-  if(!urlParams.has(PARAM_KEYS.HISTORY)){
+  if(!hasParam(PARAM_KEYS.HISTORY)){
     setHistoryVisibility(defaultHistoryVisible);
   }
   if(!btnGenerate || !btnInit) return;
@@ -1991,8 +1987,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
   applyDataParam({
     txtInput,
-    urlParams,
     paramKeys: PARAM_KEYS,
+    getParam,
     decodeDataParamValue,
   });
   const urlControlToggleConfig = [

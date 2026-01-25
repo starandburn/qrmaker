@@ -30,15 +30,14 @@
 
   const applyDataParam = ({
     txtInput,
-    urlParams,
     paramKeys,
+    getParam,
     decodeDataParamValue,
   } = {}) => {
-    if(!txtInput || !urlParams || !paramKeys) return false;
+    if(!txtInput || !paramKeys || !getParam) return false;
     const dataKey = paramKeys.DATA;
     if(!dataKey) return false;
-    if(!urlParams.has(dataKey)) return false;
-    const rawValue = urlParams.get(dataKey);
+    const rawValue = getParam(dataKey);
     if(rawValue === null) return false;
     const maxLength = Number(txtInput.getAttribute("maxlength")) || 32;
     const decodedValue = typeof decodeDataParamValue === "function" ? decodeDataParamValue(rawValue) : rawValue;
