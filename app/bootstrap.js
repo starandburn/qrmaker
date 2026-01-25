@@ -29,34 +29,6 @@
   window.qrmakerDebug.state = ensureObject(window.qrmakerDebug.state);
   window.qrmakerDebug.log = ensureObject(window.qrmakerDebug.log);
   window.qrmakerDebug._bootstrapInitialized = true;
-  if(!window.qrmakerDebugReady){
-    window.qrmakerDebugReadyResolved = false;
-    window.qrmakerDebugReady = new Promise((resolve) => {
-      window.qrmakerDebugReadyResolve = () => {
-        if(window.qrmakerDebugReadyResolved) return;
-        window.qrmakerDebugReadyResolved = true;
-        resolve();
-      };
-    });
-    setTimeout(() => {
-      if(!window.qrmakerDebugReadyResolved && typeof window.qrmakerDebugReadyResolve === "function"){
-        console.warn("qrmakerDebug did not finish initialization; continuing without debug hooks");
-        window.qrmakerDebugReadyResolve();
-      }
-    }, 1000);
-  }
-  if(!window.qrmakerDebugReady){
-    window.qrmakerDebugReadyResolved = false;
-    window.qrmakerDebugReady = new Promise((resolve) => {
-      window.qrmakerDebugReadyResolve = () => {
-        if(window.qrmakerDebugReadyResolved) return;
-        window.qrmakerDebugReadyResolved = true;
-        resolve();
-      };
-      window.qrmakerDebugReadyResolve();
-    });
-    window.qrmakerDebugReadyResolved = true;
-  }
   const layoutUI = window.layoutUI;
   const urlState = window.urlState;
   const debugUI = window.debugUI;
@@ -78,16 +50,9 @@
     safeSettings.defaults.codeSamples = injected;
   }
 
-    const run = () => {
-      window.appSettings = safeSettings;
-      runMainApp({ layoutUI, urlState, debugUI, settings: safeSettings });
-      callIfFunction(window.__qrmakerSelfCheck);
-    };
-    if(window.qrmakerDebugReady){
-      window.qrmakerDebugReady.then(run);
-    }else{
-      run();
-    }
+    window.appSettings = safeSettings;
+    runMainApp({ layoutUI, urlState, debugUI, settings: safeSettings });
+    callIfFunction(window.__qrmakerSelfCheck);
   };
 
   loadSettings().then(startApp).catch(() => startApp({}));
