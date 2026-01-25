@@ -52,11 +52,11 @@
   - 存在理由: 旧版のマージ式から移行し、後続ロードを検知しつつ `prepareDataBits` を1箇所だけ公開する仕組みに切り替えた。
   - 削除難易度: Low
   - 削除手順案: 警告が不要になったら `if(global.dataEncodingService)` と `console.warn` を削除し、`prepareDataBits` を内部モジュールに閉じる。
-- **Unused / core/data-placement-service.js:137-139**
-  - 内容: `global.dataPlacementService = Object.assign(global.dataPlacementService || {}, { ensureBaseData });`
-  - 存在理由: 参照なし。`dataPlacementService` の API は docs にも記載無し。
+- **Compat-Guard / core/data-placement-service.js:137-140**
+  - 内容: 重複読み込み時に `console.warn("dataPlacementService is already defined; duplicate load detected");` を出しつつ、`global.dataPlacementService = { placeDataBits };` で単一初期化。
+  - 存在理由: 後続のロードを検知しながら `placeDataBits` を一箇所だけ公開する構成に移行済み。
   - 削除難易度: Low
-  - 削除手順案: テストで `global` に依存するコードがないことを確認しつつ `Object.assign` を削除。
+  - 削除手順案: 警告が不要になったら `if(global.dataPlacementService)` と `console.warn` を削除し、`placeDataBits` を内部モジュールに閉じる。
 - **Unused / core/base-pattern-service.js:55-57**
   - 内容: `global.basePatternService = Object.assign(global.basePatternService || {}, { buildPattern });`
   - 存在理由: 基本パターンを描画するローカルモジュールからしか呼ばれておらず、グローバル公開の根拠がない。
@@ -69,10 +69,9 @@
   - 削除手順案: 依存先を調査し、内部 API に移行するか完全削除。
 
 ## 4. 優先度付きTODO（次の削除候補）
-1. `core/data-placement-service.js` `dataPlacementService`（Low）：同様に `global` 依存を排除して内部 API に収束。
-2. `core/base-pattern-service.js` `basePatternService`（Low）：描画モジュールだけで使うため `global` への公開を取っ払う。
-3. `core/execution-coordinator-service.js` `executionCoordinatorService`（Low）：ドキュメントだけの存在なので実体のない公開を削除する。
-4. `ui/debug.js` の `window.debugUI` / `window.layoutUI` マージ（Mid）：デバッグ UI が不要なビルドでは完全に省略できるよう名前空間を整理。
+1. `core/base-pattern-service.js` `basePatternService`（Low）：描画モジュールだけで使うため `global` への公開を取っ払う。
+2. `core/execution-coordinator-service.js` `executionCoordinatorService`（Low）：ドキュメントだけの存在なので実体のない公開を削除する。
+3. `ui/debug.js` の `window.debugUI` / `window.layoutUI` マージ（Mid）：デバッグ UI が不要なビルドでは完全に省略できるよう名前空間を整理。
 
 ## 5. ルール（削除手順テンプレ）
 1. 全体検索で参照を洗う  

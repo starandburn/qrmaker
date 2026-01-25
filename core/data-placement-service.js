@@ -134,7 +134,10 @@
     };
   };
 
-  global.dataPlacementService = Object.assign(global.dataPlacementService || {}, {
+  if(global.dataPlacementService){
+    console.warn("dataPlacementService is already defined; duplicate load detected");
+  }
+  global.dataPlacementService = {
     placeDataBits,
-  });
+  };
 })(typeof window !== "undefined" ? window : globalThis);
