@@ -195,34 +195,10 @@
     },
   };
 
-  const ensureContainer = () => {
-    if(!window.qrmakerDebug){
-      window.qrmakerDebug = {
-        ui: {},
-        hooks: {},
-        flags: {},
-        state: {},
-        log: {},
-        _uiInitialized: false,
-        _hooksInitialized: false,
-      };
-      return window.qrmakerDebug;
-    }
-    const ensureObject = (value) => (value && typeof value === "object") ? value : {};
-    window.qrmakerDebug.ui = ensureObject(window.qrmakerDebug.ui);
-    window.qrmakerDebug.hooks = ensureObject(window.qrmakerDebug.hooks);
-    window.qrmakerDebug.flags = ensureObject(window.qrmakerDebug.flags);
-    window.qrmakerDebug.state = ensureObject(window.qrmakerDebug.state);
-    window.qrmakerDebug.log = ensureObject(window.qrmakerDebug.log);
-    if(typeof window.qrmakerDebug._uiInitialized !== "boolean"){
-      window.qrmakerDebug._uiInitialized = false;
-    }
-    if(typeof window.qrmakerDebug._hooksInitialized !== "boolean"){
-      window.qrmakerDebug._hooksInitialized = false;
-    }
-    return window.qrmakerDebug;
-  };
-  const qrmakerDebug = ensureContainer();
+  const qrmakerDebug = window.qrmakerDebug;
+  if(!qrmakerDebug){
+    throw new Error("qrmakerDebug must be initialized in bootstrap.js before ui/debug.js");
+  }
   if(qrmakerDebug._uiInitialized){
     console.warn("qrmakerDebug.ui is already defined; duplicate load detected");
   }
