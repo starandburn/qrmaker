@@ -31,15 +31,13 @@
   };
 
   const normalizeParamKeys = (raw = {}) => {
+    const source = (raw && typeof raw === "object") ? raw : {};
     const normalized = Object.assign({}, DEFAULT_PARAM_KEYS);
-    if(raw && typeof raw === "object"){
-      Object.keys(raw).forEach((key) => {
-        if(raw[key] === undefined || raw[key] === null){
-          return;
-        }
-        normalized[key] = raw[key];
-      });
-    }
+    Object.keys(source).forEach((key) => {
+      const value = source[key];
+      if(value === undefined || value === null) return;
+      normalized[key] = value;
+    });
     return normalized;
   };
 
