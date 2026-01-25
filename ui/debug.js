@@ -195,9 +195,19 @@
     },
   };
 
-  const qrmakerDebug = window.qrmakerDebug;
+  let qrmakerDebug = window.qrmakerDebug;
   if(!qrmakerDebug){
-    throw new Error("qrmakerDebug must be initialized in bootstrap.js before ui/debug.js");
+    console.warn("qrmakerDebug is not initialized yet; creating temporary container");
+    qrmakerDebug = {
+      ui: {},
+      hooks: {},
+      flags: {},
+      state: {},
+      log: {},
+      _uiInitialized: false,
+      _hooksInitialized: false,
+    };
+    window.qrmakerDebug = qrmakerDebug;
   }
   if(qrmakerDebug._uiInitialized){
     console.warn("qrmakerDebug.ui is already defined; duplicate load detected");
@@ -218,6 +228,9 @@
       console.warn("layoutUI.applyDebugVisibility is already defined; duplicate load detected");
     }
     window.layoutUI.applyDebugVisibility = applyDebugVisibility;
+  }
+  if(typeof window.qrmakerDebugReadyResolve === "function"){
+    window.qrmakerDebugReadyResolve();
   }
   window.createDebugSync = createDebugSync;
 })(typeof window !== "undefined" ? window : globalThis);
