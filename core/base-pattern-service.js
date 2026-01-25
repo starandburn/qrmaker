@@ -52,7 +52,10 @@
     return {};
   };
 
-  global.basePatternService = Object.assign(global.basePatternService || {}, {
+  if(global.basePatternService){
+    console.warn("basePatternService is already defined; duplicate load detected");
+  }
+  global.basePatternService = {
     drawBasePatternsService,
-  });
+  };
 })(typeof window !== "undefined" ? window : globalThis);

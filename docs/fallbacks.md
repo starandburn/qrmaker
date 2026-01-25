@@ -57,11 +57,11 @@
   - 存在理由: 後続のロードを検知しながら `placeDataBits` を一箇所だけ公開する構成に移行済み。
   - 削除難易度: Low
   - 削除手順案: 警告が不要になったら `if(global.dataPlacementService)` と `console.warn` を削除し、`placeDataBits` を内部モジュールに閉じる。
-- **Unused / core/base-pattern-service.js:55-57**
-  - 内容: `global.basePatternService = Object.assign(global.basePatternService || {}, { buildPattern });`
-  - 存在理由: 基本パターンを描画するローカルモジュールからしか呼ばれておらず、グローバル公開の根拠がない。
+- **Compat-Guard / core/base-pattern-service.js:55-58**
+  - 内容: 重複読み込み時は `console.warn("basePatternService is already defined; duplicate load detected");` を出しつつ、`global.basePatternService = { drawBasePatternsService };` で単一初期化。
+  - 存在理由: `drawBasePatternsService` を1箇所だけ公開する構成へ移行し、重複ロードを検知できるようにした。
   - 削除難易度: Low
-  - 削除手順案: 同様に `rg basePatternService` を実行して参照0 を確認 → module 内部で関数を共有。
+  - 削除手順案: 警告が不要になったら `if(global.basePatternService)` まわりを削除し、ローカルで `drawBasePatternsService` を共有。
 - **Unused / core/execution-coordinator-service.js:40-42**
   - 内容: `global.executionCoordinatorService = Object.assign(global.executionCoordinatorService || {}, { coordinateExecution });`
   - 存在理由: docs に説明はあるがコード内に参照が見つからないため、不要な公開。
@@ -69,9 +69,8 @@
   - 削除手順案: 依存先を調査し、内部 API に移行するか完全削除。
 
 ## 4. 優先度付きTODO（次の削除候補）
-1. `core/base-pattern-service.js` `basePatternService`（Low）：描画モジュールだけで使うため `global` への公開を取っ払う。
-2. `core/execution-coordinator-service.js` `executionCoordinatorService`（Low）：ドキュメントだけの存在なので実体のない公開を削除する。
-3. `ui/debug.js` の `window.debugUI` / `window.layoutUI` マージ（Mid）：デバッグ UI が不要なビルドでは完全に省略できるよう名前空間を整理。
+1. `core/execution-coordinator-service.js` `executionCoordinatorService`（Low）：ドキュメントだけの存在なので実体のない公開を削除する。
+2. `ui/debug.js` の `window.debugUI` / `window.layoutUI` マージ（Mid）：デバッグ UI が不要なビルドでは完全に省略できるよう名前空間を整理。
 
 ## 5. ルール（削除手順テンプレ）
 1. 全体検索で参照を洗う  
