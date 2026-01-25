@@ -12,6 +12,10 @@
   const STEP_SPEED_PARAM_KEY = "e";
   const STEP_FLAGS_PARAM_KEY = "s";
 
+  // URL パラメータキーの唯一の定義源。
+  // ここに定義されたキーと既定値をもとに PARAM_KEYS が正規化され、
+  // 読み取り・書き出しの両方で共通に使用される。
+  // 新しい URL パラメータを追加する場合は、必ずここに定義すること。
   const DEFAULT_PARAM_KEYS = {
     VIEW_FLAGS: VIEW_FLAGS_PARAM_KEY,
     DEBUG: DEBUG_PARAM_KEY,
