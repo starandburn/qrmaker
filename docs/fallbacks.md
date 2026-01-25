@@ -27,11 +27,11 @@
   - 存在理由: `app/main.js` から `window.domainQrParams` を期待して有効化済み。外部スクリプトでも `applyDataParam` などのハンドラを拡張可能。
   - 削除難易度: Mid（`app/main.js` 側の依存が明確なため即削除は不可だが、将来的には dependency injection への置き換えを検討）。
   - 削除手順案: `applyDataParam` を main 内部関数に統合し、`window.domainQrParams` の参照を消去→上書きハンドル捨てる。
-- **Compat-Guard / ui/debug.js:198-206**
-  - 内容: `window.debugUI` を警告付きで再定義し、`window.layoutUI` があれば `applyDebugVisibility` を追加する流れ。`debugUI`/`layoutUI` は optional として扱う。
-  - 存在理由: デバッグ UI は任意の拡張なので、存在すれば hook を追加し、同じファイルの複数ロード時は warn を出して重複を検知する。
+- **Compat-Guard / ui/debug.js:198-214**
+  - 内容: `window.qrmakerDebug` に `ui`/`hooks` を集約し、`window.debugUI` と `window.layoutUI.applyDebugVisibility` を互換エイリアスとして `qrmakerDebug` を参照する。重複ロード時は `console.warn` で検知。
+  - 存在理由: 教材用途でデバッグ機能を常設するが、入口は1本化して混乱を減らしたいため。
   - 削除難易度: Mid
-  - 削除手順案: デバッグ UI を不要なビルドでは `ui/debug.js` を読み込まず、`runMainApp` に引数で `debugUI`/`layoutUI` を渡す構造にする。
+  - 削除手順案: `qrmakerDebug` にフラグ/フックを集約した上で `runMainApp` 側の参照を段階的に `window.qrmakerDebug` 経由に切り替えていく。
 - **Compat-Guard / app/commands.js:3-5**
   - 内容: `if(typeof global.createCommands === "function") return;`
   - 存在理由: 複数のスクリプトが依存する `createCommands` を再定義しないようガード。
@@ -69,7 +69,8 @@
   - 削除手順案: `runWithCoordinator` を外部提供したい場合、新しい依存ルートを明記して再度公開する。
 
 ## 4. 優先度付きTODO（次の削除候補）
-- 現在、優先度の高い候補はありません。
+1. `window.debugUI` / `window.layoutUI` 参照を `window.qrmakerDebug` に段階移行し、互換 alias ではなく container 経由で取得できるようにする。
+2. `layoutUI.applyDebugVisibility` の注入を `window.qrmakerDebug.hooks.applyDebugVisibility` のみで行えるようにして、layout 初期化後でも再適用できる形にする。
 
 ## 5. ルール（削除手順テンプレ）
 1. 全体検索で参照を洗う  
