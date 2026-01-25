@@ -27,7 +27,7 @@
     HISTORY: HISTORY_PARAM_KEY,
     SKIP_EXISTING: "x",
     AUTO_AVOID_TIMING: "t",
-    USE_DIRECTION: "useDirection",
+    USE_DIRECTION: "r",
   };
 
   // PARAM_KEYS 管理外の内部/実験用 URL パラメータキー。
