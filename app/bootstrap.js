@@ -31,7 +31,7 @@
   window.qrmakerDebug._bootstrapInitialized = true;
   const layoutUI = window.layoutUI;
   const urlState = window.urlState;
-  const debugUI = window.debugUI;
+  const debugUI = window.qrmakerDebug.ui;
   const loadSettings = async () => {
     if(typeof window.appSettingsFromScript === "object" && window.appSettingsFromScript !== null){
       return window.appSettingsFromScript;
