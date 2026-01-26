@@ -32,6 +32,7 @@
   - 存在理由: 教材用途でデバッグ機能を常設するが、入口は1本化して混乱を減らしたいため。
   - 削除難易度: Mid
   - 削除手順案: `qrmakerDebug` にフラグ/フックを集約した上で `runMainApp` 側の参照を段階的に `window.qrmakerDebug` 経由に切り替えていく。
+  - 現状: `app/bootstrap.js` / `app/main.js` には `window.debugUI` 参照が残らず、リポジトリ上で `window.debugUI` を保持しているのは `ui/debug.js` の互換エイリアスのみ。
 - **Compat-Guard / app/commands.js:3-5**
   - 内容: `if(typeof global.createCommands === "function") return;`
   - 存在理由: 複数のスクリプトが依存する `createCommands` を再定義しないようガード。
