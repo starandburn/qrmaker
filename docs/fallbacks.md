@@ -12,7 +12,26 @@
 - **Unused**: VSCode でグレーアウトされたエクスポートや `rg` で参照0 が確認できる定義。削除候補として動作に影響が少ない前提で扱います。
 
 ## 3. 棚卸し結果（一覧）
-- **Fallback-Value / core/execution-control.js:3**
+### A) `Object.assign(global.X || {}, …)`
+- `state/app-state.js:47` (Compat-Guard): `const appState = Object.assign(global.appState || {}, { … });` で外部から先行して `appState` を定義しているケースと競合しないようにしている（依存注入/モック対策）。
+- `domain/qr-params.js:53` (Compat-Guard): `global.domainQrParams = Object.assign(global.domainQrParams || {}, { … });` は外部からハンドラを追加できるようしている既存公開。
+- `core/qr-build-service.js:147` (Compat-Guard): `global.qrBuildService = Object.assign(global.qrBuildService || {}, { … });` で重複読込を検知しつつ描画 API を公開。
+- `core/patterns/alignment-pattern.js:173` (Compat-Guard): `global.alignmentPattern` を既存予約と統合するために `Object.assign` している。
+- `core/qr-verify-service.js:375` (Compat-Guard): 同様に `global.qrVerifyService` を `Object.assign` して安全に初期化。
+- `core/patterns/dark-module-pattern.js:92` (Compat-Guard): `global.darkModulePattern` も同じく互換の公開層。
+- `core/render-cycle.js:46` (Compat-Guard): `global.renderCycle` を `Object.assign` で継続公開。
+- `core/patterns/finder-pattern.js:220` (Compat-Guard): `global.finderPattern` も同様。
+- `core/require.js:25` (Compat-Guard): `global.requireUtils = Object.assign(global.requireUtils || {}, requireUtils);` は既存グローバルとマージ。
+- `core/patterns/format-pattern.js:199` (Compat-Guard): `global.formatPattern` の重複読み込みガード。
+- `app/utils/type-utils.js:29` (Compat-Guard): `global.typeUtils = Object.assign(global.typeUtils || {}, typeUtils);` で `callIfFunction` 等を既存グローバルへマージ。
+- `core/patterns/timing-pattern.js:162` (Compat-Guard): `global.timingPattern` にも同様の処理。
+  - 共通分類: 全体が Compat-Guard（既存 API との共存を前提にしているため削除不可）。Remove候補はなし。
+
+### B) `window/global.X || {}`
+- `core/execution-control.js:3` (Compat-Guard): `const typeUtils = window.typeUtils || {};` は `window.typeUtils` が先行公開される前提ながら空オブジェクトで安全に立ち上げ、継続的に利用するパターン。
+  - 共通分類: Compat-Guard。Remove候補なし（`typeUtils` が常設でグローバルになることを前提としている）。
+
+- **Fallback-Value / core/execution-control.js:3** (see Section 3.B)
   - 内容: `const typeUtils = window.typeUtils || {};`
   - 存在理由: サイト読み込み順によって `window.typeUtils` が先に存在しない場合に備えている（他モジュールでも `callIfFunction` を定義しているため、重複公開の安全弁）。
   - 削除難易度: Mid（先行モジュールが常に `typeUtils` を提供する前提が固まれば簡略化可能）。
