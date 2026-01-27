@@ -1,24 +1,19 @@
 // main.js is the bootstrap/orchestrator.
 // It wires UI, editor, and APIs together; heavy logic lives in modules.
 const safeWindow = (typeof window !== "undefined") ? window : null;
-const typeUtils = (safeWindow && safeWindow.typeUtils) ? safeWindow.typeUtils : {};
-const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
-const isDefined = typeUtils.isDefined || ((value) => typeof value !== "undefined");
-const callIfFunction = typeUtils.callIfFunction || ((fn, ...args) => {
-  if(isFunction(fn)){
-    return fn(...args);
-  }
-  return undefined;
-});
-const callWithFallback = typeUtils.callWithFallback || ((primary, fallback, ...args) => {
-  if(isFunction(primary)){
-    return primary(...args);
-  }
-  if(isFunction(fallback)){
-    return fallback(...args);
-  }
-  return undefined;
-});
+const typeUtils = (safeWindow && safeWindow.typeUtils) ? safeWindow.typeUtils : null;
+if(!typeUtils
+  || typeof typeUtils.isFunction !== "function"
+  || typeof typeUtils.callIfFunction !== "function"
+  || typeof typeUtils.callWithFallback !== "function"
+){
+  throw new Error("app/utils/type-utils.js must be loaded before main.js.");
+}
+const {
+  callIfFunction,
+  callWithFallback,
+  isFunction,
+} = typeUtils;
 const REQUIRED_KEYS = [
   "DIR_UP",
   "DIR_RIGHT",

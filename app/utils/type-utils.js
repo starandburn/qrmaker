@@ -3,13 +3,13 @@
 
   const isFunction = (value) => typeof value === "function";
   const isDefined = (value) => typeof value !== "undefined";
-  function callIfFunction(fn, ...args){
+  const callIfFunction = (fn, ...args) => {
     if(isFunction(fn)){
       return fn(...args);
     }
     return undefined;
-  }
-  function callWithFallback(primary, fallback, ...args){
+  };
+  const callWithFallback = (primary, fallback, ...args) => {
     if(isFunction(primary)){
       return primary(...args);
     }
@@ -17,13 +17,19 @@
       return fallback(...args);
     }
     return undefined;
-  }
+  };
+  const assignIfFunction = (target, key, value) => {
+    if(isFunction(value)){
+      target[key] = value;
+    }
+  };
 
   const typeUtils = {
     isFunction,
     isDefined,
     callIfFunction,
     callWithFallback,
+    assignIfFunction,
   };
 
   global.typeUtils = Object.assign(global.typeUtils || {}, typeUtils);
@@ -33,5 +39,8 @@
   }
   if(typeof global.callWithFallback !== "function"){
     global.callWithFallback = callWithFallback;
+  }
+  if(typeof global.assignIfFunction !== "function"){
+    global.assignIfFunction = assignIfFunction;
   }
 })(typeof window !== "undefined" ? window : globalThis);

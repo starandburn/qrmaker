@@ -28,18 +28,21 @@
       callIfFunction(window.logEvent, "format", detail, "command arguments invalid");
       callIfFunction(console.error, detail);
     };
-    const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
-    const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
-    const isDefined = typeUtils.isDefined || ((value) => typeof value !== "undefined");
-    const callWithFallback = typeUtils.callWithFallback || ((primary, fallback, ...args) => {
-      if(isFunction(primary)){
-        return primary(...args);
-      }
-      if(isFunction(fallback)){
-        return fallback(...args);
-      }
-      return undefined;
-    });
+    const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : null;
+    if(!typeUtils
+      || typeof typeUtils.isFunction !== "function"
+      || typeof typeUtils.callIfFunction !== "function"
+      || typeof typeUtils.callWithFallback !== "function"
+      || typeof typeUtils.isDefined !== "function"
+    ){
+      throw new Error("app/utils/type-utils.js must be loaded before pattern-callers.js.");
+    }
+    const {
+      callIfFunction,
+      callWithFallback,
+      isDefined,
+      isFunction,
+    } = typeUtils;
     const reportMaskWarning = (detail, commandName = "formats") => {
       callIfFunction(window.setExecutionStatus, "warning", undefined, detail);
       callIfFunction(window.logEvent, commandName, detail, "invalid mask index");
