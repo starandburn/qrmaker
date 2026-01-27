@@ -79,8 +79,17 @@
           tokens.pop();
         }
       }
-      if(tokens.some((value) => (typeof value === "object" && value !== null) || isFunction(value))){
-        return null;
+      const invalid = { type: "invalid", detail: buildFormatWarningDetail(filtered) };
+      const hasObjectToken = tokens.some((value) => typeof value === "object" && value !== null);
+      const hasFunctionToken = tokens.some((value) => typeof value === "function");
+      if(hasFunctionToken){
+        return invalid;
+      }
+      if(hasObjectToken){
+        if(tokens.length === 1 && typeof tokens[0] === "object"){
+          return { type: "legacy" };
+        }
+        return invalid;
       }
       let maskIndex = null;
       let isInvalidMask = false;
@@ -107,7 +116,14 @@
         detail = buildFormatsMaskErrorDetail(buildRawValue());
         maskIndex = Number.NaN;
       }
-      return { maskIndex, overwrite, isInvalidMask, detail };
+      return {
+        type: "modern",
+        maskIndex,
+        overwrite,
+        detailInput: filtered,
+        isInvalidMask,
+        detail,
+      };
     };
     const parseFormatNumberToken = (value) => {
       const numeric = Number(value);
@@ -131,13 +147,21 @@
           }
         }
       }
-      if(tokens.some((value) => typeof value === "object")){
-        return { type: "legacy" };
-      }
       const invalid = { type: "invalid", detail: buildFormatWarningDetail(filtered) };
+      const objectTokens = tokens.filter((value) => typeof value === "object" && value !== null);
+      const hasFunctionToken = tokens.some((value) => typeof value === "function");
+      if(hasFunctionToken){
+        return invalid;
+      }
+      if(objectTokens.length){
+        if(objectTokens.length === tokens.length){
+          return { type: "legacy" };
+        }
+        return invalid;
+      }
       if(tokens.length === 0){
         return {
-          type: "ok",
+          type: "modern",
           side: 0,
           value: null,
           overwrite,
@@ -153,7 +177,7 @@
         const parsed = parseFormatNumberToken(tokens[0]);
         if(parsed === null){
           return {
-            type: "ok",
+            type: "modern",
             side: 0,
             value: Number.NaN,
             overwrite,
@@ -164,7 +188,7 @@
         }
         if(parsed === 0 || parsed === 1){
           return {
-            type: "ok",
+            type: "modern",
             side: parsed,
             value: null,
             overwrite,
@@ -174,7 +198,7 @@
           };
         }
         return {
-          type: "ok",
+          type: "modern",
           side: 0,
           value: parsed,
           overwrite,
@@ -202,7 +226,7 @@
         maskDetailInfo.maskDetail = buildFormatMaskErrorDetail(formatPlacementArgValue(rawMask));
       }
       return {
-        type: "ok",
+        type: "modern",
         side: sideParsed,
         value: maskDetailInfo.value,
         overwrite,
@@ -283,7 +307,7 @@
       const tokens = [...filtered];
       if(!tokens.length){
         return {
-          type: "placement",
+          type: "modern",
           overwrite: false,
           row: null,
           col: null,
@@ -302,24 +326,28 @@
           tokens.pop();
         }
       }
-      if(tokens.some((value) => typeof value === "object")){
-        return { type: "legacy" };
+      const invalid = { type: "invalid", detail: buildPlacementWarningDetail(commandName, filtered) };
+      const objectTokens = tokens.filter((value) => typeof value === "object" && value !== null);
+      if(objectTokens.length){
+        if(objectTokens.length === tokens.length && objectTokens.length === 1){
+          return { type: "legacy" };
+        }
+        return invalid;
       }
       if(tokens.length === 0){
         return {
-          type: "placement",
+          type: "modern",
           overwrite,
           row: null,
           col: null,
           detailInput: filtered,
         };
       }
-      const invalid = { type: "invalid", detail: buildPlacementWarningDetail(commandName, filtered) };
       if(tokens.length === 1){
         const parsed = parseCellAddress(tokens[0]);
         if(parsed){
           return {
-            type: "placement",
+            type: "modern",
             overwrite,
             row: parsed.row,
             col: parsed.col,
@@ -337,7 +365,7 @@
           const col = Math.trunc(colVal);
           if(row >= 1 && row <= BOARD_ROWS && col >= 1 && col <= BOARD_COLS){
             return {
-              type: "placement",
+              type: "modern",
               overwrite,
               row,
               col,
@@ -515,12 +543,16 @@
       if(!pattern) return false;
       const drawFn = pattern.drawFormatPatterns;
       const normalized = normalizeFormatsCommandArgs(args);
-      if(!normalized){
+      if(normalized.type === "legacy"){
         if(!isFunction(drawFn)){
           return false;
         }
         const fallback = (args.length === 0) ? [] : args;
         return drawFn(ctx, ...fallback);
+      }
+      if(normalized.type === "invalid"){
+        reportFormatCommandWarning(normalized.detail);
+        return false;
       }
       if(normalized.isInvalidMask && isDefined(normalized.detail)){
         reportFormatsMaskWarning(normalized.detail);
