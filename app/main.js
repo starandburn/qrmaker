@@ -496,7 +496,11 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     throw new Error("ui/ui-state.js must be loaded before main.js.");
   }
   const uiState = safeWindow.createUiState();
-  const runGuardedExecution = async ({ kind, statusRunning = "running", statusDone = "stopped" } = {}, fn) => {
+  const EXEC_STATUS = {
+    RUNNING: "running",
+    STOPPED: "stopped",
+  };
+  const runGuardedExecution = async ({ kind, statusRunning = EXEC_STATUS.RUNNING, statusDone = EXEC_STATUS.STOPPED } = {}, fn) => {
     if(typeof fn !== "function") return fn;
     const hasLock = uiState.hasInputLockToken();
     if(hasLock){
@@ -1379,7 +1383,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       return false;
     }
     return runGuardedExecution(
-      { kind: "applyMask", statusRunning: "running", statusDone: "stopped" },
+      { kind: "applyMask" },
       () => applyMaskCore(normalized.index),
     );
   };
@@ -1826,7 +1830,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }
       const runStart = perfNow();
       runOk = await runGuardedExecution(
-        { kind: "step", statusRunning: "running", statusDone: null },
+        { kind: "step" },
         () => runUserCodeWithStep(),
       );
       runDurationMs = Math.max(0, perfNow() - runStart);
