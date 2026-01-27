@@ -800,6 +800,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   ctx.ABORT_ERR = ABORT_ERR;
   ctx.RESET_DELAY_MS = RESET_DELAY_MS;
   ctx.helpers = ctx.helpers || {};
+  ctx.invalidateRun = () => uiState.invalidateRun();
+  ctx.invalidateMaskRun = () => uiState.invalidateMaskRun();
+  ctx.setStepFillRunning = (value) => uiState.setStepFillRunning(value);
+  ctx.stopAllRuns = () => uiState.stopAllRuns();
   let formatWrittenMaskValue = 0;
   const normalizeFormatMaskValue = (value) => {
     if(Number.isFinite(value)){
@@ -914,8 +918,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const resetBoard = boardReset ? boardReset.resetBoard : () => false;
   function stopCurrentRun({ resetCursor: resetCursorFlag = false, clear = false, reason = "", resetData: resetDataFlag = true } = {}){
     bumpPauseAbortVersion();
-    ctx.runId++;
-    ctx.isStepFillRunning = false;
+    ctx.stopAllRuns();
     setInputLock(false);
     let resetResult;
     if(clear){

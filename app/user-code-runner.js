@@ -137,8 +137,8 @@
 
     async function runUserCodeWithStep(){
       if(!ctx) return false;
-      const currentRun = ++ctx.runId;
-      ctx.isStepFillRunning = true;
+      const currentRun = ctx.invalidateRun();
+      ctx.setStepFillRunning(true);
       const prevRender = ctx.renderMode;
       const prevSuppressCursorUpdates = typeof window !== "undefined" ? window.suppressCursorUpdates : false;
       setRenderMode(RENDER_IMMEDIATE);
@@ -155,7 +155,7 @@
         if(typeof window !== "undefined"){
           window.suppressCursorUpdates = prevSuppressCursorUpdates;
         }
-        ctx.isStepFillRunning = false;
+        ctx.setStepFillRunning(false);
         requestRender("runUserCodeWithStep");
         setRenderMode(prevRender);
       }

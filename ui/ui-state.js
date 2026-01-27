@@ -54,6 +54,14 @@
         return state.isStepFillRunning;
       },
     };
+    state.stopAllRuns = () => {
+      state.incrementRunId();
+      state.incrementMaskRunId();
+      state.setIsStepFillRunning(false);
+    };
+    state.invalidateRun = () => state.incrementRunId();
+    state.invalidateMaskRun = () => state.incrementMaskRunId();
+    state.setStepFillRunning = (value) => state.setIsStepFillRunning(value);
     return state;
   }
 

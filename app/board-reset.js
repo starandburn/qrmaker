@@ -80,11 +80,11 @@
       } = options;
       global.logEvent("resetBoardState", `abort=${abortRun},forceImmediate=${forceImmediate},stopStep=${stopStep}`, logResetBoardStateMessage);
       if(abortRun){
-        ctx.runId++;
-        ctx.maskRunId++;
+        ctx.invalidateRun();
+        ctx.invalidateMaskRun();
       }
       if(stopStep){
-        ctx.isStepFillRunning = false;
+        ctx.setStepFillRunning(false);
       }
       if(forceImmediate){
         setRenderMode(renderModeImmediate);
