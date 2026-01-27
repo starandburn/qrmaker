@@ -492,25 +492,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ? statusManager.setLastExecutionError
     : () => {};
   setExecutionStatus("stopped");
-  const uiState = (isFunction(safeWindow?.createUiState))
-    ? safeWindow.createUiState()
-    : {
-      inputLockToken: 0,
-      runId: 0,
-      maskRunId: 0,
-      isStepFillRunning: false,
-      setInputLockToken(value){ this.inputLockToken = value; },
-      clearInputLockToken(){ this.inputLockToken = 0; },
-      hasInputLockToken(){ return this.inputLockToken !== 0; },
-      getRunId(){ return this.runId; },
-      setRunId(value){ this.runId = value; return this.runId; },
-      incrementRunId(){ this.runId += 1; return this.runId; },
-      getMaskRunId(){ return this.maskRunId; },
-      setMaskRunId(value){ this.maskRunId = value; return this.maskRunId; },
-      incrementMaskRunId(){ this.maskRunId += 1; return this.maskRunId; },
-      getIsStepFillRunning(){ return this.isStepFillRunning; },
-      setIsStepFillRunning(value){ this.isStepFillRunning = value; return this.isStepFillRunning; },
-    };
+  if(!isFunction(safeWindow?.createUiState)){
+    throw new Error("ui/ui-state.js must be loaded before main.js.");
+  }
+  const uiState = safeWindow.createUiState();
   const isInputLocked = () => Boolean(txtInput?.readOnly || userCodeInput?.readOnly);
   if(userCodeInput){
     const initialCode = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
