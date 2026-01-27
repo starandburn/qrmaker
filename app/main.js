@@ -496,6 +496,27 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     throw new Error("ui/ui-state.js must be loaded before main.js.");
   }
   const uiState = safeWindow.createUiState();
+  const runGuardedExecution = async ({ kind, statusRunning = "running", statusDone = "stopped" } = {}, fn) => {
+    if(typeof fn !== "function") return fn;
+    const hasLock = uiState.hasInputLockToken();
+    if(hasLock){
+      return fn();
+    }
+    uiState.setInputLockToken(1);
+    setInputLock(true);
+    if(statusRunning){
+      setExecutionStatus(statusRunning);
+    }
+    try{
+      return await fn();
+    }finally{
+      setInputLock(false);
+      uiState.clearInputLockToken();
+      if(statusDone){
+        setExecutionStatus(statusDone);
+      }
+    }
+  };
   const isInputLocked = () => Boolean(txtInput?.readOnly || userCodeInput?.readOnly);
   if(userCodeInput){
     const initialCode = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
@@ -1357,7 +1378,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       reportMaskCommandError(rawValue);
       return false;
     }
-    return applyMaskCore(normalized.index);
+    return runGuardedExecution(
+      { kind: "applyMask", statusRunning: "running", statusDone: "stopped" },
+      () => applyMaskCore(normalized.index),
+    );
   };
   async function drawBasePatternsCore(ctx, { deferFlush = false, currentRun, resetDelay = false } = {}){
     if(!ctx) return false;
@@ -1801,7 +1825,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         setRenderMode(RENDER_BUFFERED);
       }
       const runStart = perfNow();
-      runOk = await runUserCodeWithStep();
+      runOk = await runGuardedExecution(
+        { kind: "step", statusRunning: "running", statusDone: null },
+        () => runUserCodeWithStep(),
+      );
       runDurationMs = Math.max(0, perfNow() - runStart);
     }finally{
       if(!shouldStepRun){
