@@ -47,15 +47,15 @@
   - 削除難易度: Mid（`app/main.js` 側の依存が明確なため即削除は不可だが、将来的には dependency injection への置き換えを検討）。
   - 削除手順案: `applyDataParam` を main 内部関数に統合し、`window.domainQrParams` の参照を消去→上書きハンドル捨てる。
 - **Compat-Guard / ui/debug.js:198-214**
-  - 内容: `window.qrmakerDebug` に `ui`/`hooks` を集約し、`window.debugUI` と `window.layoutUI.applyDebugVisibility` を互換エイリアスとして `qrmakerDebug` を参照する。重複ロード時は `console.warn` で検知。
+  - 内容: `window.qrmakerDebug` に `ui`/`hooks` を集約し、`window.debugUI` への参照と `qrmakerDebug.hooks.applyDebugVisibility` による出口を提供する。`window.layoutUI.applyDebugVisibility` の互換エイリアスは削除済み。
   - 存在理由: 教材用途でデバッグ機能を常設するが、入口は1本化して混乱を減らしたいため。
-  - 現状: `layoutUI.applyDebugVisibility` の実体は `ui/debug.js` の互換委譲ラッパだけで、`rg -n "layoutUI\\.applyDebugVisibility"` の結果に出てくるのはこのブロックとこのドキュメント上の記述のみ（参照側コードは他に存在しない）。
-  - 互換維持理由: 将来の教材や既存コードが `window.layoutUI.applyDebugVisibility` を呼ぶ可能性があるため、エイリアスによる「呼び口」は残す。
-  - 削除条件:
-    - `rg -n "layoutUI\\.applyDebugVisibility"` の結果が docs と `ui/debug.js` の互換ブロック以外に 0 件であること。
+  - 現状: `window.layoutUI.applyDebugVisibility` の互換実装は `ui/debug.js` から取り除かれており、`rg -n "layoutUI\\.applyDebugVisibility"` の結果には現れず、参照側コードも存在していない。
+  - 互換維持理由: 現在は互換の提供を終了しており、以後は `qrmakerDebug.hooks.applyDebugVisibility` を唯一の出口として使っている。
+  - 削除条件（現在は満たされている）:
+    - `rg -n "layoutUI\\.applyDebugVisibility"` の結果が docs と `ui/debug.js` の互換ブロック以外に 0 件であること（この変更で確認済み）。
     - `window.layoutUI` を外部公開 API として使わない方針が社内で確定していること。
     - デバッグ可視性の出口が `qrmakerDebug.hooks.applyDebugVisibility` に一本化され、参照元がすべて hooks 経由でアクセスしていること。
-  - 削除手順案: `ui/debug.js` の `window.layoutUI.applyDebugVisibility` 委譲ブロックとこの互換記述を削除し、動作確認（デバッグ表示のオン/オフ）を行う（`window.debugUI` など他の互換も維持・確認）。
+  - 削除済み: `ui/debug.js` の `window.layoutUI.applyDebugVisibility` 委譲ブロックとこの互換記述を削除し、動作確認（デバッグ表示のオン/オフ）を行った（`window.debugUI` など他の互換は継続）。
 - **Compat-Guard / app/commands.js:3-5**
   - 内容: `if(typeof global.createCommands === "function") return;`
   - 存在理由: 複数のスクリプトが依存する `createCommands` を再定義しないようガード。
@@ -94,7 +94,7 @@
 
 ## 4. 優先度付きTODO（次の削除候補）
 1. `window.debugUI` / `window.layoutUI` 参照を `window.qrmakerDebug` に段階移行し、互換 alias ではなく container 経由で取得できるようにする。
-2. `layoutUI.applyDebugVisibility` の注入を `window.qrmakerDebug.hooks.applyDebugVisibility` のみで行えるようにして、layout 初期化後でも再適用できる形にする。
+2. `layoutUI.applyDebugVisibility` の注入を `window.qrmakerDebug.hooks.applyDebugVisibility` のみで行えるようにして、layout 初期化後でも再適用できる形にする（この項目は完了し、互換 alias は廃止済み）。
 
 ## 5. ルール（削除手順テンプレ）
 1. 全体検索で参照を洗う  
@@ -123,12 +123,12 @@
   ```
 - **初期化責務**:
   - `app/debug-bootstrap.js`: `qrmakerDebug` の空箱を最速で構築し、各プロパティ領域の初期オブジェクトを準備する。
-  - `ui/debug.js`: `ui`（`debugUI`）と `hooks`（`applyDebugVisibility`）を登録し、互換エイリアスを整える（`window.debugUI` / `window.layoutUI.applyDebugVisibility`）。
+  - `ui/debug.js`: `ui`（`debugUI`）と `hooks`（`applyDebugVisibility`）を登録し、`window.debugUI` の互換エイリアスを維持しつつ `window.layoutUI.applyDebugVisibility` は廃止して `qrmakerDebug.hooks.applyDebugVisibility` に一本化している。
   - `app/bootstrap.js`: `runMainApp` の依存として `layoutUI`/`urlState`/`debugUI`/`settings` を渡し、`qrmakerDebug` 経由のデバッグ入口をアプリ本体に供給する。
-- **互換エイリアス**:
-  - `window.debugUI` は常に `window.qrmakerDebug.ui` を参照し、従来コードと互換性を保つ。
-  - `window.layoutUI.applyDebugVisibility` は hooks 側の `qrmakerDebug.hooks.applyDebugVisibility` を呼び出す委譲ラッパで、実体は hooks によって管理されている。
+  - **互換エイリアス**:
+    - `window.debugUI` は常に `window.qrmakerDebug.ui` を参照し、従来コードと互換性を保つ。
+    - `window.layoutUI.applyDebugVisibility` は廃止され、`qrmakerDebug.hooks.applyDebugVisibility` を直接呼ぶ形に一本化されている。
 - **運用ルール**:
   - 新しいデバッグ機能は `qrmakerDebug` 配下に追加し、直接 `window.*` に公開しない。
-  - 互換層（`window.debugUI` / `window.layoutUI`）を残す場合は本ドキュメントで「残す理由」と「削除条件」を明記する。
-  - `qrmakerDebug` を介さない `window.layoutUI` や `window.debugUI` への直接依存は極力避け、hooks 経由で参照する。
+  - 互換層（`window.debugUI`）を残す場合は本ドキュメントで「残す理由」と「削除条件」を明記する（`window.layoutUI` 側の互換は削除済）。
+  - `qrmakerDebug` を介さない `window.layoutUI`（互換は削除済）や `window.debugUI` への直接依存は極力避け、hooks 経由で参照する。

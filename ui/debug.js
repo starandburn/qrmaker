@@ -213,13 +213,5 @@
   }
   qrmakerDebug.hooks.applyDebugVisibility = applyDebugVisibility;
   qrmakerDebug._hooksInitialized = true;
-  if(window.layoutUI){
-    if(typeof window.layoutUI.applyDebugVisibility === "function"){
-      console.warn("layoutUI.applyDebugVisibility is already defined; duplicate load detected");
-    }
-    window.layoutUI.applyDebugVisibility = function(){
-      return qrmakerDebug.hooks.applyDebugVisibility.apply(null, arguments);
-    };
-  }
   window.createDebugSync = createDebugSync;
 })(typeof window !== "undefined" ? window : globalThis);
