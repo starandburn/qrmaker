@@ -94,8 +94,8 @@
 ### C) その他の互換層と Guard
 #### ui/debug.js: `window.debugUI` エイリアス（Compat-Guard）
 - 参照検索: `rg -n "window\.debugUI"`
-- 現状: `ui/debug.js:207-210` で `window.debugUI` が `qrmakerDebug.ui` に同期されており、教材・古い外部スクリプトが `window.debugUI` を読んでも `qrmakerDebug` を通じて UI を操作できる（現ライン内ではこのファイルだけが参照）。
-- 次アクション: keep（外部互換へ慎重な維持が必要）。
+- 現状: `ui/debug.js:205-210` で `qrmakerDebug.ui` への alias/guard を用意し、既存で異なるオブジェクトがある場合は console.warn してから `window.debugUI` を qrmakerDebug.ui に書き戻す。`debugUI` は `app/bootstrap.js`/`app/main.js` へ qrmakerDebug 経由で依存注入されるだけで window 側のアクセスはゼロ。`rg -n "debugUI" docs` や `rg -n "bookmarklet|console|devtools|debugUI" .` でも教材やブックマークレット向けの `window.debugUI` 導線は確認できない。
+- 次アクション: candidate（C-4 で `ui/debug.js` の alias/guard を削除し、`window.debugUI` 公開を止める）。
 
 #### ui/debug.js: `window.layoutUI.applyDebugVisibility`（Compat-Guard → done）
 - 参照検索: `rg -n "layoutUI\.applyDebugVisibility"`
@@ -145,9 +145,10 @@
 3. done: `core/base-pattern-service.js`
    - 参照検索: `rg -n "basePatternService"`
    - 削除ステップ: C-3でグローバル公開互換を削除（参照0件のため）
-4. investigate: `window.debugUI`
-   - 参照検索: `rg -n "window\.debugUI"`
-   - 見に行くファイル: `ui/debug.js`（207-210 行）で alias を維持しているため、外部が `window.debugUI` を参照していないか確認してから削除を判断。
+4. candidate: `window.debugUI`
+   - 参照検索: `rg -n "window\.debugUI"`（`docs/fallbacks.md` と `ui/debug.js:207-210` の2箇所のみ。コード中に `window.debugUI` は現れない。）
+   - 現状: `ui/debug.js:205-210` で alias/guard を用意して `qrmakerDebug.ui` を `window.debugUI` に紐付け、名前の衝突時には console.warn する。`app/bootstrap.js`/`app/main.js` は `debugUI` を `qrmakerDebug` 経由で依存注入するだけで window 側のアクセスはない。`rg -n "debugUI" docs` や `rg -n "bookmarklet|console|devtools|debugUI" .` でも教材/ブックマークレット向けの `window.debugUI` 参照は見つからなかった。
+   - 次アクション: candidate（C-4 で `ui/debug.js` の alias/guard を削除し、`window.debugUI` の公開をやめる予定）。
 
 ## 6. ルール（削除手順テンプレ）
 1. 全体検索で参照を洗う
