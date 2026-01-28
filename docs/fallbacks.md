@@ -112,20 +112,23 @@
 - 現状: `core/function-utils.js:4-11` と `app/utils/type-utils.js:37-38` で `global.callIfFunction` を定義・公開し、`typeUtils.callIfFunction` を `app/main.js` や多数の UI/パターンが利用している。
 - 次アクション: keep（callIfFunction を依存注入ベースに切り替えるまでは公開を残す）。
 
-#### core/data-encoding-service.js（Compat-Guard: dataEncodingService）※candidate
+#### core/data-encoding-service.js（Compat-Guard: dataEncodingService）※done
 - 参照検索: `rg -n "dataEncodingService"`
-- 現状: `core/data-encoding-service.js:22-25` で `global.dataEncodingService` が既に存在する例を警告しつつ `prepareDataBits` を公開。リポジトリ内に `dataEncodingService` へのアクセスはこのファイル以外に存在しない。
-- 次アクション: candidate（`prepareDataBits` をモジュールとして明示的に import するようにし、グローバル公開＋警告を削除する時点を探る）。
+- 現状: `core/data-encoding-service.js` は `prepareDataBits` を提供する純粋なモジュール構成となり、`global.dataEncodingService` への書き込みや警告が存在しない。
+- 次アクション: done（C-3でグローバル公開互換を削除し、参照0件のため完全撤去）。
+- C-3でグローバル公開互換を削除（参照0件のため）。
 
-#### core/data-placement-service.js（Compat-Guard: dataPlacementService）※candidate
+#### core/data-placement-service.js（Compat-Guard: dataPlacementService）※done
 - 参照検索: `rg -n "dataPlacementService"`
-- 現状: `core/data-placement-service.js:137-140` でグローバルを guard して `placeDataBits` を単一エクスポート。ほかに `global.dataPlacementService` を使うコードはない。
-- 次アクション: candidate（`placeDataBits` を内部共有に切り替えたタイミングで guard を消す）。
+- 現状: `core/data-placement-service.js` は `placeDataBits` を提供する純粋なモジュール構成となり、`global.dataPlacementService` への guard/警告/書き込みが存在しない。
+- 次アクション: done（C-3でグローバル公開互換を削除し、参照0件のため完全撤去）。
+- C-3でグローバル公開互換を削除（参照0件のため）。
 
-#### core/base-pattern-service.js（Compat-Guard: basePatternService）※candidate
+#### core/base-pattern-service.js（Compat-Guard: basePatternService）※done
 - 参照検索: `rg -n "basePatternService"`
-- 現状: `core/base-pattern-service.js:55-58` で `global.basePatternService` を guard し、`drawBasePatternsService` を公開。リポジトリ内に `global.basePatternService` を読んでいる箇所はない。
-- 次アクション: candidate（ローカル共有へ移行したら guard を削除）。
+- 現状: `core/base-pattern-service.js` は `drawBasePatternsService` を提供する純粋なモジュール構成となり、`global.basePatternService` への guard/警告/書き込みが存在しない。
+- 次アクション: done（C-3でグローバル公開互換を削除し、参照0件のため完全撤去）。
+- C-3でグローバル公開互換を削除（参照0件のため）。
 
 #### core/execution-coordinator-service.js（Removed）
 - 参照検索: `rg -n "executionCoordinatorService"`
@@ -133,15 +136,15 @@
 - 次アクション: done（グローバル公開を撤去済み。再公開するなら新しい依存ルートを明示する）。
 
 ## 5. 優先度付きTODO（削除候補・調査）
-1. candidate: `core/data-encoding-service.js`
+1. done: `core/data-encoding-service.js`
    - 参照検索: `rg -n "dataEncodingService"`（結果は該当ファイル内のみ）
-   - 削除ステップ: `prepareDataBits` を必要な依存先が `import { prepareDataBits }` する形に変え、警告 + `global.dataEncodingService` の書き込みを除去。
-2. candidate: `core/data-placement-service.js`
+   - 削除ステップ: C-3でグローバル公開互換を削除（参照0件のため）
+2. done: `core/data-placement-service.js`
    - 参照検索: `rg -n "dataPlacementService"`
-   - 削除ステップ: `placeDataBits` をモジュール内共有に統一し、`global` への書き込みと警告を廃止。
-3. candidate: `core/base-pattern-service.js`
+   - 削除ステップ: C-3でグローバル公開互換を削除（参照0件のため）
+3. done: `core/base-pattern-service.js`
    - 参照検索: `rg -n "basePatternService"`
-   - 削除ステップ: `drawBasePatternsService` をローカルで再利用し、`global.basePatternService` 欄と警告を削除。
+   - 削除ステップ: C-3でグローバル公開互換を削除（参照0件のため）
 4. investigate: `window.debugUI`
    - 参照検索: `rg -n "window\.debugUI"`
    - 見に行くファイル: `ui/debug.js`（207-210 行）で alias を維持しているため、外部が `window.debugUI` を参照していないか確認してから削除を判断。
