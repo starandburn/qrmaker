@@ -3,6 +3,7 @@
 ## 1. 目的と方針
 - 本資料はフォールバック／互換性層を機械的に洗い出し、「参照があれば残し、参照ゼロなら削除」の作業につなぐための台帳です。
 - 直近の URL 状態整備と同様に、コード自体に手を入れる前に事実を記録し、削除の対象と削除手順を明示します。
+- 互換項目に keep/done/candidate/investigate のステータスを付け、「何を残し、どこを次に消すか」を今後の作業で共通認識とします。
 
 ## 2. 棚卸しカテゴリ定義
 - **Fallback-Value**: `??` や `||` でデフォルト文字列・オブジェクトをセットする定義。たとえば `const foo = bar || {};` のように「値がなければこれを使う」振る舞い。
@@ -11,101 +12,149 @@
 - **Compat-Guard**: `if(global.createX) return;` や `typeof window.foo === "function"` で二重ロードや未定義の分岐を防ぎ、互換呼び出しを維持している箇所。
 - **Unused**: VSCode でグレーアウトされたエクスポートや `rg` で参照0 が確認できる定義。削除候補として動作に影響が少ない前提で扱います。
 
-## 3. 棚卸し結果（一覧）
-### A) `Object.assign(global.X || {}, …)`
-- `state/app-state.js:47` (Compat-Guard): `const appState = Object.assign(global.appState || {}, { … });` で外部から先行して `appState` を定義しているケースと競合しないようにしている（依存注入/モック対策）。
-- `domain/qr-params.js:53` (Compat-Guard): `global.domainQrParams = Object.assign(global.domainQrParams || {}, { … });` は外部からハンドラを追加できるようしている既存公開。
-- `core/qr-build-service.js:147` (Compat-Guard): `global.qrBuildService = Object.assign(global.qrBuildService || {}, { … });` で重複読込を検知しつつ描画 API を公開。
-- `core/patterns/alignment-pattern.js:173` (Compat-Guard): `global.alignmentPattern` を既存予約と統合するために `Object.assign` している。
-- `core/qr-verify-service.js:375` (Compat-Guard): 同様に `global.qrVerifyService` を `Object.assign` して安全に初期化。
-- `core/patterns/dark-module-pattern.js:92` (Compat-Guard): `global.darkModulePattern` も同じく互換の公開層。
-- `core/render-cycle.js:46` (Compat-Guard): `global.renderCycle` を `Object.assign` で継続公開。
-- `core/patterns/finder-pattern.js:220` (Compat-Guard): `global.finderPattern` も同様。
-- `core/require.js:25` (Compat-Guard): `global.requireUtils = Object.assign(global.requireUtils || {}, requireUtils);` は既存グローバルとマージ。
-- `core/patterns/format-pattern.js:199` (Compat-Guard): `global.formatPattern` の重複読み込みガード。
-- `app/utils/type-utils.js:29` (Compat-Guard): `global.typeUtils = Object.assign(global.typeUtils || {}, typeUtils);` で `callIfFunction` 等を既存グローバルへマージ。
-- `core/patterns/timing-pattern.js:162` (Compat-Guard): `global.timingPattern` にも同様の処理。
-  - 共通分類: 全体が Compat-Guard（既存 API との共存を前提にしているため削除不可）。Remove候補はなし。
+## 3. ステータス分類ルール
+- **keep**: 参照が残っていて、残す理由（外部互換／モジュール依存など）が明確な互換層。
+- **done**: 互換実装そのものを削除済みで、ドキュメントや履歴にのみ記録しておく状態。
+- **candidate**: 実装は残っていても参照が0件で、削除条件が満たされているため次の作業で取り除ける状態。
+- **investigate**: 参照があるが「どの経路で使われているか」「削除しても影響が出ないか」が未確定なもの。調査・確認が必要。
 
-### B) `window/global.X || {}`
-- `core/execution-control.js:3` (Compat-Guard): `const typeUtils = window.typeUtils || {};` は `window.typeUtils` が先行公開される前提ながら空オブジェクトで安全に立ち上げ、継続的に利用するパターン。
-  - 共通分類: Compat-Guard。Remove候補なし（`typeUtils` が常設でグローバルになることを前提としている）。
+## 4. 棚卸し結果（一覧）
+### A) `Object.assign(global.X || {}, …)` による Compat-Guard
+#### global.appState（Compat-Guard）
+- 参照検索: `rg -n "global\.appState"`
+- 現状: `state/app-state.js:47/58` で `global.appState` を `Object.assign` し、テストや依存注入が先に `appState` を定義していても衝突しないようにしている。
+- 次アクション: keep（依存注入/モック対策として現状の公開を維持）。
 
-- **Fallback-Value / core/execution-control.js:3** (see Section 3.B)
-  - 内容: `const typeUtils = window.typeUtils || {};`
-  - 存在理由: サイト読み込み順によって `window.typeUtils` が先に存在しない場合に備えている（他モジュールでも `callIfFunction` を定義しているため、重複公開の安全弁）。
-  - 削除難易度: Mid（先行モジュールが常に `typeUtils` を提供する前提が固まれば簡略化可能）。
-  - 削除手順案: `rg typeUtils` で参照を確認後、`window.typeUtils` が常時セットされているビルドのみを想定した版を用意し、`typeUtils` をサービスに依存させる。
-- **Fallback-Value / state/history-store.js:85**
-  - 内容: `const valueText = entry.value ?? "";`
-  - 存在理由: 履歴エントリの各フィールドに `null` や `undefined` が混ざったときに文字列化で例外を防ぐため。
-  - 削除難易度: Low（`historyStore` のデータ構造が常に文字列を返すように統一すれば不要）。
-  - 削除手順案: 入力元を正規化→`entry.value` を必ず空文字列で初期化→`?? ""` を削除。
-- **Fallback-Global / domain/qr-params.js:53**
-  - 内容: `global.domainQrParams = Object.assign(global.domainQrParams || {}, { ... });`
-  - 存在理由: `app/main.js` から `window.domainQrParams` を期待して有効化済み。外部スクリプトでも `applyDataParam` などのハンドラを拡張可能。
-  - 削除難易度: Mid（`app/main.js` 側の依存が明確なため即削除は不可だが、将来的には dependency injection への置き換えを検討）。
-  - 削除手順案: `applyDataParam` を main 内部関数に統合し、`window.domainQrParams` の参照を消去→上書きハンドル捨てる。
-- **Compat-Guard / ui/debug.js:198-214**
-  - 内容: `window.qrmakerDebug` に `ui`/`hooks` を集約し、`window.debugUI` への参照と `qrmakerDebug.hooks.applyDebugVisibility` による出口を提供する。`window.layoutUI.applyDebugVisibility` の互換エイリアスは削除済み。
-  - 存在理由: 教材用途でデバッグ機能を常設するが、入口は1本化して混乱を減らしたいため。
-  - 現状: `window.layoutUI.applyDebugVisibility` の互換実装は `ui/debug.js` から取り除かれており、`rg -n "layoutUI\\.applyDebugVisibility"` の結果には現れず、参照側コードも存在していない。
-  - 互換維持理由: 現在は互換の提供を終了しており、以後は `qrmakerDebug.hooks.applyDebugVisibility` を唯一の出口として使っている。
-  - 削除条件（現在は満たされている）:
-    - `rg -n "layoutUI\\.applyDebugVisibility"` の結果が docs と `ui/debug.js` の互換ブロック以外に 0 件であること（この変更で確認済み）。
-    - `window.layoutUI` を外部公開 API として使わない方針が社内で確定していること。
-    - デバッグ可視性の出口が `qrmakerDebug.hooks.applyDebugVisibility` に一本化され、参照元がすべて hooks 経由でアクセスしていること。
-  - 削除済み: `ui/debug.js` の `window.layoutUI.applyDebugVisibility` 委譲ブロックとこの互換記述を削除し、動作確認（デバッグ表示のオン/オフ）を行った（`window.debugUI` など他の互換は継続）。
-- **Compat-Guard / app/commands.js:3-5**
-  - 内容: `if(typeof global.createCommands === "function") return;`
-  - 存在理由: 複数のスクリプトが依存する `createCommands` を再定義しないようガード。
-  - 削除難易度: High（シングルトンであることを保証するための安全弁）。
-  - 削除手順案: コードを ES Module に分割して `createCommands` を明示的に1箇所からインポート→ガード不要にする。
-- **Compat-Guard / core/function-utils.js:2-28**
-  - 内容: `if(typeof global.callIfFunction !== "function"){ ... global.callIfFunction = callIfFunction; }` など。
-  - 存在理由: `callIfFunction` / `assignIfFunction` 等のユーティリティをグローバルに初期化し、再定義を避けることで `app/main.js` 側がこれらを安全に参照可能。
-  - 削除難易度: Mid（新しいモジュールシステムで依存注入すれば不要）。
-  - 削除手順案: 依存先すべてで `import`/`require` を使って関数を共有し、`global` への注入を撤廃した時点でガードを消す。
-- **Compat-Alias / 全リポジトリ**
-  - 内容: `old name → new name` 形式のエイリアスは現コードベースでは検出できず（`rg` で該当クラスター無し）。必要な場合は履歴に追加予定。
-  - 存在理由: —
-  - 削除難易度: —
-  - 削除手順案: —
-- **Compat-Guard / core/data-encoding-service.js:22-25**
-  - 内容: 重複読み込み時は `console.warn("dataEncodingService is already defined; duplicate load detected");` を出しつつ、`global.dataEncodingService = { prepareDataBits };` で単一初期化。
-  - 存在理由: 旧版のマージ式から移行し、後続ロードを検知しつつ `prepareDataBits` を1箇所だけ公開する仕組みに切り替えた。
-  - 削除難易度: Low
-  - 削除手順案: 警告が不要になったら `if(global.dataEncodingService)` と `console.warn` を削除し、`prepareDataBits` を内部モジュールに閉じる。
-- **Compat-Guard / core/data-placement-service.js:137-140**
-  - 内容: 重複読み込み時に `console.warn("dataPlacementService is already defined; duplicate load detected");` を出しつつ、`global.dataPlacementService = { placeDataBits };` で単一初期化。
-  - 存在理由: 後続のロードを検知しながら `placeDataBits` を一箇所だけ公開する構成に移行済み。
-  - 削除難易度: Low
-  - 削除手順案: 警告が不要になったら `if(global.dataPlacementService)` と `console.warn` を削除し、`placeDataBits` を内部モジュールに閉じる。
-- **Compat-Guard / core/base-pattern-service.js:55-58**
-  - 内容: 重複読み込み時は `console.warn("basePatternService is already defined; duplicate load detected");` を出しつつ、`global.basePatternService = { drawBasePatternsService };` で単一初期化。
-  - 存在理由: `drawBasePatternsService` を1箇所だけ公開する構成へ移行し、重複ロードを検知できるようにした。
-  - 削除難易度: Low
-  - 削除手順案: 警告が不要になったら `if(global.basePatternService)` まわりを削除し、ローカルで `drawBasePatternsService` を共有。
-**Removed / core/execution-coordinator-service.js**
-  - 内容: `executionCoordinatorService` のグローバル定義を削除し、今はこのファイル内部だけで `runWithCoordinator` を保持。
-  - 存在理由: ドキュメント以外に参照がないため、unused となった global 公開を撤去。
-  - 削除難易度: Low
-  - 削除手順案: `runWithCoordinator` を外部提供したい場合、新しい依存ルートを明記して再度公開する。
+#### global.qrBuildService（Compat-Guard）
+- 参照検索: `rg -n "global\.qrBuildService"`
+- 現状: `core/qr-build-service.js:147` で `global.qrBuildService` を `Object.assign`、重複読込を検知しながら描画 API を公開している。
+- 次アクション: keep（重複読込検知と描画 API の共有が目的で継続公開）。
 
-## 4. 優先度付きTODO（次の削除候補）
-1. `window.debugUI` / `window.layoutUI` 参照を `window.qrmakerDebug` に段階移行し、互換 alias ではなく container 経由で取得できるようにする。
-2. `layoutUI.applyDebugVisibility` の注入を `window.qrmakerDebug.hooks.applyDebugVisibility` のみで行えるようにして、layout 初期化後でも再適用できる形にする（この項目は完了し、互換 alias は廃止済み）。
+#### global.alignmentPattern（Compat-Guard）
+- 参照検索: `rg -n "global\.alignmentPattern"`
+- 現状: `core/patterns/alignment-pattern.js:173` で既存予約にマージし、外部スクリプトが `window.alignmentPattern` へハンドラを追加できる前提にしている。
+- 次アクション: keep（外部やテストで常設登録があるため）。
 
-## 5. ルール（削除手順テンプレ）
-1. 全体検索で参照を洗う  
-2. 参照を正式ルート（モジュール内 import）に統一する  
-3. 参照0 を確認する  
-4. 互換枝（`window.X || {}` や `global.X` など）を削除する  
-5. 再検索で0 を確認する  
+#### global.qrVerifyService（Compat-Guard）
+- 参照検索: `rg -n "global\.qrVerifyService"`
+- 現状: `core/qr-verify-service.js:375` で `global.qrVerifyService` を `Object.assign`、重複読み込みを検知しつつ API を継続公開。
+- 次アクション: keep（描画検証 API を安全に共有するため）。
+
+#### global.darkModulePattern（Compat-Guard）
+- 参照検索: `rg -n "global\.darkModulePattern"`
+- 現状: `core/patterns/dark-module-pattern.js:92` で `global.darkModulePattern` を `Object.assign`、旧 API と共存してダークモジュールを公開。
+- 次アクション: keep（同様に外部スクリプトでの参照可能性を担保）。
+
+#### global.renderCycle（Compat-Guard）
+- 参照検索: `rg -n "global\.renderCycle"`
+- 現状: `core/render-cycle.js:46` で `global.renderCycle` を `Object.assign`、レンダリングサイクルを継続公開。
+- 次アクション: keep（レンダル周期を外部から制御する可能性があるため）。
+
+#### global.finderPattern（Compat-Guard）
+- 参照検索: `rg -n "global\.finderPattern"`
+- 現状: `core/patterns/finder-pattern.js:220` で `global.finderPattern` を `Object.assign` しており、他のパターンとの共存を図っている。
+- 次アクション: keep（Finder パターンの互換 API を維持）。
+
+#### global.requireUtils（Compat-Guard）
+- 参照検索: `rg -n "global\.requireUtils"`
+- 現状: `core/require.js:25` で `requireUtils` を既存グローバルとマージし、`core/patterns/timing-pattern.js` `core/patterns/format-pattern.js` `core/patterns/finder-pattern.js` `core/patterns/dark-module-pattern.js` `core/patterns/alignment-pattern.js` `io/script-parser.js` などが `global.requireUtils` を直接参照している。
+- 次アクション: keep（全パターン・スクリプトパーサが共有ユーティリティを前提としている）。
+
+#### global.formatPattern（Compat-Guard）
+- 参照検索: `rg -n "global\.formatPattern"`
+- 現状: `core/patterns/format-pattern.js:199` で `global.formatPattern` を `Object.assign` し、外部スクリプトからフォーマット処理を上書きできる構成。
+- 次アクション: keep（教材での呼び出しを想定しつつ、引き続き公開）。
+
+#### global.typeUtils（Compat-Guard）
+- 参照検索: `rg -n "global\.typeUtils"`
+- 現状: `app/utils/type-utils.js:35` で `global.typeUtils` を初期化し、`app/pattern-callers.js` `app/global-api.js` `app/board-reset.js` `core/base-pattern-service.js` `core/data-placement-service.js` `core/log-utils.js` `core/render-cycle.js` `core/patterns/timing-pattern.js` `core/patterns/dark-module-pattern.js` `core/patterns/pattern-common.js` `core/patterns/format-pattern.js` `io/script-parser.js` などが `typeUtils.callIfFunction` を通じてグローバルを参照。
+- 次アクション: keep（`typeUtils` の存在を前提とするモジュールが多いため、依存注入で整理する準備が整うまでは公開する）。
+
+#### global.timingPattern（Compat-Guard）
+- 参照検索: `rg -n "global\.timingPattern"`
+- 現状: `core/patterns/timing-pattern.js:162` で `global.timingPattern` を公開し、`app/pattern-callers.js:460,469` などが `window.timingPattern` を通じてタイミングセル情報へアクセス。
+- 次アクション: keep（タイミングパターンを外部ロードから参照する前提を維持）。
+
+### B) `window/global` 由来・フォールバック値
+#### global.domainQrParams（Fallback-Global）
+- 参照検索: `rg -n "domainQrParams"`
+- 現状: `domain/qr-params.js:53` で `global.domainQrParams` を `Object.assign` し、`app/main.js:863-868` が `window.domainQrParams` を期待して `applyDataParam` などのハンドラを外部に公開。
+- 次アクション: keep（依然として `window.domainQrParams` を通じて外部スクリプトを許容しているため）。
+
+#### core/execution-control.js（Fallback-Value: window.typeUtils）
+- 参照検索: `rg -n "window\.typeUtils"`
+- 現状: `core/execution-control.js:3` で `window.typeUtils` を空オブジェクトで初期化し、`app/pattern-callers.js` `app/global-api.js` `app/board-reset.js` `core/base-pattern-service.js` `core/data-placement-service.js` `core/log-utils.js` `core/render-cycle.js` `core/patterns/timing-pattern.js` `core/patterns/dark-module-pattern.js` `core/patterns/pattern-common.js` `core/patterns/format-pattern.js` `io/script-parser.js` が `window.typeUtils` あるいは `typeUtils.callIfFunction` を前提に動作。
+- 次アクション: keep（`typeUtils` グローバルを廃止するには依存モジュールをすべて依存注入に切り替える必要があるため）。
+
+#### state/history-store.js（Fallback-Value: entry.value）
+- 参照検索: `rg -n "entry\.value \?\?"`
+- 現状: `state/history-store.js:85` の1箇所のみで `entry.value ?? ""` を使い、履歴エントリの `null`/`undefined` を文字列化してもクラッシュしないようにしている。
+- 次アクション: keep（入力側を先に正規化しないと削除できない）。
+
+### C) その他の互換層と Guard
+#### ui/debug.js: `window.debugUI` エイリアス（Compat-Guard）
+- 参照検索: `rg -n "window\.debugUI"`
+- 現状: `ui/debug.js:207-210` で `window.debugUI` が `qrmakerDebug.ui` に同期されており、教材・古い外部スクリプトが `window.debugUI` を読んでも `qrmakerDebug` を通じて UI を操作できる（現ライン内ではこのファイルだけが参照）。
+- 次アクション: keep（外部互換へ慎重な維持が必要）。
+
+#### ui/debug.js: `window.layoutUI.applyDebugVisibility`（Compat-Guard → done）
+- 参照検索: `rg -n "layoutUI\.applyDebugVisibility"`
+- 現状: ソース側に該当文字列は存在せず，`qrmakerDebug.hooks.applyDebugVisibility` に一本化済み。
+- 次アクション: done（エイリアスの削除と動作確認済みで、今後この互換は提供しない決定）。
+
+#### app/commands.js（Compat-Guard: createCommands）
+- 参照検索: `rg -n "global\.createCommands"`
+- 現状: `app/commands.js:4-46` で `typeof global.createCommands === "function"` によるガードがあり、`app/global-api.js` が `window.createCommands` を参照してコマンド群を組み立てている。
+- 次アクション: keep（複数ロードが同じコマンド定義を参照するためガードを維持）。
+
+#### core/function-utils.js（Compat-Guard: callIfFunction）
+- 参照検索: `rg -n "global\.callIfFunction"`
+- 現状: `core/function-utils.js:4-11` と `app/utils/type-utils.js:37-38` で `global.callIfFunction` を定義・公開し、`typeUtils.callIfFunction` を `app/main.js` や多数の UI/パターンが利用している。
+- 次アクション: keep（callIfFunction を依存注入ベースに切り替えるまでは公開を残す）。
+
+#### core/data-encoding-service.js（Compat-Guard: dataEncodingService）※candidate
+- 参照検索: `rg -n "dataEncodingService"`
+- 現状: `core/data-encoding-service.js:22-25` で `global.dataEncodingService` が既に存在する例を警告しつつ `prepareDataBits` を公開。リポジトリ内に `dataEncodingService` へのアクセスはこのファイル以外に存在しない。
+- 次アクション: candidate（`prepareDataBits` をモジュールとして明示的に import するようにし、グローバル公開＋警告を削除する時点を探る）。
+
+#### core/data-placement-service.js（Compat-Guard: dataPlacementService）※candidate
+- 参照検索: `rg -n "dataPlacementService"`
+- 現状: `core/data-placement-service.js:137-140` でグローバルを guard して `placeDataBits` を単一エクスポート。ほかに `global.dataPlacementService` を使うコードはない。
+- 次アクション: candidate（`placeDataBits` を内部共有に切り替えたタイミングで guard を消す）。
+
+#### core/base-pattern-service.js（Compat-Guard: basePatternService）※candidate
+- 参照検索: `rg -n "basePatternService"`
+- 現状: `core/base-pattern-service.js:55-58` で `global.basePatternService` を guard し、`drawBasePatternsService` を公開。リポジトリ内に `global.basePatternService` を読んでいる箇所はない。
+- 次アクション: candidate（ローカル共有へ移行したら guard を削除）。
+
+#### core/execution-coordinator-service.js（Removed）
+- 参照検索: `rg -n "executionCoordinatorService"`
+- 現状: ドキュメント以外に `executionCoordinatorService` を参照するソースはなく、`runWithCoordinator` はこのファイル内だけで使われている。
+- 次アクション: done（グローバル公開を撤去済み。再公開するなら新しい依存ルートを明示する）。
+
+## 5. 優先度付きTODO（削除候補・調査）
+1. candidate: `core/data-encoding-service.js`
+   - 参照検索: `rg -n "dataEncodingService"`（結果は該当ファイル内のみ）
+   - 削除ステップ: `prepareDataBits` を必要な依存先が `import { prepareDataBits }` する形に変え、警告 + `global.dataEncodingService` の書き込みを除去。
+2. candidate: `core/data-placement-service.js`
+   - 参照検索: `rg -n "dataPlacementService"`
+   - 削除ステップ: `placeDataBits` をモジュール内共有に統一し、`global` への書き込みと警告を廃止。
+3. candidate: `core/base-pattern-service.js`
+   - 参照検索: `rg -n "basePatternService"`
+   - 削除ステップ: `drawBasePatternsService` をローカルで再利用し、`global.basePatternService` 欄と警告を削除。
+4. investigate: `window.debugUI`
+   - 参照検索: `rg -n "window\.debugUI"`
+   - 見に行くファイル: `ui/debug.js`（207-210 行）で alias を維持しているため、外部が `window.debugUI` を参照していないか確認してから削除を判断。
+
+## 6. ルール（削除手順テンプレ）
+1. 全体検索で参照を洗う
+2. 参照を正式ルート（モジュール内 import）に統一する
+3. 参照0 を確認する
+4. 互換枝（`window.X || {}` や `global.X` など）を削除する
+5. 再検索で0 を確認する
 6. 動作確認（最低限、影響範囲の UI/URL 操作を手動でチェック）
 
-## Debug API: window.qrmakerDebug
-
+## 7. Debug API: window.qrmakerDebug
 - **目的**: 教材用途のデバッグ入口を `window` に常設しつつ、グローバルなデバッグ変数の増殖を抑えて一本化した API を提供する。
 - **構造図**:
   ```
@@ -123,7 +172,7 @@
   ```
 - **初期化責務**:
   - `app/debug-bootstrap.js`: `qrmakerDebug` の空箱を最速で構築し、各プロパティ領域の初期オブジェクトを準備する。
-  - `ui/debug.js`: `ui`（`debugUI`）と `hooks`（`applyDebugVisibility`）を登録し、`window.debugUI` の互換エイリアスを維持しつつ `window.layoutUI.applyDebugVisibility` は廃止して `qrmakerDebug.hooks.applyDebugVisibility` に一本化している。
+  - `ui/debug.js`: `ui`（`debugUI`）と `hooks`（`applyDebugVisibility`）を登録し、`window.debugUI` の互換エイリアスを維持しつつ `window.layoutUI.applyDebugVisibility` は廃止し `qrmakerDebug.hooks.applyDebugVisibility` に一本化している。
   - `app/bootstrap.js`: `runMainApp` の依存として `layoutUI`/`urlState`/`debugUI`/`settings` を渡し、`qrmakerDebug` 経由のデバッグ入口をアプリ本体に供給する。
   - **互換エイリアス**:
     - `window.debugUI` は常に `window.qrmakerDebug.ui` を参照し、従来コードと互換性を保つ。
