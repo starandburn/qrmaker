@@ -204,10 +204,6 @@
   }
   qrmakerDebug.ui = debugUI;
   qrmakerDebug._uiInitialized = true;
-  if(window.debugUI && window.debugUI !== qrmakerDebug.ui){
-    console.warn("debugUI is already defined; keeping alias to qrmakerDebug.ui");
-  }
-  window.debugUI = qrmakerDebug.ui;
   if(qrmakerDebug._hooksInitialized){
     console.warn("qrmakerDebug.hooks.applyDebugVisibility is already defined; duplicate load detected");
   }

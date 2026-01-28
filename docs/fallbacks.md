@@ -94,8 +94,8 @@
 ### C) その他の互換層と Guard
 #### ui/debug.js: `window.debugUI` エイリアス（Compat-Guard）
 - 参照検索: `rg -n "window\.debugUI"`
-- 現状: `ui/debug.js:205-210` で `qrmakerDebug.ui` への alias/guard を用意し、既存で異なるオブジェクトがある場合は console.warn してから `window.debugUI` を qrmakerDebug.ui に書き戻す。`debugUI` は `app/bootstrap.js`/`app/main.js` へ qrmakerDebug 経由で依存注入されるだけで window 側のアクセスはゼロ。`rg -n "debugUI" docs` や `rg -n "bookmarklet|console|devtools|debugUI" .` でも教材やブックマークレット向けの `window.debugUI` 導線は確認できない。
-- 次アクション: candidate（C-4 で `ui/debug.js` の alias/guard を削除し、`window.debugUI` 公開を止める）。
+- 現状: `ui/debug.js:205-210` の alias/guard を削除し、`qrmakerDebug.ui` の公開のみが残っている。`debugUI` は `app/bootstrap.js`/`app/main.js` へ依存注入されており、window 側の `window.debugUI` 参照はコードベースに存在しない。
+- 次アクション: done（C-4 で `window.debugUI` 互換を削除し、参照 0 件）。
 
 #### ui/debug.js: `window.layoutUI.applyDebugVisibility`（Compat-Guard → done）
 - 参照検索: `rg -n "layoutUI\.applyDebugVisibility"`
@@ -145,10 +145,10 @@
 3. done: `core/base-pattern-service.js`
    - 参照検索: `rg -n "basePatternService"`
    - 削除ステップ: C-3でグローバル公開互換を削除（参照0件のため）
-4. candidate: `window.debugUI`
-   - 参照検索: `rg -n "window\.debugUI"`（`docs/fallbacks.md` と `ui/debug.js:207-210` の2箇所のみ。コード中に `window.debugUI` は現れない。）
-   - 現状: `ui/debug.js:205-210` で alias/guard を用意して `qrmakerDebug.ui` を `window.debugUI` に紐付け、名前の衝突時には console.warn する。`app/bootstrap.js`/`app/main.js` は `debugUI` を `qrmakerDebug` 経由で依存注入するだけで window 側のアクセスはない。`rg -n "debugUI" docs` や `rg -n "bookmarklet|console|devtools|debugUI" .` でも教材/ブックマークレット向けの `window.debugUI` 参照は見つからなかった。
-   - 次アクション: candidate（C-4 で `ui/debug.js` の alias/guard を削除し、`window.debugUI` の公開をやめる予定）。
+4. done: `window.debugUI`
+   - 参照検索: `rg -n "window\.debugUI"`（`docs/fallbacks.md` の記述だけ。コード中に `window.debugUI` は残っていない。）
+   - 現状: `ui/debug.js` から alias/guard/console.warn を削除し、`qrmakerDebug.ui` + hooks の正規ルートだけが残っている。`app/bootstrap.js`/`app/main.js` は `debugUI` を qrmakerDebug 経由で依存注入するだけの設計。
+   - 次アクション: done（C-4 実装完了）。
 
 ## 6. ルール（削除手順テンプレ）
 1. 全体検索で参照を洗う
@@ -176,10 +176,10 @@
   ```
 - **初期化責務**:
   - `app/debug-bootstrap.js`: `qrmakerDebug` の空箱を最速で構築し、各プロパティ領域の初期オブジェクトを準備する。
-  - `ui/debug.js`: `ui`（`debugUI`）と `hooks`（`applyDebugVisibility`）を登録し、`window.debugUI` の互換エイリアスを維持しつつ `window.layoutUI.applyDebugVisibility` は廃止し `qrmakerDebug.hooks.applyDebugVisibility` に一本化している。
+  - `ui/debug.js`: `ui`（`debugUI`）と `hooks`（`applyDebugVisibility`）を登録し、`window.debugUI` の互換エイリアスを削除して正規ルートだけを残しつつ `window.layoutUI.applyDebugVisibility` は廃止し `qrmakerDebug.hooks.applyDebugVisibility` に一本化している。
   - `app/bootstrap.js`: `runMainApp` の依存として `layoutUI`/`urlState`/`debugUI`/`settings` を渡し、`qrmakerDebug` 経由のデバッグ入口をアプリ本体に供給する。
-  - **互換エイリアス**:
-    - `window.debugUI` は常に `window.qrmakerDebug.ui` を参照し、従来コードと互換性を保つ。
+  - **互換エイリアス**（`window.debugUI` alias は削除済）:
+    - `window.qrmakerDebug.ui` が `debugUI` 構成を提供し、window への alias は存在しない。
     - `window.layoutUI.applyDebugVisibility` は廃止され、`qrmakerDebug.hooks.applyDebugVisibility` を直接呼ぶ形に一本化されている。
 - **運用ルール**:
   - 新しいデバッグ機能は `qrmakerDebug` 配下に追加し、直接 `window.*` に公開しない。
