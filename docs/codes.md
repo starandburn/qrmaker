@@ -1,241 +1,199 @@
-# 入力コードサンプル
-
-## Step1 いきなり完成
+# QRコード作成 ハンズオンマニュアル
+## 最初の確認
+### text命令
+文字列をそのままドットフォントとして展開
+```javascript
+text    // データをドットの集合による形として盤面に描画する
 ```
-qrcode  // QRコードを作成する
+> 再度実行する場合は、[ **■停止** ]を押して盤面をクリアしてから行う。
+
+### qrcode命令
+完成形のQRコード作成
+```javascript
+qrcode  // データをQRコードの仕様通りに盤面に配置する
+```
+## 盤面操作
+### move命令
+カーソルを移動する
+#### 1.カーソルを１つ先に移動
+```javascript
+move  
+```
+##### 【動き方】
+* カーソルを１つ右に移動する
+* 盤面の右端まで到達したら１つ下に移動し、その行の左端に戻る
+* 盤面の右下に到達したら左上に戻る
+#### 2.カーソルを任意の方向に１つ移動
+```javascript
+move <向き>
+```
+##### 【向き指定】
+| 指定 | 移動方向 |
+| --- | --- |
+| up | 上 |
+| down | 下 |
+| left | 左 |
+| right | 右 |
+```javascript :sample
+move down // カーソルを１つ下に移動
+```
+#### 3.カーソルを任意の位置に直接移動
+```javascript
+move <位置>
+```
+##### 【位置指定】
+| 指定 | 位置 | 記述例 | 
+| --- | --- | --- |
+| r行 c列 | r行、c列の２つの数字を空白区切りで並べた位置 | [1 1] [2 3] [25 25] |
+| a1アドレス | アルファベットの列と数字の行を組み合わせた位置 | [A1] [C2] [Y25] |
+```javascript :sample
+move 10 5   // 10行目5列目に移動する
+move c6     // C列（3列目）6行目セルに移動する
+```
+### put命令
+カーソル位置のセルに色を配置する
+#### カーソルの位置に黒を配置する
+```javascript
+put  
+```
+#### カーソルの位置に指定色を配置する
+```javascript
+put <色指定>
+```
+##### 色指定
+| 指定 | 配置される色 |
+| --- | --- |
+| 0 または white | 白 |
+| 1 または black | 黒 |
+```javascript :sample
+put 0 // 白を配置
+put 1 // 黒を配置
+put white // 白を配置
+put black // 黒を配置
+```
+#### カーソルの位置に次のデータの色を配置する
+```javascript
+put next
+```
+>データは先頭からnextで呼び出されるたびに１つずつ進み、使い切るとそれ以上配置されなくなる。
+
+### reset命令
+以下の処理を行い、盤面をリセットする
+* 盤面のすべてのドットを消去し、未配置にする
+* カーソルを左上（A1 / 1行目1列目）に移動する
+* データパターンの開始位置を先頭に戻す
+```javascript :sample
+reset       // 盤面リセット
+put next    // 次のデータパターンを配置（リセット直後なので常に先頭）
+move right  // 右に移動（リセット直後なのでB1に移動）
 ```
 
-## Step2 フェーズ分解
-````
-reset   // 盤面をクリアー
-base    // 基本パターンを描画
-data    // データパターンを描画
-mask    // マスクを適用
-````
+## 繰り返し処理
+### repeat命令
+#### 以降の内容を繰り返し実行する
+```javascript
+repeat
+```
+>無限ループ防止のため、自動終了する場合がある。
+```javascript :sample
+repeat        // 以降の処理を繰り返す
+    put next    // 次のデータを配置
+    move        // 次の位置に移動
+```
+#### 以降の命令を指定の回数繰り返す
+```javascript
+repeat <繰り返し回数>
+```
+```javascript :sample
+repeat 10     // ここから10回繰り返す
+    put next    // 次のデータを配置
+    move        // カーソルを次の位置に移動
+```
+#### 次のデータがなくなるまで繰り返す
+```javascript
+repeat last
+```
+```javascript :sample
+repeat last   // ここからデータがなくなるまで繰り返す
+  put next      // 次のデータを配置
+  move          // カーソルを次の位置に移動
+```
 
-## Step3 上方向に連続描画
-````
-reset           // 盤面をクリア
-move y25 up     // y=25へ移動して上向きに設定
-repeat          // 繰り返し開始
-  put           // 現在位置に描画
-  move          // 1マス進む
-endrepeat       // 繰り返し終了
-````
+### endrepeat命令
+繰り返しの範囲を終わる（ない場合はプログラムの終端までが範囲になる）
+```javascript :sample
+repeat 10     // ここから10回繰り返す
+    put black   // 黒を配置
+    move        // カーソルを次の位置に移動
+endrepeat       // ここまで繰り返す
+// ここから先は繰り返さない
+put white     // 白を配置
+move          // 次に移動
+```
 
-## Step4 折り返して連続描画
-````
-reset           // 盤面をクリア
-move y25 up     // y=25へ移動して上向きに設定
-repeat          // 繰り返し開始
-  put           // 現在位置に描画
-  move          // 1マス進む
-  if block?     // 壁に当たったら
-    move left   // 左にずれて
-    turn        // 進行方向を反転
-  endif
-endrepeat       // 繰り返し終了
-````
+## QRコード作成の実装
 
-## Step5 ジグザグ描画
-````
-reset           // 盤面をクリア
-move y25 up     // y=25へ移動して上向きに設定
-repeat          // 繰り返し開始
-  put           // 左列に描画
-  move left     // 左へ移動
-  put           // 右列に描画
-  move          // 1マス進む
-  if block?     // 壁に当たったら
-    move left   // 左にずれて
-    turn        // 進行方向を反転
-  else
-    move right  // 次の列へ移動
-  endif
-endrepeat       // 繰り返し終了
-````
+1. 初期化
+盤面をリセットし、データパターンの開始位置であるY25に移動する
+```
+reset       '盤面リセット
+move y25    '右下に移動
+```
 
-## Step6 基本パターン追加
-````
-reset           // 盤面をクリア
-base            // 基本パターンを描画
-move y25 up     // y=25へ移動して上向きに設定
-repeat          // 繰り返し開始
-  put           // 左列に描画
-  move left     // 左へ移動
-  put           // 右列に描画
-  move          // 1マス進む
-  if block?     // 壁に当たったら
-    move left   // 左にずれて
-    turn        // 進行方向を反転
-  else
-    move right  // 次の列へ移動
-  endif
-endrepeat       // 繰り返し終了
-````
+> ここではまだ基本パターンは配置せず、データパターンの配置のみを考える。
 
-## Step7 基本パターン回避
-````
-reset             // 盤面をクリア
-base              // 基本パターンを描画
-move y25 up       // y=25へ移動して上向きに設定
-repeat            // 繰り返し開始
-  if empty? put   // 空きなら描画
-  move left       // 左へ移動
-  if empty? put   // 空きなら描画
-  move            // 1マス進む
-  if block?       // 壁に当たったら
-    move left     // 左にずれて
-    turn          // 進行方向を反転
-  else
-    move right    // 次の列へ移動
-  endif
-endrepeat         // 繰り返し終了
-````
-
-## Step8 タイミング列回避
-````
-reset             // 盤面をクリア
-base              // 基本パターンを描画
-move y25 up       // y=25へ移動して上向きに設定
-repeat            // 繰り返し開始
-  if empty? put   // 空きなら描画
-  move left       // 左へ移動
-  if empty? put   // 空きなら描画
-  move            // 1マス進む
-  if block?       // 壁に当たったら
-    move left     // 左にずれて
-    if skip? move left // タイミング列ならさらに左へ
-    turn          // 進行方向を反転
-  else
-    move right    // 次の列へ移動
-  endif
-endrepeat         // 繰り返し終了
-````
-
-## Step9 マスク適用
-````
-reset             // 盤面をクリア
-base              // 基本パターンを描画
-move y25 up       // y=25へ移動して上向きに設定
-repeat            // 繰り返し開始
-  if empty? put   // 空きなら描画
-  move left       // 左へ移動
-  if empty? put   // 空きなら描画
-  move            // 1マス進む
-  if block?       // 壁に当たったら
-    move left     // 左にずれて
-    if skip? move left // タイミング列ならさらに左へ
-    turn          // 進行方向を反転
-  else
-    move right    // 次の列へ移動
-  endif
-endrepeat         // 繰り返し終了
-mask              // マスクを適用
-````
-
-## Step10 スイッチによる1リピート1put
-````
-reset             // 盤面をクリア
-base              // 基本パターンを描画
-move y25 up       // y=25へ移動して上向きに設定
-repeat            // 繰り返し開始
-  if empty? put   // 空きなら描画
-  red             // フラグを赤に設定
-  if red?         // 赤なら
-    move left     // 左に移動
-  else
-    move          // 1マス進む
-    if block?     // 壁に当たったら
-      move left   // 左にずれて
-      if skip? move left // タイミング列ならさらに左へ
-      turn        // 進行方向を反転
-    else
-      move right  // 次の列へ移動
-    endif
-  endif
-endrepeat         // 繰り返し終了
-mask              // マスクを適用
-````
-
-## Step11 相対移動のみ
-````
-reset                      // 盤面をクリア
-base                       // 基本パターンを描画
-move y25 right             // y=25へ移動して右向きに設定
-repeat                     // 繰り返し開始
-  if empty? put            // 空きなら描画
-  red                       // フラグを赤に設定
-  if red?                  // 赤なら
-    turn                   // 方向転換
-    move                   // 1マス進む
-  else
-    if blue? turn left else turn right // 青フラグで左右を切替
-    move                   // 1マス進む
-    if block?              // 壁に当たったら
-      if blue? turn right else turn left // 方向を調整
-      move                 // 1マス進む
-      if skip? move        // タイミング列ならさらに進む
-      turn                 // 進行方向を反転
-      blue                 // フラグを青に設定
-    else
-      if blue? turn left else turn right // 次の列へ向ける
-      move                 // 1マス進む
-    endif
-  endif
-endrepeat                  // 繰り返し終了
-mask                       // マスクを適用
-````
-
-## Step12 向き概念廃止
-````
+### パターンの配置
+1. 上方向にデータパターンを配置する
+ひとまず現時点では繰り返し回数を20回とし、20行分だけ配置する
+```
 reset
-base
 move y25
+repeat 20       // 20回繰り返し
+    put next      // 次のデータを配置
+    move up       // 上に移動
+```
 
-red on
-repeat-last
+2. 右→左→右→左とジグザグに移動するように変更する
+1回分の繰り返しの中で、右側と左側の2つを配置して次の行の右側に移動する
+```
+reset
+move y25
+repeat 20
+    put next      // 次のデータを配置
+    move left     // 左側に移動
+    put next      // 次のデータを配置
+    move up       // 上に移動
+    move right    // 右に移動
+```
 
-  // 2マス分配置（列ペア）
-  if empty? put next
-  move left
-  if empty? put next
-
-  // 縦に1マス進む（赤スイッチで上/下）
-  if red? move up else move down
-
-  // 端に当たったら折り返し処理
-  if block?
+3. 繰り返しをデータバターンの最後までに変える
+この時点では上端まで行くとこれ以上移動できないので、最上段で右左を往復して上書きし続ける
+```
+reset
+move y25
+repeat last     // 次のデータパターンがなくなるまで繰り返し
+    put next
     move left
-    if timing? move left
-    red flip
-  else
-    // 折り返しでない場合は列ペアの位置合わせ
+    put next
+    move up
     move right
-  endif
+```
 
-end repeat
-mask
-````
-
-## Final 完成形
-````
+### 上下の方向転換
+1. 壁にぶつかったら左の列に移動する
+左側にいるときに上移動するので、移動できなければ1つ左に行くと次のグループの右側に移動する
+```
 reset
-base
 move y25
-repeat-last 
-	if empty put next
-	move left
-	if empty put next
-	if red move down else move up
-	if block
-		move left
-		if skip move left
-		red flip
-	else
-		move right
-	endif
-endrepeat
-mask
-````
+repeat last 
+    put next
+    move left
+    put next
+    move up
+    if block?       // 壁にぶつかったか？
+        move left     // 左に移動
+    endif    
+    move right
+```
 
+2.上下の進む方向を逆転する
