@@ -8,6 +8,8 @@ window.appSettingsFromScript = {
     "historyVisible": false,
     // パターン詳細パネルの初期表示
     "patternPanelOpen": false,
+    // レイアウト: 左ペインの比率(0.0〜1.0)
+    "layoutLeftPaneRatio": 0.4,
     // デバッグ表示の初期状態
     "debugVisible": false,
     // 既に値があるセルをスキップするか

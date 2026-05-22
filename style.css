@@ -245,7 +245,7 @@ main.layout{
   flex:1;
   padding-bottom:2px;
   display:grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: var(--layout-left-pane-percent, 50%) 1fr;
   gap:8px;
   align-items:stretch;
   min-width:0;

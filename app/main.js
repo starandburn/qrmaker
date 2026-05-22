@@ -170,6 +170,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const codeZoomLineHeightMinPx = resolvedSettings.codeZoomLineHeightMinPx;
   const codeZoomLineHeightRatio = resolvedSettings.codeZoomLineHeightRatio;
   const codeZoomLineHeightMaxOffsetPx = resolvedSettings.codeZoomLineHeightMaxOffsetPx;
+  const layoutLeftPaneRatio = resolvedSettings.layoutLeftPaneRatio;
   const rootStyle = document.documentElement?.style;
   if(rootStyle){
     const stepBorderValue = stepAnimationShowBorder
@@ -205,6 +206,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     if(presentationRingEase){
       rootStyle.setProperty("--presentation-ring-ease", presentationRingEase);
+    }
+    if(typeof layoutLeftPaneRatio === "number" && Number.isFinite(layoutLeftPaneRatio)){
+      const percent = Math.round(layoutLeftPaneRatio * 1000) / 10;
+      rootStyle.setProperty("--layout-left-pane-percent", `${Math.min(90, Math.max(10, percent))}%`);
     }
   }
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});

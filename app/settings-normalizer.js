@@ -57,6 +57,10 @@
     const codeZoomLineHeightMinPx = normalizeNumberSetting(configDefaults.codeZoomLineHeightMinPx);
     const codeZoomLineHeightRatio = normalizeNumberSetting(configDefaults.codeZoomLineHeightRatio);
     const codeZoomLineHeightMaxOffsetPx = normalizeNumberSetting(configDefaults.codeZoomLineHeightMaxOffsetPx);
+    const layoutLeftPaneRatioRaw = normalizeNumberSetting(configDefaults.layoutLeftPaneRatio);
+    const layoutLeftPaneRatio = (layoutLeftPaneRatioRaw !== null)
+      ? Math.min(0.9, Math.max(0.1, layoutLeftPaneRatioRaw))
+      : 0.5;
 
     return {
       stepAnimationEnabledOverride,
@@ -82,6 +86,7 @@
       codeZoomLineHeightMinPx,
       codeZoomLineHeightRatio,
       codeZoomLineHeightMaxOffsetPx,
+      layoutLeftPaneRatio,
     };
   }
 
