@@ -2390,11 +2390,18 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         const head = headMatch[1];
         if(!openers.has(head)) return false;
         if(head === "if" || head === "while" || head === "until"){
+          if(!trimmedCode.includes("?") && /\b(if|while|until)\s+\S+\s+\S/i.test(trimmedCode)){
+            return false;
+          }
           if(/\?\s+\S/.test(trimmedCode)){
             return false;
           }
         }
         return true;
+      };
+      const isOneLineElse = (trimmedCode) => {
+        if(!/^else\b/i.test(trimmedCode)) return false;
+        return /\belse\s+\S/.test(trimmedCode);
       };
 
       const out = [];
@@ -2422,7 +2429,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         const combined = trimmedCode + (trimmedComment ? ` ${trimmedComment.trimStart()}` : "");
         out.push(indent + combined.replace(/\s+$/g, ""));
         if(head === "else"){
-          depth += 1;
+          if(!isOneLineElse(trimmedCode)){
+            depth += 1;
+          }
           continue;
         }
         if(isBlockOpener(trimmedCode)){
