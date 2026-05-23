@@ -53,5 +53,5 @@ repeat last
     move left
     if timing move left
 endrepeat
-maskmask`  }
+mask`  }
 ];
