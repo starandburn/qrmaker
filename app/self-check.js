@@ -9,6 +9,7 @@
     "btnClear",
     "btnClearCode",
     "btnCopyCode",
+    "btnFormatCode",
     "btnPasteCode",
     "btnSampleDropdown",
     "sampleDropdown",

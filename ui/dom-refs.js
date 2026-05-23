@@ -12,6 +12,7 @@
       btnInit: getById("btnInit"),
       btnClearCode: getById("btnClearCode"),
       btnCopyCode: getById("btnCopyCode"),
+      btnFormatCode: getById("btnFormatCode"),
       btnPasteCode: getById("btnPasteCode"),
       btnClear: getById("btnClear"),
       btnSampleDropdown: getById("btnSampleDropdown"),

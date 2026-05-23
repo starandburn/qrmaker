@@ -48,6 +48,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const btnInit = dom.btnInit;
   const btnClearCode = dom.btnClearCode;
   const btnCopyCode = dom.btnCopyCode;
+  const btnFormatCode = dom.btnFormatCode;
   const btnPasteCode = dom.btnPasteCode;
   const debugLog = dom.debugLog;
   const dataPatternPanel = dom.dataPatternPanel;
@@ -2350,6 +2351,96 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }else{
       btnCopyCode.disabled = true;
     }
+  }
+  if(btnFormatCode){
+    const FULLWIDTH_CHAR_REGEX = /[^\u0000-\u007F]/;
+    const formatStudentCode = (value) => {
+      const text = (typeof value === "string") ? value : "";
+      const newline = text.includes("\r\n") ? "\r\n" : "\n";
+      const lines = text.split(/\r?\n/);
+      const leadingTabLines = lines.filter((line) => /^\t+/.test(line)).length;
+      const leadingSpaceLines = lines.filter((line) => /^ +/.test(line)).length;
+      const indentUnit = (leadingTabLines > leadingSpaceLines) ? "\t" : "    ";
+      const openers = new Set(["if","while","until","repeat","for","loop"]);
+      const closers = new Set(["endif","endwhile","enduntil","endrepeat","endfor","endloop","end"]);
+      let depth = 0;
+      const splitComment = (raw) => {
+        const line = String(raw ?? "");
+        let min = -1;
+        const candidates = [];
+        const slash = line.indexOf("//");
+        if(slash >= 0) candidates.push(slash);
+        const hash = line.indexOf("#");
+        if(hash >= 0) candidates.push(hash);
+        const apos = line.indexOf("'");
+        if(apos >= 0) candidates.push(apos);
+        for(const idx of candidates){
+          if(idx < 0) continue;
+          if(min === -1 || idx < min) min = idx;
+        }
+        if(min === -1){
+          return { code: line, comment: "" };
+        }
+        return { code: line.slice(0, min), comment: line.slice(min) };
+      };
+      const isBlockOpener = (trimmedCode) => {
+        const lower = trimmedCode.toLowerCase();
+        const headMatch = lower.match(/^([a-z_$][a-z0-9_$-]*)\b/);
+        if(!headMatch) return false;
+        const head = headMatch[1];
+        if(!openers.has(head)) return false;
+        if(head === "if" || head === "while" || head === "until"){
+          if(/\?\s+\S/.test(trimmedCode)){
+            return false;
+          }
+        }
+        return true;
+      };
+
+      const out = [];
+      for(const rawLine of lines){
+        if(FULLWIDTH_CHAR_REGEX.test(rawLine)){
+          out.push(rawLine);
+          continue;
+        }
+        const original = String(rawLine ?? "");
+        if(!original.trim()){
+          out.push("");
+          continue;
+        }
+        const { code, comment } = splitComment(original);
+        const trimmedCode = code.trim();
+        const trimmedComment = comment.replace(/\s+$/g, "");
+        const lower = trimmedCode.toLowerCase();
+        const headMatch = lower.match(/^([a-z_$][a-z0-9_$-]*)\b/);
+        const head = headMatch ? headMatch[1] : "";
+        const isCloser = Boolean(head && (closers.has(head) || head === "else"));
+        if(isCloser){
+          depth = Math.max(0, depth - 1);
+        }
+        const indent = indentUnit.repeat(depth);
+        const combined = trimmedCode + (trimmedComment ? ` ${trimmedComment.trimStart()}` : "");
+        out.push(indent + combined.replace(/\s+$/g, ""));
+        if(head === "else"){
+          depth += 1;
+          continue;
+        }
+        if(isBlockOpener(trimmedCode)){
+          depth += 1;
+        }
+      }
+      return out.join(newline);
+    };
+
+    btnFormatCode.addEventListener("click", () => {
+      if(!userCodeInput) return;
+      const before = userCodeInput.value ?? "";
+      const after = formatStudentCode(before);
+      if(after === before) return;
+      userCodeInput.value = after;
+      userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      historyController.commitPendingHistory("整形");
+    });
   }
   if(btnPasteCode){
     if(clipboardApi && isFunction(clipboardApi.readText)){
