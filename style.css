@@ -113,7 +113,7 @@ body.app-loading .page-footer{
 .page-head{
   background:linear-gradient(120deg, #0b63d1 0%, #0ad0ff 40%, #e8f6ff 100%);
   margin:0 0 6px;
-  padding:16px 20px 10px;
+  padding:12px 20px 8px;
   border-bottom:2px solid #c9d8ed;
   display:block;
   min-height:auto;
@@ -207,7 +207,7 @@ body.app-loading .page-footer{
   gap:10px;
   row-gap:6px;
   background:rgba(255,255,255,0.9);
-  padding:10px 12px;
+  padding:8px 10px;
   border-radius:14px;
   box-shadow:0 6px 14px rgba(0,0,0,0.08);
 }
