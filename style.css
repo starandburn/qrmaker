@@ -245,12 +245,34 @@ main.layout{
   flex:1;
   padding-bottom:2px;
   display:grid;
-  grid-template-columns: var(--layout-left-pane-percent, 50%) 1fr;
-  gap:8px;
+  grid-template-columns: var(--layout-left-pane-percent, 50%) var(--pane-splitter-width, 8px) 1fr;
+  gap:0;
   align-items:stretch;
   min-width:0;
   min-height:0;
   overflow:visible;
+}
+
+.pane-splitter{
+  position:relative;
+  width:var(--pane-splitter-width, 8px);
+  cursor:col-resize;
+  touch-action:none;
+  user-select:none;
+}
+.pane-splitter::before{
+  content:"";
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:50%;
+  width:2px;
+  transform:translateX(-50%);
+  background:rgba(31,47,74,0.18);
+}
+.pane-splitter:hover::before,
+.pane-splitter.is-dragging::before{
+  background:rgba(11,99,209,0.55);
 }
 
 .left-col,

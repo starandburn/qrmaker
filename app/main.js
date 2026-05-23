@@ -212,6 +212,78 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       rootStyle.setProperty("--layout-left-pane-percent", `${Math.min(90, Math.max(10, percent))}%`);
     }
   }
+
+  const paneSplitter = document.getElementById("paneSplitter");
+  if(paneSplitter && rootStyle){
+    const STORAGE_KEY = "layoutLeftPaneRatio";
+    const clamp01 = (value) => Math.min(0.9, Math.max(0.1, value));
+    const applyRatio = (ratio) => {
+      const clamped = clamp01(ratio);
+      const percent = Math.round(clamped * 1000) / 10;
+      rootStyle.setProperty("--layout-left-pane-percent", `${percent}%`);
+      return clamped;
+    };
+
+    try{
+      const stored = window.localStorage ? window.localStorage.getItem(STORAGE_KEY) : null;
+      if(stored !== null){
+        const parsed = Number(stored);
+        if(Number.isFinite(parsed)){
+          applyRatio(parsed);
+        }
+      }
+    }catch(_err){
+      // ignore storage errors
+    }
+
+    let dragging = false;
+    let pointerId = null;
+    paneSplitter.addEventListener("pointerdown", (ev) => {
+      if(ev.button !== 0) return;
+      const layout = paneSplitter.parentElement;
+      if(!layout) return;
+      dragging = true;
+      pointerId = ev.pointerId;
+      paneSplitter.classList.add("is-dragging");
+      try{
+        paneSplitter.setPointerCapture(pointerId);
+      }catch(_err){
+        // ignore
+      }
+      ev.preventDefault();
+    });
+
+    const endDrag = () => {
+      if(!dragging) return;
+      dragging = false;
+      pointerId = null;
+      paneSplitter.classList.remove("is-dragging");
+    };
+
+    paneSplitter.addEventListener("pointermove", (ev) => {
+      if(!dragging) return;
+      if(pointerId !== null && ev.pointerId !== pointerId) return;
+      const layout = paneSplitter.parentElement;
+      if(!layout) return;
+      const rect = layout.getBoundingClientRect();
+      const splitterWidth = paneSplitter.getBoundingClientRect().width || 0;
+      const available = Math.max(1, rect.width - splitterWidth);
+      const x = ev.clientX - rect.left;
+      const ratio = x / available;
+      const next = applyRatio(ratio);
+      try{
+        if(window.localStorage){
+          window.localStorage.setItem(STORAGE_KEY, String(next));
+        }
+      }catch(_err){
+        // ignore storage errors
+      }
+      ev.preventDefault();
+    });
+
+    paneSplitter.addEventListener("pointerup", () => endDrag());
+    paneSplitter.addEventListener("pointercancel", () => endDrag());
+  }
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
   const appState = safeWindow?.appState;
   const store = (appState && isFunction(appState.getStore))
