@@ -76,6 +76,16 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const toggleColor = dom.toggleColor;
   const txtInput = dom.txtInput;
   const configDefaults = (settings && typeof settings === "object") ? settings.defaults || {} : {};
+  const focusCodeArea = () => {
+    const editor = (typeof window !== "undefined") ? window.__codeEditor : null;
+    if(editor && typeof editor.focus === "function"){
+      editor.focus();
+      return;
+    }
+    if(userCodeInput && typeof userCodeInput.focus === "function"){
+      userCodeInput.focus();
+    }
+  };
   const resolvedSwitchCountForConfig = (() => {
     const key = urlState && urlState.PARAM_KEYS ? urlState.PARAM_KEYS.SWITCH_COUNT : null;
     if(!key || typeof urlState?.hasParam !== "function" || typeof urlState?.getParam !== "function"){
@@ -416,6 +426,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     setHistoryVisibility,
     getHistoryVisible,
     setPatternPanelOpen,
+    focusCodeArea,
   });
   const getDebugPanel = () => debugUI.debugPanel;
   if(!window.historyController){
@@ -433,6 +444,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     getCurrentCodeValue,
     setHistoryVisibility,
     getHistoryVisible,
+    focusCodeArea,
   });
   const {
     decodeDataParamValue,
@@ -2037,6 +2049,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   });
   if(btnGenerate){
     window.addEventListener("keydown", (ev) => {
+      if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && !ev.metaKey && ev.key === "Home"){
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        btnClearCode?.click?.();
+        return;
+      }
       const active = document.activeElement;
       if(active){
         const tag = active.tagName ? active.tagName.toUpperCase() : "";
@@ -2101,6 +2119,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       if(userCodeParsed){
         userCodeParsed.value = "";
       }
+      focusCodeArea();
     });
   }
 
@@ -2328,6 +2347,14 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         }
         return;
       }
+      if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && !ev.metaKey && ev.key === "Home"){
+        ev.preventDefault();
+        ev.stopPropagation();
+        if(btnClearCode){
+          btnClearCode.click();
+        }
+        return;
+      }
       if(ev.key === "Tab"){
         ev.preventDefault();
         const indent = "\t";
@@ -2490,7 +2517,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     });
   }
   historyController.pushHistorySnapshot("初期状態");
-  callIfFunction(window.setupSampleUI, { dom, configDefaults, resolvedDataTemplates, historyController });
+  callIfFunction(window.setupSampleUI, { dom, configDefaults, resolvedDataTemplates, historyController, focusCodeArea });
   const clipboardApi = (typeof navigator !== "undefined" ? navigator.clipboard : null);
   if(btnCopyCode){
     if(clipboardApi && isFunction(clipboardApi.writeText)){
@@ -2602,6 +2629,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       if(after === before) return;
       userCodeInput.value = after;
       userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      setTimeout(focusCodeArea, 0);
       historyController.commitPendingHistory("整形");
     });
   }
@@ -2615,6 +2643,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
       userCodeInput.scrollTop = 0;
       userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      setTimeout(focusCodeArea, 0);
       historyController.commitPendingHistory("貼り付け");
     }catch(err){
           // ignore clipboard failures
@@ -2698,6 +2727,14 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }, 100);
 
     host.addEventListener("keydown", (ev) => {
+      if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && !ev.metaKey && ev.key === "Home"){
+        ev.preventDefault();
+        ev.stopPropagation();
+        if(btnClearCode){
+          btnClearCode.click();
+        }
+        return;
+      }
       if(ev.key === "Enter" && ev.ctrlKey && !ev.shiftKey && !ev.altKey){
         ev.preventDefault();
         ev.stopPropagation();
