@@ -12,6 +12,7 @@
   const STEP_SPEED_PARAM_KEY = "e";
   const STEP_FLAGS_PARAM_KEY = "s";
   const SWITCH_COUNT_PARAM_KEY = "w";
+  const LAYOUT_LEFT_PANE_RATIO_PARAM_KEY = "l";
 
   // URL パラメータキーの唯一の定義源。
   // ここに定義されたキーと既定値をもとに PARAM_KEYS が正規化され、
@@ -32,6 +33,7 @@
     AUTO_AVOID_TIMING: "t",
     USE_DIRECTION: "r",
     SWITCH_COUNT: SWITCH_COUNT_PARAM_KEY,
+    LAYOUT_LEFT_PANE_RATIO: LAYOUT_LEFT_PANE_RATIO_PARAM_KEY,
   };
 
   // URL パラメータ仕様（DEFAULT_PARAM_KEYS を唯一の定義源とする）
@@ -241,6 +243,18 @@
     return String(Math.trunc(clamped));
   };
 
+  const parseLayoutLeftPaneRatioParam = () => {
+    if(!params.has(LAYOUT_LEFT_PANE_RATIO_PARAM_KEY)) return null;
+    const raw = params.get(LAYOUT_LEFT_PANE_RATIO_PARAM_KEY);
+    if(raw === null) return null;
+    const numeric = Number(raw);
+    if(!Number.isFinite(numeric)){
+      return null;
+    }
+    const clamped = Math.max(0.1, Math.min(0.9, numeric));
+    return String(Math.round(clamped * 1000) / 1000);
+  };
+
   const buildStepFlagsParamValue = ({
     stepMode,
     stepSkipFunctions,
@@ -368,6 +382,7 @@
     defaultStepSpeed = "",
     switchCount,
     defaultSwitchCount,
+    layoutLeftPaneRatio,
     skipExistingCells,
     defaultSkipExistingCells = false,
     autoAvoidTiming,
@@ -440,6 +455,15 @@
     })();
     if(normalizedSwitchCount !== null && normalizedSwitchDefault !== null && normalizedSwitchCount !== normalizedSwitchDefault){
       setStringParam(stateParams, PARAM_KEYS.SWITCH_COUNT, String(normalizedSwitchCount));
+    }
+    const normalizedLayoutLeftPaneRatio = (() => {
+      if(layoutLeftPaneRatio === undefined || layoutLeftPaneRatio === null) return null;
+      const numeric = Number(layoutLeftPaneRatio);
+      if(!Number.isFinite(numeric)) return null;
+      return Math.max(0.1, Math.min(0.9, numeric));
+    })();
+    if(normalizedLayoutLeftPaneRatio !== null){
+      setStringParam(stateParams, PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO, String(Math.round(normalizedLayoutLeftPaneRatio * 1000) / 1000));
     }
     if(historyVisible !== Boolean(defaultHistoryVisible)){
       setBoolParam(stateParams, PARAM_KEYS.HISTORY, Boolean(historyVisible));

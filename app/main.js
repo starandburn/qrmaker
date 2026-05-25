@@ -236,23 +236,48 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   if(paneSplitter && rootStyle){
     const STORAGE_KEY = "layoutLeftPaneRatio";
     const clamp01 = (value) => Math.min(0.9, Math.max(0.1, value));
+    let currentLayoutLeftPaneRatio = null;
     const applyRatio = (ratio) => {
       const clamped = clamp01(ratio);
       const percent = Math.round(clamped * 1000) / 10;
       rootStyle.setProperty("--layout-left-pane-percent", `${percent}%`);
+      currentLayoutLeftPaneRatio = clamped;
       return clamped;
     };
 
+    {
+      const ratioKey = (urlState && urlState.PARAM_KEYS) ? urlState.PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO : null;
+      if(
+        ratioKey
+        && urlState
+        && typeof urlState.hasParam === "function"
+        && typeof urlState.getParam === "function"
+        && urlState.hasParam(ratioKey)
+      ){
+        const raw = urlState.getParam(ratioKey);
+        const numeric = Number(raw);
+        if(Number.isFinite(numeric)){
+          applyRatio(numeric);
+        }
+      }
+    }
+
     try{
-      const stored = window.localStorage ? window.localStorage.getItem(STORAGE_KEY) : null;
-      if(stored !== null){
-        const parsed = Number(stored);
-        if(Number.isFinite(parsed)){
-          applyRatio(parsed);
+      if(currentLayoutLeftPaneRatio === null){
+        const stored = window.localStorage ? window.localStorage.getItem(STORAGE_KEY) : null;
+        if(stored !== null){
+          const parsed = Number(stored);
+          if(Number.isFinite(parsed)){
+            applyRatio(parsed);
+          }
         }
       }
     }catch(_err){
       // ignore storage errors
+    }
+
+    if(currentLayoutLeftPaneRatio === null && typeof layoutLeftPaneRatio === "number" && Number.isFinite(layoutLeftPaneRatio)){
+      applyRatio(layoutLeftPaneRatio);
     }
 
     let dragging = false;
@@ -302,6 +327,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
     paneSplitter.addEventListener("pointerup", () => endDrag());
     paneSplitter.addEventListener("pointercancel", () => endDrag());
+
+    window.getLayoutLeftPaneRatio = () => currentLayoutLeftPaneRatio;
   }
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
   const appState = safeWindow?.appState;
@@ -2196,6 +2223,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["e", hasParam(PARAM_KEYS.STEP_SPEED) ? getParam(PARAM_KEYS.STEP_SPEED) : undefined],
       ["s", hasParam(PARAM_KEYS.STEP_FLAGS) ? getParam(PARAM_KEYS.STEP_FLAGS) : undefined],
       ["w", hasParam(PARAM_KEYS.SWITCH_COUNT) ? getParam(PARAM_KEYS.SWITCH_COUNT) : undefined],
+      ["l", hasParam(PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO) ? getParam(PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO) : undefined],
       ["x", hasParam(PARAM_KEYS.SKIP_EXISTING) ? getParam(PARAM_KEYS.SKIP_EXISTING) : undefined],
       ["t", hasParam(PARAM_KEYS.AUTO_AVOID_TIMING) ? getParam(PARAM_KEYS.AUTO_AVOID_TIMING) : undefined],
       ["r", hasParam(PARAM_KEYS.USE_DIRECTION) ? getParam(PARAM_KEYS.USE_DIRECTION) : undefined],
@@ -2618,6 +2646,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         defaultUseDirection,
         initialDebugParamPresent,
         codePanel,
+        layoutLeftPaneRatio: (typeof window.getLayoutLeftPaneRatio === "function") ? window.getLayoutLeftPaneRatio() : undefined,
       });
       window.open(url, "_blank");
     });
