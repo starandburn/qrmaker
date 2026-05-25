@@ -76,6 +76,24 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const toggleColor = dom.toggleColor;
   const txtInput = dom.txtInput;
   const configDefaults = (settings && typeof settings === "object") ? settings.defaults || {} : {};
+  const resolvedSwitchCountForConfig = (() => {
+    const key = urlState && urlState.PARAM_KEYS ? urlState.PARAM_KEYS.SWITCH_COUNT : null;
+    if(!key || typeof urlState?.hasParam !== "function" || typeof urlState?.getParam !== "function"){
+      return configDefaults.switchCount;
+    }
+    if(!urlState.hasParam(key)){
+      return configDefaults.switchCount;
+    }
+    const raw = urlState.getParam(key);
+    const numeric = Number(raw);
+    if(!Number.isFinite(numeric)){
+      return configDefaults.switchCount;
+    }
+    return Math.max(0, Math.min(4, Math.trunc(numeric)));
+  })();
+  const configDefaultsForSwitch = (resolvedSwitchCountForConfig === configDefaults.switchCount)
+    ? configDefaults
+    : Object.assign({}, configDefaults, { switchCount: resolvedSwitchCountForConfig });
   const resolvedDataTemplates = Array.isArray(configDefaults.dataTemplates)
     ? configDefaults.dataTemplates
     : [];
@@ -93,7 +111,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   };
   const switchController = (safeWindow && isFunction(safeWindow.createSwitchController))
     ? safeWindow.createSwitchController({
-      configDefaults,
+      configDefaults: configDefaultsForSwitch,
       executionStatusEl: dom.executionStatusEl,
       executionStatusTextEl: dom.executionStatusTextEl,
       buildSetSwitchDescription,
@@ -406,7 +424,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     getBoolParam,
     getDataParam,
   } = urlState;
-  const presentationMode = getParam(INTERNAL_PARAM_KEYS.PRESENTATION_MODE) === "1";
+  const presentationMode = hasParam(INTERNAL_PARAM_KEYS.PRESENTATION_MODE)
+    ? getParam(INTERNAL_PARAM_KEYS.PRESENTATION_MODE) === "1"
+    : Boolean(configDefaults.presentationMode);
   const initialDebugParamPresent = hasParam(PARAM_KEYS.DEBUG);
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
     ? configDefaults.historyVisible
@@ -2493,6 +2513,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         defaultStepMode,
         defaultStepSkipFunctions,
         defaultStepSpeed,
+        switchCount: resolvedSwitchCountForConfig,
+        defaultSwitchCount: configDefaults.switchCount,
         skipExistingCells,
         defaultSkipExistingCells,
         autoAvoidTiming,

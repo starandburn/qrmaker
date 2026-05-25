@@ -11,6 +11,7 @@
   const SAMPLES_PARAM_KEY = "m";
   const STEP_SPEED_PARAM_KEY = "e";
   const STEP_FLAGS_PARAM_KEY = "s";
+  const SWITCH_COUNT_PARAM_KEY = "w";
 
   // URL パラメータキーの唯一の定義源。
   // ここに定義されたキーと既定値をもとに PARAM_KEYS が正規化され、
@@ -30,6 +31,7 @@
     SKIP_EXISTING: "x",
     AUTO_AVOID_TIMING: "t",
     USE_DIRECTION: "r",
+    SWITCH_COUNT: SWITCH_COUNT_PARAM_KEY,
   };
 
   // URL パラメータ仕様（DEFAULT_PARAM_KEYS を唯一の定義源とする）
@@ -227,6 +229,18 @@
     return String(Math.round(clamped));
   };
 
+  const parseSwitchCountParam = () => {
+    if(!params.has(SWITCH_COUNT_PARAM_KEY)) return null;
+    const raw = params.get(SWITCH_COUNT_PARAM_KEY);
+    if(raw === null) return null;
+    const numeric = Number(raw);
+    if(!Number.isFinite(numeric)){
+      return null;
+    }
+    const clamped = Math.max(0, Math.min(4, numeric));
+    return String(Math.trunc(clamped));
+  };
+
   const buildStepFlagsParamValue = ({
     stepMode,
     stepSkipFunctions,
@@ -352,6 +366,8 @@
     defaultStepMode = false,
     defaultStepSkipFunctions = false,
     defaultStepSpeed = "",
+    switchCount,
+    defaultSwitchCount,
     skipExistingCells,
     defaultSkipExistingCells = false,
     autoAvoidTiming,
@@ -409,6 +425,21 @@
     });
     if(flagsValue !== defaultFlagsValue){
       setStringParam(stateParams, PARAM_KEYS.STEP_FLAGS, flagsValue);
+    }
+    const normalizedSwitchCount = (() => {
+      if(switchCount === undefined || switchCount === null) return null;
+      const numeric = Number(switchCount);
+      if(!Number.isFinite(numeric)) return null;
+      return Math.max(0, Math.min(4, Math.trunc(numeric)));
+    })();
+    const normalizedSwitchDefault = (() => {
+      if(defaultSwitchCount === undefined || defaultSwitchCount === null) return null;
+      const numeric = Number(defaultSwitchCount);
+      if(!Number.isFinite(numeric)) return null;
+      return Math.max(0, Math.min(4, Math.trunc(numeric)));
+    })();
+    if(normalizedSwitchCount !== null && normalizedSwitchDefault !== null && normalizedSwitchCount !== normalizedSwitchDefault){
+      setStringParam(stateParams, PARAM_KEYS.SWITCH_COUNT, String(normalizedSwitchCount));
     }
     if(historyVisible !== Boolean(defaultHistoryVisible)){
       setBoolParam(stateParams, PARAM_KEYS.HISTORY, Boolean(historyVisible));
