@@ -1350,29 +1350,39 @@ function moveCursor(...args){
         }else{
           const dirAbs = normalizeDir(first);
           if(!dirAbs) return false;
+          let scheduled = false;
           if(typeof second === "number" && Number.isFinite(second)){
-            return false;
+            if(!scheduleRelativeMove(dirAbs)) return false;
+            relativeMoveCount = Math.max(0, Math.trunc(second));
+            recordRelativeMove(dirAbs);
+            scheduled = true;
           }
           if(typeof third === "number" && Number.isFinite(third)){
             return false;
           }
-          let orientation = null;
-          if(typeof second === "string"){
-            const normalized = normalizeDir(second);
-            if(normalized){
-              orientation = second;
+          if(scheduled){
+            if(typeof third === "string"){
+              maybeDir(third);
             }
-          }
-          if(!orientation && typeof third === "string"){
-            const normalized = normalizeDir(third);
-            if(normalized){
-              orientation = third;
+          }else{
+            let orientation = null;
+            if(typeof second === "string"){
+              const normalized = normalizeDir(second);
+              if(normalized){
+                orientation = second;
+              }
             }
-          }
-          if(!scheduleRelativeMove(dirAbs)) return false;
-          recordRelativeMove(dirAbs);
-          if(orientation){
-            maybeDir(orientation);
+            if(!orientation && typeof third === "string"){
+              const normalized = normalizeDir(third);
+              if(normalized){
+                orientation = third;
+              }
+            }
+            if(!scheduleRelativeMove(dirAbs)) return false;
+            recordRelativeMove(dirAbs);
+            if(orientation){
+              maybeDir(orientation);
+            }
           }
         }
       }
