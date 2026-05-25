@@ -1193,6 +1193,21 @@
       throw new Error("next は put の引数、または条件式（if/while/until/repeat、next?）でのみ使用できます");
     }
     const firstArgLower = getArgLower();
+
+    {
+      const activeSwitchNames = getActiveSwitchNames();
+      if(Array.isArray(activeSwitchNames) && activeSwitchNames.includes(fnLower)){
+        const rawState = typeof parts[0] === "string" ? parts[0].trim().replace(/;$/, "") : "";
+        const stateLower = rawState ? rawState.toLowerCase() : "";
+        if(parts.length === 0){
+          return `setSwitch("${fnLower}")`;
+        }
+        if(parts.length === 1 && /^(on|off|flip|toggle)$/i.test(stateLower)){
+          return `setSwitch("${fnLower}", "${stateLower}")`;
+        }
+      }
+    }
+
     if(fnLower === "putcell" && parts.length === 1){
       const argLower = firstArgLower;
       if(argLower === "next"){
