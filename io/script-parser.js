@@ -428,7 +428,7 @@
         expr = "hasNextData";
         negationCount += 1;
       }else if(lower === "timing"){
-        expr = "isSkipZone";
+        expr = "isTimingZone";
       }else{
         const info = activeSwitchInfoMap[lower];
         if(info){

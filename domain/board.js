@@ -2211,6 +2211,13 @@ function isSkipZone(){
   if(timingColIndex > 0 && col === timingColIndex) return true;
   return false;
 }
+
+function isTimingZone(){
+  if(Boolean(window.autoAvoidTiming)){
+    return false;
+  }
+  return isSkipZone();
+}
 function isFunctionalCell(){
   const { row, col } = cursorPos;
   if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
@@ -2256,6 +2263,7 @@ window.getCell = getCell;
 window.invertCell = invertCell;
 window.isEmpty = isEmpty;
 window.isSkipZone = isSkipZone;
+window.isTimingZone = isTimingZone;
 window.isFunctionalCell = isFunctionalCell;
 window.isMoveBlocked = isMoveBlocked;
 window.shouldPlaceCell = shouldPlaceCell;
