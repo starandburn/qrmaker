@@ -2126,6 +2126,101 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     syncStepControls,
   });
   applyStepSpeedParam({ stepSpeed });
+  (() => {
+    if(window.__qrmakerStartupParamsLogged) return;
+    window.__qrmakerStartupParamsLogged = true;
+    if(typeof window.log !== "function") return;
+
+    const toDisplayValue = (value) => {
+      if(value === null) return "null";
+      if(value === undefined) return "undefined";
+      if(typeof value === "string"){
+        const normalized = value.replace(/\r?\n/g, "\\n");
+        if(normalized.length > 120){
+          return `${normalized.slice(0, 120)}...`;
+        }
+        return normalized;
+      }
+      if(typeof value === "number"){
+        return Number.isFinite(value) ? String(value) : String(value);
+      }
+      if(typeof value === "boolean"){
+        return value ? "true" : "false";
+      }
+      try{
+        return JSON.stringify(value);
+      }catch(err){
+        return String(value);
+      }
+    };
+
+    const settingEntries = [
+      ["qrData", configDefaults.qrData],
+      ["userCode", configDefaults.userCode],
+      ["historyVisible", configDefaults.historyVisible],
+      ["patternPanelOpen", configDefaults.patternPanelOpen],
+      ["layoutLeftPaneRatio", configDefaults.layoutLeftPaneRatio],
+      ["debugVisible", configDefaults.debugVisible],
+      ["skipExistingCells", configDefaults.skipExistingCells],
+      ["autoAvoidTiming", configDefaults.autoAvoidTiming],
+      ["defaultMask", configDefaults.defaultMask],
+      ["switchCount", configDefaults.switchCount],
+      ["stepSpeed", configDefaults.stepSpeed],
+      ["skipMode", configDefaults.skipMode],
+      ["stepSkipDataOnly", configDefaults.stepSkipDataOnly],
+      ["stepAnimationEnabled", configDefaults.stepAnimationEnabled],
+      ["stepAnimationDurationMs", configDefaults.stepAnimationDurationMs],
+      ["stepAnimationStartOpacity", configDefaults.stepAnimationStartOpacity],
+      ["stepAnimationStartScale", configDefaults.stepAnimationStartScale],
+      ["stepAnimationShowBorder", configDefaults.stepAnimationShowBorder],
+      ["maskFadeDurationMs", configDefaults.maskFadeDurationMs],
+      ["viewFlags.viewCursor", configDefaults.viewFlags && configDefaults.viewFlags.viewCursor],
+      ["viewFlags.viewGuide", configDefaults.viewFlags && configDefaults.viewFlags.viewGuide],
+      ["viewFlags.viewGrid", configDefaults.viewFlags && configDefaults.viewFlags.viewGrid],
+      ["viewFlags.viewEmpty", configDefaults.viewFlags && configDefaults.viewFlags.viewEmpty],
+      ["viewFlags.viewColor", configDefaults.viewFlags && configDefaults.viewFlags.viewColor],
+      ["viewFlags.viewDebugValues", configDefaults.viewFlags && configDefaults.viewFlags.viewDebugValues],
+      ["drawText.forceUppercase", configDefaults.drawText && configDefaults.drawText.forceUppercase],
+      ["drawText.skipNonAlnum", configDefaults.drawText && configDefaults.drawText.skipNonAlnum],
+      ["useDirection", configDefaults.useDirection],
+      ["homeCursorDirection", configDefaults.homeCursorDirection],
+    ];
+
+    const urlEntries = [
+      ["v", hasParam(PARAM_KEYS.VIEW_FLAGS) ? getParam(PARAM_KEYS.VIEW_FLAGS) : undefined],
+      ["g", hasParam(PARAM_KEYS.DEBUG) ? getParam(PARAM_KEYS.DEBUG) : undefined],
+      ["p", hasParam(PARAM_KEYS.PATTERN_PANEL) ? getParam(PARAM_KEYS.PATTERN_PANEL) : undefined],
+      ["d", hasParam(PARAM_KEYS.DATA) ? getParam(PARAM_KEYS.DATA) : undefined],
+      ["h", hasParam(PARAM_KEYS.HISTORY) ? getParam(PARAM_KEYS.HISTORY) : undefined],
+      ["m", hasParam(PARAM_KEYS.SAMPLES) ? getParam(PARAM_KEYS.SAMPLES) : undefined],
+      ["e", hasParam(PARAM_KEYS.STEP_SPEED) ? getParam(PARAM_KEYS.STEP_SPEED) : undefined],
+      ["s", hasParam(PARAM_KEYS.STEP_FLAGS) ? getParam(PARAM_KEYS.STEP_FLAGS) : undefined],
+      ["w", hasParam(PARAM_KEYS.SWITCH_COUNT) ? getParam(PARAM_KEYS.SWITCH_COUNT) : undefined],
+      ["x", hasParam(PARAM_KEYS.SKIP_EXISTING) ? getParam(PARAM_KEYS.SKIP_EXISTING) : undefined],
+      ["t", hasParam(PARAM_KEYS.AUTO_AVOID_TIMING) ? getParam(PARAM_KEYS.AUTO_AVOID_TIMING) : undefined],
+      ["r", hasParam(PARAM_KEYS.USE_DIRECTION) ? getParam(PARAM_KEYS.USE_DIRECTION) : undefined],
+      ["toggleCursor", hasParam("toggleCursor") ? getParam("toggleCursor") : undefined],
+      ["toggleGuide", hasParam("toggleGuide") ? getParam("toggleGuide") : undefined],
+      ["toggleGrid", hasParam("toggleGrid") ? getParam("toggleGrid") : undefined],
+      ["toggleEmpty", hasParam("toggleEmpty") ? getParam("toggleEmpty") : undefined],
+      ["toggleColor", hasParam("toggleColor") ? getParam("toggleColor") : undefined],
+      ["toggleDebugValues", hasParam("toggleDebugValues") ? getParam("toggleDebugValues") : undefined],
+      ["stepMode", hasParam("stepMode") ? getParam("stepMode") : undefined],
+      ["stepSkipFunctions", hasParam("stepSkipFunctions") ? getParam("stepSkipFunctions") : undefined],
+    ].filter(([, value]) => value !== undefined);
+
+    window.log("起動時パラメータ（settings/url）");
+    for(const [key, value] of settingEntries){
+      window.log(`settings.${key}=${toDisplayValue(value)}`);
+    }
+    if(urlEntries.length){
+      for(const [key, value] of urlEntries){
+        window.log(`url.${key}=${toDisplayValue(value)}`);
+      }
+    }else{
+      window.log("url: (指定なし)");
+    }
+  })();
   syncDebugPanelLayout();
   scheduleSyncParsedCode();
   if(dataPatternPanel){
