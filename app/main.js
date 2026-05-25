@@ -489,6 +489,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const defaultAutoAvoidTiming = (typeof configDefaults.autoAvoidTiming === "boolean")
     ? configDefaults.autoAvoidTiming
     : false;
+  const defaultOverwriteDataOnFunctional = (typeof configDefaults.overwriteDataOnFunctional === "boolean")
+    ? configDefaults.overwriteDataOnFunctional
+    : false;
   const defaultUseDirection = (typeof configDefaults.useDirection === "boolean")
     ? configDefaults.useDirection
     : false;
@@ -544,6 +547,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const useDirection = (useDirectionFromParam !== null)
     ? useDirectionFromParam
     : defaultUseDirection;
+  const overwriteDataOnFunctionalFromParam = getBoolParam(PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL);
+  const overwriteDataOnFunctional = (overwriteDataOnFunctionalFromParam !== null)
+    ? overwriteDataOnFunctionalFromParam
+    : defaultOverwriteDataOnFunctional;
   if(document && document.body){
     document.body.classList.toggle("direction-disabled", !useDirection);
   }
@@ -2227,6 +2234,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["s", hasParam(PARAM_KEYS.STEP_FLAGS) ? getParam(PARAM_KEYS.STEP_FLAGS) : undefined],
       ["w", hasParam(PARAM_KEYS.SWITCH_COUNT) ? getParam(PARAM_KEYS.SWITCH_COUNT) : undefined],
       ["l", hasParam(PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO) ? getParam(PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO) : undefined],
+      ["o", hasParam(PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL) ? getParam(PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL) : undefined],
       ["x", hasParam(PARAM_KEYS.SKIP_EXISTING) ? getParam(PARAM_KEYS.SKIP_EXISTING) : undefined],
       ["t", hasParam(PARAM_KEYS.AUTO_AVOID_TIMING) ? getParam(PARAM_KEYS.AUTO_AVOID_TIMING) : undefined],
       ["r", hasParam(PARAM_KEYS.USE_DIRECTION) ? getParam(PARAM_KEYS.USE_DIRECTION) : undefined],
@@ -2650,6 +2658,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         initialDebugParamPresent,
         codePanel,
         layoutLeftPaneRatio: (typeof window.getLayoutLeftPaneRatio === "function") ? window.getLayoutLeftPaneRatio() : undefined,
+        overwriteDataOnFunctional,
+        defaultOverwriteDataOnFunctional,
       });
       window.open(url, "_blank");
     });
@@ -2808,6 +2818,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     isStepModeOn,
     skipExistingCells,
     autoAvoidTiming,
+    overwriteDataOnFunctional,
     useDirection,
     updateExecutionStatusCursor,
     isDrawingBasePattern: false,

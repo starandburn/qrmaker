@@ -13,6 +13,7 @@
   const STEP_FLAGS_PARAM_KEY = "s";
   const SWITCH_COUNT_PARAM_KEY = "w";
   const LAYOUT_LEFT_PANE_RATIO_PARAM_KEY = "l";
+  const OVERWRITE_DATA_ON_FUNCTIONAL_PARAM_KEY = "o";
 
   // URL パラメータキーの唯一の定義源。
   // ここに定義されたキーと既定値をもとに PARAM_KEYS が正規化され、
@@ -34,6 +35,7 @@
     USE_DIRECTION: "r",
     SWITCH_COUNT: SWITCH_COUNT_PARAM_KEY,
     LAYOUT_LEFT_PANE_RATIO: LAYOUT_LEFT_PANE_RATIO_PARAM_KEY,
+    OVERWRITE_DATA_ON_FUNCTIONAL: OVERWRITE_DATA_ON_FUNCTIONAL_PARAM_KEY,
   };
 
   // URL パラメータ仕様（DEFAULT_PARAM_KEYS を唯一の定義源とする）
@@ -383,6 +385,8 @@
     switchCount,
     defaultSwitchCount,
     layoutLeftPaneRatio,
+    overwriteDataOnFunctional,
+    defaultOverwriteDataOnFunctional = false,
     skipExistingCells,
     defaultSkipExistingCells = false,
     autoAvoidTiming,
@@ -464,6 +468,9 @@
     })();
     if(normalizedLayoutLeftPaneRatio !== null){
       setStringParam(stateParams, PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO, String(Math.round(normalizedLayoutLeftPaneRatio * 1000) / 1000));
+    }
+    if(Boolean(overwriteDataOnFunctional) !== Boolean(defaultOverwriteDataOnFunctional)){
+      setBoolParam(stateParams, PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL, Boolean(overwriteDataOnFunctional));
     }
     if(historyVisible !== Boolean(defaultHistoryVisible)){
       setBoolParam(stateParams, PARAM_KEYS.HISTORY, Boolean(historyVisible));

@@ -32,6 +32,7 @@
     const valueKeys = [
       "skipExistingCells",
       "autoAvoidTiming",
+      "overwriteDataOnFunctional",
       "useDirection",
       "isDrawingBasePattern",
       "basePatternLookahead",

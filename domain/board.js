@@ -1879,7 +1879,16 @@ function resolveRowCol(rowArg, colArg, fallbackRow = cursorPos.row, fallbackCol 
 
 function shouldPlaceCell(row, col, overwrite = true){
   if(overwrite) return true;
-  return isBoardCellUnplaced(row, col);
+  if(isBoardCellUnplaced(row, col)) return true;
+  if(Boolean(window.overwriteDataOnFunctional)){
+    if(!Number.isInteger(row) || !Number.isInteger(col)) return false;
+    if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
+    const cellValue = boardMatrix[row - 1][col - 1];
+    if(typeof cellValue !== "number") return true;
+    const kind = (typeof window.bitKind === "function") ? window.bitKind(cellValue) : Math.abs(cellValue);
+    return isDataKind(kind);
+  }
+  return false;
 }
 
 const isEncodedValueUnplaced = (value) => {

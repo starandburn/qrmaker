@@ -16,6 +16,8 @@ window.appSettingsFromScript = {
     "skipExistingCells": false,
     // タイミングパターン回避の自動化
     "autoAvoidTiming": false,
+    // 基本パターンの描画時にデータパターンを上書きする
+    "overwriteDataOnFunctional": true,
     // 初期マスク番号
     "defaultMask": 0,
     // 利用可能なスイッチの数 (0〜4)。0未満は0、5以上は4、デフォルト2。
