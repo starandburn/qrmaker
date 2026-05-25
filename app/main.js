@@ -2033,7 +2033,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       const active = document.activeElement;
       if(active){
         const tag = active.tagName ? active.tagName.toUpperCase() : "";
-        if(active.id === "userCode" || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || active.isContentEditable){
+        const isCtrlEnter = (ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter");
+        if(active.id === "txtInput" && isCtrlEnter){
+          // allow running even when the data input is focused
+        }else if(active.id === "userCode" || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || active.isContentEditable){
           return; // let input handler manage shortcuts
         }
       }
