@@ -70,6 +70,45 @@
     { bits: 0x2eda, data: 0x1e },
     { bits: 0x2bed, data: 0x1f },
   ];
+  const EXPECTED_FUNCTIONAL_COORDS = (() => {
+    const set = new Set();
+    const add = (row, col) => {
+      if(row < 1 || row > BOARD_SIZE || col < 1 || col > BOARD_SIZE) return;
+      set.add(`${row},${col}`);
+    };
+    const addFinderWithSeparator = (baseRow, baseCol) => {
+      for(let row = baseRow - 1; row <= baseRow + 7; row++){
+        for(let col = baseCol - 1; col <= baseCol + 7; col++){
+          add(row, col);
+        }
+      }
+    };
+    addFinderWithSeparator(1, 1);
+    addFinderWithSeparator(1, 19);
+    addFinderWithSeparator(19, 1);
+    for(let row = 17; row <= 21; row++){
+      for(let col = 17; col <= 21; col++){
+        add(row, col);
+      }
+    }
+    add(18, 9);
+    for(const [rowOff, colOff] of FORMAT_COORDS_A){
+      add(rowOff + 1, colOff + 1);
+    }
+    for(const [rowOff, colOff] of FORMAT_COORDS_B){
+      add(rowOff + 1, colOff + 1);
+    }
+    for(let col = 1; col <= BOARD_SIZE; col++){
+      add(7, col);
+    }
+    for(let row = 1; row <= BOARD_SIZE; row++){
+      add(row, 7);
+    }
+    return Array.from(set, (key) => {
+      const [row, col] = key.split(",").map((v) => Number(v));
+      return { row, col };
+    });
+  })();
 
   function cellToBit(value){
     if(typeof value !== "number") return 0;
@@ -90,6 +129,20 @@
     const kindVal = global.bitKind(value);
     if(kindVal === global.BIT_MASK) return true;
     return FUNCTION_KINDS.includes(kindVal);
+  }
+  function verifyFunctionalPatterns(){
+    let missingCount = 0;
+    for(const coord of EXPECTED_FUNCTIONAL_COORDS){
+      const value = getCellValue(coord.row, coord.col);
+      if(!isFunctionalCellValue(value)){
+        missingCount += 1;
+      }
+    }
+    return {
+      ok: missingCount === 0,
+      missingCount,
+      expectedCount: EXPECTED_FUNCTIONAL_COORDS.length,
+    };
   }
 
   function iterateDataCells(callback){
@@ -344,6 +397,7 @@
 
   function verifyBoard(){
     const { cells: dataEntries, stats } = readDataCells();
+    const functionalCheck = verifyFunctionalPatterns();
     const bitsAvailable = dataEntries.length;
     const paddedBits = Math.max(0, EXPECTED_BITS - bitsAvailable);
     stats.paddedBits = paddedBits;
@@ -382,13 +436,18 @@
       }
     }
     const preMaskResult = verifyWithoutMask(dataEntries, paddedBits);
-    const preMaskLikely = !finalResult.ok && preMaskResult.ok;
+    const preMaskLikely = functionalCheck.ok && !finalResult.ok && preMaskResult.ok;
     if(preMaskLikely){
       finalResult.reason = "mask_missing";
       finalResult.text = preMaskResult.text;
       finalResult.dataCodewords = preMaskResult.dataCodewords;
       finalResult.parityBytes = preMaskResult.parityBytes;
       finalResult.computedEc = preMaskResult.computedEc;
+    }
+    if(!functionalCheck.ok){
+      finalResult.ok = false;
+      finalResult.reason = "function_pattern_missing";
+      finalResult.text = null;
     }
     finalResult.stats = Object.assign({}, stats, {
       formatValid,
@@ -399,6 +458,9 @@
       formatOrientation: formatInfo.decoded ? formatInfo.decoded.orientation : null,
       maskIndex: finalResult.maskIndex,
       preMaskLikely,
+      functionalPatternValid: functionalCheck.ok,
+      missingFunctionalCells: functionalCheck.missingCount,
+      expectedFunctionalCells: functionalCheck.expectedCount,
     });
     return finalResult;
   }
