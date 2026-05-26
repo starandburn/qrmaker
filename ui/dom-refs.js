@@ -22,6 +22,7 @@
       codePanel: query(".code-panel"),
       userCodeParsed: getById("userCodeParsed"),
       footerCopy: query(".page-footer p:first-child"),
+      footerSecretQr: getById("footerSecretQr"),
       versionInfo: getById("appVersionInfo"),
       userCodeInput: getById("userCode"),
       btnToggleHistory: getById("btnToggleHistory"),

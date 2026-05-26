@@ -10,6 +10,7 @@
     getCurrentCodeValue,
     setHistoryVisibility,
     getHistoryVisible,
+    focusCodeArea,
   } = {}){
     if(!historyController) return;
     const renderHistoryList = (entries) => {
@@ -41,6 +42,9 @@
         userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
         userCodeInput.scrollTop = 0;
         userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+        if(typeof focusCodeArea === "function"){
+          focusCodeArea();
+        }
       });
     }
   }

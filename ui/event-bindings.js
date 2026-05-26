@@ -9,6 +9,7 @@
       setHistoryVisibility,
       getHistoryVisible,
       setPatternPanelOpen,
+      focusCodeArea,
     } = deps || {};
 
     const bindHistoryToggle = () => {
@@ -17,6 +18,9 @@
       if(!btnToggleHistory) return;
       btnToggleHistory.addEventListener("click", () => {
         setHistoryVisibility(!getHistoryVisible());
+        if(typeof focusCodeArea === "function"){
+          focusCodeArea();
+        }
       });
     };
 

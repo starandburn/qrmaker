@@ -236,6 +236,7 @@
     "endrepeat",
     "endloop",
   ]);
+  const SHORT_MOVE_COMMANDS = new Set(["left", "right", "up", "down"]);
   const validateAllowedCommands = (text) => {
     if(typeof text !== "string") return;
     const lines = text.replace(/\r/g, "").split("\n");
@@ -255,6 +256,9 @@
       }
       const head = match[1].toLowerCase();
       if(head === "next?"){
+        continue;
+      }
+      if(SHORT_MOVE_COMMANDS.has(head)){
         continue;
       }
       if(ALLOWED_CONTROL.has(head)) continue;
@@ -428,7 +432,7 @@
         expr = "hasNextData";
         negationCount += 1;
       }else if(lower === "timing"){
-        expr = "isSkipZone";
+        expr = "isTimingZone";
       }else{
         const info = activeSwitchInfoMap[lower];
         if(info){
@@ -1174,6 +1178,24 @@
     const fnLower = typeof fn === "string" ? fn.toLowerCase() : "";
     const directionEnabled = (isDefined(global) && global.useDirection === true);
     const isConditionContext = context === "condition";
+    const truthyKeywords = new Set(["true","ok","yes"]);
+    const falseyKeywords = new Set(["false","ng","no"]);
+    const toScriptArg = (arg) => {
+      const t = String(arg ?? "").trim();
+      if(!t) return "";
+      const lower = t.toLowerCase();
+      if(truthyKeywords.has(lower)) return "true";
+      if(falseyKeywords.has(lower)) return "false";
+      if(/^[-+]?\d+(?:\.\d+)?$/.test(t)) return t;
+      if(/^["'].+["']$/.test(t)) return t;
+      if(identifierPattern.test(t) && globalEnv){
+        const value = globalEnv[t];
+        if(isFunction(value)){
+          return `${t}()`;
+        }
+      }
+      return `"${t.replace(/"/g, '\\"')}"`;
+    };
     const normalizeArgValue = (value) => {
       if(typeof value !== "string") return "";
       const trimmedArg = value.trim();
@@ -1192,11 +1214,36 @@
       }
       throw new Error("next は put の引数、または条件式（if/while/until/repeat、next?）でのみ使用できます");
     }
+    if(SHORT_MOVE_COMMANDS.has(fnLower)){
+      const moveArgs = [`"${fnLower}"`];
+      for(const part of parts){
+        const converted = toScriptArg(part);
+        if(converted){
+          moveArgs.push(converted);
+        }
+      }
+      return `moveCursor(${moveArgs.join(", ")})`;
+    }
     const firstArgLower = getArgLower();
+
+    {
+      const activeSwitchNames = getActiveSwitchNames();
+      if(Array.isArray(activeSwitchNames) && activeSwitchNames.includes(fnLower)){
+        const rawState = typeof parts[0] === "string" ? parts[0].trim().replace(/;$/, "") : "";
+        const stateLower = rawState ? rawState.toLowerCase() : "";
+        if(parts.length === 0){
+          return `setSwitch("${fnLower}")`;
+        }
+        if(parts.length === 1 && /^(on|off|flip|toggle)$/i.test(stateLower)){
+          return `setSwitch("${fnLower}", "${stateLower}")`;
+        }
+      }
+    }
+
     if(fnLower === "putcell" && parts.length === 1){
       const argLower = firstArgLower;
       if(argLower === "next"){
-        return "putCell(getNextData())";
+        return "putCell(-1)";
       }
       if(argLower === "black"){
         return "putCell(1)";
@@ -1255,24 +1302,7 @@
         throw new Error("move コマンドは数値指定に対応していません");
       }
     }
-    const truthyKeywords = new Set(["true","ok","yes"]);
-    const falseyKeywords = new Set(["false","ng","no"]);
-    const args = parts.map((arg) => {
-      const t = arg.trim();
-      if(!t) return "";
-      const lower = t.toLowerCase();
-      if(truthyKeywords.has(lower)) return "true";
-      if(falseyKeywords.has(lower)) return "false";
-      if(/^[-+]?\d+(?:\.\d+)?$/.test(t)) return t;
-      if(/^["'].+["']$/.test(t)) return t;
-      if(identifierPattern.test(t) && globalEnv){
-        const value = globalEnv[t];
-        if(isFunction(value)){
-          return `${t}()`;
-        }
-      }
-      return `"${t.replace(/"/g, '\\"')}"`;
-    }).filter(Boolean);
+    const args = parts.map((arg) => toScriptArg(arg)).filter(Boolean);
     if(args.length === 0){
       return `${fn}()`;
     }

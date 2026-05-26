@@ -7,6 +7,7 @@
     configDefaults,
     resolvedDataTemplates,
     historyController,
+    focusCodeArea,
   } = {}){
     const sampleDropdownMenu = dom ? dom.sampleDropdownMenu : null;
     if(sampleDropdownMenu){
@@ -48,6 +49,9 @@
       userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
       userCodeInput.scrollTop = 0;
       userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      if(typeof focusCodeArea === "function"){
+        focusCodeArea();
+      }
       historyController.commitPendingHistory("サンプル");
     };
 

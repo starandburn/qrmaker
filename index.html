@@ -91,13 +91,12 @@
 
     <div class="panel pastel-3 code-panel">
       <div class="panel-title-row">
-        <div class="panel-title">QRコードを作成するプログラム</div>
-        <div class="code-debug-toolbar" id="codeSampleToolbar"></div>
+        <div class="panel-title">QRコードを作るプログラム</div>
         <div class="code-action-toolbar">
-          <button id="btnCopyCode" type="button" class="code-action-btn">コピー</button>
+          <button id="btnCopyCode" type="button" class="code-action-btn">コピｰ</button>
+          <button id="btnPasteCode" type="button" class="code-action-btn">貼付</button>
           <button id="btnFormatCode" type="button" class="code-action-btn">整形</button>
-          <button id="btnPasteCode" type="button" class="code-action-btn">貼り付け</button>
-          <button id="btnClearCode" type="button" class="code-action-btn">クリア</button>
+          <button id="btnClearCode" type="button" class="code-action-btn">全消去</button>
           <button id="btnToggleHistory" type="button" class="code-action-btn code-history-toggle" aria-pressed="false">履歴</button>
         </div>
       </div>
@@ -106,6 +105,7 @@
           <textarea id="userCode" spellcheck="false" autocorrect="off" autocomplete="off" autocapitalize="off">
 </textarea>
           <div id="userCodeEditor" class="code-editor-host"></div>
+          <div class="code-debug-toolbar" id="codeSampleToolbar"></div>
         </div>
         <div class="code-editor-pane code-editor-parsed">
           <textarea id="userCodeParsed" class="parsed-code" spellcheck="false" readonly></textarea>
@@ -210,7 +210,7 @@
 
 <footer class="page-footer">
 <p>&copy; 2025 - <span id="currentYear">????</span> Japan International Institute of Cybernetics. All Rights Reserved.</p>
-  <p>QRコードは<a href="https://www.denso-wave.com/ja/system/qr/" target="_blank" rel="noopener noreferrer">株式会社デンソーウェーブ</a>の登録商標です。</p>
+  <p><span id="footerSecretQr">QR</span>コードは<a href="https://www.denso-wave.com/ja/system/qr/" target="_blank" rel="noopener noreferrer">株式会社デンソーウェーブ</a>の登録商標です。</p>
 </footer>
 
 <script src="domain/qrcode.js"></script>
@@ -267,6 +267,7 @@
 <script src="ui/ui-state.js"></script>
 <script src="ui/bind-events.js"></script>
 <script src="app/main.js"></script>
+<script src="settings-ui.js"></script>
 <script src="settings.js"></script>
 <script src="code-samples.js"></script>
 <script src="version.js"></script>

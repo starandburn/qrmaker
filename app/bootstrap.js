@@ -32,11 +32,27 @@
   const layoutUI = window.layoutUI;
   const urlState = window.urlState;
   const debugUI = window.qrmakerDebug.ui;
+  const mergeSettings = (...sources) => {
+    const merged = { defaults: {} };
+    sources.forEach((source) => {
+      if(!source || typeof source !== "object") return;
+      const defaults = (source.defaults && typeof source.defaults === "object") ? source.defaults : {};
+      Object.assign(merged.defaults, defaults);
+    });
+    return merged;
+  };
+
   const loadSettings = async () => {
-    if(typeof window.appSettingsFromScript === "object" && window.appSettingsFromScript !== null){
-      return window.appSettingsFromScript;
+    const base = (typeof window.appSettingsFromScript === "object" && window.appSettingsFromScript !== null)
+      ? window.appSettingsFromScript
+      : null;
+    const ui = (typeof window.appSettingsUiFromScript === "object" && window.appSettingsUiFromScript !== null)
+      ? window.appSettingsUiFromScript
+      : null;
+    if(!base && !ui){
+      return null;
     }
-    return null;
+    return mergeSettings(base, ui);
   };
 
   const startApp = (settings) => {

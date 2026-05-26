@@ -61,6 +61,9 @@
     const layoutLeftPaneRatio = (layoutLeftPaneRatioRaw !== null)
       ? Math.min(0.9, Math.max(0.1, layoutLeftPaneRatioRaw))
       : 0.5;
+    const autoResetOnRun = (typeof configDefaults.autoResetOnRun === "boolean")
+      ? configDefaults.autoResetOnRun
+      : false;
 
     return {
       stepAnimationEnabledOverride,
@@ -87,6 +90,7 @@
       codeZoomLineHeightRatio,
       codeZoomLineHeightMaxOffsetPx,
       layoutLeftPaneRatio,
+      autoResetOnRun,
     };
   }
 

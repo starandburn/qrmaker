@@ -1,14 +1,17 @@
 window.appCodeSamplesFromScript = [
-  { label: "1", code: `// 対象文字列を盤面に描画する
+  { label: "1", code: `
 text` },
-  { label: "2", code: `qrcode` },
-  { label: "3", code: `reset
+  { label: "2", code: `
+qrcode` },
+  { label: "3", code: `
+reset
 base
 data
 mask
 ` 
   },
-  { label: "4", code: `reset
+  { label: "4", code: `
+reset
 finders
 timings
 alignments
@@ -17,7 +20,8 @@ formats
 data
 mask
 ` },
-  { label: "5", code: `reset
+  { label: "5", code: `
+reset
 finder a1
 finder s1
 finder a19
@@ -32,7 +36,27 @@ mask
 ` },
   {
     label: "6",
-    code: `reset
+    code: `
+// ?&a=1&u=0&x=1&t=1 で実行
+base
+move y25
+red on
+repeat last
+    repeat 25
+        put
+        left
+        put
+        right
+        if red up else down
+    endrepeat
+    left 2
+    red flip
+endrepeat
+  `},
+  {
+    label: "7",
+    code: `
+reset
 base
 move y25
 red on
@@ -49,9 +73,9 @@ repeat last
         endif
     endrepeat
     red flip
-    move left
-    move left
+    move left 2
     if timing move left
 endrepeat
-mask`  }
+mask
+`  }
 ];

@@ -58,6 +58,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
   const userCodeParsed = dom.userCodeParsed;
   const footerCopy = dom.footerCopy;
+  const footerSecretQr = dom.footerSecretQr;
   const versionInfo = dom.versionInfo;
   const userCodeInput = dom.userCodeInput;
   const stepMode = dom.stepMode;
@@ -76,9 +77,66 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const toggleColor = dom.toggleColor;
   const txtInput = dom.txtInput;
   const configDefaults = (settings && typeof settings === "object") ? settings.defaults || {} : {};
+  const focusCodeArea = () => {
+    const editor = (typeof window !== "undefined") ? window.__codeEditor : null;
+    if(editor && typeof editor.focus === "function"){
+      editor.focus();
+      return;
+    }
+    if(userCodeInput && typeof userCodeInput.focus === "function"){
+      userCodeInput.focus();
+    }
+  };
+  const resolvedSwitchCountForConfig = (() => {
+    const key = urlState && urlState.PARAM_KEYS ? urlState.PARAM_KEYS.SWITCH_COUNT : null;
+    if(!key || typeof urlState?.hasParam !== "function" || typeof urlState?.getParam !== "function"){
+      return configDefaults.switchCount;
+    }
+    if(!urlState.hasParam(key)){
+      return configDefaults.switchCount;
+    }
+    const raw = urlState.getParam(key);
+    const numeric = Number(raw);
+    if(!Number.isFinite(numeric)){
+      return configDefaults.switchCount;
+    }
+    return Math.max(0, Math.min(4, Math.trunc(numeric)));
+  })();
+  const configDefaultsForSwitch = (resolvedSwitchCountForConfig === configDefaults.switchCount)
+    ? configDefaults
+    : Object.assign({}, configDefaults, { switchCount: resolvedSwitchCountForConfig });
   const resolvedDataTemplates = Array.isArray(configDefaults.dataTemplates)
     ? configDefaults.dataTemplates
     : [];
+  const resolvedCodeSamples = Array.isArray(configDefaults.codeSamples)
+    ? configDefaults.codeSamples
+    : [];
+  const normalizeSampleTextForRestore = (raw) => {
+    const source = (typeof raw === "string") ? raw : "";
+    const lines = source.replace(/\r/g, "").split("\n");
+    while(lines.length && lines[0].trim() === ""){
+      lines.shift();
+    }
+    while(lines.length && lines[lines.length - 1].trim() === ""){
+      lines.pop();
+    }
+    return lines.join("\n");
+  };
+  const defaultCodeSampleIndex = (() => {
+    const raw = Number(configDefaults.initialCode);
+    if(!Number.isInteger(raw)) return null;
+    if(raw < 1 || raw > resolvedCodeSamples.length) return null;
+    return raw;
+  })();
+  const defaultUserCodeText = (() => {
+    if(defaultCodeSampleIndex !== null){
+      const sample = resolvedCodeSamples[defaultCodeSampleIndex - 1];
+      if(sample && typeof sample.code === "string"){
+        return normalizeSampleTextForRestore(sample.code);
+      }
+    }
+    return "";
+  })();
   const buildSetSwitchDescription = (color, next) => {
     const labelMap = { red: "赤", blue: "青", green: "緑", yellow: "黄" };
     const label = labelMap[color] || color;
@@ -93,7 +151,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   };
   const switchController = (safeWindow && isFunction(safeWindow.createSwitchController))
     ? safeWindow.createSwitchController({
-      configDefaults,
+      configDefaults: configDefaultsForSwitch,
       executionStatusEl: dom.executionStatusEl,
       executionStatusTextEl: dom.executionStatusTextEl,
       buildSetSwitchDescription,
@@ -131,7 +189,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     : (txtInput?.value ?? "Hello, World!");
   callWindowFunctionIfExists("refreshPatternIfPanelOpen");
   if(userCodeInput){
-    userCodeInput.value = (typeof configDefaults.userCode === "string") ? configDefaults.userCode : "qrcode";
+    userCodeInput.value = defaultUserCodeText;
   }
   const rawStepSpeedOverride = configDefaults.stepSpeed;
   const normalizedStepSpeedOverride = (typeof rawStepSpeedOverride === "number" || typeof rawStepSpeedOverride === "string")
@@ -172,6 +230,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const codeZoomLineHeightRatio = resolvedSettings.codeZoomLineHeightRatio;
   const codeZoomLineHeightMaxOffsetPx = resolvedSettings.codeZoomLineHeightMaxOffsetPx;
   const layoutLeftPaneRatio = resolvedSettings.layoutLeftPaneRatio;
+  const defaultAutoResetOnRun = resolvedSettings.autoResetOnRun;
   const rootStyle = document.documentElement?.style;
   if(rootStyle){
     const stepBorderValue = stepAnimationShowBorder
@@ -218,23 +277,48 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   if(paneSplitter && rootStyle){
     const STORAGE_KEY = "layoutLeftPaneRatio";
     const clamp01 = (value) => Math.min(0.9, Math.max(0.1, value));
+    let currentLayoutLeftPaneRatio = null;
     const applyRatio = (ratio) => {
       const clamped = clamp01(ratio);
       const percent = Math.round(clamped * 1000) / 10;
       rootStyle.setProperty("--layout-left-pane-percent", `${percent}%`);
+      currentLayoutLeftPaneRatio = clamped;
       return clamped;
     };
 
+    {
+      const ratioKey = (urlState && urlState.PARAM_KEYS) ? urlState.PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO : null;
+      if(
+        ratioKey
+        && urlState
+        && typeof urlState.hasParam === "function"
+        && typeof urlState.getParam === "function"
+        && urlState.hasParam(ratioKey)
+      ){
+        const raw = urlState.getParam(ratioKey);
+        const numeric = Number(raw);
+        if(Number.isFinite(numeric)){
+          applyRatio(numeric);
+        }
+      }
+    }
+
     try{
-      const stored = window.localStorage ? window.localStorage.getItem(STORAGE_KEY) : null;
-      if(stored !== null){
-        const parsed = Number(stored);
-        if(Number.isFinite(parsed)){
-          applyRatio(parsed);
+      if(currentLayoutLeftPaneRatio === null){
+        const stored = window.localStorage ? window.localStorage.getItem(STORAGE_KEY) : null;
+        if(stored !== null){
+          const parsed = Number(stored);
+          if(Number.isFinite(parsed)){
+            applyRatio(parsed);
+          }
         }
       }
     }catch(_err){
       // ignore storage errors
+    }
+
+    if(currentLayoutLeftPaneRatio === null && typeof layoutLeftPaneRatio === "number" && Number.isFinite(layoutLeftPaneRatio)){
+      applyRatio(layoutLeftPaneRatio);
     }
 
     let dragging = false;
@@ -284,6 +368,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
     paneSplitter.addEventListener("pointerup", () => endDrag());
     paneSplitter.addEventListener("pointercancel", () => endDrag());
+
+    window.getLayoutLeftPaneRatio = () => currentLayoutLeftPaneRatio;
   }
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
   const appState = safeWindow?.appState;
@@ -371,6 +457,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     setHistoryVisibility,
     getHistoryVisible,
     setPatternPanelOpen,
+    focusCodeArea,
   });
   const getDebugPanel = () => debugUI.debugPanel;
   if(!window.historyController){
@@ -388,6 +475,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     getCurrentCodeValue,
     setHistoryVisibility,
     getHistoryVisible,
+    focusCodeArea,
   });
   const {
     decodeDataParamValue,
@@ -406,7 +494,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     getBoolParam,
     getDataParam,
   } = urlState;
-  const presentationMode = getParam(INTERNAL_PARAM_KEYS.PRESENTATION_MODE) === "1";
+  const presentationMode = hasParam(INTERNAL_PARAM_KEYS.PRESENTATION_MODE)
+    ? getParam(INTERNAL_PARAM_KEYS.PRESENTATION_MODE) === "1"
+    : Boolean(configDefaults.presentationMode);
   const initialDebugParamPresent = hasParam(PARAM_KEYS.DEBUG);
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
     ? configDefaults.historyVisible
@@ -441,6 +531,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     : false;
   const defaultAutoAvoidTiming = (typeof configDefaults.autoAvoidTiming === "boolean")
     ? configDefaults.autoAvoidTiming
+    : false;
+  const defaultOverwriteDataOnFunctional = (typeof configDefaults.overwriteDataOnFunctional === "boolean")
+    ? configDefaults.overwriteDataOnFunctional
     : false;
   const defaultUseDirection = (typeof configDefaults.useDirection === "boolean")
     ? configDefaults.useDirection
@@ -497,6 +590,31 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const useDirection = (useDirectionFromParam !== null)
     ? useDirectionFromParam
     : defaultUseDirection;
+  const overwriteDataOnFunctionalFromParam = getBoolParam(PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL);
+  const overwriteDataOnFunctional = (overwriteDataOnFunctionalFromParam !== null)
+    ? overwriteDataOnFunctionalFromParam
+    : defaultOverwriteDataOnFunctional;
+  const autoResetOnRunFromParam = getBoolParam(PARAM_KEYS.AUTO_RESET_ON_RUN);
+  const autoResetOnRun = (autoResetOnRunFromParam !== null)
+    ? autoResetOnRunFromParam
+    : defaultAutoResetOnRun;
+  const normalizeDefaultPutMode = (value, fallback = 2) => {
+    const numeric = Number(value);
+    if(Number.isFinite(numeric)){
+      const truncated = Math.trunc(numeric);
+      if(truncated >= 0 && truncated <= 3){
+        return truncated;
+      }
+    }
+    return fallback;
+  };
+  const defaultPutModeFromSettings = normalizeDefaultPutMode(configDefaults.defaultPut, 2);
+  const defaultPutModeFromParam = hasParam(PARAM_KEYS.DEFAULT_PUT)
+    ? normalizeDefaultPutMode(getParam(PARAM_KEYS.DEFAULT_PUT), defaultPutModeFromSettings)
+    : defaultPutModeFromSettings;
+  if(typeof window !== "undefined"){
+    window.defaultPutMode = defaultPutModeFromParam;
+  }
   if(document && document.body){
     document.body.classList.toggle("direction-disabled", !useDirection);
   }
@@ -554,9 +672,43 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       isStepModeOn,
     })
     : null;
-  const setExecutionStatus = statusManager
+  const rawSetExecutionStatus = statusManager
     ? statusManager.setExecutionStatus
     : () => {};
+  const executionStatusMessageWrapEl = dom?.executionStatusTextEl?.parentElement || null;
+  let readMaskLinkEl = null;
+  const hideReadMaskButton = () => {
+    if(readMaskLinkEl && readMaskLinkEl.isConnected){
+      readMaskLinkEl.remove();
+    }
+    readMaskLinkEl = null;
+  };
+  const showReadMaskButton = () => {
+    if(!executionStatusMessageWrapEl || readMaskLinkEl) return;
+    const link = document.createElement("a");
+    link.href = "#";
+    link.className = "execution-status-read-link";
+    link.textContent = "▼読取用に調整";
+    link.addEventListener("click", async (ev) => {
+      ev.preventDefault();
+      if(typeof applyMask !== "function") return;
+      link.classList.add("is-busy");
+      try{
+        const ok = await applyMask(0);
+        if(ok){
+          setExecutionStatus("finished", undefined, "読み取れる正しいQRコードです。");
+        }
+      }finally{
+        link.classList.remove("is-busy");
+      }
+    });
+    executionStatusMessageWrapEl.appendChild(link);
+    readMaskLinkEl = link;
+  };
+  const setExecutionStatus = (...args) => {
+    hideReadMaskButton();
+    rawSetExecutionStatus(...args);
+  };
   const normalizeInputBeforeRun = statusManager
     ? statusManager.normalizeInputBeforeRun
     : () => ({ ok: true });
@@ -944,6 +1096,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const domainQrParams = window.domainQrParams;
   const applyDataParam = (typeof domainQrParams.applyDataParam === "function")
     ? (options) => domainQrParams.applyDataParam(options)
+    : () => false;
+  const applyCodeSampleParam = (typeof domainQrParams.applyCodeSampleParam === "function")
+    ? (options) => domainQrParams.applyCodeSampleParam(options)
     : () => false;
   ctx.FORMAT_L = FORMAT_L;
   const runIdAccessor = {
@@ -1705,8 +1860,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     });
   }
   async function composeQRCode(arg){
-    const resetOk = await resetBoard();
-    if(resetOk === false) return false;
     const baseOk = await drawBasePatterns();
     if(!baseOk) return false;
     const dataOk = await drawDataPatterns();
@@ -1850,27 +2003,39 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(!result) return null;
     const inputValue = txtInput?.value ?? "";
     const match = result.text === inputValue;
-    const outcomeLabel = match ? "入力と出力が一致しました。" : "入力と出力が一致しませんでした。";
+    const preMaskLikely = Boolean(result?.stats?.preMaskLikely);
+    const outcomeLabel = preMaskLikely
+      ? "正しいQRコードの配置です。"
+      : (match ? "入力と出力が一致しました。" : "入力と出力が一致しませんでした。");
     const payload = {
       reason: result.reason || (result.ok ? "ok" : "rs_mismatch"),
       maskIndex: result.maskIndex,
       decoded: result.text,
       match,
+      preMaskLikely,
       stats: result.stats,
     };
     window.logEvent("qrVerify", JSON.stringify(payload), outcomeLabel);
     return Object.assign({ ok: result.ok }, payload);
   };
 
-  btnGenerate.addEventListener("click", async () => {
+  btnGenerate.addEventListener("click", async (ev) => {
+    const clickForceAutoReset = Boolean(ev?.ctrlKey) && !Boolean(ev?.shiftKey);
+    const clickSkipAutoReset = Boolean(ev?.shiftKey) && !Boolean(ev?.ctrlKey);
+    const skipAutoResetOnce = clickSkipAutoReset || Boolean(window.__skipAutoResetOnRunOnce);
+    const forceAutoResetOnce = clickForceAutoReset || Boolean(window.__forceAutoResetOnRunOnce);
+    window.__skipAutoResetOnRunOnce = false;
+    window.__forceAutoResetOnRunOnce = false;
     historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
     const patternUpdated = callIfFunction(window.refreshPatternForCreate) ?? false;
+    let resetHandled = false;
     if(isInputLocked()){
-      const resetWait = stopAndReset({ resetData: Boolean(patternUpdated) });
+      const resetWait = stopAndReset({ resetData: true });
       if(resetWait && isFunction(resetWait.then)){
         await resetWait;
       }
+      resetHandled = true;
     }
     const codeText = (userCodeInput && typeof userCodeInput.value === "string")
       ? userCodeInput.value.trim()
@@ -1882,6 +2047,15 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     const inputCheck = normalizeInputBeforeRun();
     if(!inputCheck.ok){
       return;
+    }
+    if((forceAutoResetOnce || autoResetOnRun) && !resetHandled && !skipAutoResetOnce){
+      const resetWait = resetBoard({ resetData: true });
+      if(resetWait && isFunction(resetWait.then)){
+        const resetOk = await resetWait;
+        if(resetOk === false) return;
+      }else if(resetWait === false){
+        return;
+      }
     }
     const generateToken = callIfFunction(
       window.beginGenerateClick,
@@ -1935,12 +2109,17 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       const applyExecutionStatus = (outcome) => {
         if(runOk){
           const verificationDetail = outcome
-            ? (outcome.match ? "正しいQRコードです。" : "この盤面はQRコードとして読み取れません。")
+            ? (outcome.preMaskLikely
+              ? "正しいQRコードの配置です。"
+              : (outcome.match ? "読み取れる正しいQRコードです。" : "この盤面はQRコードとして読み取れません。"))
             : "";
-          if(outcome && !outcome.match){
+          if(outcome && !outcome.match && !outcome.preMaskLikely){
             setExecutionStatus("warning", undefined, verificationDetail);
           }else{
             setExecutionStatus("finished", undefined, verificationDetail);
+            if(outcome && outcome.preMaskLikely){
+              showReadMaskButton();
+            }
           }
           return;
         }
@@ -1983,18 +2162,37 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   });
   if(btnGenerate){
     window.addEventListener("keydown", (ev) => {
+      if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && !ev.metaKey && ev.key === "Home"){
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        btnClearCode?.click?.();
+        return;
+      }
+      if(!ev.ctrlKey && !ev.shiftKey && !ev.altKey && !ev.metaKey && ev.key === "Home"){
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        focusCodeArea();
+        return;
+      }
       const active = document.activeElement;
       if(active){
         const tag = active.tagName ? active.tagName.toUpperCase() : "";
-        if(active.id === "userCode" || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || active.isContentEditable){
+        const isCtrlEnter = (ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter");
+        if(active.id === "txtInput" && isCtrlEnter){
+          // allow running even when the data input is focused
+        }else if(active.id === "userCode" || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || active.isContentEditable){
           return; // let input handler manage shortcuts
         }
       }
       if(
         (!ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter")
         || (ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter")
+        || (ev.ctrlKey && ev.shiftKey && !ev.altKey && ev.key === "Enter")
       ){
         ev.preventDefault();
+        if(ev.ctrlKey && ev.shiftKey){
+          window.__skipAutoResetOnRunOnce = true;
+        }
         btnGenerate.click();
       }
     });
@@ -2044,6 +2242,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       if(userCodeParsed){
         userCodeParsed.value = "";
       }
+      focusCodeArea();
     });
   }
 
@@ -2084,6 +2283,17 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     getDataParam,
     decodeDataParamValue,
   });
+  applyCodeSampleParam({
+    userCodeInput,
+    hasParam,
+    getParam,
+    codeSampleParamKey: PARAM_KEYS.CODE_SAMPLE,
+    codeSamples: resolvedCodeSamples,
+  });
+  if(btnGenerate && userCodeInput){
+    const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
+    btnGenerate.disabled = !codeText;
+  }
   const urlControlToggleConfig = [
     { param: "toggleCursor", element: toggleCursor },
     { param: "toggleGuide", element: toggleGuide },
@@ -2106,6 +2316,107 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     syncStepControls,
   });
   applyStepSpeedParam({ stepSpeed });
+  (() => {
+    if(window.__qrmakerStartupParamsLogged) return;
+    window.__qrmakerStartupParamsLogged = true;
+    if(typeof window.log !== "function") return;
+
+    const toDisplayValue = (value) => {
+      if(value === null) return "null";
+      if(value === undefined) return "undefined";
+      if(typeof value === "string"){
+        const normalized = value.replace(/\r?\n/g, "\\n");
+        if(normalized.length > 120){
+          return `${normalized.slice(0, 120)}...`;
+        }
+        return normalized;
+      }
+      if(typeof value === "number"){
+        return Number.isFinite(value) ? String(value) : String(value);
+      }
+      if(typeof value === "boolean"){
+        return value ? "true" : "false";
+      }
+      try{
+        return JSON.stringify(value);
+      }catch(err){
+        return String(value);
+      }
+    };
+
+    const settingEntries = [
+      ["qrData", configDefaults.qrData],
+      ["initialCode", configDefaults.initialCode],
+      ["historyVisible", configDefaults.historyVisible],
+      ["patternPanelOpen", configDefaults.patternPanelOpen],
+      ["layoutLeftPaneRatio", configDefaults.layoutLeftPaneRatio],
+      ["debugVisible", configDefaults.debugVisible],
+      ["skipExistingCells", configDefaults.skipExistingCells],
+      ["autoAvoidTiming", configDefaults.autoAvoidTiming],
+      ["defaultMask", configDefaults.defaultMask],
+      ["defaultPut", defaultPutModeFromSettings],
+      ["switchCount", configDefaults.switchCount],
+      ["stepSpeed", configDefaults.stepSpeed],
+      ["skipMode", configDefaults.skipMode],
+      ["stepSkipDataOnly", configDefaults.stepSkipDataOnly],
+      ["stepAnimationEnabled", configDefaults.stepAnimationEnabled],
+      ["stepAnimationDurationMs", configDefaults.stepAnimationDurationMs],
+      ["stepAnimationStartOpacity", configDefaults.stepAnimationStartOpacity],
+      ["stepAnimationStartScale", configDefaults.stepAnimationStartScale],
+      ["stepAnimationShowBorder", configDefaults.stepAnimationShowBorder],
+      ["maskFadeDurationMs", configDefaults.maskFadeDurationMs],
+      ["viewFlags.viewCursor", configDefaults.viewFlags && configDefaults.viewFlags.viewCursor],
+      ["viewFlags.viewGuide", configDefaults.viewFlags && configDefaults.viewFlags.viewGuide],
+      ["viewFlags.viewGrid", configDefaults.viewFlags && configDefaults.viewFlags.viewGrid],
+      ["viewFlags.viewEmpty", configDefaults.viewFlags && configDefaults.viewFlags.viewEmpty],
+      ["viewFlags.viewColor", configDefaults.viewFlags && configDefaults.viewFlags.viewColor],
+      ["viewFlags.viewDebugValues", configDefaults.viewFlags && configDefaults.viewFlags.viewDebugValues],
+      ["drawText.forceUppercase", configDefaults.drawText && configDefaults.drawText.forceUppercase],
+      ["drawText.skipNonAlnum", configDefaults.drawText && configDefaults.drawText.skipNonAlnum],
+      ["useDirection", configDefaults.useDirection],
+      ["homeCursorDirection", configDefaults.homeCursorDirection],
+    ];
+
+    const urlEntries = [
+      ["v", hasParam(PARAM_KEYS.VIEW_FLAGS) ? getParam(PARAM_KEYS.VIEW_FLAGS) : undefined],
+      ["g", hasParam(PARAM_KEYS.DEBUG) ? getParam(PARAM_KEYS.DEBUG) : undefined],
+      ["p", hasParam(PARAM_KEYS.PATTERN_PANEL) ? getParam(PARAM_KEYS.PATTERN_PANEL) : undefined],
+      ["d", hasParam(PARAM_KEYS.DATA) ? getParam(PARAM_KEYS.DATA) : undefined],
+      ["h", hasParam(PARAM_KEYS.HISTORY) ? getParam(PARAM_KEYS.HISTORY) : undefined],
+      ["m", hasParam(PARAM_KEYS.SAMPLES) ? getParam(PARAM_KEYS.SAMPLES) : undefined],
+      ["e", hasParam(PARAM_KEYS.STEP_SPEED) ? getParam(PARAM_KEYS.STEP_SPEED) : undefined],
+      ["s", hasParam(PARAM_KEYS.STEP_FLAGS) ? getParam(PARAM_KEYS.STEP_FLAGS) : undefined],
+      ["c", hasParam(PARAM_KEYS.CODE_SAMPLE) ? getParam(PARAM_KEYS.CODE_SAMPLE) : undefined],
+      ["w", hasParam(PARAM_KEYS.SWITCH_COUNT) ? getParam(PARAM_KEYS.SWITCH_COUNT) : undefined],
+      ["l", hasParam(PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO) ? getParam(PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO) : undefined],
+      ["o", hasParam(PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL) ? getParam(PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL) : undefined],
+      ["a", hasParam(PARAM_KEYS.AUTO_RESET_ON_RUN) ? getParam(PARAM_KEYS.AUTO_RESET_ON_RUN) : undefined],
+      ["u", hasParam(PARAM_KEYS.DEFAULT_PUT) ? getParam(PARAM_KEYS.DEFAULT_PUT) : undefined],
+      ["x", hasParam(PARAM_KEYS.SKIP_EXISTING) ? getParam(PARAM_KEYS.SKIP_EXISTING) : undefined],
+      ["t", hasParam(PARAM_KEYS.AUTO_AVOID_TIMING) ? getParam(PARAM_KEYS.AUTO_AVOID_TIMING) : undefined],
+      ["r", hasParam(PARAM_KEYS.USE_DIRECTION) ? getParam(PARAM_KEYS.USE_DIRECTION) : undefined],
+      ["toggleCursor", hasParam("toggleCursor") ? getParam("toggleCursor") : undefined],
+      ["toggleGuide", hasParam("toggleGuide") ? getParam("toggleGuide") : undefined],
+      ["toggleGrid", hasParam("toggleGrid") ? getParam("toggleGrid") : undefined],
+      ["toggleEmpty", hasParam("toggleEmpty") ? getParam("toggleEmpty") : undefined],
+      ["toggleColor", hasParam("toggleColor") ? getParam("toggleColor") : undefined],
+      ["toggleDebugValues", hasParam("toggleDebugValues") ? getParam("toggleDebugValues") : undefined],
+      ["stepMode", hasParam("stepMode") ? getParam("stepMode") : undefined],
+      ["stepSkipFunctions", hasParam("stepSkipFunctions") ? getParam("stepSkipFunctions") : undefined],
+    ].filter(([, value]) => value !== undefined);
+
+    window.log("起動時パラメータ（settings/url）");
+    for(const [key, value] of settingEntries){
+      window.log(`settings.${key}=${toDisplayValue(value)}`);
+    }
+    if(urlEntries.length){
+      for(const [key, value] of urlEntries){
+        window.log(`url.${key}=${toDisplayValue(value)}`);
+      }
+    }else{
+      window.log("url: (指定なし)");
+    }
+  })();
   syncDebugPanelLayout();
   scheduleSyncParsedCode();
   if(dataPatternPanel){
@@ -2171,6 +2482,24 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         historyController.ensureRunHistory();
         if(btnGenerate && !btnGenerate.disabled){
           btnGenerate.click();
+        }
+        return;
+      }
+      if(ev.ctrlKey && ev.shiftKey && !ev.altKey && ev.key === "Enter"){
+        ev.preventDefault();
+        ev.stopPropagation();
+        historyController.ensureRunHistory();
+        window.__skipAutoResetOnRunOnce = true;
+        if(btnGenerate && !btnGenerate.disabled){
+          btnGenerate.click();
+        }
+        return;
+      }
+      if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && !ev.metaKey && ev.key === "Home"){
+        ev.preventDefault();
+        ev.stopPropagation();
+        if(btnClearCode){
+          btnClearCode.click();
         }
         return;
       }
@@ -2336,7 +2665,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     });
   }
   historyController.pushHistorySnapshot("初期状態");
-  callIfFunction(window.setupSampleUI, { dom, configDefaults, resolvedDataTemplates, historyController });
+  callIfFunction(window.setupSampleUI, { dom, configDefaults, resolvedDataTemplates, historyController, focusCodeArea });
   const clipboardApi = (typeof navigator !== "undefined" ? navigator.clipboard : null);
   if(btnCopyCode){
     if(clipboardApi && isFunction(clipboardApi.writeText)){
@@ -2448,6 +2777,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       if(after === before) return;
       userCodeInput.value = after;
       userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      setTimeout(focusCodeArea, 0);
       historyController.commitPendingHistory("整形");
     });
   }
@@ -2461,6 +2791,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       userCodeInput.selectionStart = userCodeInput.selectionEnd = 0;
       userCodeInput.scrollTop = 0;
       userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      setTimeout(focusCodeArea, 0);
       historyController.commitPendingHistory("貼り付け");
     }catch(err){
           // ignore clipboard failures
@@ -2477,8 +2808,11 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         : (() => window.location.href);
       const url = buildFn({
         txtInput,
+        userCodeInput,
+        codeSamples: resolvedCodeSamples,
         flagString: buildFlagString(),
         defaultDataValue: DATA_DEFAULT_TEXT,
+        defaultUserCode: defaultUserCodeText,
         debugPanel: getDebugPanel(),
         dataPatternPanel,
         stepSpeed,
@@ -2493,6 +2827,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         defaultStepMode,
         defaultStepSkipFunctions,
         defaultStepSpeed,
+        switchCount: resolvedSwitchCountForConfig,
+        defaultSwitchCount: configDefaults.switchCount,
         skipExistingCells,
         defaultSkipExistingCells,
         autoAvoidTiming,
@@ -2501,6 +2837,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         defaultUseDirection,
         initialDebugParamPresent,
         codePanel,
+        layoutLeftPaneRatio: (typeof window.getLayoutLeftPaneRatio === "function") ? window.getLayoutLeftPaneRatio() : undefined,
+        defaultLayoutLeftPaneRatio: configDefaults.layoutLeftPaneRatio,
+        overwriteDataOnFunctional,
+        defaultOverwriteDataOnFunctional,
+        autoResetOnRun,
+        defaultAutoResetOnRun,
       });
       window.open(url, "_blank");
     });
@@ -2539,7 +2881,15 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }, 100);
 
     host.addEventListener("keydown", (ev) => {
-      if(ev.key === "Enter" && ev.ctrlKey && !ev.shiftKey && !ev.altKey){
+      if(ev.ctrlKey && !ev.shiftKey && !ev.altKey && !ev.metaKey && ev.key === "Home"){
+        ev.preventDefault();
+        ev.stopPropagation();
+        if(btnClearCode){
+          btnClearCode.click();
+        }
+        return;
+      }
+      if(ev.key === "Enter" && ev.ctrlKey && !ev.altKey && !ev.metaKey){
         ev.preventDefault();
         ev.stopPropagation();
         const forwarded = new KeyboardEvent("keydown", {
@@ -2616,6 +2966,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
 
   setupFooterDebugToggle();
+  if(footerSecretQr){
+    footerSecretQr.addEventListener("dblclick", () => {
+      const target = new URL("url-builder.html", window.location.href);
+      target.search = window.location.search || "";
+      window.open(target.toString(), "_blank", "noopener");
+    });
+  }
   if(versionInfo && typeof window.appVersionString === "string"){
     versionInfo.textContent = `v${window.appVersionString}`;
   }
@@ -2659,6 +3016,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     isStepModeOn,
     skipExistingCells,
     autoAvoidTiming,
+    overwriteDataOnFunctional,
     useDirection,
     updateExecutionStatusCursor,
     isDrawingBasePattern: false,

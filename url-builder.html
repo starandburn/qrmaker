@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>URLパラメータ生成ツール</title>
+<style>
+  :root { color-scheme: light; }
+  body { font-family: "Yu Gothic UI", "Yu Gothic", sans-serif; margin: 24px; color: #1f2937; }
+  h1 { margin: 0 0 12px; font-size: 24px; }
+  p { margin: 0 0 12px; }
+  .section { margin: 16px 0; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  input[type="text"] { min-width: 340px; padding: 6px 8px; }
+  button {
+    appearance: none;
+    border: 1px solid #d1d5db;
+    background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%);
+    color: #111827;
+    border-radius: 12px;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.05);
+    transition: transform 0.08s ease, box-shadow 0.15s ease, filter 0.15s ease;
+  }
+  button:hover { filter: brightness(0.98); }
+  button:active {
+    transform: translateY(1px) scale(0.995);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12) inset;
+  }
+  button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.28), 0 1px 1px rgba(0, 0, 0, 0.08);
+  }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td { border: 1px solid #d1d5db; padding: 6px 8px; font-size: 14px; vertical-align: middle; }
+  th { background: #f9fafb; text-align: left; }
+  .mono { font-family: Consolas, Menlo, Monaco, monospace; }
+  .out { width: 100%; min-height: 64px; padding: 8px; }
+  .note { color: #6b7280; font-size: 13px; }
+  .value-input { width: 100%; min-width: 180px; }
+  .toggle-wrap { display: inline-flex; align-items: center; gap: 8px; }
+  .toggle {
+    appearance: none;
+    -webkit-appearance: none;
+    position: relative;
+    width: 51px;
+    height: 31px;
+    border-radius: 999px;
+    background: #e5e7eb;
+    border: none;
+    cursor: pointer;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+    vertical-align: middle;
+  }
+  .toggle::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 27px;
+    height: 27px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.18),
+      0 3px 7px rgba(0, 0, 0, 0.14);
+    transition: transform 0.22s cubic-bezier(.34,1.56,.64,1);
+  }
+  .toggle:checked {
+    background: #34c759;
+    box-shadow: inset 0 0 0 1px rgba(52, 199, 89, 0.85);
+  }
+  .toggle:checked::after { transform: translateX(20px); }
+  .toggle:focus-visible {
+    outline: none;
+    box-shadow:
+      inset 0 0 0 1px rgba(52, 199, 89, 0.85),
+      0 0 0 3px rgba(52, 199, 89, 0.28);
+  }
+  .toggle-label { font-size: 13px; color: #6b7280; min-width: 24px; }
+</style>
+</head>
+<body>
+  <h1>URLパラメータ生成ツール</h1>
+  <p>URL指定できる項目を一覧表示し、値を自由に変更してURLを生成できます。</p>
+
+  <div class="section">
+    <div class="row">
+      <button id="btnGenerate" type="button">URLを生成</button>
+      <button id="btnCopy" type="button">生成URLをコピー</button>
+      <button id="btnOpen" type="button">別タブで開く</button>
+      <button id="btnResetAllDefaults" type="button">すべて初期値に戻す</button>
+      <span id="copyStatus" class="note" aria-live="polite"></span>
+    </div>
+    <textarea id="generatedUrl" class="out mono" readonly aria-label="生成URL"></textarea>
+  </div>
+
+  <div class="section">
+    <div class="note">各項目を settings.js の初期値と比較し、差分がある項目のみクエリに含めます。</div>
+    <table>
+      <thead>
+        <tr>
+          <th>キー</th>
+          <th>説明</th>
+          <th>値</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="paramRows"></tbody>
+    </table>
+  </div>
+
+  <script src="state/url-state.js"></script>
+  <script src="settings.js"></script>
+  <script src="code-samples.js"></script>
+  <script src="ui/url-builder.js"></script>
+</body>
+</html>

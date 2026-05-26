@@ -1350,29 +1350,39 @@ function moveCursor(...args){
         }else{
           const dirAbs = normalizeDir(first);
           if(!dirAbs) return false;
+          let scheduled = false;
           if(typeof second === "number" && Number.isFinite(second)){
-            return false;
+            if(!scheduleRelativeMove(dirAbs)) return false;
+            relativeMoveCount = Math.max(0, Math.trunc(second));
+            recordRelativeMove(dirAbs);
+            scheduled = true;
           }
           if(typeof third === "number" && Number.isFinite(third)){
             return false;
           }
-          let orientation = null;
-          if(typeof second === "string"){
-            const normalized = normalizeDir(second);
-            if(normalized){
-              orientation = second;
+          if(scheduled){
+            if(typeof third === "string"){
+              maybeDir(third);
             }
-          }
-          if(!orientation && typeof third === "string"){
-            const normalized = normalizeDir(third);
-            if(normalized){
-              orientation = third;
+          }else{
+            let orientation = null;
+            if(typeof second === "string"){
+              const normalized = normalizeDir(second);
+              if(normalized){
+                orientation = second;
+              }
             }
-          }
-          if(!scheduleRelativeMove(dirAbs)) return false;
-          recordRelativeMove(dirAbs);
-          if(orientation){
-            maybeDir(orientation);
+            if(!orientation && typeof third === "string"){
+              const normalized = normalizeDir(third);
+              if(normalized){
+                orientation = third;
+              }
+            }
+            if(!scheduleRelativeMove(dirAbs)) return false;
+            recordRelativeMove(dirAbs);
+            if(orientation){
+              maybeDir(orientation);
+            }
           }
         }
       }
@@ -1869,7 +1879,16 @@ function resolveRowCol(rowArg, colArg, fallbackRow = cursorPos.row, fallbackCol 
 
 function shouldPlaceCell(row, col, overwrite = true){
   if(overwrite) return true;
-  return isBoardCellUnplaced(row, col);
+  if(isBoardCellUnplaced(row, col)) return true;
+  if(Boolean(window.overwriteDataOnFunctional)){
+    if(!Number.isInteger(row) || !Number.isInteger(col)) return false;
+    if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
+    const cellValue = boardMatrix[row - 1][col - 1];
+    if(typeof cellValue !== "number") return true;
+    const kind = (typeof window.bitKind === "function") ? window.bitKind(cellValue) : Math.abs(cellValue);
+    return isDataKind(kind);
+  }
+  return false;
 }
 
 const isEncodedValueUnplaced = (value) => {
@@ -1906,18 +1925,54 @@ function updateCell(row, col, encodedValue, options = null){
   return true;
 }
 
-function putCell(encodedValue){
+function putCell(encodedValue, options = null){
   let val = encodedValue;
   let usedAuto = false;
-  const treatGenericAsData = (val === 0 || val === 1);
+  const consumeNextFromSequence = () => {
+    const nextData = getNextData();
+    if(nextData === null || nextData === undefined){
+      return false;
+    }
+    val = nextData;
+    usedAuto = true;
+    return true;
+  };
+  const consumeNext = Boolean(options && options.consumeNext);
+  if(consumeNext){
+    if(!consumeNextFromSequence()){
+      return makeStepResult(false, { scale: 0.5 });
+    }
+  }
+  if(val === -1){
+    if(!consumeNextFromSequence()){
+      return makeStepResult(false, { scale: 0.5 });
+    }
+  }
+  let treatGenericAsData = (val === 0 || val === 1);
   if(val === undefined){
-    val = 1;
+    const rawDefaultPutMode = (typeof window !== "undefined") ? window.defaultPutMode : undefined;
+    const numericDefaultPutMode = Number(rawDefaultPutMode);
+    const defaultPutMode = Number.isFinite(numericDefaultPutMode)
+      ? Math.trunc(numericDefaultPutMode)
+      : 2;
+    if(defaultPutMode === 0){
+      if(!consumeNextFromSequence()){
+        return makeStepResult(false, { scale: 0.5 });
+      }
+    }else if(defaultPutMode === 1){
+      val = UNPLACED_KIND;
+    }else if(defaultPutMode === 3){
+      val = 0;
+    }else{
+      val = 1;
+    }
   }
   if(val === -1){
     val = UNPLACED_KIND;
   }else if(val === 0 || val === 1){
     val = (val === 1) ? GENERIC_BLACK : GENERIC_WHITE;
   }
+  treatGenericAsData = (val === GENERIC_WHITE || val === GENERIC_BLACK);
   const skipExisting = Boolean(window.skipExistingCells);
   if(skipExisting && typeof window.isEmpty === "function" && !window.isEmpty()){
     if(usedAuto && dataSeqIndex > 0){
@@ -2211,6 +2266,13 @@ function isSkipZone(){
   if(timingColIndex > 0 && col === timingColIndex) return true;
   return false;
 }
+
+function isTimingZone(){
+  if(Boolean(window.autoAvoidTiming)){
+    return false;
+  }
+  return isSkipZone();
+}
 function isFunctionalCell(){
   const { row, col } = cursorPos;
   if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
@@ -2256,6 +2318,7 @@ window.getCell = getCell;
 window.invertCell = invertCell;
 window.isEmpty = isEmpty;
 window.isSkipZone = isSkipZone;
+window.isTimingZone = isTimingZone;
 window.isFunctionalCell = isFunctionalCell;
 window.isMoveBlocked = isMoveBlocked;
 window.shouldPlaceCell = shouldPlaceCell;
