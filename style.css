@@ -958,6 +958,11 @@ details.pattern-panel:not([open]) .summary-title::before{
 .code-debug-toolbar{
   display:none;
   gap:4px;
+  align-items:center;
+  flex-wrap:nowrap;
+  overflow-x:auto;
+  margin-top:4px;
+  min-height:28px;
 }
 .code-debug-btn{
   padding:3px 10px;

@@ -236,6 +236,7 @@
     "endrepeat",
     "endloop",
   ]);
+  const SHORT_MOVE_COMMANDS = new Set(["left", "right", "up", "down"]);
   const validateAllowedCommands = (text) => {
     if(typeof text !== "string") return;
     const lines = text.replace(/\r/g, "").split("\n");
@@ -255,6 +256,9 @@
       }
       const head = match[1].toLowerCase();
       if(head === "next?"){
+        continue;
+      }
+      if(SHORT_MOVE_COMMANDS.has(head)){
         continue;
       }
       if(ALLOWED_CONTROL.has(head)) continue;
@@ -1191,6 +1195,9 @@
         return "hasNextData()";
       }
       throw new Error("next は put の引数、または条件式（if/while/until/repeat、next?）でのみ使用できます");
+    }
+    if(SHORT_MOVE_COMMANDS.has(fnLower) && parts.length === 0){
+      return `moveCursor("${fnLower}")`;
     }
     const firstArgLower = getArgLower();
 

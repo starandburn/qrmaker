@@ -40,6 +40,25 @@ mask
 reset
 base
 move y25
+repeat last
+    red flip
+    repeat 25
+        put
+        left
+        put
+        right
+        if red up else down
+    endrepeat
+    left
+    left
+endrepeat
+  `},
+  {
+    label: "7",
+    code: `
+reset
+base
+move y25
 red on
 repeat last
     repeat 25
