@@ -2019,7 +2019,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     return Object.assign({ ok: result.ok }, payload);
   };
 
-  btnGenerate.addEventListener("click", async () => {
+  btnGenerate.addEventListener("click", async (ev) => {
+    const clickForceAutoReset = Boolean(ev?.ctrlKey) && !Boolean(ev?.shiftKey);
+    const clickSkipAutoReset = Boolean(ev?.shiftKey) && !Boolean(ev?.ctrlKey);
+    const skipAutoResetOnce = clickSkipAutoReset || Boolean(window.__skipAutoResetOnRunOnce);
+    const forceAutoResetOnce = clickForceAutoReset || Boolean(window.__forceAutoResetOnRunOnce);
+    window.__skipAutoResetOnRunOnce = false;
+    window.__forceAutoResetOnRunOnce = false;
     historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
     const patternUpdated = callIfFunction(window.refreshPatternForCreate) ?? false;
@@ -2042,7 +2048,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(!inputCheck.ok){
       return;
     }
-    if(autoResetOnRun && !resetHandled){
+    if((forceAutoResetOnce || autoResetOnRun) && !resetHandled && !skipAutoResetOnce){
       const resetWait = resetBoard({ resetData: Boolean(patternUpdated) });
       if(resetWait && isFunction(resetWait.then)){
         const resetOk = await resetWait;
@@ -2175,8 +2181,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       if(
         (!ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter")
         || (ev.ctrlKey && !ev.shiftKey && !ev.altKey && ev.key === "Enter")
+        || (ev.ctrlKey && ev.shiftKey && !ev.altKey && ev.key === "Enter")
       ){
         ev.preventDefault();
+        if(ev.ctrlKey && ev.shiftKey){
+          window.__skipAutoResetOnRunOnce = true;
+        }
         btnGenerate.click();
       }
     });
@@ -2464,6 +2474,16 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         ev.preventDefault();
         ev.stopPropagation();
         historyController.ensureRunHistory();
+        if(btnGenerate && !btnGenerate.disabled){
+          btnGenerate.click();
+        }
+        return;
+      }
+      if(ev.ctrlKey && ev.shiftKey && !ev.altKey && ev.key === "Enter"){
+        ev.preventDefault();
+        ev.stopPropagation();
+        historyController.ensureRunHistory();
+        window.__skipAutoResetOnRunOnce = true;
         if(btnGenerate && !btnGenerate.disabled){
           btnGenerate.click();
         }
@@ -2863,7 +2883,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         }
         return;
       }
-      if(ev.key === "Enter" && ev.ctrlKey && !ev.shiftKey && !ev.altKey){
+      if(ev.key === "Enter" && ev.ctrlKey && !ev.altKey && !ev.metaKey){
         ev.preventDefault();
         ev.stopPropagation();
         const forwarded = new KeyboardEvent("keydown", {
