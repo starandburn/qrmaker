@@ -12,7 +12,7 @@
     w: { type: "number", desc: "スイッチ数（0-4）" },
     l: { type: "number", desc: "左ペイン比率（0.1-0.9）" },
     o: { type: "bool", desc: "機能パターン時にデータ上書き" },
-    u: { type: "number", desc: "put既定値(-1/0/1/2)" },
+    u: { type: "number", desc: "put既定値(0/1/2/3)" },
     x: { type: "bool", desc: "既存セルをスキップ" },
     t: { type: "bool", desc: "タイミングパターン自動回避" },
     r: { type: "bool", desc: "方向コマンドを有効化" },
@@ -28,6 +28,7 @@
     copyStatus: document.getElementById("copyStatus"),
     paramRows: document.getElementById("paramRows"),
   };
+  const currentParams = new URLSearchParams(window.location.search || "");
 
   const keySets = (() => {
     const keys = [];
@@ -243,14 +244,14 @@
       wrap.style.flexWrap = "wrap";
       wrap.style.gap = "8px 12px";
       const defaultNumeric = Number(defaults.defaultPut);
-      const normalizedDefault = (Number.isFinite(defaultNumeric) && Math.trunc(defaultNumeric) >= -1 && Math.trunc(defaultNumeric) <= 2)
+      const normalizedDefault = (Number.isFinite(defaultNumeric) && Math.trunc(defaultNumeric) >= 0 && Math.trunc(defaultNumeric) <= 3)
         ? Math.trunc(defaultNumeric)
-        : 1;
+        : 2;
       const options = [
-        { value: "-1", label: "next" },
-        { value: "0", label: "透明" },
-        { value: "1", label: "黒" },
-        { value: "2", label: "白" },
+        { value: "0", label: "next" },
+        { value: "1", label: "透明" },
+        { value: "2", label: "黒" },
+        { value: "3", label: "白" },
       ];
       const radios = [];
       options.forEach((entry) => {
@@ -436,6 +437,60 @@
     return url.toString();
   }
 
+  function applyUrlParamToRow(row, raw){
+    if(!row) return;
+    const key = row.key;
+    if(key === "v" && row.value && Array.isArray(row.value.flagInputs)){
+      const bits = String(raw ?? "");
+      row.value.flagInputs.forEach((input, index) => {
+        input.checked = bits[index] === "1";
+      });
+      return;
+    }
+    if(row.type === "bool" && row.value && typeof row.value.checked === "boolean"){
+      const text = String(raw ?? "").trim().toLowerCase();
+      if(["1", "true", "yes", "on", "open", "show"].includes(text)){
+        row.value.checked = true;
+      }else if(["0", "false", "no", "off", "close", "closed", "hide"].includes(text)){
+        row.value.checked = false;
+      }
+      const stateLabel = row.value.parentElement ? row.value.parentElement.querySelector(".toggle-label") : null;
+      if(stateLabel){
+        stateLabel.textContent = row.value.checked ? "する" : "しない";
+      }
+      return;
+    }
+    if(key === "s" && row.value && row.value.modeInput && row.value.dataOnlyInput){
+      const spec = String(raw ?? "");
+      if(/^[01]{2}$/.test(spec)){
+        row.value.modeInput.checked = spec[0] === "1";
+        row.value.dataOnlyInput.checked = spec[1] === "1";
+      }
+      return;
+    }
+    if(key === "u" && row.value && Array.isArray(row.value.radios)){
+      const value = String(raw ?? "").trim();
+      row.value.radios.forEach((r) => {
+        r.checked = (r.value === value);
+      });
+      return;
+    }
+    if(row.value && typeof row.value.value === "string"){
+      row.value.value = String(raw ?? "");
+      const label = row.value.parentElement ? row.value.parentElement.querySelector(".toggle-label.mono") : null;
+      if(label){
+        label.textContent = String(row.value.value);
+      }
+    }
+  }
+
+  function applyUrlBaseValues(){
+    rowState.forEach((row) => {
+      if(!currentParams.has(row.key)) return;
+      applyUrlParamToRow(row, currentParams.get(row.key));
+    });
+  }
+
   async function copyGenerated(){
     const text = dom.generatedUrl.value || "";
     if(!text){
@@ -459,6 +514,7 @@
 
   function init(){
     keySets.forEach(createRow);
+    applyUrlBaseValues();
     dom.btnGenerate.addEventListener("click", () => {
       dom.generatedUrl.value = buildUrl();
       dom.copyStatus.textContent = "";

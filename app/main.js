@@ -58,6 +58,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
   const userCodeParsed = dom.userCodeParsed;
   const footerCopy = dom.footerCopy;
+  const footerSecretQr = dom.footerSecretQr;
   const versionInfo = dom.versionInfo;
   const userCodeInput = dom.userCodeInput;
   const stepMode = dom.stepMode;
@@ -592,17 +593,17 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const overwriteDataOnFunctional = (overwriteDataOnFunctionalFromParam !== null)
     ? overwriteDataOnFunctionalFromParam
     : defaultOverwriteDataOnFunctional;
-  const normalizeDefaultPutMode = (value, fallback = 1) => {
+  const normalizeDefaultPutMode = (value, fallback = 2) => {
     const numeric = Number(value);
     if(Number.isFinite(numeric)){
       const truncated = Math.trunc(numeric);
-      if(truncated >= -1 && truncated <= 2){
+      if(truncated >= 0 && truncated <= 3){
         return truncated;
       }
     }
     return fallback;
   };
-  const defaultPutModeFromSettings = normalizeDefaultPutMode(configDefaults.defaultPut, 1);
+  const defaultPutModeFromSettings = normalizeDefaultPutMode(configDefaults.defaultPut, 2);
   const defaultPutModeFromParam = hasParam(PARAM_KEYS.DEFAULT_PUT)
     ? normalizeDefaultPutMode(getParam(PARAM_KEYS.DEFAULT_PUT), defaultPutModeFromSettings)
     : defaultPutModeFromSettings;
@@ -2921,6 +2922,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
 
   setupFooterDebugToggle();
+  if(footerSecretQr){
+    footerSecretQr.addEventListener("dblclick", () => {
+      const target = new URL("url-builder.html", window.location.href);
+      window.open(target.toString(), "_blank", "noopener");
+    });
+  }
   if(versionInfo && typeof window.appVersionString === "string"){
     versionInfo.textContent = `v${window.appVersionString}`;
   }

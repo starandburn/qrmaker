@@ -1954,14 +1954,14 @@ function putCell(encodedValue, options = null){
     const numericDefaultPutMode = Number(rawDefaultPutMode);
     const defaultPutMode = Number.isFinite(numericDefaultPutMode)
       ? Math.trunc(numericDefaultPutMode)
-      : 1;
-    if(defaultPutMode === -1){
+      : 2;
+    if(defaultPutMode === 0){
       if(!consumeNextFromSequence()){
         return makeStepResult(false, { scale: 0.5 });
       }
-    }else if(defaultPutMode === 0){
+    }else if(defaultPutMode === 1){
       val = UNPLACED_KIND;
-    }else if(defaultPutMode === 2){
+    }else if(defaultPutMode === 3){
       val = 0;
     }else{
       val = 1;

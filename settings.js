@@ -10,7 +10,7 @@ window.appSettingsFromScript = {
     autoAvoidTiming: false,
     overwriteDataOnFunctional: true,
     // defaultPut: -1=next, 0=透明, 1=黒(既定), 2=白
-    defaultPut: 1,
+    defaultPut: 2,
     switchCount: 2,
     stepSpeed: 30,
     skipMode: false,
