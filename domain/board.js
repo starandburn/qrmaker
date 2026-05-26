@@ -1928,24 +1928,51 @@ function updateCell(row, col, encodedValue, options = null){
 function putCell(encodedValue, options = null){
   let val = encodedValue;
   let usedAuto = false;
-  const consumeNext = Boolean(options && options.consumeNext);
-  if(consumeNext){
+  const consumeNextFromSequence = () => {
     const nextData = getNextData();
     if(nextData === null || nextData === undefined){
-      return makeStepResult(false, { scale: 0.5 });
+      return false;
     }
     val = nextData;
     usedAuto = true;
+    return true;
+  };
+  const consumeNext = Boolean(options && options.consumeNext);
+  if(consumeNext){
+    if(!consumeNextFromSequence()){
+      return makeStepResult(false, { scale: 0.5 });
+    }
   }
-  const treatGenericAsData = (val === 0 || val === 1);
+  if(val === -1){
+    if(!consumeNextFromSequence()){
+      return makeStepResult(false, { scale: 0.5 });
+    }
+  }
+  let treatGenericAsData = (val === 0 || val === 1);
   if(val === undefined){
-    val = 1;
+    const rawDefaultPutMode = (typeof window !== "undefined") ? window.defaultPutMode : undefined;
+    const numericDefaultPutMode = Number(rawDefaultPutMode);
+    const defaultPutMode = Number.isFinite(numericDefaultPutMode)
+      ? Math.trunc(numericDefaultPutMode)
+      : 1;
+    if(defaultPutMode === -1){
+      if(!consumeNextFromSequence()){
+        return makeStepResult(false, { scale: 0.5 });
+      }
+    }else if(defaultPutMode === 0){
+      val = UNPLACED_KIND;
+    }else if(defaultPutMode === 2){
+      val = 0;
+    }else{
+      val = 1;
+    }
   }
   if(val === -1){
     val = UNPLACED_KIND;
   }else if(val === 0 || val === 1){
     val = (val === 1) ? GENERIC_BLACK : GENERIC_WHITE;
   }
+  treatGenericAsData = (val === GENERIC_WHITE || val === GENERIC_BLACK);
   const skipExisting = Boolean(window.skipExistingCells);
   if(skipExisting && typeof window.isEmpty === "function" && !window.isEmpty()){
     if(usedAuto && dataSeqIndex > 0){

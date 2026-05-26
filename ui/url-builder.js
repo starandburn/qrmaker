@@ -12,6 +12,7 @@
     w: { type: "number", desc: "スイッチ数（0-4）" },
     l: { type: "number", desc: "左ペイン比率（0.1-0.9）" },
     o: { type: "bool", desc: "機能パターン時にデータ上書き" },
+    u: { type: "number", desc: "put既定値(-1/0/1/2)" },
     x: { type: "bool", desc: "既存セルをスキップ" },
     t: { type: "bool", desc: "タイミングパターン自動回避" },
     r: { type: "bool", desc: "方向コマンドを有効化" },
@@ -43,6 +44,7 @@
       "w",  // スイッチ数
       "l",  // ペイン比率
       "o",  // 機能パターン上書き
+      "u",  // put既定値
       "x",  // 既存セルスキップ
       "t",  // timing自動回避
       "r",  // 方向コマンド
@@ -234,6 +236,51 @@
       })();
       applyDefault = () => {
         value.value = defaultParamValue;
+      };
+    }else if(key === "u"){
+      const wrap = document.createElement("div");
+      wrap.style.display = "flex";
+      wrap.style.flexWrap = "wrap";
+      wrap.style.gap = "8px 12px";
+      const defaultNumeric = Number(defaults.defaultPut);
+      const normalizedDefault = (Number.isFinite(defaultNumeric) && Math.trunc(defaultNumeric) >= -1 && Math.trunc(defaultNumeric) <= 2)
+        ? Math.trunc(defaultNumeric)
+        : 1;
+      const options = [
+        { value: "-1", label: "next" },
+        { value: "0", label: "透明" },
+        { value: "1", label: "黒" },
+        { value: "2", label: "白" },
+      ];
+      const radios = [];
+      options.forEach((entry) => {
+        const label = document.createElement("label");
+        label.style.display = "inline-flex";
+        label.style.alignItems = "center";
+        label.style.gap = "4px";
+        const input = document.createElement("input");
+        input.type = "radio";
+        input.name = "defaultPutGroup";
+        input.value = entry.value;
+        input.checked = (entry.value === String(normalizedDefault));
+        const text = document.createElement("span");
+        text.textContent = entry.label;
+        label.appendChild(input);
+        label.appendChild(text);
+        wrap.appendChild(label);
+        radios.push(input);
+      });
+      tdValue.appendChild(wrap);
+      value = { radios };
+      getParamValue = () => {
+        const selected = radios.find((r) => r.checked);
+        return selected ? selected.value : String(normalizedDefault);
+      };
+      defaultParamValue = String(normalizedDefault);
+      applyDefault = () => {
+        radios.forEach((r) => {
+          r.checked = (r.value === defaultParamValue);
+        });
       };
     }else if(key === "l"){
       const wrap = document.createElement("div");

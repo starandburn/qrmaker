@@ -592,6 +592,23 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const overwriteDataOnFunctional = (overwriteDataOnFunctionalFromParam !== null)
     ? overwriteDataOnFunctionalFromParam
     : defaultOverwriteDataOnFunctional;
+  const normalizeDefaultPutMode = (value, fallback = 1) => {
+    const numeric = Number(value);
+    if(Number.isFinite(numeric)){
+      const truncated = Math.trunc(numeric);
+      if(truncated >= -1 && truncated <= 2){
+        return truncated;
+      }
+    }
+    return fallback;
+  };
+  const defaultPutModeFromSettings = normalizeDefaultPutMode(configDefaults.defaultPut, 1);
+  const defaultPutModeFromParam = hasParam(PARAM_KEYS.DEFAULT_PUT)
+    ? normalizeDefaultPutMode(getParam(PARAM_KEYS.DEFAULT_PUT), defaultPutModeFromSettings)
+    : defaultPutModeFromSettings;
+  if(typeof window !== "undefined"){
+    window.defaultPutMode = defaultPutModeFromParam;
+  }
   if(document && document.body){
     document.body.classList.toggle("direction-disabled", !useDirection);
   }
@@ -2306,6 +2323,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["skipExistingCells", configDefaults.skipExistingCells],
       ["autoAvoidTiming", configDefaults.autoAvoidTiming],
       ["defaultMask", configDefaults.defaultMask],
+      ["defaultPut", defaultPutModeFromSettings],
       ["switchCount", configDefaults.switchCount],
       ["stepSpeed", configDefaults.stepSpeed],
       ["skipMode", configDefaults.skipMode],
@@ -2341,6 +2359,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["w", hasParam(PARAM_KEYS.SWITCH_COUNT) ? getParam(PARAM_KEYS.SWITCH_COUNT) : undefined],
       ["l", hasParam(PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO) ? getParam(PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO) : undefined],
       ["o", hasParam(PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL) ? getParam(PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL) : undefined],
+      ["u", hasParam(PARAM_KEYS.DEFAULT_PUT) ? getParam(PARAM_KEYS.DEFAULT_PUT) : undefined],
       ["x", hasParam(PARAM_KEYS.SKIP_EXISTING) ? getParam(PARAM_KEYS.SKIP_EXISTING) : undefined],
       ["t", hasParam(PARAM_KEYS.AUTO_AVOID_TIMING) ? getParam(PARAM_KEYS.AUTO_AVOID_TIMING) : undefined],
       ["r", hasParam(PARAM_KEYS.USE_DIRECTION) ? getParam(PARAM_KEYS.USE_DIRECTION) : undefined],
