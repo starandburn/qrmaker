@@ -12,8 +12,9 @@
     w: { type: "number", desc: "スイッチ数（0-4）" },
     l: { type: "number", desc: "左ペイン比率（0.1-0.9）" },
     o: { type: "bool", desc: "機能パターン時にデータ上書き" },
-    u: { type: "number", desc: "put既定値(0/1/2/3)" },
-    x: { type: "bool", desc: "既存セルをスキップ" },
+    a: { type: "bool", desc: "実行時に自動リセット" },
+    u: { type: "number", desc: "put命令の既定値(0/1/2/3)" },
+    x: { type: "bool", desc: "put時に既存セルをスキップ" },
     t: { type: "bool", desc: "タイミングパターン自動回避" },
     r: { type: "bool", desc: "方向コマンドを有効化" },
     z: { type: "bool", desc: "プレゼンモード（内部キー）" },
@@ -45,6 +46,7 @@
       "w",  // スイッチ数
       "l",  // ペイン比率
       "o",  // 機能パターン上書き
+      "a",  // 実行時に自動リセット
       "u",  // put既定値
       "x",  // 既存セルスキップ
       "t",  // timing自動回避
@@ -92,6 +94,7 @@
     h: Boolean(defaults.historyVisible),
     m: false,
     o: Boolean(defaults.overwriteDataOnFunctional),
+    a: (typeof defaults.autoResetOnRun === "boolean") ? defaults.autoResetOnRun : false,
     x: Boolean(defaults.skipExistingCells),
     t: Boolean(defaults.autoAvoidTiming),
     r: Boolean(defaults.useDirection),

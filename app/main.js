@@ -230,6 +230,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const codeZoomLineHeightRatio = resolvedSettings.codeZoomLineHeightRatio;
   const codeZoomLineHeightMaxOffsetPx = resolvedSettings.codeZoomLineHeightMaxOffsetPx;
   const layoutLeftPaneRatio = resolvedSettings.layoutLeftPaneRatio;
+  const defaultAutoResetOnRun = resolvedSettings.autoResetOnRun;
   const rootStyle = document.documentElement?.style;
   if(rootStyle){
     const stepBorderValue = stepAnimationShowBorder
@@ -593,6 +594,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const overwriteDataOnFunctional = (overwriteDataOnFunctionalFromParam !== null)
     ? overwriteDataOnFunctionalFromParam
     : defaultOverwriteDataOnFunctional;
+  const autoResetOnRunFromParam = getBoolParam(PARAM_KEYS.AUTO_RESET_ON_RUN);
+  const autoResetOnRun = (autoResetOnRunFromParam !== null)
+    ? autoResetOnRunFromParam
+    : defaultAutoResetOnRun;
   const normalizeDefaultPutMode = (value, fallback = 2) => {
     const numeric = Number(value);
     if(Number.isFinite(numeric)){
@@ -1855,8 +1860,6 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     });
   }
   async function composeQRCode(arg){
-    const resetOk = await resetBoard();
-    if(resetOk === false) return false;
     const baseOk = await drawBasePatterns();
     if(!baseOk) return false;
     const dataOk = await drawDataPatterns();
@@ -2020,11 +2023,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     historyController.ensureRunHistory();
     window.logEvent("btnGenerate", "", "コード生成ボタン押下");
     const patternUpdated = callIfFunction(window.refreshPatternForCreate) ?? false;
+    let resetHandled = false;
     if(isInputLocked()){
       const resetWait = stopAndReset({ resetData: Boolean(patternUpdated) });
       if(resetWait && isFunction(resetWait.then)){
         await resetWait;
       }
+      resetHandled = true;
     }
     const codeText = (userCodeInput && typeof userCodeInput.value === "string")
       ? userCodeInput.value.trim()
@@ -2036,6 +2041,15 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     const inputCheck = normalizeInputBeforeRun();
     if(!inputCheck.ok){
       return;
+    }
+    if(autoResetOnRun && !resetHandled){
+      const resetWait = resetBoard({ resetData: Boolean(patternUpdated) });
+      if(resetWait && isFunction(resetWait.then)){
+        const resetOk = await resetWait;
+        if(resetOk === false) return;
+      }else if(resetWait === false){
+        return;
+      }
     }
     const generateToken = callIfFunction(
       window.beginGenerateClick,
@@ -2360,6 +2374,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["w", hasParam(PARAM_KEYS.SWITCH_COUNT) ? getParam(PARAM_KEYS.SWITCH_COUNT) : undefined],
       ["l", hasParam(PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO) ? getParam(PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO) : undefined],
       ["o", hasParam(PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL) ? getParam(PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL) : undefined],
+      ["a", hasParam(PARAM_KEYS.AUTO_RESET_ON_RUN) ? getParam(PARAM_KEYS.AUTO_RESET_ON_RUN) : undefined],
       ["u", hasParam(PARAM_KEYS.DEFAULT_PUT) ? getParam(PARAM_KEYS.DEFAULT_PUT) : undefined],
       ["x", hasParam(PARAM_KEYS.SKIP_EXISTING) ? getParam(PARAM_KEYS.SKIP_EXISTING) : undefined],
       ["t", hasParam(PARAM_KEYS.AUTO_AVOID_TIMING) ? getParam(PARAM_KEYS.AUTO_AVOID_TIMING) : undefined],
@@ -2797,8 +2812,11 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         initialDebugParamPresent,
         codePanel,
         layoutLeftPaneRatio: (typeof window.getLayoutLeftPaneRatio === "function") ? window.getLayoutLeftPaneRatio() : undefined,
+        defaultLayoutLeftPaneRatio: configDefaults.layoutLeftPaneRatio,
         overwriteDataOnFunctional,
         defaultOverwriteDataOnFunctional,
+        autoResetOnRun,
+        defaultAutoResetOnRun,
       });
       window.open(url, "_blank");
     });
@@ -2925,6 +2943,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   if(footerSecretQr){
     footerSecretQr.addEventListener("dblclick", () => {
       const target = new URL("url-builder.html", window.location.href);
+      target.search = window.location.search || "";
       window.open(target.toString(), "_blank", "noopener");
     });
   }

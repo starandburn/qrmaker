@@ -15,6 +15,7 @@
   const SWITCH_COUNT_PARAM_KEY = "w";
   const LAYOUT_LEFT_PANE_RATIO_PARAM_KEY = "l";
   const OVERWRITE_DATA_ON_FUNCTIONAL_PARAM_KEY = "o";
+  const AUTO_RESET_ON_RUN_PARAM_KEY = "a";
   const DEFAULT_PUT_PARAM_KEY = "u";
 
   // URL パラメータキーの唯一の定義源。
@@ -39,6 +40,7 @@
     SWITCH_COUNT: SWITCH_COUNT_PARAM_KEY,
     LAYOUT_LEFT_PANE_RATIO: LAYOUT_LEFT_PANE_RATIO_PARAM_KEY,
     OVERWRITE_DATA_ON_FUNCTIONAL: OVERWRITE_DATA_ON_FUNCTIONAL_PARAM_KEY,
+    AUTO_RESET_ON_RUN: AUTO_RESET_ON_RUN_PARAM_KEY,
     DEFAULT_PUT: DEFAULT_PUT_PARAM_KEY,
   };
 
@@ -392,8 +394,11 @@
     switchCount,
     defaultSwitchCount,
     layoutLeftPaneRatio,
+    defaultLayoutLeftPaneRatio,
     overwriteDataOnFunctional,
     defaultOverwriteDataOnFunctional = false,
+    autoResetOnRun,
+    defaultAutoResetOnRun = false,
     skipExistingCells,
     defaultSkipExistingCells = false,
     autoAvoidTiming,
@@ -491,11 +496,24 @@
       if(!Number.isFinite(numeric)) return null;
       return Math.max(0.1, Math.min(0.9, numeric));
     })();
-    if(normalizedLayoutLeftPaneRatio !== null){
+    const normalizedDefaultLayoutLeftPaneRatio = (() => {
+      if(defaultLayoutLeftPaneRatio === undefined || defaultLayoutLeftPaneRatio === null) return null;
+      const numeric = Number(defaultLayoutLeftPaneRatio);
+      if(!Number.isFinite(numeric)) return null;
+      return Math.max(0.1, Math.min(0.9, numeric));
+    })();
+    if(
+      normalizedLayoutLeftPaneRatio !== null &&
+      normalizedDefaultLayoutLeftPaneRatio !== null &&
+      normalizedLayoutLeftPaneRatio !== normalizedDefaultLayoutLeftPaneRatio
+    ){
       setStringParam(stateParams, PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO, String(Math.round(normalizedLayoutLeftPaneRatio * 1000) / 1000));
     }
     if(Boolean(overwriteDataOnFunctional) !== Boolean(defaultOverwriteDataOnFunctional)){
       setBoolParam(stateParams, PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL, Boolean(overwriteDataOnFunctional));
+    }
+    if(Boolean(autoResetOnRun) !== Boolean(defaultAutoResetOnRun)){
+      setBoolParam(stateParams, PARAM_KEYS.AUTO_RESET_ON_RUN, Boolean(autoResetOnRun));
     }
     if(historyVisible !== Boolean(defaultHistoryVisible)){
       setBoolParam(stateParams, PARAM_KEYS.HISTORY, Boolean(historyVisible));

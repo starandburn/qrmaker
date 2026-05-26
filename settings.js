@@ -5,6 +5,7 @@ window.appSettingsFromScript = {
     historyVisible: false,
     patternPanelOpen: false,
     layoutLeftPaneRatio: 0.5,
+    autoResetOnRun: false,
     debugVisible: false,
     skipExistingCells: false,
     autoAvoidTiming: false,
