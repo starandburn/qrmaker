@@ -321,6 +321,27 @@
     };
   }
 
+  function verifyWithoutMask(dataEntries, paddedBits){
+    const bits = dataEntries.map(({ bit }) => bit);
+    const filled = bits.concat(Array(paddedBits).fill(0));
+    const bytes = buildBytesFromBits(filled);
+    const dataCodewords = bytes.slice(0, DATA_CODEWORDS);
+    const parityBytes = bytes.slice(DATA_CODEWORDS, DATA_CODEWORDS + EC_CODEWORDS);
+    const computedEc = (typeof global.qrComputeParity === "function")
+      ? global.qrComputeParity(dataCodewords, EC_CODEWORDS)
+      : [];
+    const ecMatch = computedEc.length === parityBytes.length
+      && parityBytes.every((value, idx) => value === computedEc[idx]);
+    const decoded = decodeTextFromBits(filled.slice(0, DATA_CODEWORDS * 8));
+    return {
+      ok: ecMatch && decoded.ok,
+      text: decoded.text,
+      dataCodewords,
+      parityBytes,
+      computedEc,
+    };
+  }
+
   function verifyBoard(){
     const { cells: dataEntries, stats } = readDataCells();
     const bitsAvailable = dataEntries.length;
@@ -360,6 +381,15 @@
         finalResult = result;
       }
     }
+    const preMaskResult = verifyWithoutMask(dataEntries, paddedBits);
+    const preMaskLikely = !finalResult.ok && preMaskResult.ok;
+    if(preMaskLikely){
+      finalResult.reason = "mask_missing";
+      finalResult.text = preMaskResult.text;
+      finalResult.dataCodewords = preMaskResult.dataCodewords;
+      finalResult.parityBytes = preMaskResult.parityBytes;
+      finalResult.computedEc = preMaskResult.computedEc;
+    }
     finalResult.stats = Object.assign({}, stats, {
       formatValid,
       formatRaw: formatInfo.raw,
@@ -368,6 +398,7 @@
       formatDistance: formatInfo.decoded ? formatInfo.decoded.distance : null,
       formatOrientation: formatInfo.decoded ? formatInfo.decoded.orientation : null,
       maskIndex: finalResult.maskIndex,
+      preMaskLikely,
     });
     return finalResult;
   }

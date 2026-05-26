@@ -1308,7 +1308,68 @@ textarea:focus{
 .execution-status-message{
     flex:1;
     min-width:0;
+    display:flex;
+    align-items:center;
+    gap:4px;
   }
+.execution-status-read-link{
+  font:inherit;
+  color:#0b63b6;
+  text-decoration:underline;
+  text-underline-offset:2px;
+  cursor:pointer;
+  margin:0;
+  padding:0;
+  line-height:inherit;
+  white-space:nowrap;
+}
+.execution-status-read-link:hover{
+  color:#084c8d;
+}
+.execution-status-read-link.is-busy{
+  pointer-events:none;
+  opacity:0.65;
+}
+.execution-status-read-btn{
+  appearance:none;
+  -webkit-appearance:none;
+  box-sizing:border-box;
+  border:1px solid #b6bec8;
+  background:#ffffff;
+  color:#111827;
+  border-radius:4px;
+  padding-top:0;
+  padding-bottom:0;
+  padding-left:6px;
+  padding-right:6px;
+  height:22px;
+  min-height:22px;
+  font-size:12px;
+  font-weight:600;
+  line-height:1;
+  display:inline-flex;
+  align-items:center;
+  margin:0;
+  box-shadow:none;
+  cursor:pointer;
+  filter:none;
+  vertical-align:middle;
+}
+.execution-status-read-btn:hover{
+  box-shadow:none;
+  filter:none;
+  background:#ffffff;
+  border-color:#9ca3af;
+}
+.execution-status-read-btn:active{
+  box-shadow:none;
+  filter:none;
+  transform:translateY(0);
+}
+.execution-status-read-btn:disabled{
+  opacity:0.6;
+  cursor:not-allowed;
+}
 .execution-status-info{
     display:flex;
     align-items:center;

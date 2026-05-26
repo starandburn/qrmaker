@@ -638,9 +638,43 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       isStepModeOn,
     })
     : null;
-  const setExecutionStatus = statusManager
+  const rawSetExecutionStatus = statusManager
     ? statusManager.setExecutionStatus
     : () => {};
+  const executionStatusMessageWrapEl = dom?.executionStatusTextEl?.parentElement || null;
+  let readMaskLinkEl = null;
+  const hideReadMaskButton = () => {
+    if(readMaskLinkEl && readMaskLinkEl.isConnected){
+      readMaskLinkEl.remove();
+    }
+    readMaskLinkEl = null;
+  };
+  const showReadMaskButton = () => {
+    if(!executionStatusMessageWrapEl || readMaskLinkEl) return;
+    const link = document.createElement("a");
+    link.href = "#";
+    link.className = "execution-status-read-link";
+    link.textContent = "▼読取用に調整";
+    link.addEventListener("click", async (ev) => {
+      ev.preventDefault();
+      if(typeof applyMask !== "function") return;
+      link.classList.add("is-busy");
+      try{
+        const ok = await applyMask(0);
+        if(ok){
+          setExecutionStatus("finished", undefined, "読み取れる正しいQRコードです。");
+        }
+      }finally{
+        link.classList.remove("is-busy");
+      }
+    });
+    executionStatusMessageWrapEl.appendChild(link);
+    readMaskLinkEl = link;
+  };
+  const setExecutionStatus = (...args) => {
+    hideReadMaskButton();
+    rawSetExecutionStatus(...args);
+  };
   const normalizeInputBeforeRun = statusManager
     ? statusManager.normalizeInputBeforeRun
     : () => ({ ok: true });
@@ -1937,12 +1971,16 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(!result) return null;
     const inputValue = txtInput?.value ?? "";
     const match = result.text === inputValue;
-    const outcomeLabel = match ? "入力と出力が一致しました。" : "入力と出力が一致しませんでした。";
+    const preMaskLikely = Boolean(result?.stats?.preMaskLikely);
+    const outcomeLabel = preMaskLikely
+      ? "正しいQRコードの配置です。"
+      : (match ? "入力と出力が一致しました。" : "入力と出力が一致しませんでした。");
     const payload = {
       reason: result.reason || (result.ok ? "ok" : "rs_mismatch"),
       maskIndex: result.maskIndex,
       decoded: result.text,
       match,
+      preMaskLikely,
       stats: result.stats,
     };
     window.logEvent("qrVerify", JSON.stringify(payload), outcomeLabel);
@@ -2022,12 +2060,17 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       const applyExecutionStatus = (outcome) => {
         if(runOk){
           const verificationDetail = outcome
-            ? (outcome.match ? "正しいQRコードです。" : "この盤面はQRコードとして読み取れません。")
+            ? (outcome.preMaskLikely
+              ? "正しいQRコードの配置です。"
+              : (outcome.match ? "読み取れる正しいQRコードです。" : "この盤面はQRコードとして読み取れません。"))
             : "";
-          if(outcome && !outcome.match){
+          if(outcome && !outcome.match && !outcome.preMaskLikely){
             setExecutionStatus("warning", undefined, verificationDetail);
           }else{
             setExecutionStatus("finished", undefined, verificationDetail);
+            if(outcome && outcome.preMaskLikely){
+              showReadMaskButton();
+            }
           }
           return;
         }
