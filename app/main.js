@@ -2031,7 +2031,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     const patternUpdated = callIfFunction(window.refreshPatternForCreate) ?? false;
     let resetHandled = false;
     if(isInputLocked()){
-      const resetWait = stopAndReset({ resetData: Boolean(patternUpdated) });
+      const resetWait = stopAndReset({ resetData: true });
       if(resetWait && isFunction(resetWait.then)){
         await resetWait;
       }
@@ -2049,7 +2049,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       return;
     }
     if((forceAutoResetOnce || autoResetOnRun) && !resetHandled && !skipAutoResetOnce){
-      const resetWait = resetBoard({ resetData: Boolean(patternUpdated) });
+      const resetWait = resetBoard({ resetData: true });
       if(resetWait && isFunction(resetWait.then)){
         const resetOk = await resetWait;
         if(resetOk === false) return;
