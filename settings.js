@@ -3,7 +3,7 @@ window.appSettingsFromScript = {
     // QR入力欄の初期値
     "qrData": "HelloWorld",
     // ユーザーコード欄の初期値
-    "codeSample": 0,
+    "initialCode": 0,
     // 履歴パネルの初期表示
     "historyVisible": false,
     // パターン詳細パネルの初期表示
@@ -75,7 +75,7 @@ window.appSettingsFromScript = {
       "viewDebugValues": true
     },
     "drawText": {
-      "forceUppercase": false,
+      "forceUppercase": true,
       "skipNonAlnum": false
     },
     "useDirection": false,

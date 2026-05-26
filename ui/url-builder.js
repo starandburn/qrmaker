@@ -226,7 +226,7 @@
       tdValue.appendChild(value);
       getParamValue = () => String(value.value || "").trim();
       defaultParamValue = (() => {
-        const numeric = Number(defaults.codeSample);
+        const numeric = Number(defaults.initialCode);
         if(!Number.isInteger(numeric) || numeric < 0 || numeric > resolvedCodeSamples.length){
           return "0";
         }

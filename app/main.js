@@ -111,7 +111,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ? configDefaults.codeSamples
     : [];
   const defaultCodeSampleIndex = (() => {
-    const raw = Number(configDefaults.codeSample);
+    const raw = Number(configDefaults.initialCode);
     if(!Number.isInteger(raw)) return null;
     if(raw < 1 || raw > resolvedCodeSamples.length) return null;
     return raw;
@@ -2244,7 +2244,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
     const settingEntries = [
       ["qrData", configDefaults.qrData],
-      ["codeSample", configDefaults.codeSample],
+      ["initialCode", configDefaults.initialCode],
       ["historyVisible", configDefaults.historyVisible],
       ["patternPanelOpen", configDefaults.patternPanelOpen],
       ["layoutLeftPaneRatio", configDefaults.layoutLeftPaneRatio],

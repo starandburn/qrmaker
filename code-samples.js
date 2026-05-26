@@ -48,8 +48,7 @@ repeat last
         endif
     endrepeat
     red flip
-    move left
-    move left
+    move left 2
     if timing move left
 endrepeat
 mask`  }
