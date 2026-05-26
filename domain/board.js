@@ -1925,9 +1925,18 @@ function updateCell(row, col, encodedValue, options = null){
   return true;
 }
 
-function putCell(encodedValue){
+function putCell(encodedValue, options = null){
   let val = encodedValue;
   let usedAuto = false;
+  const consumeNext = Boolean(options && options.consumeNext);
+  if(consumeNext){
+    const nextData = getNextData();
+    if(nextData === null || nextData === undefined){
+      return makeStepResult(false, { scale: 0.5 });
+    }
+    val = nextData;
+    usedAuto = true;
+  }
   const treatGenericAsData = (val === 0 || val === 1);
   if(val === undefined){
     val = 1;

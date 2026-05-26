@@ -1211,7 +1211,7 @@
     if(fnLower === "putcell" && parts.length === 1){
       const argLower = firstArgLower;
       if(argLower === "next"){
-        return "putCell(getNextData())";
+        return "putCell(undefined, { consumeNext: true })";
       }
       if(argLower === "black"){
         return "putCell(1)";
