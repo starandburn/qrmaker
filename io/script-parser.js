@@ -1178,6 +1178,24 @@
     const fnLower = typeof fn === "string" ? fn.toLowerCase() : "";
     const directionEnabled = (isDefined(global) && global.useDirection === true);
     const isConditionContext = context === "condition";
+    const truthyKeywords = new Set(["true","ok","yes"]);
+    const falseyKeywords = new Set(["false","ng","no"]);
+    const toScriptArg = (arg) => {
+      const t = String(arg ?? "").trim();
+      if(!t) return "";
+      const lower = t.toLowerCase();
+      if(truthyKeywords.has(lower)) return "true";
+      if(falseyKeywords.has(lower)) return "false";
+      if(/^[-+]?\d+(?:\.\d+)?$/.test(t)) return t;
+      if(/^["'].+["']$/.test(t)) return t;
+      if(identifierPattern.test(t) && globalEnv){
+        const value = globalEnv[t];
+        if(isFunction(value)){
+          return `${t}()`;
+        }
+      }
+      return `"${t.replace(/"/g, '\\"')}"`;
+    };
     const normalizeArgValue = (value) => {
       if(typeof value !== "string") return "";
       const trimmedArg = value.trim();
@@ -1196,8 +1214,15 @@
       }
       throw new Error("next は put の引数、または条件式（if/while/until/repeat、next?）でのみ使用できます");
     }
-    if(SHORT_MOVE_COMMANDS.has(fnLower) && parts.length === 0){
-      return `moveCursor("${fnLower}")`;
+    if(SHORT_MOVE_COMMANDS.has(fnLower)){
+      const moveArgs = [`"${fnLower}"`];
+      for(const part of parts){
+        const converted = toScriptArg(part);
+        if(converted){
+          moveArgs.push(converted);
+        }
+      }
+      return `moveCursor(${moveArgs.join(", ")})`;
     }
     const firstArgLower = getArgLower();
 
@@ -1277,24 +1302,7 @@
         throw new Error("move コマンドは数値指定に対応していません");
       }
     }
-    const truthyKeywords = new Set(["true","ok","yes"]);
-    const falseyKeywords = new Set(["false","ng","no"]);
-    const args = parts.map((arg) => {
-      const t = arg.trim();
-      if(!t) return "";
-      const lower = t.toLowerCase();
-      if(truthyKeywords.has(lower)) return "true";
-      if(falseyKeywords.has(lower)) return "false";
-      if(/^[-+]?\d+(?:\.\d+)?$/.test(t)) return t;
-      if(/^["'].+["']$/.test(t)) return t;
-      if(identifierPattern.test(t) && globalEnv){
-        const value = globalEnv[t];
-        if(isFunction(value)){
-          return `${t}()`;
-        }
-      }
-      return `"${t.replace(/"/g, '\\"')}"`;
-    }).filter(Boolean);
+    const args = parts.map((arg) => toScriptArg(arg)).filter(Boolean);
     if(args.length === 0){
       return `${fn}()`;
     }

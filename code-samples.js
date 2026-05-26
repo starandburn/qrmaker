@@ -37,11 +37,11 @@ mask
   {
     label: "6",
     code: `
-reset
+// ?&a=1&u=0&x=1&t=1 で実行
 base
 move y25
+red on
 repeat last
-    red flip
     repeat 25
         put
         left
@@ -49,8 +49,8 @@ repeat last
         right
         if red up else down
     endrepeat
-    left
-    left
+    left 2
+    red flip
 endrepeat
   `},
   {
