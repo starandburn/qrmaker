@@ -1,6 +1,5 @@
 window.appCodeSamplesFromScript = [
-  { label: "1", code: `// 対象文字列を盤面に描画する
-text` },
+  { label: "1", code: `text` },
   { label: "2", code: `qrcode` },
   { label: "3", code: `reset
 base

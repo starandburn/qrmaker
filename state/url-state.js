@@ -11,6 +11,7 @@
   const SAMPLES_PARAM_KEY = "m";
   const STEP_SPEED_PARAM_KEY = "e";
   const STEP_FLAGS_PARAM_KEY = "s";
+  const CODE_SAMPLE_PARAM_KEY = "c";
   const SWITCH_COUNT_PARAM_KEY = "w";
   const LAYOUT_LEFT_PANE_RATIO_PARAM_KEY = "l";
   const OVERWRITE_DATA_ON_FUNCTIONAL_PARAM_KEY = "o";
@@ -27,6 +28,7 @@
     PATTERN_PANEL: PATTERN_PANEL_PARAM_KEY,
     STEP_SPEED: STEP_SPEED_PARAM_KEY,
     STEP_FLAGS: STEP_FLAGS_PARAM_KEY,
+    CODE_SAMPLE: CODE_SAMPLE_PARAM_KEY,
     SAMPLES: SAMPLES_PARAM_KEY,
     DATA: "d",
     HISTORY: HISTORY_PARAM_KEY,
@@ -366,8 +368,11 @@
 
   const buildStateUrl = ({
     txtInput,
+    userCodeInput,
+    codeSamples = [],
     flagString,
     defaultDataValue,
+    defaultUserCode = "",
     debugPanel,
     dataPatternPanel,
     stepSpeed,
@@ -403,6 +408,24 @@
       if(value !== defaultValue){
         const encoded = encodeDataParamValue(value);
         setDataParam(stateParams, encoded);
+      }
+    }
+    if(userCodeInput){
+      const currentCode = String(userCodeInput.value ?? "");
+      const defaultCode = String(defaultUserCode ?? "");
+      if(currentCode !== defaultCode){
+        if(currentCode === ""){
+          setStringParam(stateParams, PARAM_KEYS.CODE_SAMPLE, "0");
+          return;
+        }
+        const samples = Array.isArray(codeSamples) ? codeSamples : [];
+        const sampleIndex = samples.findIndex((entry) => {
+          const code = (entry && typeof entry.code === "string") ? entry.code : "";
+          return code === currentCode;
+        });
+        if(sampleIndex >= 0){
+          setStringParam(stateParams, PARAM_KEYS.CODE_SAMPLE, String(sampleIndex + 1));
+        }
       }
     }
     if(typeof flagString === "string" && flagString.length){

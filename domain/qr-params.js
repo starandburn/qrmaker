@@ -50,8 +50,46 @@
     return true;
   };
 
+  const applyCodeSampleParam = ({
+    userCodeInput,
+    hasParam,
+    getParam,
+    codeSampleParamKey,
+    codeSamples,
+  } = {}) => {
+    if(!userCodeInput || typeof hasParam !== "function" || typeof getParam !== "function") return false;
+    if(!codeSampleParamKey || !hasParam(codeSampleParamKey)) return false;
+    const raw = getParam(codeSampleParamKey);
+    const numeric = Number(raw);
+    if(Number.isInteger(numeric) && numeric === 0){
+      if(userCodeInput.value !== ""){
+        userCodeInput.value = "";
+        try{
+          userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+        }catch(_err){
+          // ignore environments without Event
+        }
+      }
+      return true;
+    }
+    const list = Array.isArray(codeSamples) ? codeSamples : [];
+    if(!Number.isInteger(numeric) || numeric < 1 || numeric > list.length) return false;
+    const selected = list[numeric - 1];
+    const code = (selected && typeof selected.code === "string") ? selected.code : "";
+    if(userCodeInput.value !== code){
+      userCodeInput.value = code;
+      try{
+        userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }catch(_err){
+        // ignore environments without Event
+      }
+    }
+    return true;
+  };
+
   global.domainQrParams = Object.assign(global.domainQrParams || {}, {
     resolveFunctionalOptions,
     applyDataParam,
+    applyCodeSampleParam,
   });
 })(typeof window !== "undefined" ? window : globalThis);

@@ -8,6 +8,7 @@
     m: { type: "bool", desc: "サンプル表示" },
     e: { type: "number", desc: "ステップ速度（0-120）" },
     s: { type: "string", desc: "ステップ実行フラグ（2桁01）" },
+    c: { type: "number", desc: "初期コードサンプル番号（1始まり）" },
     w: { type: "number", desc: "スイッチ数（0-4）" },
     l: { type: "number", desc: "左ペイン比率（0.1-0.9）" },
     o: { type: "bool", desc: "機能パターン時にデータ上書き" },
@@ -38,6 +39,7 @@
       "m",  // サンプル表示
       "e",  // ステップ速度
       "s",  // ステップ実行フラグ
+      "c",  // 初期コードサンプル
       "w",  // スイッチ数
       "l",  // ペイン比率
       "o",  // 機能パターン上書き
@@ -71,6 +73,15 @@
     { key: "toggleDebugValues", label: "セルの値" },
   ];
   const defaults = (window.appSettingsFromScript && window.appSettingsFromScript.defaults) ? window.appSettingsFromScript.defaults : {};
+  const resolvedCodeSamples = (() => {
+    if(Array.isArray(window.appCodeSamplesFromScript)){
+      return window.appCodeSamplesFromScript;
+    }
+    if(Array.isArray(defaults.codeSamples)){
+      return defaults.codeSamples;
+    }
+    return [];
+  })();
 
   const BOOL_DEFAULTS = {
     g: Boolean(defaults.debugVisible),
@@ -193,6 +204,34 @@
       tdValue.appendChild(value);
       getParamValue = () => String(value.value || "").trim();
       defaultParamValue = String(defaults.switchCount ?? "2");
+      applyDefault = () => {
+        value.value = defaultParamValue;
+      };
+    }else if(key === "c"){
+      value = document.createElement("select");
+      value.className = "value-input mono";
+      value.style.fontSize = "20px";
+      value.style.width = "120px";
+      value.style.minWidth = "120px";
+      const emptyOption = document.createElement("option");
+      emptyOption.value = "0";
+      emptyOption.textContent = "0 (空欄)";
+      value.appendChild(emptyOption);
+      for(let i = 0; i < resolvedCodeSamples.length; i++){
+        const option = document.createElement("option");
+        option.value = String(i + 1);
+        option.textContent = String(i + 1);
+        value.appendChild(option);
+      }
+      tdValue.appendChild(value);
+      getParamValue = () => String(value.value || "").trim();
+      defaultParamValue = (() => {
+        const numeric = Number(defaults.codeSample);
+        if(!Number.isInteger(numeric) || numeric < 0 || numeric > resolvedCodeSamples.length){
+          return "0";
+        }
+        return String(numeric);
+      })();
       applyDefault = () => {
         value.value = defaultParamValue;
       };

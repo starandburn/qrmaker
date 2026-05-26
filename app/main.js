@@ -107,6 +107,24 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const resolvedDataTemplates = Array.isArray(configDefaults.dataTemplates)
     ? configDefaults.dataTemplates
     : [];
+  const resolvedCodeSamples = Array.isArray(configDefaults.codeSamples)
+    ? configDefaults.codeSamples
+    : [];
+  const defaultCodeSampleIndex = (() => {
+    const raw = Number(configDefaults.codeSample);
+    if(!Number.isInteger(raw)) return null;
+    if(raw < 1 || raw > resolvedCodeSamples.length) return null;
+    return raw;
+  })();
+  const defaultUserCodeText = (() => {
+    if(defaultCodeSampleIndex !== null){
+      const sample = resolvedCodeSamples[defaultCodeSampleIndex - 1];
+      if(sample && typeof sample.code === "string"){
+        return sample.code;
+      }
+    }
+    return "";
+  })();
   const buildSetSwitchDescription = (color, next) => {
     const labelMap = { red: "赤", blue: "青", green: "緑", yellow: "黄" };
     const label = labelMap[color] || color;
@@ -159,7 +177,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     : (txtInput?.value ?? "Hello, World!");
   callWindowFunctionIfExists("refreshPatternIfPanelOpen");
   if(userCodeInput){
-    userCodeInput.value = (typeof configDefaults.userCode === "string") ? configDefaults.userCode : "qrcode";
+    userCodeInput.value = defaultUserCodeText;
   }
   const rawStepSpeedOverride = configDefaults.stepSpeed;
   const normalizedStepSpeedOverride = (typeof rawStepSpeedOverride === "number" || typeof rawStepSpeedOverride === "string")
@@ -1010,6 +1028,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const domainQrParams = window.domainQrParams;
   const applyDataParam = (typeof domainQrParams.applyDataParam === "function")
     ? (options) => domainQrParams.applyDataParam(options)
+    : () => false;
+  const applyCodeSampleParam = (typeof domainQrParams.applyCodeSampleParam === "function")
+    ? (options) => domainQrParams.applyCodeSampleParam(options)
     : () => false;
   ctx.FORMAT_L = FORMAT_L;
   const runIdAccessor = {
@@ -2160,6 +2181,17 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     getDataParam,
     decodeDataParamValue,
   });
+  applyCodeSampleParam({
+    userCodeInput,
+    hasParam,
+    getParam,
+    codeSampleParamKey: PARAM_KEYS.CODE_SAMPLE,
+    codeSamples: resolvedCodeSamples,
+  });
+  if(btnGenerate && userCodeInput){
+    const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
+    btnGenerate.disabled = !codeText;
+  }
   const urlControlToggleConfig = [
     { param: "toggleCursor", element: toggleCursor },
     { param: "toggleGuide", element: toggleGuide },
@@ -2212,7 +2244,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
     const settingEntries = [
       ["qrData", configDefaults.qrData],
-      ["userCode", configDefaults.userCode],
+      ["codeSample", configDefaults.codeSample],
       ["historyVisible", configDefaults.historyVisible],
       ["patternPanelOpen", configDefaults.patternPanelOpen],
       ["layoutLeftPaneRatio", configDefaults.layoutLeftPaneRatio],
@@ -2251,6 +2283,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["m", hasParam(PARAM_KEYS.SAMPLES) ? getParam(PARAM_KEYS.SAMPLES) : undefined],
       ["e", hasParam(PARAM_KEYS.STEP_SPEED) ? getParam(PARAM_KEYS.STEP_SPEED) : undefined],
       ["s", hasParam(PARAM_KEYS.STEP_FLAGS) ? getParam(PARAM_KEYS.STEP_FLAGS) : undefined],
+      ["c", hasParam(PARAM_KEYS.CODE_SAMPLE) ? getParam(PARAM_KEYS.CODE_SAMPLE) : undefined],
       ["w", hasParam(PARAM_KEYS.SWITCH_COUNT) ? getParam(PARAM_KEYS.SWITCH_COUNT) : undefined],
       ["l", hasParam(PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO) ? getParam(PARAM_KEYS.LAYOUT_LEFT_PANE_RATIO) : undefined],
       ["o", hasParam(PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL) ? getParam(PARAM_KEYS.OVERWRITE_DATA_ON_FUNCTIONAL) : undefined],
@@ -2660,8 +2693,11 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         : (() => window.location.href);
       const url = buildFn({
         txtInput,
+        userCodeInput,
+        codeSamples: resolvedCodeSamples,
         flagString: buildFlagString(),
         defaultDataValue: DATA_DEFAULT_TEXT,
+        defaultUserCode: defaultUserCodeText,
         debugPanel: getDebugPanel(),
         dataPatternPanel,
         stepSpeed,
