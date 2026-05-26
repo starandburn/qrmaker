@@ -2168,6 +2168,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         btnClearCode?.click?.();
         return;
       }
+      if(!ev.ctrlKey && !ev.shiftKey && !ev.altKey && !ev.metaKey && ev.key === "Home"){
+        ev.preventDefault();
+        ev.stopImmediatePropagation();
+        focusCodeArea();
+        return;
+      }
       const active = document.activeElement;
       if(active){
         const tag = active.tagName ? active.tagName.toUpperCase() : "";
