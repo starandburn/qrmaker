@@ -57,6 +57,17 @@
     codeSampleParamKey,
     codeSamples,
   } = {}) => {
+    const normalizeSampleText = (raw) => {
+      const source = (typeof raw === "string") ? raw : "";
+      const lines = source.replace(/\r/g, "").split("\n");
+      while(lines.length && lines[0].trim() === ""){
+        lines.shift();
+      }
+      while(lines.length && lines[lines.length - 1].trim() === ""){
+        lines.pop();
+      }
+      return lines.join("\n");
+    };
     if(!userCodeInput || typeof hasParam !== "function" || typeof getParam !== "function") return false;
     if(!codeSampleParamKey || !hasParam(codeSampleParamKey)) return false;
     const raw = getParam(codeSampleParamKey);
@@ -75,7 +86,7 @@
     const list = Array.isArray(codeSamples) ? codeSamples : [];
     if(!Number.isInteger(numeric) || numeric < 1 || numeric > list.length) return false;
     const selected = list[numeric - 1];
-    const code = (selected && typeof selected.code === "string") ? selected.code : "";
+    const code = normalizeSampleText((selected && typeof selected.code === "string") ? selected.code : "");
     if(userCodeInput.value !== code){
       userCodeInput.value = code;
       try{

@@ -1,13 +1,17 @@
 window.appCodeSamplesFromScript = [
-  { label: "1", code: `text` },
-  { label: "2", code: `qrcode` },
-  { label: "3", code: `reset
+  { label: "1", code: `
+text` },
+  { label: "2", code: `
+qrcode` },
+  { label: "3", code: `
+reset
 base
 data
 mask
 ` 
   },
-  { label: "4", code: `reset
+  { label: "4", code: `
+reset
 finders
 timings
 alignments
@@ -16,7 +20,8 @@ formats
 data
 mask
 ` },
-  { label: "5", code: `reset
+  { label: "5", code: `
+reset
 finder a1
 finder s1
 finder a19
@@ -31,7 +36,8 @@ mask
 ` },
   {
     label: "6",
-    code: `reset
+    code: `
+reset
 base
 move y25
 red on
@@ -51,5 +57,6 @@ repeat last
     move left 2
     if timing move left
 endrepeat
-mask`  }
+mask
+`  }
 ];

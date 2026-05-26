@@ -110,6 +110,17 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const resolvedCodeSamples = Array.isArray(configDefaults.codeSamples)
     ? configDefaults.codeSamples
     : [];
+  const normalizeSampleTextForRestore = (raw) => {
+    const source = (typeof raw === "string") ? raw : "";
+    const lines = source.replace(/\r/g, "").split("\n");
+    while(lines.length && lines[0].trim() === ""){
+      lines.shift();
+    }
+    while(lines.length && lines[lines.length - 1].trim() === ""){
+      lines.pop();
+    }
+    return lines.join("\n");
+  };
   const defaultCodeSampleIndex = (() => {
     const raw = Number(configDefaults.initialCode);
     if(!Number.isInteger(raw)) return null;
@@ -120,7 +131,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(defaultCodeSampleIndex !== null){
       const sample = resolvedCodeSamples[defaultCodeSampleIndex - 1];
       if(sample && typeof sample.code === "string"){
-        return sample.code;
+        return normalizeSampleTextForRestore(sample.code);
       }
     }
     return "";
