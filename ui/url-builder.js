@@ -24,6 +24,7 @@
     btnGenerate: document.getElementById("btnGenerate"),
     btnCopy: document.getElementById("btnCopy"),
     btnOpen: document.getElementById("btnOpen"),
+    btnDownloadSettings: document.getElementById("btnDownloadSettings"),
     btnResetAllDefaults: document.getElementById("btnResetAllDefaults"),
     generatedUrl: document.getElementById("generatedUrl"),
     copyStatus: document.getElementById("copyStatus"),
@@ -515,6 +516,103 @@
     window.open(built, "_blank", "noopener");
   }
 
+  function parseBoolParam(raw){
+    const text = String(raw ?? "").trim().toLowerCase();
+    return ["1", "true", "yes", "on", "open", "show"].includes(text);
+  }
+
+  function buildSettingsDefaultsFromRows(){
+    const source = (window.appSettingsFromScript && window.appSettingsFromScript.defaults)
+      ? window.appSettingsFromScript.defaults
+      : {};
+    const next = JSON.parse(JSON.stringify(source));
+    const map = new Map(rowState.map((row) => [row.key, row]));
+
+    const get = (key, fallback = "") => {
+      const row = map.get(key);
+      if(!row || typeof row.getParamValue !== "function") return fallback;
+      return row.getParamValue();
+    };
+
+    const asNumber = (raw, fallback) => {
+      const num = Number(raw);
+      return Number.isFinite(num) ? num : fallback;
+    };
+
+    const view = get("v", "");
+    const bits = String(view).padEnd(6, "0");
+    next.qrData = String(get("d", next.qrData ?? ""));
+    next.debugVisible = parseBoolParam(get("g", next.debugVisible ? "1" : "0"));
+    next.patternPanelOpen = parseBoolParam(get("p", next.patternPanelOpen ? "1" : "0"));
+    next.historyVisible = parseBoolParam(get("h", next.historyVisible ? "1" : "0"));
+    next.layoutLeftPaneRatio = asNumber(get("l", String(next.layoutLeftPaneRatio ?? 0.5)), 0.5);
+    next.autoResetOnRun = parseBoolParam(get("a", next.autoResetOnRun ? "1" : "0"));
+    next.skipExistingCells = parseBoolParam(get("x", next.skipExistingCells ? "1" : "0"));
+    next.autoAvoidTiming = parseBoolParam(get("t", next.autoAvoidTiming ? "1" : "0"));
+    next.overwriteDataOnFunctional = parseBoolParam(get("o", next.overwriteDataOnFunctional ? "1" : "0"));
+    next.defaultPut = Math.trunc(asNumber(get("u", String(next.defaultPut ?? 2)), 2));
+    next.switchCount = Math.trunc(asNumber(get("w", String(next.switchCount ?? 2)), 2));
+    next.stepSpeed = Math.trunc(asNumber(get("e", String(next.stepSpeed ?? 30)), 30));
+    next.initialCode = Math.trunc(asNumber(get("c", String(next.initialCode ?? 0)), 0));
+    next.presentationMode = parseBoolParam(get("z", next.presentationMode ? "1" : "0"));
+    next.useDirection = parseBoolParam(get("r", next.useDirection ? "1" : "0"));
+    const skipSpec = String(get("s", "01")).padEnd(2, "0");
+    next.skipMode = skipSpec[0] === "1";
+    next.stepSkipDataOnly = skipSpec[1] === "1";
+    next.viewFlags = Object.assign({}, next.viewFlags, {
+      viewCursor: bits[0] === "1",
+      viewGuide: bits[1] === "1",
+      viewGrid: bits[2] === "1",
+      viewEmpty: bits[3] === "1",
+      viewColor: bits[4] === "1",
+      viewDebugValues: bits[5] === "1",
+    });
+    if(!Array.isArray(next.codeSamples)){
+      next.codeSamples = [];
+    }
+    return next;
+  }
+
+  function buildSettingsScriptText(){
+    const defaultsOut = buildSettingsDefaultsFromRows();
+    const payload = { defaults: defaultsOut };
+    const isBareKey = (key) => /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(key);
+    const renderJs = (value, depth = 0) => {
+      const indent = "  ".repeat(depth);
+      const nextIndent = "  ".repeat(depth + 1);
+      if(Array.isArray(value)){
+        if(value.length === 0) return "[]";
+        const items = value.map((item) => `${nextIndent}${renderJs(item, depth + 1)}`);
+        return `[\n${items.join(",\n")}\n${indent}]`;
+      }
+      if(value && typeof value === "object"){
+        const entries = Object.entries(value);
+        if(entries.length === 0) return "{}";
+        const lines = entries.map(([key, val]) => {
+          const keyText = isBareKey(key) ? key : JSON.stringify(key);
+          return `${nextIndent}${keyText}: ${renderJs(val, depth + 1)}`;
+        });
+        return `{\n${lines.join(",\n")}\n${indent}}`;
+      }
+      return JSON.stringify(value);
+    };
+    return `window.appSettingsFromScript = ${renderJs(payload)};\n`;
+  }
+
+  function downloadSettingsJs(){
+    const text = buildSettingsScriptText();
+    const blob = new Blob([text], { type: "application/javascript;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "settings.js";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    dom.copyStatus.textContent = "settings.js をダウンロードしました。";
+  }
+
   function init(){
     keySets.forEach(createRow);
     applyUrlBaseValues();
@@ -524,6 +622,9 @@
     });
     dom.btnCopy.addEventListener("click", copyGenerated);
     dom.btnOpen.addEventListener("click", openGeneratedInNewTab);
+    if(dom.btnDownloadSettings){
+      dom.btnDownloadSettings.addEventListener("click", downloadSettingsJs);
+    }
     dom.btnResetAllDefaults.addEventListener("click", resetAllToDefaults);
   }
 
