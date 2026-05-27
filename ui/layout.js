@@ -706,6 +706,8 @@ const historyCount = document.getElementById("historyCount");
 const codeHistoryList = document.getElementById("codeHistoryList");
 const codePanelElement = document.querySelector(".code-panel");
 const btnToggleHistory = document.getElementById("btnToggleHistory");
+const codePanelTitleRow = document.querySelector(".code-panel .panel-title-row");
+const codeActionToolbar = document.querySelector(".code-action-toolbar");
 const portraitMediaQuery = (typeof window !== "undefined" && typeof window.matchMedia === "function")
   ? window.matchMedia("(orientation: portrait)")
   : null;
@@ -716,12 +718,94 @@ const codeActionButtonLabels = [
   { el: btnClearCode, normal: "全消去", portrait: "消" },
   { el: btnToggleHistory, normal: "履歴", portrait: "履" },
 ];
-const updateCodeActionButtonLabels = () => {
-  const isPortrait = Boolean(portraitMediaQuery && portraitMediaQuery.matches);
+const setCodeActionButtonText = (compact) => {
   codeActionButtonLabels.forEach((entry) => {
     if(!entry.el) return;
-    entry.el.textContent = isPortrait ? entry.portrait : entry.normal;
+    const next = compact ? entry.portrait : entry.normal;
+    if(entry.el.textContent !== next){
+      entry.el.textContent = next;
+    }
   });
+};
+const measureTitleSingleLineWidth = () => {
+  if(!codePanelTitleRow) return 0;
+  const title = codePanelTitleRow.querySelector(".panel-title");
+  if(!title) return 0;
+  const previous = title.style.whiteSpace;
+  title.style.whiteSpace = "nowrap";
+  const width = title.scrollWidth;
+  title.style.whiteSpace = previous;
+  return width;
+};
+const measureToolbarWidth = (compact) => {
+  if(!codeActionToolbar) return 0;
+  const previousLabels = codeActionButtonLabels.map((entry) => (entry.el ? entry.el.textContent : ""));
+  setCodeActionButtonText(compact);
+  const width = codeActionToolbar.scrollWidth;
+  codeActionButtonLabels.forEach((entry, index) => {
+    if(!entry.el) return;
+    const previous = previousLabels[index];
+    if(entry.el.textContent !== previous){
+      entry.el.textContent = previous;
+    }
+  });
+  return width;
+};
+const updateCodeActionButtonLabels = () => {
+  const isPortrait = Boolean(portraitMediaQuery && portraitMediaQuery.matches);
+  if(isPortrait){
+    setCodeActionButtonText(true);
+    if(codePanelElement){
+      codePanelElement.classList.remove("compact-title-actions");
+    }
+    return;
+  }
+  if(!codePanelElement || !codePanelTitleRow || !codeActionToolbar){
+    setCodeActionButtonText(false);
+    return;
+  }
+  const wasStacked = codePanelElement.classList.contains("compact-title-actions");
+  if(wasStacked){
+    codePanelElement.classList.remove("compact-title-actions");
+  }
+  const panelStyle = window.getComputedStyle(codePanelElement);
+  const panelPaddingLeft = Number.parseFloat(panelStyle.paddingLeft || "0");
+  const panelPaddingRight = Number.parseFloat(panelStyle.paddingRight || "0");
+  const panelInnerWidth = codePanelElement.clientWidth
+    - (Number.isFinite(panelPaddingLeft) ? panelPaddingLeft : 0)
+    - (Number.isFinite(panelPaddingRight) ? panelPaddingRight : 0);
+  const rowWidth = Math.max(0, panelInnerWidth);
+  const rowStyle = window.getComputedStyle(codePanelTitleRow);
+  const gap = Number.parseFloat(rowStyle.columnGap || rowStyle.gap || "0");
+  const spacer = Number.isFinite(gap) ? gap : 0;
+  const titleWidth = measureTitleSingleLineWidth();
+  const toolbarNormalWidth = measureToolbarWidth(false);
+  const toolbarCompactWidth = measureToolbarWidth(true);
+  const canSingleNormal = (titleWidth + spacer + toolbarNormalWidth) <= rowWidth;
+  const canSingleCompact = (titleWidth + spacer + toolbarCompactWidth) <= rowWidth;
+  const canStackNormal = titleWidth <= rowWidth && toolbarNormalWidth <= rowWidth;
+  // 優先順:
+  // 0. 1行 + 通常
+  // 1. 1行 + 短縮
+  // 2. 2行 + 通常
+  // 3. 2行 + 短縮
+  if(canSingleNormal){
+    codePanelElement.classList.remove("compact-title-actions");
+    setCodeActionButtonText(false);
+    return;
+  }
+  if(canSingleCompact){
+    codePanelElement.classList.remove("compact-title-actions");
+    setCodeActionButtonText(true);
+    return;
+  }
+  if(canStackNormal){
+    codePanelElement.classList.add("compact-title-actions");
+    setCodeActionButtonText(false);
+    return;
+  }
+  codePanelElement.classList.add("compact-title-actions");
+  setCodeActionButtonText(true);
 };
 if(portraitMediaQuery){
   if(typeof portraitMediaQuery.addEventListener === "function"){
@@ -732,9 +816,21 @@ if(portraitMediaQuery){
 }
 if(typeof window !== "undefined"){
   window.addEventListener("resize", updateCodeActionButtonLabels);
+  window.addEventListener("load", updateCodeActionButtonLabels);
+}
+if(typeof ResizeObserver !== "undefined" && codePanelTitleRow){
+  const titleRowResizeObserver = new ResizeObserver(() => {
+    updateCodeActionButtonLabels();
+  });
+  titleRowResizeObserver.observe(codePanelTitleRow);
+}
+if(typeof ResizeObserver !== "undefined" && codeActionToolbar){
+  const toolbarResizeObserver = new ResizeObserver(() => {
+    updateCodeActionButtonLabels();
+  });
+  toolbarResizeObserver.observe(codeActionToolbar);
 }
 updateCodeActionButtonLabels();
-
 const LAYOUT_HISTORY_PREVIEW_LENGTH = 64;
 const escapeHtml = (value) => {
   const text = value ?? "";
