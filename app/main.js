@@ -229,6 +229,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const codeZoomLineHeightMinPx = resolvedSettings.codeZoomLineHeightMinPx;
   const codeZoomLineHeightRatio = resolvedSettings.codeZoomLineHeightRatio;
   const codeZoomLineHeightMaxOffsetPx = resolvedSettings.codeZoomLineHeightMaxOffsetPx;
+  const transientStatusDelayMs = Number.isFinite(resolvedSettings.transientStatusDelayMs)
+    ? Math.max(0, resolvedSettings.transientStatusDelayMs)
+    : 500;
   const layoutLeftPaneRatio = resolvedSettings.layoutLeftPaneRatio;
   const defaultAutoResetOnRun = resolvedSettings.autoResetOnRun;
   const rootStyle = document.documentElement?.style;
@@ -721,7 +724,42 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const setLastExecutionError = statusManager
     ? statusManager.setLastExecutionError
     : () => {};
-  setExecutionStatus("stopped");
+  let stopStatusTimeoutId = null;
+  let deferStoppedReadyUntilMs = 0;
+  const STOP_REASON_CODE_CHANGED = "プログラムが変更されたので停止しました。";
+  const clearStopStatusTimeout = () => {
+    if(stopStatusTimeoutId === null) return;
+    clearTimeout(stopStatusTimeoutId);
+    stopStatusTimeoutId = null;
+  };
+  const setStoppedReadyStatusByCode = () => {
+    const codeText = (userCodeInput && typeof userCodeInput.value === "string")
+      ? userCodeInput.value.trim()
+      : "";
+    if(codeText){
+      setExecutionStatus("stopped", undefined, undefined, { clearStopReason: true });
+    }else{
+      setExecutionStatus("stopped", undefined, "実行できるプログラムがありません。");
+    }
+  };
+  const scheduleStoppedReadyStatus = (delayMs = transientStatusDelayMs) => {
+    clearStopStatusTimeout();
+    deferStoppedReadyUntilMs = Date.now() + Math.max(0, delayMs);
+    stopStatusTimeoutId = setTimeout(() => {
+      stopStatusTimeoutId = null;
+      deferStoppedReadyUntilMs = 0;
+      if(statusManager?.isExecutionRunning?.()) return;
+      setStoppedReadyStatusByCode();
+    }, delayMs);
+  };
+  const initialCodeText = (userCodeInput && typeof userCodeInput.value === "string")
+    ? userCodeInput.value.trim()
+    : "";
+  if(initialCodeText){
+    setExecutionStatus("stopped", undefined, undefined, { clearStopReason: true });
+  }else{
+    setExecutionStatus("stopped", undefined, "実行できるプログラムがありません。");
+  }
   if(!isFunction(safeWindow?.createUiState)){
     throw new Error("ui/ui-state.js must be loaded before main.js.");
   }
@@ -1187,7 +1225,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     setRenderMode(RENDER_IMMEDIATE);
     if(reason){
-      setExecutionStatus("stopped", undefined, reason, { lockStopReason: true });
+      setExecutionStatus("stopped", undefined, reason, { lockStopReason: true, plainDetail: true });
+      if(reason === STOP_REASON_CODE_CHANGED){
+        scheduleStoppedReadyStatus();
+      }
     }else if(clear){
       setExecutionStatus("stopped", undefined, undefined, { clearStopReason: true, suppressUpdate: true });
     }
@@ -1967,21 +2008,20 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
   const stopAndReset = ({ resetData: resetDataFlag = true } = {}) => {
     window.logEvent("btnInit", "", "初期化ボタン押下");
+    clearStopStatusTimeout();
+    const wasRunning = Boolean(statusManager?.isExecutionRunning?.());
     stopCurrentRun({ resetCursor: false, clear: false });
     const resetResult = resetBoard({ resetData: resetDataFlag });
-    if(userCodeInput){
+    if(userCodeInput && btnGenerate){
       const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
       btnGenerate.disabled = !codeText;
-      if(!codeText){
-        setExecutionStatus("stopped", undefined, "実行できるプログラムがありません。");
-      }
     }
     btnInit.disabled = false;
     setRenderMode(RENDER_IMMEDIATE);
     setLastExecutionError(null);
-    if(!userCodeInput || (typeof userCodeInput.value === "string" && userCodeInput.value.trim())){
-      setExecutionStatus("stopped");
-    }
+    const resetMessage = wasRunning ? "停止してリセットしました。" : "リセットしました。";
+    setExecutionStatus("stopped", undefined, resetMessage, { clearStopReason: true, plainDetail: true });
+    scheduleStoppedReadyStatus();
     return resetResult;
   };
   btnInit.addEventListener("click", stopAndReset);
@@ -2446,11 +2486,14 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       scheduleSyncParsedCode();
       ensureUserCodeCaretVisible();
       if(!statusManager?.isExecutionRunning?.()){
+        if(Date.now() < deferStoppedReadyUntilMs){
+          return;
+        }
         const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
         if(!codeText){
           setExecutionStatus("stopped", undefined, "実行できるプログラムがありません。");
         }else{
-          setExecutionStatus("stopped");
+          setExecutionStatus("stopped", undefined, undefined, { clearStopReason: true });
         }
       }
       if(btnGenerate){

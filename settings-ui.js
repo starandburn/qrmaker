@@ -15,6 +15,7 @@ window.appSettingsUiFromScript = {
     codeZoomLineHeightMinPx: 16,
     codeZoomLineHeightRatio: 1.2,
     codeZoomLineHeightMaxOffsetPx: 8,
+    transientStatusDelayMs: 500,
     presentationPointerRingEnabled: true,
     presentationPointerRingDurationMs: 400,
     presentationPointerRingSize: 120,
