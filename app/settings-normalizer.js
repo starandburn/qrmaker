@@ -57,6 +57,10 @@
     const codeZoomLineHeightMinPx = normalizeNumberSetting(configDefaults.codeZoomLineHeightMinPx);
     const codeZoomLineHeightRatio = normalizeNumberSetting(configDefaults.codeZoomLineHeightRatio);
     const codeZoomLineHeightMaxOffsetPx = normalizeNumberSetting(configDefaults.codeZoomLineHeightMaxOffsetPx);
+    const transientStatusDelayMsRaw = normalizeNumberSetting(configDefaults.transientStatusDelayMs);
+    const transientStatusDelayMs = (transientStatusDelayMsRaw !== null)
+      ? Math.max(0, transientStatusDelayMsRaw)
+      : 500;
     const layoutLeftPaneRatioRaw = normalizeNumberSetting(configDefaults.layoutLeftPaneRatio);
     const layoutLeftPaneRatio = (layoutLeftPaneRatioRaw !== null)
       ? Math.min(0.9, Math.max(0.1, layoutLeftPaneRatioRaw))
@@ -89,6 +93,7 @@
       codeZoomLineHeightMinPx,
       codeZoomLineHeightRatio,
       codeZoomLineHeightMaxOffsetPx,
+      transientStatusDelayMs,
       layoutLeftPaneRatio,
       autoResetOnRun,
     };

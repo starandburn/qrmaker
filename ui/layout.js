@@ -48,7 +48,14 @@ const DATA_INPUT_MAX_LENGTH = Number(txtInput?.getAttribute("maxlength")) || 32;
 const FULLWIDTH_CHAR_REGEX = /[^\u0000-\u007F]/;
 const STOP_REASON_DATA = "データが変更されたので停止しました。";
 const STOP_REASON_CODE = "プログラムが変更されたので停止しました。";
-
+const isExecutionRunningNow = () => {
+  const statusEl = document.getElementById("executionStatus");
+  return Boolean(statusEl && statusEl.classList.contains("status-running"));
+};
+const stopCurrentRunIfRunning = (reason) => {
+  if(!isExecutionRunningNow()) return;
+  callIfFunction(window.stopCurrentRun, { resetCursor: false, clear: false, reason });
+};
 let lastBuiltPatternInput = null;
 const isPatternPanelOpen = () => Boolean(dataPatternPanel && dataPatternPanel.open);
 const refreshPatternIfPanelOpen = () => {
@@ -99,7 +106,7 @@ function updateDataStatus(){
 function setInputValue(value){
   if(!txtInput) return;
   txtInput.value = value;
-  callIfFunction(window.stopCurrentRun, { resetCursor: false, clear: false, reason: STOP_REASON_DATA });
+  stopCurrentRunIfRunning(STOP_REASON_DATA);
   refreshPatternIfPanelOpen();
   updateDataStatus();
   txtInput.focus();
@@ -386,7 +393,7 @@ function refreshGuide(){
 if(txtInput){
   txtInput.addEventListener("input", () => {
     callIfFunction(window.logEvent, "txtInput.input", txtInput.value ?? "", "テキスト入力が変更されました");
-    callIfFunction(window.stopCurrentRun, { resetCursor: false, clear: false, reason: STOP_REASON_DATA });
+    stopCurrentRunIfRunning(STOP_REASON_DATA);
     refreshPatternIfPanelOpen();
     updateDataStatus();
   });
@@ -425,7 +432,7 @@ if(userCodeTextarea){
 if(btnClear){
   btnClear.addEventListener("click", () => {
     callIfFunction(window.logEvent, "btnClear.click", "", "入力をゼロにクリアしました");
-    callIfFunction(window.stopCurrentRun, { resetCursor: false, clear: false, reason: STOP_REASON_DATA });
+    stopCurrentRunIfRunning(STOP_REASON_DATA);
     txtInput.value = "";
     refreshPatternIfPanelOpen();
     txtInput.focus();
@@ -464,7 +471,7 @@ document.addEventListener("click", () => {
 const userCode = document.getElementById("userCode");
 if(userCode){
   userCode.addEventListener("input", () => {
-    callIfFunction(window.stopCurrentRun, { resetCursor: false, clear: false, reason: STOP_REASON_CODE });
+    stopCurrentRunIfRunning(STOP_REASON_CODE);
   });
 }
 

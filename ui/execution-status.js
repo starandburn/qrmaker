@@ -18,7 +18,7 @@
     let pendingStopReason = null;
     let stopReasonLocked = false;
     const executionStatusLabels = {
-      stopped: "待機中",
+      stopped: "停止中",
       running: "作成中",
       finished: "作成完了",
       error: "エラー",
@@ -38,7 +38,7 @@
       if(!l2) return null;
       return { l2, l3 };
     };
-    const buildExecutionStatusText = (state, message, detail) => {
+    const buildExecutionStatusText = (state, message, detail, options = {}) => {
       const label = executionStatusLabels[state] || "";
       if(state === "error"){
         const token = extractUnknownCommandWord(message);
@@ -48,8 +48,13 @@
         const resolved = message ? String(message).trim() : "";
         return resolved ? `${label}：${resolved}` : label;
       }
+      const isTransientPlainMessage = (typeof detail === "string")
+        && /(?:リセットしました。|停止してリセットしました。|プログラムが変更されたので停止しました。|データが変更されたので停止しました。)$/.test(detail);
+      if((options && options.plainDetail && typeof detail === "string" && detail) || isTransientPlainMessage){
+        return detail;
+      }
       if(state === "stopped" && !detail){
-        return `${label}：作成できます。`;
+        return `${label}：実行できます。`;
       }
       const normalized = normalizeStatusDetail(detail);
       if(normalized){
@@ -98,7 +103,7 @@
         return;
       }
       const target = executionStatusTextEl || executionStatusEl;
-      target.textContent = buildExecutionStatusText(state, message, detail);
+      target.textContent = buildExecutionStatusText(state, message, detail, options);
       executionStatusEl.className = `execution-status status-${state}`;
       if(typeof onAfterStatusUpdate === "function"){
         callIfFunction(onAfterStatusUpdate, { state, message, detail });
