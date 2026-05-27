@@ -708,6 +708,11 @@ const codePanelElement = document.querySelector(".code-panel");
 const btnToggleHistory = document.getElementById("btnToggleHistory");
 const codePanelTitleRow = document.querySelector(".code-panel .panel-title-row");
 const codeActionToolbar = document.querySelector(".code-action-toolbar");
+const executionStatusElement = document.getElementById("executionStatus");
+const executionStatusSubpanels = executionStatusElement
+  ? executionStatusElement.querySelector(".execution-status-subpanels")
+  : null;
+let executionStatusCompactSticky = false;
 const portraitMediaQuery = (typeof window !== "undefined" && typeof window.matchMedia === "function")
   ? window.matchMedia("(orientation: portrait)")
   : null;
@@ -807,16 +812,37 @@ const updateCodeActionButtonLabels = () => {
   codePanelElement.classList.add("compact-title-actions");
   setCodeActionButtonText(true);
 };
+const updateExecutionStatusCompactLayout = () => {
+  if(!executionStatusElement || !executionStatusSubpanels) return;
+  const isPortrait = Boolean(portraitMediaQuery && portraitMediaQuery.matches);
+  if(isPortrait){
+    executionStatusElement.classList.remove("compact-subpanels");
+    executionStatusCompactSticky = false;
+    return;
+  }
+  const width = executionStatusSubpanels.clientWidth;
+  const enterWidthPx = 720;
+  const exitWidthPx = 760;
+  const needsCompact = executionStatusCompactSticky
+    ? width < exitWidthPx
+    : width < enterWidthPx;
+  executionStatusCompactSticky = needsCompact;
+  executionStatusElement.classList.toggle("compact-subpanels", needsCompact);
+};
 if(portraitMediaQuery){
   if(typeof portraitMediaQuery.addEventListener === "function"){
     portraitMediaQuery.addEventListener("change", updateCodeActionButtonLabels);
+    portraitMediaQuery.addEventListener("change", updateExecutionStatusCompactLayout);
   }else if(typeof portraitMediaQuery.addListener === "function"){
     portraitMediaQuery.addListener(updateCodeActionButtonLabels);
+    portraitMediaQuery.addListener(updateExecutionStatusCompactLayout);
   }
 }
 if(typeof window !== "undefined"){
   window.addEventListener("resize", updateCodeActionButtonLabels);
   window.addEventListener("load", updateCodeActionButtonLabels);
+  window.addEventListener("resize", updateExecutionStatusCompactLayout);
+  window.addEventListener("load", updateExecutionStatusCompactLayout);
 }
 if(typeof ResizeObserver !== "undefined" && codePanelTitleRow){
   const titleRowResizeObserver = new ResizeObserver(() => {
@@ -830,7 +856,14 @@ if(typeof ResizeObserver !== "undefined" && codeActionToolbar){
   });
   toolbarResizeObserver.observe(codeActionToolbar);
 }
+if(typeof ResizeObserver !== "undefined" && executionStatusSubpanels){
+  const statusResizeObserver = new ResizeObserver(() => {
+    updateExecutionStatusCompactLayout();
+  });
+  statusResizeObserver.observe(executionStatusSubpanels);
+}
 updateCodeActionButtonLabels();
+updateExecutionStatusCompactLayout();
 const LAYOUT_HISTORY_PREVIEW_LENGTH = 64;
 const escapeHtml = (value) => {
   const text = value ?? "";

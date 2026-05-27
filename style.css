@@ -1341,6 +1341,40 @@ textarea:focus{
     min-width:0;
     background:#f7f7f7;
   }
+.execution-status.compact-subpanels .execution-status-subpanels{
+  flex-direction:column;
+  gap:6px;
+}
+.execution-status.compact-subpanels .execution-status-info-panel{
+  margin-left:0;
+  width:100%;
+  padding:8px 10px;
+}
+.execution-status.compact-subpanels .execution-status-info{
+  width:100%;
+  align-items:flex-start;
+}
+.execution-status.compact-subpanels .execution-status-cursor{
+  width:100%;
+  text-align:left;
+}
+.execution-status.compact-subpanels .execution-status-cursor-body{
+  width:100%;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:6px;
+  justify-content:flex-start;
+}
+.execution-status.compact-subpanels .execution-status-cursor-text{
+  min-width:0;
+  width:auto;
+  text-align:left;
+  margin-right:0;
+}
+.execution-status.compact-subpanels .execution-status-next-label{
+  margin-left:0;
+}
 .execution-status-message{
     flex:1;
     min-width:0;
