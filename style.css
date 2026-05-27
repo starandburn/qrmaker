@@ -58,6 +58,23 @@ body{
   transition: opacity 0.15s ease;
 }
 
+.presentation-clock{
+  position:fixed;
+  right:12px;
+  bottom:10px;
+  z-index:1200;
+  padding:4px 8px;
+  border-radius:6px;
+  background:rgba(255,255,255,0.88);
+  border:1px solid rgba(31,47,74,0.18);
+  color:#1f2f4a;
+  font-size:18px;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:0.03em;
+  pointer-events:none;
+}
+
 .pointer-ring{
   position:fixed;
   width:var(--presentation-ring-size);

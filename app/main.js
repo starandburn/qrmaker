@@ -500,6 +500,30 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const presentationMode = hasParam(INTERNAL_PARAM_KEYS.PRESENTATION_MODE)
     ? getParam(INTERNAL_PARAM_KEYS.PRESENTATION_MODE) === "1"
     : Boolean(configDefaults.presentationMode);
+  const setupPresentationClock = () => {
+    if(!presentationMode || !document || !document.body) return;
+    const clockEl = document.createElement("div");
+    clockEl.className = "presentation-clock";
+    const formatTime = (date) => {
+      const hour = String(date.getHours()).padStart(2, "0");
+      const minute = String(date.getMinutes()).padStart(2, "0");
+      return `${hour}:${minute}`;
+    };
+    const updateClock = () => {
+      clockEl.textContent = formatTime(new Date());
+    };
+    const scheduleNextMinuteTick = () => {
+      const now = new Date();
+      const waitMs = ((59 - now.getSeconds()) * 1000) + (1000 - now.getMilliseconds());
+      setTimeout(() => {
+        updateClock();
+        setInterval(updateClock, 60 * 1000);
+      }, Math.max(1, waitMs));
+    };
+    updateClock();
+    scheduleNextMinuteTick();
+    document.body.appendChild(clockEl);
+  };
   const initialDebugParamPresent = hasParam(PARAM_KEYS.DEBUG);
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
     ? configDefaults.historyVisible
@@ -3007,6 +3031,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       document.body.classList.remove("app-loading");
     });
   }
+  setupPresentationClock();
 
   setupFooterDebugToggle();
   if(footerSecretQr){
