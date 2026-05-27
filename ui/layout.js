@@ -39,6 +39,10 @@ const toggleDebugValues = document.getElementById("toggleDebugValues");
 const toggleInputs = [toggleCursor, toggleGuide, toggleGrid, toggleEmpty, toggleColor, toggleDebugValues].filter(Boolean);
 window.toggleInputs = toggleInputs;
 const userCodeTextarea = document.getElementById("userCode");
+const btnCopyCode = document.getElementById("btnCopyCode");
+const btnPasteCode = document.getElementById("btnPasteCode");
+const btnFormatCode = document.getElementById("btnFormatCode");
+const btnClearCode = document.getElementById("btnClearCode");
 const dataInputStatus = document.getElementById("dataInputStatus");
 const dataCount = document.getElementById("dataCount");
 const sampleDropdown = document.getElementById("sampleDropdown");
@@ -702,6 +706,34 @@ const historyCount = document.getElementById("historyCount");
 const codeHistoryList = document.getElementById("codeHistoryList");
 const codePanelElement = document.querySelector(".code-panel");
 const btnToggleHistory = document.getElementById("btnToggleHistory");
+const portraitMediaQuery = (typeof window !== "undefined" && typeof window.matchMedia === "function")
+  ? window.matchMedia("(orientation: portrait)")
+  : null;
+const codeActionButtonLabels = [
+  { el: btnCopyCode, normal: "コピー", portrait: "コ" },
+  { el: btnPasteCode, normal: "貼付", portrait: "貼" },
+  { el: btnFormatCode, normal: "整形", portrait: "整" },
+  { el: btnClearCode, normal: "全消去", portrait: "消" },
+  { el: btnToggleHistory, normal: "履歴", portrait: "履" },
+];
+const updateCodeActionButtonLabels = () => {
+  const isPortrait = Boolean(portraitMediaQuery && portraitMediaQuery.matches);
+  codeActionButtonLabels.forEach((entry) => {
+    if(!entry.el) return;
+    entry.el.textContent = isPortrait ? entry.portrait : entry.normal;
+  });
+};
+if(portraitMediaQuery){
+  if(typeof portraitMediaQuery.addEventListener === "function"){
+    portraitMediaQuery.addEventListener("change", updateCodeActionButtonLabels);
+  }else if(typeof portraitMediaQuery.addListener === "function"){
+    portraitMediaQuery.addListener(updateCodeActionButtonLabels);
+  }
+}
+if(typeof window !== "undefined"){
+  window.addEventListener("resize", updateCodeActionButtonLabels);
+}
+updateCodeActionButtonLabels();
 
 const LAYOUT_HISTORY_PREVIEW_LENGTH = 64;
 const escapeHtml = (value) => {
