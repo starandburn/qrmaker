@@ -58,6 +58,23 @@ body{
   transition: opacity 0.15s ease;
 }
 
+.presentation-clock{
+  position:fixed;
+  right:12px;
+  bottom:10px;
+  z-index:1200;
+  padding:4px 8px;
+  border-radius:6px;
+  background:rgba(255,255,255,0.88);
+  border:1px solid rgba(31,47,74,0.18);
+  color:#1f2f4a;
+  font-size:18px;
+  font-weight:700;
+  line-height:1;
+  letter-spacing:0.03em;
+  pointer-events:none;
+}
+
 .pointer-ring{
   position:fixed;
   width:var(--presentation-ring-size);
@@ -168,8 +185,8 @@ body.app-loading .page-footer{
   flex-shrink:0;
   align-self:center;
   background:rgba(255,255,255,0.82);
-  border-radius:14px;
-  padding:6px;
+  border-radius:10px;
+  padding:3px;
   box-shadow:0 6px 16px rgba(0,0,0,0.12);
   cursor:pointer;
 }
@@ -2317,10 +2334,10 @@ textarea:focus{
     margin:0;
   }
   .title-icon{
-    width:48px;
-    height:48px;
-    border-radius:12px;
-    padding:4px;
+    width:54px;
+    height:54px;
+    border-radius:9px;
+    padding:0;
   }
   .subtitle{
     font-size:14px;

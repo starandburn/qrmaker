@@ -46,6 +46,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     : {};
   const btnGenerate = dom.btnGenerate;
   const btnInit = dom.btnInit;
+  const btnDownloadQr = dom.btnDownloadQr;
   const btnClearCode = dom.btnClearCode;
   const btnCopyCode = dom.btnCopyCode;
   const btnFormatCode = dom.btnFormatCode;
@@ -500,6 +501,30 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const presentationMode = hasParam(INTERNAL_PARAM_KEYS.PRESENTATION_MODE)
     ? getParam(INTERNAL_PARAM_KEYS.PRESENTATION_MODE) === "1"
     : Boolean(configDefaults.presentationMode);
+  const setupPresentationClock = () => {
+    if(!presentationMode || !document || !document.body) return;
+    const clockEl = document.createElement("div");
+    clockEl.className = "presentation-clock";
+    const formatTime = (date) => {
+      const hour = String(date.getHours()).padStart(2, "0");
+      const minute = String(date.getMinutes()).padStart(2, "0");
+      return `${hour}:${minute}`;
+    };
+    const updateClock = () => {
+      clockEl.textContent = formatTime(new Date());
+    };
+    const scheduleNextMinuteTick = () => {
+      const now = new Date();
+      const waitMs = ((59 - now.getSeconds()) * 1000) + (1000 - now.getMilliseconds());
+      setTimeout(() => {
+        updateClock();
+        setInterval(updateClock, 60 * 1000);
+      }, Math.max(1, waitMs));
+    };
+    updateClock();
+    scheduleNextMinuteTick();
+    document.body.appendChild(clockEl);
+  };
   const initialDebugParamPresent = hasParam(PARAM_KEYS.DEBUG);
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
     ? configDefaults.historyVisible
@@ -2237,6 +2262,78 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }
     });
   }
+  const downloadQrAsPng = () => {
+    const matrix = (typeof window !== "undefined" && Array.isArray(window.boardMatrix))
+      ? window.boardMatrix
+      : null;
+    if(!matrix || !matrix.length || !Array.isArray(matrix[0]) || !matrix[0].length){
+      return false;
+    }
+    const rows = matrix.length;
+    const cols = matrix[0].length;
+    const quietZoneModules = 4;
+    const moduleSize = 16;
+    const width = (cols + quietZoneModules * 2) * moduleSize;
+    const height = (rows + quietZoneModules * 2) * moduleSize;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if(!ctx) return false;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = "#000000";
+    const isBlackBitFn = (typeof window !== "undefined" && typeof window.isBlackBit === "function")
+      ? window.isBlackBit
+      : null;
+    const unplacedKind = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number")
+      ? window.BIT_UNPLACED
+      : -1;
+    const bitKindFn = (typeof window !== "undefined" && typeof window.bitKind === "function")
+      ? window.bitKind
+      : null;
+    for(let r = 0; r < rows; r += 1){
+      const row = matrix[r];
+      if(!Array.isArray(row)) continue;
+      for(let c = 0; c < cols; c += 1){
+        const val = row[c];
+        if(typeof val !== "number") continue;
+        const kind = bitKindFn ? bitKindFn(val) : Math.abs(val);
+        if(kind === unplacedKind) continue;
+        const isBlack = isBlackBitFn ? isBlackBitFn(val) : val > 0;
+        if(!isBlack) continue;
+        const x = (c + quietZoneModules) * moduleSize;
+        const y = (r + quietZoneModules) * moduleSize;
+        ctx.fillRect(x, y, moduleSize, moduleSize);
+      }
+    }
+    const link = document.createElement("a");
+    link.href = canvas.toDataURL("image/png");
+    const now = new Date();
+    const pad2 = (value) => String(value).padStart(2, "0");
+    const timestamp = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}`;
+    link.download = `qrcode_${timestamp}.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    return true;
+  };
+  if(btnDownloadQr){
+    btnDownloadQr.addEventListener("click", () => {
+      const verifyService = globalThis.qrVerifyService;
+      const currentReadable = (verifyService && typeof verifyService.verifyBoard === "function")
+        ? Boolean(verifyService.verifyBoard()?.ok)
+        : isQRCodeReadable;
+      setQRCodeReadable(currentReadable);
+      if(!currentReadable){
+        const shouldContinue = window.confirm("まだ読取OKではありません。この状態でダウンロードしますか？");
+        if(!shouldContinue){
+          return;
+        }
+      }
+      downloadQrAsPng();
+    });
+  }
   const spawnPointerRing = (x, y) => {
     if(!document || !document.body) return;
     const ring = document.createElement("span");
@@ -3007,6 +3104,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       document.body.classList.remove("app-loading");
     });
   }
+  setupPresentationClock();
 
   setupFooterDebugToggle();
   if(footerSecretQr){

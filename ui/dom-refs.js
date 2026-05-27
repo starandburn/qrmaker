@@ -10,6 +10,7 @@
     return {
       btnGenerate: getById("btnGenerate"),
       btnInit: getById("btnInit"),
+      btnDownloadQr: getById("btnDownloadQr"),
       btnClearCode: getById("btnClearCode"),
       btnCopyCode: getById("btnCopyCode"),
       btnFormatCode: getById("btnFormatCode"),
