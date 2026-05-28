@@ -1808,6 +1808,25 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }
       return scoreMaskPenalty(darkMatrix);
     };
+    const resolveMaskFadeMs = (stepDelay) => {
+      const baseFadeMs = (typeof window.maskFadeDurationMs === "number")
+        ? Math.max(0, window.maskFadeDurationMs)
+        : 250;
+      const delayMs = Math.max(0, Number(stepDelay) || 0);
+      return Math.max(50, Math.round(baseFadeMs + (delayMs * 2)));
+    };
+    const resolveMaskStepDelay = () => {
+      const sliderValue = Number(stepSpeed && typeof stepSpeed.value !== "undefined" ? stepSpeed.value : NaN);
+      if(Number.isFinite(sliderValue)){
+        return Math.max(0, Math.min(120, sliderValue));
+      }
+      const fallback = (typeof getStepDelay === "function") ? getStepDelay() : 0;
+      return Math.max(0, Math.min(120, Number(fallback) || 0));
+    };
+    const resolveMaskTempoScale = (stepDelay) => {
+      const delayMs = Math.max(0, Math.min(120, Number(stepDelay) || 0));
+      return 0.5 + (1.5 * (delayMs / 120));
+    };
     const applyMaskTargetsWithFade = async (targets, { fade = true } = {}) => {
       const ensureEvalMaskOverlay = () => {
         if(ctx.maskOverlayEl && ctx.maskOverlayEl.isConnected){
@@ -1869,11 +1888,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         }
       };
       const overlay = ensureEvalMaskOverlay();
-      const stepDelay = (typeof getStepDelay === "function") ? getStepDelay() : 0;
-      const fadeMs = (typeof window.maskFadeDurationMs === "number")
-        ? Math.max(0, window.maskFadeDurationMs)
-        : 250;
-      const holdMs = Math.max(100, stepDelay * 10);
+      const stepDelay = resolveMaskStepDelay();
+      const tempoScale = resolveMaskTempoScale(stepDelay);
+      const fadeMs = Math.max(50, Math.round(resolveMaskFadeMs(stepDelay) * tempoScale));
+      const holdMs = Math.max(50, Math.round(Math.max(100, stepDelay * 10) * tempoScale));
       if(fade && overlay){
         const targetSet = new Set(targets.map(([row, col]) => `${row},${col}`));
         const cells = overlay.children;
@@ -2122,11 +2140,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         const overlay = ensureMaskOverlay();
         applyMaskOverlayColor(overlay);
         updateMaskOverlay(overlay);
-        const stepDelay = (typeof getStepDelay === "function") ? getStepDelay() : 0;
-        const fadeMs = (typeof window.maskFadeDurationMs === "number")
-          ? Math.max(0, window.maskFadeDurationMs)
-          : 250;
-        const holdMs = Math.max(100, stepDelay * 10);
+        const stepDelay = resolveMaskStepDelay();
+        const tempoScale = resolveMaskTempoScale(stepDelay);
+        const fadeMs = Math.max(50, Math.round(resolveMaskFadeMs(stepDelay) * tempoScale));
+        const holdMs = Math.max(50, Math.round(Math.max(100, stepDelay * 10) * tempoScale));
         if(overlay){
           overlay.style.transition = `opacity ${fadeMs}ms linear`;
           overlay.style.opacity = "0";
