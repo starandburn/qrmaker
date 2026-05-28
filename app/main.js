@@ -594,7 +594,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   };
     const normalizeMaskCommandValue = (rawValue) => {
       if(rawValue === undefined){
-        return { valid: true, index: 0 };
+        return { valid: true, auto: true };
+      }
+      if(rawValue === null){
+        return { valid: true, auto: true };
+      }
+      if(typeof rawValue === "string" && rawValue.trim() === ""){
+        return { valid: true, auto: true };
       }
     const numeric = Number(rawValue);
     if(!Number.isFinite(numeric)){
@@ -604,7 +610,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(truncated < MASK_INDEX_MIN || truncated > MASK_INDEX_MAX){
       return { valid: false, raw: rawValue };
     }
-    return { valid: true, index: truncated };
+    return { valid: true, auto: false, index: truncated };
   };
   const skipExistingFromParam = getBoolParam(PARAM_KEYS.SKIP_EXISTING);
   const skipExistingCells = (skipExistingFromParam !== null)
@@ -704,27 +710,136 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ? statusManager.setExecutionStatus
     : () => {};
   const executionStatusMessageWrapEl = dom?.executionStatusTextEl?.parentElement || null;
+  const qrDetailModalEl = document.getElementById("qrDetailModal");
+  const qrDetailCloseEl = document.getElementById("qrDetailClose");
+  const qrDetailDownloadEl = document.getElementById("qrDetailDownload");
+  const qrDetailBodyEl = document.getElementById("qrDetailBody");
   let readMaskLinkEl = null;
+  let qrDetailLinkEl = null;
+  let lastQrDetailPayload = null;
+  let qrDetailPreviewCanvas = null;
   const hideReadMaskButton = () => {
     if(readMaskLinkEl && readMaskLinkEl.isConnected){
       readMaskLinkEl.remove();
     }
     readMaskLinkEl = null;
   };
+  const hideQrDetailLink = () => {
+    if(qrDetailLinkEl && qrDetailLinkEl.isConnected){
+      qrDetailLinkEl.remove();
+    }
+    qrDetailLinkEl = null;
+  };
+  const closeQrDetailModal = () => {
+    if(qrDetailModalEl){
+      qrDetailModalEl.classList.add("hidden");
+    }
+  };
+  const openQrDetailModal = () => {
+    if(!qrDetailModalEl || !qrDetailBodyEl) return;
+    const payload = lastQrDetailPayload || {};
+    const rows = [
+      ["QRバージョン", payload.versionText ?? "-"],
+      ["モード", payload.modeText ?? "-"],
+      ["誤り訂正レベル", payload.errorLevelText ?? "-"],
+      ["読み取れるデータ", payload.decoded ?? "-"],
+      ["マスク番号", payload.maskIndexText ?? "-"],
+      ["評価値", payload.scoreText ?? "-"],
+    ];
+    qrDetailBodyEl.textContent = "";
+    const layoutEl = document.createElement("div");
+    layoutEl.className = "qr-detail-layout";
+    const infoEl = document.createElement("div");
+    infoEl.className = "qr-detail-info";
+    for(const [key, value] of rows){
+      const keyEl = document.createElement("div");
+      keyEl.className = "qr-detail-key";
+      keyEl.textContent = key;
+      const valueEl = document.createElement("div");
+      valueEl.className = "qr-detail-value";
+      valueEl.textContent = value;
+      infoEl.append(keyEl, valueEl);
+    }
+    const previewEl = document.createElement("div");
+    previewEl.className = "qr-detail-preview";
+    const canvas = document.createElement("canvas");
+    const matrix = (typeof window !== "undefined" && Array.isArray(window.boardMatrix))
+      ? window.boardMatrix
+      : null;
+    if(matrix && matrix.length && Array.isArray(matrix[0]) && matrix[0].length){
+      const rowsCount = matrix.length;
+      const colsCount = matrix[0].length;
+      const quietZoneModules = 4;
+      const moduleSize = 8;
+      const width = (colsCount + quietZoneModules * 2) * moduleSize;
+      const height = (rowsCount + quietZoneModules * 2) * moduleSize;
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if(ctx){
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = "#000000";
+        const isBlackBitFn = (typeof window !== "undefined" && typeof window.isBlackBit === "function")
+          ? window.isBlackBit
+          : null;
+        const unplacedKind = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number")
+          ? window.BIT_UNPLACED
+          : -1;
+        const bitKindFn = (typeof window !== "undefined" && typeof window.bitKind === "function")
+          ? window.bitKind
+          : null;
+        for(let r = 0; r < rowsCount; r += 1){
+          const row = matrix[r];
+          if(!Array.isArray(row)) continue;
+          for(let c = 0; c < colsCount; c += 1){
+            const val = row[c];
+            if(typeof val !== "number") continue;
+            const kind = bitKindFn ? bitKindFn(val) : Math.abs(val);
+            if(kind === unplacedKind) continue;
+            const isBlack = isBlackBitFn ? isBlackBitFn(val) : val > 0;
+            if(!isBlack) continue;
+            const x = (c + quietZoneModules) * moduleSize;
+            const y = (r + quietZoneModules) * moduleSize;
+            ctx.fillRect(x, y, moduleSize, moduleSize);
+          }
+        }
+      }
+    }
+    previewEl.appendChild(canvas);
+    qrDetailPreviewCanvas = canvas;
+    layoutEl.append(infoEl, previewEl);
+    qrDetailBodyEl.appendChild(layoutEl);
+    qrDetailModalEl.classList.remove("hidden");
+  };
+  const showQrDetailLink = () => {
+    if(!executionStatusMessageWrapEl || qrDetailLinkEl || !lastQrDetailPayload) return;
+    const link = document.createElement("a");
+    link.href = "#";
+    link.className = "execution-status-read-link";
+    link.textContent = "▶詳細表示";
+    link.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      openQrDetailModal();
+    });
+    executionStatusMessageWrapEl.appendChild(link);
+    qrDetailLinkEl = link;
+  };
   const showReadMaskButton = () => {
     if(!executionStatusMessageWrapEl || readMaskLinkEl) return;
     const link = document.createElement("a");
     link.href = "#";
     link.className = "execution-status-read-link";
-    link.textContent = "▼読取用に調整";
+    link.textContent = "▶読み取り用に調整";
     link.addEventListener("click", async (ev) => {
       ev.preventDefault();
       if(typeof applyMask !== "function") return;
       link.classList.add("is-busy");
       try{
-        const ok = await applyMask(0);
+        const ok = await applyMask();
         if(ok){
           setExecutionStatus("finished", undefined, "読み取れる正しいQRコードです。");
+          showQrDetailLink();
         }
       }finally{
         link.classList.remove("is-busy");
@@ -733,8 +848,77 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     executionStatusMessageWrapEl.appendChild(link);
     readMaskLinkEl = link;
   };
+  if(qrDetailCloseEl){
+    qrDetailCloseEl.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      closeQrDetailModal();
+    });
+  }
+  if(qrDetailDownloadEl){
+    qrDetailDownloadEl.addEventListener("click", () => {
+      const matrix = (typeof window !== "undefined" && Array.isArray(window.boardMatrix))
+        ? window.boardMatrix
+        : null;
+      if(!matrix || !matrix.length || !Array.isArray(matrix[0]) || !matrix[0].length) return;
+      const rows = matrix.length;
+      const cols = matrix[0].length;
+      const quietZoneModules = 4;
+      const moduleSize = 20;
+      const width = (cols + quietZoneModules * 2) * moduleSize;
+      const height = (rows + quietZoneModules * 2) * moduleSize;
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if(!ctx) return;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = "#000000";
+      const isBlackBitFn = (typeof window !== "undefined" && typeof window.isBlackBit === "function")
+        ? window.isBlackBit
+        : null;
+      const unplacedKind = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number")
+        ? window.BIT_UNPLACED
+        : -1;
+      const bitKindFn = (typeof window !== "undefined" && typeof window.bitKind === "function")
+        ? window.bitKind
+        : null;
+      for(let r = 0; r < rows; r += 1){
+        const row = matrix[r];
+        if(!Array.isArray(row)) continue;
+        for(let c = 0; c < cols; c += 1){
+          const val = row[c];
+          if(typeof val !== "number") continue;
+          const kind = bitKindFn ? bitKindFn(val) : Math.abs(val);
+          if(kind === unplacedKind) continue;
+          const isBlack = isBlackBitFn ? isBlackBitFn(val) : val > 0;
+          if(!isBlack) continue;
+          const x = (c + quietZoneModules) * moduleSize;
+          const y = (r + quietZoneModules) * moduleSize;
+          ctx.fillRect(x, y, moduleSize, moduleSize);
+        }
+      }
+      const link = document.createElement("a");
+      link.href = canvas.toDataURL("image/png");
+      const now = new Date();
+      const pad2 = (value) => String(value).padStart(2, "0");
+      const timestamp = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}`;
+      link.download = `qrcode_${timestamp}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    });
+  }
+  if(qrDetailModalEl){
+    qrDetailModalEl.addEventListener("click", (ev) => {
+      if(ev.target === qrDetailModalEl){
+        closeQrDetailModal();
+      }
+    });
+  }
   const setExecutionStatus = (...args) => {
     hideReadMaskButton();
+    hideQrDetailLink();
     rawSetExecutionStatus(...args);
   };
   const normalizeInputBeforeRun = statusManager
@@ -1406,7 +1590,136 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const putDarkModuleCells = (...args) => putDarkModuleCellsCore(...args);
   const putFormatCells = (...args) => putFormatCellsCore(...args);
 
-  async function applyMaskCore(maskIndex = defaultMaskIndex){
+  const scoreMaskPenalty = (darkMatrix) => {
+    if(!Array.isArray(darkMatrix) || !darkMatrix.length || !Array.isArray(darkMatrix[0])){
+      return Number.POSITIVE_INFINITY;
+    }
+    const rows = darkMatrix.length;
+    const cols = darkMatrix[0].length;
+    let score = 0;
+    const penaltyForLine = (getter, length) => {
+      let total = 0;
+      let runColor = null;
+      let runLen = 0;
+      for(let i = 0; i < length; i += 1){
+        const isDark = Boolean(getter(i));
+        if(runColor === null){
+          runColor = isDark;
+          runLen = 1;
+          continue;
+        }
+        if(isDark === runColor){
+          runLen += 1;
+          continue;
+        }
+        if(runLen >= 5){
+          total += 3 + (runLen - 5);
+        }
+        runColor = isDark;
+        runLen = 1;
+      }
+      if(runLen >= 5){
+        total += 3 + (runLen - 5);
+      }
+      return total;
+    };
+    for(let r = 0; r < rows; r += 1){
+      score += penaltyForLine((c) => darkMatrix[r][c], cols);
+    }
+    for(let c = 0; c < cols; c += 1){
+      score += penaltyForLine((r) => darkMatrix[r][c], rows);
+    }
+    for(let r = 0; r < rows - 1; r += 1){
+      for(let c = 0; c < cols - 1; c += 1){
+        const v = darkMatrix[r][c];
+        if(
+          darkMatrix[r][c + 1] === v
+          && darkMatrix[r + 1][c] === v
+          && darkMatrix[r + 1][c + 1] === v
+        ){
+          score += 3;
+        }
+      }
+    }
+    const finderLikeA = [true, false, true, true, true, false, true, false, false, false, false];
+    const finderLikeB = [false, false, false, false, true, false, true, true, true, false, true];
+    const matchesPattern = (getter, start, pattern) => {
+      for(let i = 0; i < pattern.length; i += 1){
+        if(Boolean(getter(start + i)) !== pattern[i]){
+          return false;
+        }
+      }
+      return true;
+    };
+    for(let r = 0; r < rows; r += 1){
+      for(let c = 0; c <= cols - 11; c += 1){
+        if(matchesPattern((idx) => darkMatrix[r][idx], c, finderLikeA) || matchesPattern((idx) => darkMatrix[r][idx], c, finderLikeB)){
+          score += 40;
+        }
+      }
+    }
+    for(let c = 0; c < cols; c += 1){
+      for(let r = 0; r <= rows - 11; r += 1){
+        if(matchesPattern((idx) => darkMatrix[idx][c], r, finderLikeA) || matchesPattern((idx) => darkMatrix[idx][c], r, finderLikeB)){
+          score += 40;
+        }
+      }
+    }
+    let darkCount = 0;
+    const totalCount = rows * cols;
+    for(let r = 0; r < rows; r += 1){
+      for(let c = 0; c < cols; c += 1){
+        if(darkMatrix[r][c]){
+          darkCount += 1;
+        }
+      }
+    }
+    const ratio = (darkCount * 100) / totalCount;
+    const deviationSteps = Math.floor(Math.abs(ratio - 50) / 5);
+    score += deviationSteps * 10;
+    return score;
+  };
+  const chooseBestMaskResult = ({ MASK_FUNCTIONS, isFunctionalKind }) => {
+    const size = Array.isArray(window.boardMatrix) ? window.boardMatrix.length : 25;
+    const isBlackBitFn = (typeof window.isBlackBit === "function")
+      ? window.isBlackBit
+      : ((value) => value > 0);
+    const bitKindFn = (typeof window.bitKind === "function")
+      ? window.bitKind
+      : ((value) => Math.abs(value));
+    let bestIdx = defaultMaskIndex;
+    let bestScore = Number.POSITIVE_INFINITY;
+    const scores = {};
+    for(let maskIdx = MASK_INDEX_MIN; maskIdx <= MASK_INDEX_MAX; maskIdx += 1){
+      const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[maskIdx] === "function") ? MASK_FUNCTIONS[maskIdx] : null;
+      if(!maskFn) continue;
+      const darkMatrix = [];
+      for(let row = 1; row <= size; row += 1){
+        const line = [];
+        for(let col = 1; col <= size; col += 1){
+          const encoded = window.getCell(row, col);
+          if(typeof encoded !== "number"){
+            line.push(false);
+            continue;
+          }
+          const kind = bitKindFn(encoded);
+          const isFunctional = (typeof isFunctionalKind === "function") ? isFunctionalKind(kind) : false;
+          const shouldFlip = !isFunctional && maskFn(row - 1, col - 1);
+          const isDark = Boolean(isBlackBitFn(encoded));
+          line.push(shouldFlip ? !isDark : isDark);
+        }
+        darkMatrix.push(line);
+      }
+      const score = scoreMaskPenalty(darkMatrix);
+      scores[maskIdx] = score;
+      if(score < bestScore){
+        bestScore = score;
+        bestIdx = maskIdx;
+      }
+    }
+    return { bestIdx, bestScore, scores };
+  };
+  async function applyMaskCore(maskIndex){
     if(!ctx) return false;
     const {
       isStepModeOn,
@@ -1425,8 +1738,14 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       };
     const baseRun = ctx.runId;
     const currentMaskRun = uiState.incrementMaskRunId();
-    let idx = Number(maskIndex);
-    if(!Number.isFinite(idx)){
+    const isAutoMask = (maskIndex === undefined || maskIndex === null || maskIndex === "auto");
+    const maskResult = chooseBestMaskResult({ MASK_FUNCTIONS, isFunctionalKind });
+    const scoreDetail = Array.from({ length: 8 }, (_, i) => `m${i}:${Number.isFinite(maskResult.scores[i]) ? maskResult.scores[i] : "-"}`).join(", ");
+    window.logEvent("applyMask", "score", `マスク評価値 ${scoreDetail}`);
+    let idx = isAutoMask
+      ? maskResult.bestIdx
+      : Number(maskIndex);
+    if(!isAutoMask && !Number.isFinite(idx)){
       idx = defaultMaskIndex;
     }
     if(idx < 0 || idx > 7){
@@ -1434,6 +1753,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       return false;
     }
     window.logEvent("applyMask", idx, `マスク${idx}を適用`);
+    const selectedScore = Number.isFinite(maskResult.scores[idx]) ? maskResult.scores[idx] : null;
+    if(typeof window !== "undefined"){
+      window.lastMaskPenaltyScore = selectedScore;
+    }
     showApiStatus("applyMask", idx);
     const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[idx] === "function") ? MASK_FUNCTIONS[idx] : null;
     if(!maskFn) return false;
@@ -1683,7 +2006,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     return runGuardedExecution(
       { kind: "applyMask" },
-      () => applyMaskCore(normalized.index),
+      () => applyMaskCore(normalized.auto ? undefined : normalized.index),
     );
   };
   async function drawBasePatternsCore(ctx, { deferFlush = false, currentRun, resetDelay = false } = {}){
@@ -1934,7 +2257,18 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(arg === undefined){
       maskOk = await applyMask();
     }else if(typeof arg === "object" && arg !== null){
-      maskOk = await applyMask(arg.maskIndex);
+      const autoMaskFlag = (
+        arg.autoMask === true
+        || arg.maskAuto === true
+        || arg.useBestMask === true
+        || arg.maskMode === "auto"
+        || arg.mask === "auto"
+      );
+      if(autoMaskFlag){
+        maskOk = await applyMask();
+      }else{
+        maskOk = await applyMask(arg.maskIndex);
+      }
     }else{
       maskOk = await applyMask(arg);
     }
@@ -1952,6 +2286,20 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
   async function drawQRCode(arg){
     window.logEvent("drawQRCode", arg ?? "", "QRコード描画開始");
+    const shouldResetBeforeCompose = !(
+      typeof arg === "object"
+      && arg !== null
+      && (arg.noReset === true || arg.reset === false)
+    );
+    if(shouldResetBeforeCompose){
+      const resetResult = resetBoard({ resetData: true });
+      if(resetResult && isFunction(resetResult.then)){
+        const resetOk = await resetResult;
+        if(resetOk === false) return false;
+      }else if(resetResult === false){
+        return false;
+      }
+    }
     const composed = await composeQRCode(arg);
     if(!composed) return false;
     renderQRCode();
@@ -2055,6 +2403,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(ev.repeat) return;
     const asciiModal = document.getElementById("asciiModal");
     if(asciiModal && !asciiModal.classList.contains("hidden")) return;
+    const qrDetailModal = document.getElementById("qrDetailModal");
+    if(qrDetailModal && !qrDetailModal.classList.contains("hidden")){
+      qrDetailModal.classList.add("hidden");
+      ev.preventDefault();
+      return;
+    }
     stopAndReset();
     ev.preventDefault();
   });
@@ -2076,6 +2430,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       reason: result.reason || (result.ok ? "ok" : "rs_mismatch"),
       maskIndex: result.maskIndex,
       decoded: result.text,
+      modeValue: result.modeValue,
+      dataCodewords: result.dataCodewords,
       match,
       preMaskLikely,
       stats: result.stats,
@@ -2113,6 +2469,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(!inputCheck.ok){
       return;
     }
+    lastQrDetailPayload = null;
     if((forceAutoResetOnce || autoResetOnRun) && !resetHandled && !skipAutoResetOnce){
       const resetWait = resetBoard({ resetData: true });
       if(resetWait && isFunction(resetWait.then)){
@@ -2178,10 +2535,82 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
               ? "正しいQRコードの配置です。"
               : (outcome.match ? "読み取れる正しいQRコードです。" : "この盤面はQRコードとして読み取れません。"))
             : "";
+          const scoreValue = (typeof window !== "undefined" && Number.isFinite(window.lastMaskPenaltyScore))
+            ? window.lastMaskPenaltyScore
+            : null;
+          const boardSize = Array.isArray(window.boardMatrix) ? window.boardMatrix.length : 0;
+          const versionValue = ((boardSize - 17) % 4 === 0 && boardSize > 0)
+            ? Math.trunc((boardSize - 17) / 4)
+            : null;
+          const ecLevelBits = Number(outcome?.stats?.formatErrorLevel);
+          const ecLevelMap = {
+            0: "M",
+            1: "L",
+            2: "H",
+            3: "Q",
+          };
+          const errorLevelText = Number.isFinite(ecLevelBits) && Object.prototype.hasOwnProperty.call(ecLevelMap, ecLevelBits)
+            ? `${ecLevelMap[ecLevelBits]} (${ecLevelBits.toString(2).padStart(2, "0")})`
+            : "-";
+          const modeValue = Number(outcome?.modeValue);
+          const modeMap = {
+            0b0001: "Numeric",
+            0b0010: "Alphanumeric",
+            0b0100: "Byte",
+            0b1000: "Kanji",
+            0b0111: "ECI",
+            0b0011: "Structured Append",
+            0b0101: "FNC1 (1st)",
+            0b1001: "FNC1 (2nd)",
+          };
+          const modeName = Number.isFinite(modeValue) && Object.prototype.hasOwnProperty.call(modeMap, modeValue)
+            ? modeMap[modeValue]
+            : "Unknown";
+          const modeText = Number.isFinite(modeValue)
+            ? `${modeName} (${modeValue.toString(2).padStart(4, "0")})`
+            : "-";
+          const dataBytes = Array.isArray(outcome?.dataCodewords)
+            ? outcome.dataCodewords.filter((value) => Number.isFinite(value)).map((value) => Number(value) & 0xff)
+            : [];
+          const hexDump = dataBytes.length
+            ? dataBytes.map((value) => value.toString(16).toUpperCase().padStart(2, "0")).join(" ")
+            : "";
+          const hasBinaryLike = dataBytes.some((value) => (
+            (value < 0x20 && value !== 0x09 && value !== 0x0A && value !== 0x0D)
+            || value === 0x7F
+            || value >= 0x80
+          ));
+          const decodedText = (typeof outcome?.decoded === "string") ? outcome.decoded : "";
+          const decodedDisplay = hasBinaryLike
+            ? (decodedText
+              ? `HEX: ${hexDump}\nTEXT: ${decodedText}`
+              : `HEX: ${hexDump || "-"}`)
+            : (decodedText || (hexDump ? `HEX: ${hexDump}` : "-"));
+          if(outcome){
+            lastQrDetailPayload = {
+              label: outcome.preMaskLikely
+                ? "正しいQRコードの配置です。"
+                : (outcome.match ? "読み取れる正しいQRコードです。" : "この盤面はQRコードとして読み取れません。"),
+              input: String(txtInput?.value ?? ""),
+              versionText: (versionValue !== null) ? `Version ${versionValue} (${boardSize}x${boardSize})` : "-",
+              modeText,
+              errorLevelText,
+              decoded: decodedDisplay,
+              matchText: outcome.preMaskLikely ? "-" : (outcome.match ? "一致" : "不一致"),
+              maskIndexText: (typeof outcome.maskIndex === "number") ? String(outcome.maskIndex) : "-",
+              scoreText: (scoreValue !== null) ? String(scoreValue) : "-",
+              reasonText: String(outcome.reason ?? "-"),
+            };
+          }else{
+            lastQrDetailPayload = null;
+          }
           if(outcome && !outcome.match && !outcome.preMaskLikely){
             setExecutionStatus("warning", undefined, verificationDetail);
           }else{
             setExecutionStatus("finished", undefined, verificationDetail);
+            if(outcome && outcome.match && !outcome.preMaskLikely){
+              showQrDetailLink();
+            }
             if(outcome && outcome.preMaskLikely){
               showReadMaskButton();
             }
@@ -2318,6 +2747,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     link.remove();
     return true;
   };
+  if(btnDownloadQr){
+    btnDownloadQr.style.display = "none";
+  }
   if(btnDownloadQr){
     btnDownloadQr.addEventListener("click", () => {
       const verifyService = globalThis.qrVerifyService;

@@ -267,7 +267,7 @@
   }
 
   function decodeTextFromBits(bits){
-    if(bits.length < 12) return { ok: false, text: null };
+    if(bits.length < 12) return { ok: false, text: null, modeValue: null };
     let offset = 0;
     const take = (count) => {
       const slice = bits.slice(offset, offset + count);
@@ -280,21 +280,21 @@
       return chunk.reduce((acc, bit) => (acc << 1) | (bit ? 1 : 0), 0);
     };
     const modeValue = readBits(4);
-    if(modeValue !== 0b0100) return { ok: false, text: null };
+    if(modeValue !== 0b0100) return { ok: false, text: null, modeValue };
     const length = readBits(8);
-    if(length === null) return { ok: false, text: null };
+    if(length === null) return { ok: false, text: null, modeValue };
     if(!Number.isFinite(length) || length < 0){
-      return { ok: false, text: null };
+      return { ok: false, text: null, modeValue };
     }
     const chars = [];
     for(let i = 0; i < length; i++){
       const code = readBits(8);
       if(code === null){
-        return { ok: false, text: null };
+        return { ok: false, text: null, modeValue };
       }
       chars.push(String.fromCharCode(code));
     }
-    return { ok: chars.length === length, text: chars.join("") };
+    return { ok: chars.length === length, text: chars.join(""), modeValue };
   }
 
   function readFormatBitsFrom(coords){
@@ -367,6 +367,7 @@
       ok: ecMatch && decoded.ok,
       reason,
       text: decoded.text,
+      modeValue: decoded.modeValue,
       dataCodewords,
       parityBytes,
       computedEc,
@@ -389,6 +390,7 @@
     return {
       ok: ecMatch && decoded.ok,
       text: decoded.text,
+      modeValue: decoded.modeValue,
       dataCodewords,
       parityBytes,
       computedEc,

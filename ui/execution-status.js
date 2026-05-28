@@ -103,7 +103,8 @@
         return;
       }
       const target = executionStatusTextEl || executionStatusEl;
-      target.textContent = buildExecutionStatusText(state, message, detail, options);
+      const statusText = buildExecutionStatusText(state, message, detail, options);
+      renderExecutionStatusText(target, statusText, options);
       executionStatusEl.className = `execution-status status-${state}`;
       if(typeof onAfterStatusUpdate === "function"){
         callIfFunction(onAfterStatusUpdate, { state, message, detail });
@@ -124,6 +125,21 @@
     };
     const resetDataPatternStage = () => {
       currentDataPatternStage = null;
+    };
+    const renderExecutionStatusText = (target, text, options = {}) => {
+      if(!target) return;
+      const resolved = (typeof text === "string") ? text : String(text ?? "");
+      const metaSuffix = (typeof options.metaSuffix === "string") ? options.metaSuffix.trim() : "";
+      target.textContent = "";
+      const mainSpan = document.createElement("span");
+      mainSpan.textContent = resolved;
+      target.appendChild(mainSpan);
+      if(metaSuffix){
+        const metaSpan = document.createElement("span");
+        metaSpan.className = "execution-status-meta";
+        metaSpan.textContent = ` ${metaSuffix}`;
+        target.appendChild(metaSpan);
+      }
     };
 
     const INPUT_MAX_LENGTH = Number(inputMaxLength ?? txtInput?.getAttribute("maxlength")) || 32;
