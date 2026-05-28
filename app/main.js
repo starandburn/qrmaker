@@ -717,6 +717,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   let readMaskLinkEl = null;
   let qrDetailLinkEl = null;
   let lastQrDetailPayload = null;
+  let verificationSequence = 0;
   let qrDetailPreviewCanvas = null;
   const hideReadMaskButton = () => {
     if(readMaskLinkEl && readMaskLinkEl.isConnected){
@@ -2441,6 +2442,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   };
 
   btnGenerate.addEventListener("click", async (ev) => {
+    const currentVerificationSequence = ++verificationSequence;
     const clickForceAutoReset = Boolean(ev?.ctrlKey) && !Boolean(ev?.shiftKey);
     const clickSkipAutoReset = Boolean(ev?.shiftKey) && !Boolean(ev?.ctrlKey);
     const skipAutoResetOnce = clickSkipAutoReset || Boolean(window.__skipAutoResetOnRunOnce);
@@ -2468,6 +2470,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     const inputCheck = normalizeInputBeforeRun();
     if(!inputCheck.ok){
       return;
+    }
+    if(typeof window !== "undefined"){
+      window.lastMaskPenaltyScore = null;
     }
     lastQrDetailPayload = null;
     if((forceAutoResetOnce || autoResetOnRun) && !resetHandled && !skipAutoResetOnce){
@@ -2628,12 +2633,15 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       historyController.finalizeRunHistoryEntry(runOk);
       if(runOk){
         (async () => {
+          if(currentVerificationSequence !== verificationSequence) return;
           if(!shouldStepRun){
             await new Promise((resolve) => setTimeout(resolve, 0));
           }
+          if(currentVerificationSequence !== verificationSequence) return;
           try{
             const verifyStart = perfNow();
             verificationOutcome = logVerificationOutcome();
+            if(currentVerificationSequence !== verificationSequence) return;
             verifyDurationMs = Math.max(0, perfNow() - verifyStart);
             callIfFunction(
               window.logEvent,
@@ -2641,6 +2649,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
               JSON.stringify({ ms: Math.round(verifyDurationMs) }),
               "検証時間",
             );
+            if(currentVerificationSequence !== verificationSequence) return;
             applyExecutionStatus(verificationOutcome);
           }catch(err){
             callIfFunction(
