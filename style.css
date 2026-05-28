@@ -936,19 +936,19 @@ details.pattern-panel:not([open]) .summary-title::before{
   display:grid;
   grid-auto-flow:column;
   grid-auto-columns:12px;
-  column-gap:2px; /* 1bit境界 */
+  column-gap:2px; /* 1-bit spacing */
 }
 
 .bit-strip.small{
   grid-auto-columns:12px;
-  column-gap:2px; /* 1bit境界 */
+  column-gap:2px; /* 1-bit spacing */
 }
 
 .bit-spacer{
-  width:2px; /* 4bit境界: gapを半分に */
+  width:2px; /* 4-bit spacer: reduce visual gap */
 }
 .bit-strip.small .bit-spacer{
-  width:1.5px; /* 4bit境界: gapを半分に */
+  width:1.5px; /* 4-bit spacer: reduce visual gap */
 }
 
 .bit-cell{
@@ -1105,7 +1105,7 @@ details.pattern-panel:not([open]) .summary-title::before{
 }
 
 
-/* エディタの各行に薄い点線（1行ごと） */
+/* Underline effect inside the editor line area */
 #userCodeEditor .cm-content .cm-line {
   border-bottom: 1px dotted rgba(0, 0, 0, 0.18);
 }

@@ -1,10 +1,9 @@
 /**
- * [役割] Alignment pattern drawing
- * [入力] ctx, runToken, helpers
- * [副作用] writes 5x5 alignment cells, cursor updates when stepping
- * [中断] executionControl.shouldAbort のみで中断判定
- * [非対象] data placement, mask, UI, URL, history
- * [公開] window.alignmentPattern: putAlignmentCells, drawAlignmentPatterns
+ * [Purpose] Alignment pattern drawing
+ * [Inputs] ctx, runToken, helpers
+ * [Outputs] writes 5x5 alignment cells, cursor updates when stepping
+ * [Abort] executionControl.shouldAbort only
+ * [Exports] window.alignmentPattern: putAlignmentCells, drawAlignmentPatterns
  */
 (function(global){
   if(!global) return;
@@ -159,12 +158,6 @@
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runVal = (typeof currentRun === "number") ? currentRun : ctx.runId;
     const opts = { stepEnabled: resolvedStep, currentRun: runVal };
-    /*
-     * [前提] Alignment base is fixed at (19,19) on the 25x25 board used here.
-     * [理由] QR version and teaching setup use the lower-right finder corner as anchor.
-     * [影響] Any board resizing or version change would misplace this updateCursor call.
-     * [将来] Derive center positions from ctx metadata instead of hard-coding.
-     */
     updateCursor(19, 19, DIR_RIGHT);
     await putAlignmentCells(ctx, overwrite, opts);
     return true;

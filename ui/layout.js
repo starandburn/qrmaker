@@ -789,11 +789,11 @@ const updateCodeActionButtonLabels = () => {
   const canSingleNormal = (titleWidth + spacer + toolbarNormalWidth) <= rowWidth;
   const canSingleCompact = (titleWidth + spacer + toolbarCompactWidth) <= rowWidth;
   const canStackNormal = titleWidth <= rowWidth && toolbarNormalWidth <= rowWidth;
-  // 優先順:
-  // 0. 1行 + 通常
-  // 1. 1行 + 短縮
-  // 2. 2行 + 通常
-  // 3. 2行 + 短縮
+  // Grid combinations:
+  // 0. 1 column + vertical
+  // 1. 1 column + horizontal
+  // 2. 2 columns + vertical
+  // 3. 2 columns + horizontal
   if(canSingleNormal){
     codePanelElement.classList.remove("compact-title-actions");
     setCodeActionButtonText(false);
@@ -924,5 +924,5 @@ if(typeof window.refreshPatternIfPanelOpen !== "function"){
   window.refreshPatternIfPanelOpen = refreshPatternIfPanelOpen;
 }
 /**
- * レイアウト周りの定数/表示トグル/パターン出力ロジックをまとめたモジュール。
+  * Module that composes layout constants, toggle controls, and panel rendering helpers.
  */

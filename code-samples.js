@@ -37,7 +37,7 @@ mask
   {
     label: "6",
     code: `
-// ?&a=1&u=0&x=1&t=1 で実行
+// Base sample for URL flags: ?&a=1&u=0&x=1&t=1
 base
 move y25
 red on

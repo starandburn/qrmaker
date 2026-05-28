@@ -1,5 +1,5 @@
 /**
- * ユーザーコードの同期・構文チェック・実行（ステップ/通常）の機構を提供するモジュール。
+ * User-code runner module with execution orchestration and safety checks.
  */
 (function(global){
   if(!global) return;

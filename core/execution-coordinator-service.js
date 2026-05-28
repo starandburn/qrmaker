@@ -1,5 +1,5 @@
 /**
- * 実行協調サービスのための関数を提供する。
+ * Service helpers for coordinating guarded execution flows.
  */
 (function(global){
   if(!global) return;

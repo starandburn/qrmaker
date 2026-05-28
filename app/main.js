@@ -29,7 +29,7 @@ const REQUIRED_KEYS = [
 ];
 
 /**
- * 実行環境を初期化し、UI/状態/描画APIの依存を束ねるメイン関数。
+ * Main entry point that initializes the runtime and wires UI/state/render API dependencies.
  */
 function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   if(!urlState){

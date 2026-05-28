@@ -1,10 +1,10 @@
 /**
- * [役割] Timing pattern drawing (horizontal/vertical lines)
- * [入力] ctx, runToken, direction/index, helpers
- * [副作用] writes timing bits, updates cursor when stepping
- * [中断] executionControl.shouldAbort のみで中断判定
- * [非対象] data placement, mask, UI, URL, history
- * [公開] window.timingPattern: putTimingCells, drawTimingPatterns
+ * [Purpose] Timing pattern drawing (horizontal/vertical lines)
+ * [Inputs] ctx, runToken, direction/index, helpers
+ * [Outputs] writes timing bits, updates cursor when stepping
+ * [Abort] executionControl.shouldAbort only
+ * [Exports] window.timingPattern: putTimingCells, drawTimingPatterns
+ * [Exports] window.timingPattern: putTimingCells, drawTimingPatterns
  */
 (function(global){
   if(!global) return;

@@ -1,5 +1,5 @@
 /**
- * デバッグパネル表示/ログ同期処理をまとめたモジュール
+ * Debug UI module for debug panel rendering and log visibility controls.
  */
 (function(global){
   if(!global) return;

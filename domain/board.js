@@ -1,5 +1,5 @@
 /**
- * マスの座標/方向・カーソル制御・セル更新を担う board モジュール。
+ * Board domain module for cursor movement, cell operations, and board state updates.
  */
 const DIR_UP = "up";
 const DIR_RIGHT = "right";
@@ -1486,7 +1486,7 @@ function turnCursor(dirArg){
       result: targetDir,
     };
     if(typeof window.logEvent === "function"){
-      // window.logEvent("turnCursor", JSON.stringify(logPayload), "回転");
+      // window.logEvent("turnCursor", JSON.stringify(logPayload), "turn");
     }
     return callMakeStepThenable();
   }
@@ -1518,7 +1518,7 @@ function turnCursor(dirArg){
     result: targetDir,
   };
   if(typeof window.logEvent === "function"){
-    // window.logEvent("turnCursor", JSON.stringify(logPayload), "回転");
+    // window.logEvent("turnCursor", JSON.stringify(logPayload), "turn");
   }
   return callMakeStepThenable();
 }

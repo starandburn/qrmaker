@@ -1,5 +1,5 @@
 /**
- * QRコードのビット種別や符号化・パリティ計算を扱うドメインロジック。
+ * QR core domain constants and helpers for bit encoding and parity calculation.
  */
 const BIT_UNPLACED = -1;
 const BIT_WHITE = 0;

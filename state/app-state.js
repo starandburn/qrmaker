@@ -1,5 +1,5 @@
 /**
- * アプリ全体の共有状態（history/pattern/debugVisible）を管理するシンプルなストア。
+ * Central app-state store for UI visibility and panel/history flags.
  */
 (function(global){
   if(!global) return;

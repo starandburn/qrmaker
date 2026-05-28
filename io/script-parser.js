@@ -1,5 +1,5 @@
 /**
- * 学習用スクリプト（英語キーワード→内部API）を解析/変換するパーサ実装。
+ * Script parser for command tokenization and parsing helpers.
  */
 (function(global){
   if(!global) return;

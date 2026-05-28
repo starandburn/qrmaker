@@ -1,5 +1,5 @@
 /**
- * データビット配置ループを切り出したサービス。ステップモード/中断チェックと描画タイミングを含む。
+ * Service that places encoded data bits into QR matrix cells with traversal rules.
  */
 (function(global){
   if(!global) return;

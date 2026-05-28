@@ -1,5 +1,5 @@
 /**
- * データエンコーディングサービスのための関数を提供する。
+ * Service functions for QR data encoding and bit preparation.
  */
 (function(global){
   if(!global) return;

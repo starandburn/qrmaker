@@ -1,6 +1,5 @@
 /**
- * QR検証サービス
- * 盤面の正負から暗号ビット列を復元し、RS検証／デコードを試みる検証サービス。
+ * QR verification service that decodes board state and validates RS parity.
  */
 (function(global){
   if(!global) return;
