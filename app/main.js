@@ -1028,7 +1028,20 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     drawFormatPatterns: { l2: "基本パターン", l3: "フォーマットパターンを描画しています。" },
     applyMaskFormat: { l2: "マスク", l3: "フォーマットパターンを更新しています。" },
     verify: { l2: "QRコード検証", l3: "作成中" },
-    applyMask: (maskIndex) => ({ l2: "マスク", l3: `マスク${maskIndex}を適用しています。` }),
+    applyMask: (payload) => {
+      if(payload && typeof payload === "object"){
+        if(payload.stage === "evaluate"){
+          return { l2: "マスク", l3: `マスク${payload.maskIndex}を評価しています。` };
+        }
+        if(payload.stage === "score"){
+          return { l2: "マスク", l3: `マスク${payload.maskIndex}の評価値：${payload.score}` };
+        }
+        if(payload.stage === "select"){
+          return { l2: "マスク", l3: `マスク${payload.maskIndex}を選択します。` };
+        }
+      }
+      return { l2: "マスク", l3: `マスク${payload}を適用しています。` };
+    },
   };
   const cursorUI = (isFunction(safeWindow?.createExecutionStatusCursor))
     ? safeWindow.createExecutionStatusCursor({
@@ -1692,7 +1705,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     score += deviationSteps * 10;
     return score;
   };
-  const chooseBestMaskResult = ({ MASK_FUNCTIONS, isFunctionalKind }) => {
+  const chooseBestMaskResult = ({ MASK_FUNCTIONS, isFunctionalKind, onEvaluate, onScore }) => {
     const size = Array.isArray(window.boardMatrix) ? window.boardMatrix.length : 25;
     const isBlackBitFn = (typeof window.isBlackBit === "function")
       ? window.isBlackBit
@@ -1706,6 +1719,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     for(let maskIdx = MASK_INDEX_MIN; maskIdx <= MASK_INDEX_MAX; maskIdx += 1){
       const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[maskIdx] === "function") ? MASK_FUNCTIONS[maskIdx] : null;
       if(!maskFn) continue;
+      callIfFunction(onEvaluate, maskIdx);
       const darkMatrix = [];
       for(let row = 1; row <= size; row += 1){
         const line = [];
@@ -1725,6 +1739,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }
       const score = scoreMaskPenalty(darkMatrix);
       scores[maskIdx] = score;
+      callIfFunction(onScore, maskIdx, score);
       if(score < bestScore){
         bestScore = score;
         bestIdx = maskIdx;
@@ -1752,7 +1767,206 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     const baseRun = ctx.runId;
     const currentMaskRun = uiState.incrementMaskRunId();
     const isAutoMask = (maskIndex === undefined || maskIndex === null || maskIndex === "auto");
-    const maskResult = chooseBestMaskResult({ MASK_FUNCTIONS, isFunctionalKind });
+    const stepMask = (typeof isStepModeOn === "function" ? isStepModeOn() : false)
+      && !(stepSkipFunctions && stepSkipFunctions.checked);
+    const shouldAbort = () => executionControl.shouldAbort(baseRun, ctx, () => currentMaskRun !== ctx.maskRunId);
+    const updateCursorSafe = (row, col, dir = DIR_RIGHT) => executionControl.updateCursorSafe(
+      baseRun,
+      ctx,
+      row,
+      col,
+      dir,
+      () => currentMaskRun !== ctx.maskRunId,
+    );
+    const getMaskTargets = (maskFn, size) => {
+      const targets = [];
+      for(let row = 1; row <= size; row += 1){
+        for(let col = 1; col <= size; col += 1){
+          const encoded = window.getCell(row, col);
+          if(typeof encoded !== "number") continue;
+          const kind = (typeof window.bitKind === "function") ? window.bitKind(encoded) : Math.abs(encoded);
+          if(typeof isFunctionalKind === "function" && isFunctionalKind(kind)) continue;
+          if(maskFn(row - 1, col - 1)){
+            targets.push([row, col]);
+          }
+        }
+      }
+      return targets;
+    };
+    const evaluateMaskScoreFromBoard = (size) => {
+      const isBlackBitFn = (typeof window.isBlackBit === "function")
+        ? window.isBlackBit
+        : ((value) => value > 0);
+      const darkMatrix = [];
+      for(let row = 1; row <= size; row += 1){
+        const line = [];
+        for(let col = 1; col <= size; col += 1){
+          const encoded = window.getCell(row, col);
+          line.push(typeof encoded === "number" ? Boolean(isBlackBitFn(encoded)) : false);
+        }
+        darkMatrix.push(line);
+      }
+      return scoreMaskPenalty(darkMatrix);
+    };
+    const applyMaskTargetsWithFade = async (targets, { fade = true } = {}) => {
+      const ensureEvalMaskOverlay = () => {
+        if(ctx.maskOverlayEl && ctx.maskOverlayEl.isConnected){
+          return ctx.maskOverlayEl;
+        }
+        const gridArea = document.querySelector(".grid-area");
+        if(!gridArea) return null;
+        const overlay = document.createElement("div");
+        overlay.className = "mask-overlay";
+        const frag = document.createDocumentFragment();
+        for(let i = 0; i < 25 * 25; i += 1){
+          const cell = document.createElement("div");
+          cell.className = "mask-cell";
+          frag.appendChild(cell);
+        }
+        overlay.appendChild(frag);
+        gridArea.appendChild(overlay);
+        ctx.maskOverlayEl = overlay;
+        return overlay;
+      };
+      const applyEvalMaskOverlayColor = (overlay) => {
+        if(!overlay) return;
+        const maskKind = (typeof window.BIT_MASK === "number") ? window.BIT_MASK : 30;
+        const colorName = (typeof window.colorsForKind === "function")
+          ? window.colorsForKind(maskKind)
+          : "gray";
+        if(typeof window.isColorEnabled !== "undefined" && !window.isColorEnabled){
+          overlay.style.setProperty("--mask-overlay-color", "#000");
+          return;
+        }
+        switch(colorName){
+          case "gray":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-gray-dark)");
+            break;
+          case "red":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-red-dark)");
+            break;
+          case "blue":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-blue-dark)");
+            break;
+          case "green":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-green-dark)");
+            break;
+          case "yellow":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-yellow-dark)");
+            break;
+          case "purple":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-purple-dark)");
+            break;
+          case "orange":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-orange-dark)");
+            break;
+          case "format":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-format-blue-dark)");
+            break;
+          default:
+            overlay.style.setProperty("--mask-overlay-color", "#000");
+            break;
+        }
+      };
+      const overlay = ensureEvalMaskOverlay();
+      const stepDelay = (typeof getStepDelay === "function") ? getStepDelay() : 0;
+      const fadeMs = (typeof window.maskFadeDurationMs === "number")
+        ? Math.max(0, window.maskFadeDurationMs)
+        : 250;
+      const holdMs = Math.max(100, stepDelay * 10);
+      if(fade && overlay){
+        const targetSet = new Set(targets.map(([row, col]) => `${row},${col}`));
+        const cells = overlay.children;
+        let i = 0;
+        for(let row = 1; row <= 25; row += 1){
+          for(let col = 1; col <= 25; col += 1){
+            const cellEl = cells[i++];
+            if(!cellEl) continue;
+            if(targetSet.has(`${row},${col}`)){
+              cellEl.classList.add("is-on");
+            }else{
+              cellEl.classList.remove("is-on");
+            }
+          }
+        }
+        applyEvalMaskOverlayColor(overlay);
+        overlay.style.transition = `opacity ${fadeMs}ms linear`;
+        overlay.style.opacity = "0";
+        await new Promise(requestAnimationFrame);
+        await new Promise(requestAnimationFrame);
+        overlay.style.opacity = "1";
+        await sleep(fadeMs);
+      }else if(fade){
+        await sleep(fadeMs);
+      }
+      const prevStepAnim = (typeof window.stepAnimationEnabled === "boolean")
+        ? window.stepAnimationEnabled
+        : undefined;
+      window.stepAnimationEnabled = false;
+      try{
+        for(const [row, col] of targets){
+          if(shouldAbort()) return false;
+          invertCell(row, col);
+        }
+      }finally{
+        if(prevStepAnim === undefined){
+          delete window.stepAnimationEnabled;
+        }else{
+          window.stepAnimationEnabled = prevStepAnim;
+        }
+      }
+      if(fade && holdMs > 0){
+        await sleep(holdMs);
+      }
+      if(fade && overlay){
+        overlay.style.transition = `opacity ${fadeMs}ms linear`;
+        overlay.style.opacity = "1";
+        await new Promise(requestAnimationFrame);
+        await new Promise(requestAnimationFrame);
+        overlay.style.opacity = "0";
+        await sleep(fadeMs);
+        overlay.style.transition = "";
+        overlay.style.opacity = "";
+        overlay.offsetHeight;
+      }
+      return !shouldAbort();
+    };
+    let maskResult;
+    if(stepMask && isAutoMask){
+      const size = Array.isArray(window.boardMatrix) ? window.boardMatrix.length : 25;
+      const scores = {};
+      let bestIdx = defaultMaskIndex;
+      let bestScore = Number.POSITIVE_INFINITY;
+      for(let maskIdx = MASK_INDEX_MIN; maskIdx <= MASK_INDEX_MAX; maskIdx += 1){
+        const maskFnCandidate = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[maskIdx] === "function") ? MASK_FUNCTIONS[maskIdx] : null;
+        if(!maskFnCandidate) continue;
+        showApiStatus("applyMask", { stage: "evaluate", maskIndex: maskIdx });
+        const targets = getMaskTargets(maskFnCandidate, size);
+        const applied = await applyMaskTargetsWithFade(targets, { fade: true });
+        if(!applied) return false;
+        const score = evaluateMaskScoreFromBoard(size);
+        scores[maskIdx] = score;
+        showApiStatus("applyMask", { stage: "score", maskIndex: maskIdx, score });
+        if(score < bestScore){
+          bestScore = score;
+          bestIdx = maskIdx;
+        }
+        const reverted = await applyMaskTargetsWithFade(targets, { fade: false });
+        if(!reverted) return false;
+      }
+      maskResult = { bestIdx, bestScore, scores };
+    }else{
+      maskResult = chooseBestMaskResult({
+        MASK_FUNCTIONS,
+        isFunctionalKind,
+        onEvaluate: (maskIdx) => {
+          showApiStatus("applyMask", { stage: "evaluate", maskIndex: maskIdx });
+        },
+        onScore: (maskIdx, score) => {
+          showApiStatus("applyMask", { stage: "score", maskIndex: maskIdx, score });
+        },
+      });
+    }
     const scoreDetail = Array.from({ length: 8 }, (_, i) => `m${i}:${Number.isFinite(maskResult.scores[i]) ? maskResult.scores[i] : "-"}`).join(", ");
     window.logEvent("applyMask", "score", `マスク評価値 ${scoreDetail}`);
     let idx = isAutoMask
@@ -1770,20 +1984,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(typeof window !== "undefined"){
       window.lastMaskPenaltyScore = selectedScore;
     }
+    showApiStatus("applyMask", { stage: "select", maskIndex: idx });
     showApiStatus("applyMask", idx);
     const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[idx] === "function") ? MASK_FUNCTIONS[idx] : null;
     if(!maskFn) return false;
-    const stepMask = (typeof isStepModeOn === "function" ? isStepModeOn() : false)
-      && !(stepSkipFunctions && stepSkipFunctions.checked);
-    const shouldAbort = () => executionControl.shouldAbort(baseRun, ctx, () => currentMaskRun !== ctx.maskRunId);
-    const updateCursorSafe = (row, col, dir = DIR_RIGHT) => executionControl.updateCursorSafe(
-      baseRun,
-      ctx,
-      row,
-      col,
-      dir,
-      () => currentMaskRun !== ctx.maskRunId,
-    );
     const prevCursor = { row: cursorPos.row, col: cursorPos.col, dir: cursorPos.dir };
     const maskCursorDir = stepMask ? DIR_RIGHT : prevCursor.dir;
     const prevRender = ctx.renderMode;
