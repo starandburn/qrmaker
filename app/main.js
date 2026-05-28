@@ -1827,7 +1827,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       const delayMs = Math.max(0, Math.min(120, Number(stepDelay) || 0));
       return 0.5 + (1.5 * (delayMs / 120));
     };
-    const applyMaskTargetsWithFade = async (targets, { fade = true } = {}) => {
+    const applyMaskTargetsWithFade = async (targets, { mode = "apply" } = {}) => {
       const ensureEvalMaskOverlay = () => {
         if(ctx.maskOverlayEl && ctx.maskOverlayEl.isConnected){
           return ctx.maskOverlayEl;
@@ -1890,9 +1890,29 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       const overlay = ensureEvalMaskOverlay();
       const stepDelay = resolveMaskStepDelay();
       const tempoScale = resolveMaskTempoScale(stepDelay);
-      const fadeMs = Math.max(50, Math.round(resolveMaskFadeMs(stepDelay) * tempoScale));
-      const holdMs = Math.max(50, Math.round(Math.max(100, stepDelay * 10) * tempoScale));
-      if(fade && overlay){
+      const nMs = Math.max(50, Math.round(resolveMaskFadeMs(stepDelay) * tempoScale));
+      const halfMs = Math.max(25, Math.round(nMs / 2));
+      const invertTargets = async () => {
+        const prevStepAnim = (typeof window.stepAnimationEnabled === "boolean")
+          ? window.stepAnimationEnabled
+          : undefined;
+        window.stepAnimationEnabled = false;
+        try{
+          for(const [row, col] of targets){
+            if(shouldAbort()) return false;
+            invertCell(row, col);
+          }
+        }finally{
+          if(prevStepAnim === undefined){
+            delete window.stepAnimationEnabled;
+          }else{
+            window.stepAnimationEnabled = prevStepAnim;
+          }
+        }
+        return !shouldAbort();
+      };
+      const syncOverlayMaskCells = () => {
+        if(!overlay) return;
         const targetSet = new Set(targets.map(([row, col]) => `${row},${col}`));
         const cells = overlay.children;
         let i = 0;
@@ -1907,45 +1927,62 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
             }
           }
         }
+      };
+      syncOverlayMaskCells();
+      if(overlay){
         applyEvalMaskOverlayColor(overlay);
-        overlay.style.transition = `opacity ${fadeMs}ms linear`;
-        overlay.style.opacity = "0";
-        await new Promise(requestAnimationFrame);
-        await new Promise(requestAnimationFrame);
-        overlay.style.opacity = "1";
-        await sleep(fadeMs);
-      }else if(fade){
-        await sleep(fadeMs);
       }
-      const prevStepAnim = (typeof window.stepAnimationEnabled === "boolean")
-        ? window.stepAnimationEnabled
-        : undefined;
-      window.stepAnimationEnabled = false;
-      try{
-        for(const [row, col] of targets){
-          if(shouldAbort()) return false;
-          invertCell(row, col);
+      if(mode === "revert"){
+        const revertFadeMs = Math.max(120, halfMs);
+        let fadePromise = null;
+        if(overlay){
+          overlay.style.transition = "";
+          overlay.style.opacity = "1";
+          overlay.offsetHeight;
+          const anim = overlay.animate(
+            [{ opacity: 1 }, { opacity: 0 }],
+            { duration: revertFadeMs, easing: "linear", fill: "forwards" },
+          );
+          fadePromise = anim.finished.catch(() => {});
         }
-      }finally{
-        if(prevStepAnim === undefined){
-          delete window.stepAnimationEnabled;
+        const okRevert = await invertTargets();
+        if(!okRevert) return false;
+        if(fadePromise){
+          await fadePromise;
         }else{
-          window.stepAnimationEnabled = prevStepAnim;
+          await sleep(revertFadeMs);
         }
+        await sleep(halfMs);
+        if(overlay){
+          overlay.style.opacity = "";
+          overlay.offsetHeight;
+        }
+        return !shouldAbort();
       }
-      if(fade && holdMs > 0){
-        await sleep(holdMs);
-      }
-      if(fade && overlay){
-        overlay.style.transition = `opacity ${fadeMs}ms linear`;
-        overlay.style.opacity = "1";
-        await new Promise(requestAnimationFrame);
-        await new Promise(requestAnimationFrame);
-        overlay.style.opacity = "0";
-        await sleep(fadeMs);
+      if(overlay){
         overlay.style.transition = "";
+        overlay.style.opacity = "0";
+        overlay.offsetHeight;
+        const animIn = overlay.animate(
+          [{ opacity: 0 }, { opacity: 1 }],
+          { duration: halfMs, easing: "linear", fill: "forwards" },
+        );
+        await animIn.finished.catch(() => {});
+      }else{
+        await sleep(halfMs);
+      }
+      const okApply = await invertTargets();
+      if(!okApply) return false;
+      if(overlay){
+        const animOut = overlay.animate(
+          [{ opacity: 1 }, { opacity: 0 }],
+          { duration: nMs, easing: "linear", fill: "forwards" },
+        );
+        await animOut.finished.catch(() => {});
         overlay.style.opacity = "";
         overlay.offsetHeight;
+      }else{
+        await sleep(nMs);
       }
       return !shouldAbort();
     };
@@ -1960,7 +1997,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         if(!maskFnCandidate) continue;
         showApiStatus("applyMask", { stage: "evaluate", maskIndex: maskIdx });
         const targets = getMaskTargets(maskFnCandidate, size);
-        const applied = await applyMaskTargetsWithFade(targets, { fade: true });
+        const applied = await applyMaskTargetsWithFade(targets, { mode: "apply" });
         if(!applied) return false;
         const score = evaluateMaskScoreFromBoard(size);
         scores[maskIdx] = score;
@@ -1969,7 +2006,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
           bestScore = score;
           bestIdx = maskIdx;
         }
-        const reverted = await applyMaskTargetsWithFade(targets, { fade: false });
+        const reverted = await applyMaskTargetsWithFade(targets, { mode: "revert" });
         if(!reverted) return false;
       }
       maskResult = { bestIdx, bestScore, scores };
@@ -2137,41 +2174,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
           : undefined;
         restoreStepAnim = true;
         window.stepAnimationEnabled = false;
-        const overlay = ensureMaskOverlay();
-        applyMaskOverlayColor(overlay);
-        updateMaskOverlay(overlay);
-        const stepDelay = resolveMaskStepDelay();
-        const tempoScale = resolveMaskTempoScale(stepDelay);
-        const fadeMs = Math.max(50, Math.round(resolveMaskFadeMs(stepDelay) * tempoScale));
-        const holdMs = Math.max(50, Math.round(Math.max(100, stepDelay * 10) * tempoScale));
-        if(overlay){
-          overlay.style.transition = `opacity ${fadeMs}ms linear`;
-          overlay.style.opacity = "0";
-          await new Promise(requestAnimationFrame);
-          await new Promise(requestAnimationFrame);
-          overlay.style.opacity = "1";
-          await sleep(fadeMs);
-        }else{
-          await sleep(fadeMs);
-        }
-        if(shouldAbort()) return false;
-        completed = applyMaskBatch();
+        const targets = getMaskTargets(maskFn, 25);
+        completed = await applyMaskTargetsWithFade(targets, { mode: "apply" });
         if(!completed) return false;
-        if(holdMs > 0){
-          await sleep(holdMs);
-        }
-        if(overlay){
-          overlay.style.transition = `opacity ${fadeMs}ms linear`;
-          overlay.style.opacity = "1";
-          await new Promise(requestAnimationFrame);
-          await new Promise(requestAnimationFrame);
-          overlay.style.opacity = "0";
-          await sleep(fadeMs);
-          overlay.style.transition = "";
-          overlay.style.opacity = "";
-          overlay.offsetHeight;
-        }
-        completed = !shouldAbort();
       }else{
       for(let row = 1; row <= 25; row++){
         for(let col = 1; col <= 25; col++){
@@ -2207,6 +2212,24 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         showApiStatus("applyMask", idx);
       }
     }finally{
+      if(ctx.maskOverlayEl){
+        try{
+          const animations = (typeof ctx.maskOverlayEl.getAnimations === "function")
+            ? ctx.maskOverlayEl.getAnimations()
+            : [];
+          for(const anim of animations){
+            if(anim && typeof anim.cancel === "function"){
+              anim.cancel();
+            }
+          }
+        }catch(_err){
+          // ignore animation cancel errors
+        }
+        ctx.maskOverlayEl.style.transition = "";
+        ctx.maskOverlayEl.style.opacity = "";
+        ctx.maskOverlayEl.classList.remove("is-half", "is-full");
+        ctx.maskOverlayEl.offsetHeight;
+      }
       if(maskApplyingActive){
         setMaskApplying(false);
       }
