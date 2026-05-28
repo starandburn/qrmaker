@@ -840,7 +840,19 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         const ok = await applyMask();
         if(ok){
           setExecutionStatus("finished", undefined, "読み取れる正しいQRコードです。");
-          showQrDetailLink();
+          const outcome = logVerificationOutcome();
+          if(lastQrDetailPayload && typeof lastQrDetailPayload === "object"){
+            const scoreValue = (typeof window !== "undefined" && Number.isFinite(window.lastMaskPenaltyScore))
+              ? window.lastMaskPenaltyScore
+              : null;
+            lastQrDetailPayload = Object.assign({}, lastQrDetailPayload, {
+              maskIndexText: (typeof outcome?.maskIndex === "number") ? String(outcome.maskIndex) : "-",
+              scoreText: (scoreValue !== null) ? String(scoreValue) : "-",
+            });
+          }
+          if(outcome && outcome.match && !outcome.preMaskLikely){
+            showQrDetailLink();
+          }
         }
       }finally{
         link.classList.remove("is-busy");
