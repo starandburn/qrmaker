@@ -1255,6 +1255,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   };
   const showApiStatus = (name, payload) => {
     if(!shouldShowStepStatus(name)) return null;
+    const holdUntil = (typeof window !== "undefined" && Number.isFinite(window.__statusHoldUntil))
+      ? window.__statusHoldUntil
+      : 0;
+    if(holdUntil > Date.now()){
+      return null;
+    }
     const detail = describeApiStatus(name, payload);
     if(detail){
       setExecutionStatus("running", undefined, detail);

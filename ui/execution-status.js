@@ -17,6 +17,7 @@
     let lastExecutionError = null;
     let pendingStopReason = null;
     let stopReasonLocked = false;
+    let transientRunningRestoreTimer = null;
     const executionStatusLabels = {
       stopped: "停止中",
       running: "作成中",
@@ -82,6 +83,18 @@
 
     const setExecutionStatus = (state, message, detail, options = {}) => {
       if(!executionStatusEl) return;
+      if(transientRunningRestoreTimer !== null && state !== "running"){
+        clearTimeout(transientRunningRestoreTimer);
+        transientRunningRestoreTimer = null;
+      }
+      const holdUntil = Number.isFinite(global.__statusHoldUntil) ? global.__statusHoldUntil : 0;
+      if(state === "running" && holdUntil > Date.now()){
+        const bypassHoldGuard = Boolean(options && options.bypassHoldGuard);
+        const allowHoldMessage = Boolean(options && options.allowHoldMessage);
+        if(!bypassHoldGuard && !allowHoldMessage){
+          return;
+        }
+      }
       if(options && options.clearStopReason){
         pendingStopReason = null;
         stopReasonLocked = false;
@@ -106,6 +119,26 @@
       const statusText = buildExecutionStatusText(state, message, detail, options);
       renderExecutionStatusText(target, statusText, options);
       executionStatusEl.className = `execution-status status-${state}`;
+      if(state === "running"){
+        const holdKey = (typeof global.__statusHoldMessageKey === "string") ? global.__statusHoldMessageKey : "";
+        if(holdKey === "timing-detected" && Boolean(options && options.allowHoldMessage)){
+          const remaining = Math.max(0, holdUntil - Date.now());
+          if(transientRunningRestoreTimer !== null){
+            clearTimeout(transientRunningRestoreTimer);
+            transientRunningRestoreTimer = null;
+          }
+          transientRunningRestoreTimer = setTimeout(() => {
+            transientRunningRestoreTimer = null;
+            if(Number.isFinite(global.__statusHoldUntil) && global.__statusHoldUntil > Date.now()){
+              return;
+            }
+            global.__statusHoldUntil = 0;
+            global.__statusHoldMessageKey = "";
+            const resumeDetail = currentDataPatternStage || undefined;
+            setExecutionStatus("running", undefined, resumeDetail, { bypassHoldGuard: true });
+          }, remaining + 10);
+        }
+      }
       if(typeof onAfterStatusUpdate === "function"){
         callIfFunction(onAfterStatusUpdate, { state, message, detail });
       }else if(typeof global.updateExecutionStatusCursor === "function"){

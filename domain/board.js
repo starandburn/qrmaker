@@ -1133,6 +1133,9 @@ function setHomeCursor({ row, col, dir } = {}){
 }
 
 function moveCursor(...args){
+  const moveStartRow = cursorPos.row;
+  const moveStartCol = cursorPos.col;
+  let crossedTimingLine = false;
   const directionEnabled = isDirectionEnabled();
   if(!directionEnabled && !shouldAllowDirectionCommands()){
     if(args.length === 0){
@@ -1219,6 +1222,7 @@ function moveCursor(...args){
     const hitTimingRow = isVertical && timingRowIndex > 0 && row === timingRowIndex;
     const hitTimingCol = isHorizontal && timingColIndex > 0 && col === timingColIndex;
     if(!hitTimingRow && !hitTimingCol) return;
+    crossedTimingLine = true;
     const rowDelta = isVertical ? ((dirVal === DIR_DOWN) ? 1 : -1) : 0;
     const colDelta = isHorizontal ? ((dirVal === DIR_RIGHT) ? 1 : -1) : 0;
     const nextRow = row + rowDelta;
@@ -1443,6 +1447,42 @@ function moveCursor(...args){
           window.logEvent("setCursorDirection", JSON.stringify({ dir: finalDir }), "向きを" + label + "に設定");
         }
       }
+    }
+  }
+  const isStepModeActiveForStatus = (
+    typeof window !== "undefined"
+    && typeof window.isStepModeOn === "function"
+    && window.isStepModeOn()
+  );
+  const enteredTimingRow = (
+    timingRowIndex > 0
+    && moveStartRow !== timingRowIndex
+    && cursorPos.row === timingRowIndex
+  );
+  const enteredTimingCol = (
+    timingColIndex > 0
+    && moveStartCol !== timingColIndex
+    && cursorPos.col === timingColIndex
+  );
+  const enteredTimingLine = enteredTimingRow || enteredTimingCol;
+  if(
+    isStepModeActiveForStatus
+    && (enteredTimingLine || crossedTimingLine)
+    && typeof window.setExecutionStatus === "function"
+  ){
+    const timingCellKey = `${cursorPos.row}-${cursorPos.col}`;
+    const prevTimingCellKey = (typeof window.__lastTimingDetectedCellKey === "string")
+      ? window.__lastTimingDetectedCellKey
+      : "";
+    if(timingCellKey !== prevTimingCellKey){
+      window.__lastTimingDetectedCellKey = timingCellKey;
+      const now = Date.now();
+      window.__statusHoldUntil = now + 180;
+      window.__statusHoldMessageKey = "timing-detected";
+      window.setExecutionStatus("running", undefined, {
+        l2: "データパターン",
+        l3: "タイミングパターンを検出しました。",
+      }, { allowHoldMessage: true });
     }
   }
   resetCursorColorAfterStepMove();

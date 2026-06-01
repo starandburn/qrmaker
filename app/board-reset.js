@@ -37,6 +37,11 @@
     function clearBoardSurface({ resetData: resetDataFlag = true } = {}){
       setQRCodeReadable(false);
       clearNoiseLayer();
+      if(typeof global !== "undefined"){
+        delete global.__lastTimingDetectedCellKey;
+        delete global.__statusHoldUntil;
+        delete global.__statusHoldMessageKey;
+      }
       const cells = document.querySelectorAll(".qr-cells .cell");
       if(!cells || cells.length === 0) return false;
       const unplacedValue = (typeof global.BIT_UNPLACED === "number") ? global.BIT_UNPLACED : unplacedKind;
