@@ -739,6 +739,51 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const openQrDetailModal = () => {
     if(!qrDetailModalEl || !qrDetailBodyEl) return;
     const payload = lastQrDetailPayload || {};
+    const urlPattern = /^(https?:\/\/[^\s]+)$/i;
+    const renderDetailValue = (key, valueEl, rawValue) => {
+      const valueText = String(rawValue ?? "-");
+      if(valueText.includes("TEXT:")){
+        const lines = valueText.split(/\r?\n/);
+        let rendered = false;
+        for(let i = 0; i < lines.length; i += 1){
+          const line = lines[i];
+          const m = line.match(/^TEXT:\s*(.+)$/);
+          if(m){
+            const urlText = String(m[1] || "").trim();
+            valueEl.appendChild(document.createTextNode("TEXT: "));
+            if(urlPattern.test(urlText)){
+              const link = document.createElement("a");
+              link.href = urlText;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              link.textContent = urlText;
+              valueEl.appendChild(link);
+              rendered = true;
+            }else{
+              valueEl.appendChild(document.createTextNode(urlText));
+            }
+          }else{
+            valueEl.appendChild(document.createTextNode(line));
+          }
+          if(i < lines.length - 1){
+            valueEl.appendChild(document.createElement("br"));
+          }
+        }
+        if(rendered){
+          return;
+        }
+      }
+      if(urlPattern.test(valueText.trim())){
+        const link = document.createElement("a");
+        link.href = valueText.trim();
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = valueText;
+        valueEl.appendChild(link);
+        return;
+      }
+      valueEl.textContent = valueText;
+    };
     const rows = [
       ["QRバージョン", payload.versionText ?? "-"],
       ["モード", payload.modeText ?? "-"],
@@ -758,7 +803,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       keyEl.textContent = key;
       const valueEl = document.createElement("div");
       valueEl.className = "qr-detail-value";
-      valueEl.textContent = value;
+      renderDetailValue(key, valueEl, value);
       infoEl.append(keyEl, valueEl);
     }
     const previewEl = document.createElement("div");

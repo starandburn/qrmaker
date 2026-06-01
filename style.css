@@ -1351,6 +1351,9 @@ textarea:focus{
 }
 .execution-status-text{
     min-width:0;
+    user-select:text;
+    -webkit-user-select:text;
+    -ms-user-select:text;
   }
 .execution-status-main{
     display:flex;
