@@ -3,7 +3,7 @@ window.appSettingsFromScript = {
     qrData: "HelloWorld",
     qrSpec: {
       version: 2,
-      errorCorrectionLevel: "L",
+      errorCorrectionLevel: "A",
     },
     initialCode: 0,
     historyVisible: false,

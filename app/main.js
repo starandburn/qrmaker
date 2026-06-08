@@ -182,19 +182,26 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     safeWindow.setHomeCursor({ dir: homeCursorDirectionOverride });
   }
   const activeQrSpec = isFunction(safeWindow?.getActiveQrSpec)
-    ? safeWindow.getActiveQrSpec()
+    ? safeWindow.getActiveQrSpec(txtInput?.value ?? "")
     : null;
-  const activeQrMaxBytes = Number.isFinite(activeQrSpec?.maxBytes) ? activeQrSpec.maxBytes : null;
+  const activeQrMaxBytes = isFunction(safeWindow?.getActiveQrMaxBytes)
+    ? safeWindow.getActiveQrMaxBytes()
+    : (Number.isFinite(activeQrSpec?.maxBytes) ? activeQrSpec.maxBytes : null);
   const defaultQrSpec = configDefaults.qrSpec && typeof configDefaults.qrSpec === "object"
     ? configDefaults.qrSpec
     : {};
-  const defaultErrorCorrectionRaw = String(defaultQrSpec.errorCorrectionLevel ?? configDefaults.errorCorrectionLevel ?? "L").trim().toUpperCase();
-  const defaultErrorCorrectionSpec = isFunction(safeWindow?.getQrSpecForErrorCorrectionLevel)
-    ? safeWindow.getQrSpecForErrorCorrectionLevel(defaultErrorCorrectionRaw)
-    : null;
+  const defaultErrorCorrectionRaw = String(defaultQrSpec.errorCorrectionLevel ?? configDefaults.errorCorrectionLevel ?? "A").trim().toUpperCase();
+  const defaultErrorCorrectionSpec = defaultErrorCorrectionRaw === "A"
+    ? { errorCorrectionLevel: "A" }
+    : (isFunction(safeWindow?.getQrSpecForErrorCorrectionLevel)
+      ? safeWindow.getQrSpecForErrorCorrectionLevel(defaultErrorCorrectionRaw)
+      : null);
   const defaultErrorCorrectionLevel = typeof defaultErrorCorrectionSpec?.errorCorrectionLevel === "string"
     ? defaultErrorCorrectionSpec.errorCorrectionLevel
-    : "L";
+    : "A";
+  const currentErrorCorrectionLevel = isFunction(safeWindow?.getConfiguredQrErrorCorrectionLevel)
+    ? safeWindow.getConfiguredQrErrorCorrectionLevel()
+    : defaultErrorCorrectionLevel;
   const configuredQrData = (typeof configDefaults.qrData === "string") ? configDefaults.qrData : null;
   const configuredQrDataValue = (configuredQrData !== null && activeQrMaxBytes !== null)
     ? configuredQrData.slice(0, activeQrMaxBytes)
@@ -1364,9 +1371,15 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ABORT_ERR,
     RESET_DELAY_MS,
   } = globalScope;
-  const FORMAT_L = Array.isArray(activeQrSpec?.formatBits)
+  const DEFAULT_FORMAT_BITS = Array.isArray(activeQrSpec?.formatBits)
     ? activeQrSpec.formatBits
     : [30660, 29427, 32170, 30877, 26159, 25368, 27713, 26998];
+  const getCurrentFormatBits = () => {
+    const spec = isFunction(safeWindow?.getActiveQrSpec)
+      ? safeWindow.getActiveQrSpec(txtInput?.value ?? "")
+      : null;
+    return Array.isArray(spec?.formatBits) ? spec.formatBits : DEFAULT_FORMAT_BITS;
+  };
   const originalSetRenderMode = window.setRenderMode;
   let renderModeState = RENDER_IMMEDIATE;
   const setRenderMode = (mode) => {
@@ -1441,7 +1454,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const applyCodeSampleParam = (typeof domainQrParams.applyCodeSampleParam === "function")
     ? (options) => domainQrParams.applyCodeSampleParam(options)
     : () => false;
-  ctx.FORMAT_L = FORMAT_L;
+  Object.defineProperty(ctx, "FORMAT_L", {
+    configurable: true,
+    get: getCurrentFormatBits,
+  });
   const runIdAccessor = {
     get: () => uiState.getRunId(),
     set: (value) => uiState.setRunId(value),
@@ -3742,7 +3758,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         defaultAutoAvoidTiming,
         useDirection,
         defaultUseDirection,
-        errorCorrectionLevel: activeQrSpec?.errorCorrectionLevel,
+        errorCorrectionLevel: currentErrorCorrectionLevel,
         defaultErrorCorrectionLevel,
         initialDebugParamPresent,
         codePanel,

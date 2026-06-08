@@ -46,10 +46,28 @@ const btnClearCode = document.getElementById("btnClearCode");
 const dataInputStatus = document.getElementById("dataInputStatus");
 const dataCount = document.getElementById("dataCount");
 const qrDataMaxLengthLabel = document.getElementById("qrDataMaxLengthLabel");
+const qrSpecCaption = document.getElementById("qrSpecCaption");
 const sampleDropdown = document.getElementById("sampleDropdown");
 const sampleDropdownToggle = document.getElementById("btnSampleDropdown");
 const sampleDropdownMenu = document.getElementById("sampleDropdownMenu");
-let DATA_INPUT_MAX_LENGTH = Number(callIfFunction(window.getActiveQrSpec)?.maxBytes ?? txtInput?.getAttribute("maxlength")) || 32;
+let DATA_INPUT_MAX_LENGTH = Number(callIfFunction(window.getActiveQrMaxBytes) ?? callIfFunction(window.getActiveQrSpec)?.maxBytes ?? txtInput?.getAttribute("maxlength")) || 32;
+function refreshQrSpecCaption(){
+  if(!qrSpecCaption) return;
+  const spec = callIfFunction(window.getActiveQrSpec, txtInput?.value ?? "");
+  if(!spec){
+    qrSpecCaption.textContent = "";
+    return;
+  }
+  const version = Number.isFinite(spec.version) ? spec.version : "-";
+  const level = typeof spec.errorCorrectionLevel === "string" ? spec.errorCorrectionLevel : "-";
+  const boardSize = Number.isFinite(spec.boardSize) ? spec.boardSize : "-";
+  const correctionPercent = ({ L: 7, M: 15, Q: 25, H: 30 })[level] ?? "-";
+  const configuredLevel = callIfFunction(window.getConfiguredQrErrorCorrectionLevel);
+  const levelText = configuredLevel === "A"
+    ? `${level}(${correctionPercent}%) [自動判定]`
+    : `${level} (${correctionPercent}%)`;
+  qrSpecCaption.textContent = `QR Ver.${version} (${boardSize} x ${boardSize}) / 誤り訂正 ${levelText}`;
+}
 function applyDataInputMaxLength(maxLength){
   const numeric = Number(maxLength);
   DATA_INPUT_MAX_LENGTH = Number.isFinite(numeric) ? Math.max(1, Math.trunc(numeric)) : DATA_INPUT_MAX_LENGTH;
@@ -61,6 +79,7 @@ function applyDataInputMaxLength(maxLength){
   }
   updateDataStatus();
   refreshGuide();
+  refreshQrSpecCaption();
 }
 const FULLWIDTH_CHAR_REGEX = /[^\u0000-\u007F]/;
 const STOP_REASON_DATA = "データが変更されたので停止しました。";
@@ -98,6 +117,7 @@ function updateDataStatus(){
   if(!txtInput || !dataInputStatus) return;
   const value = txtInput.value ?? "";
   const length = value.length;
+  refreshQrSpecCaption();
   const errors = [];
   if(length === 0){
     errors.push("何か入力してください。");
@@ -935,6 +955,7 @@ if(typeof window.refreshPatternIfPanelOpen !== "function"){
   window.refreshPatternIfPanelOpen = refreshPatternIfPanelOpen;
 }
 window.applyDataInputMaxLength = applyDataInputMaxLength;
+window.refreshQrSpecCaption = refreshQrSpecCaption;
 /**
   * Module that composes layout constants, toggle controls, and panel rendering helpers.
  */
