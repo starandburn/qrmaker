@@ -1247,7 +1247,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       const centerX = ev.clientX - rect.left;
       const centerY = ev.clientY - rect.top;
       const minDimension = Math.min(width, height);
-      const maxGridRadius = Math.min((minDimension / 25) * 6, 260);
+      const maxGridRadius = Math.min((minDimension / BOARD_ROWS) * 6, 260);
       const radius = Math.max(24, Math.min(maxGridRadius, minDimension * 0.15));
       const count = Math.max(16, Math.min(48, Math.round((width * height) / 18000)));
       const minSize = Math.max(6, Math.round(minDimension * 0.03));
@@ -1790,7 +1790,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     return score;
   };
   const chooseBestMaskResult = ({ MASK_FUNCTIONS, isFunctionalKind, onEvaluate, onScore }) => {
-    const size = Array.isArray(window.boardMatrix) ? window.boardMatrix.length : 25;
+    const size = Array.isArray(window.boardMatrix)
+      ? window.boardMatrix.length
+      : (isFunction(window.getActiveQrBoardSize) ? window.getActiveQrBoardSize() : 25);
     const isBlackBitFn = (typeof window.isBlackBit === "function")
       ? window.isBlackBit
       : ((value) => value > 0);
@@ -1921,7 +1923,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         const overlay = document.createElement("div");
         overlay.className = "mask-overlay";
         const frag = document.createDocumentFragment();
-        for(let i = 0; i < 25 * 25; i += 1){
+        for(let i = 0; i < BOARD_ROWS * BOARD_COLS; i += 1){
           const cell = document.createElement("div");
           cell.className = "mask-cell";
           frag.appendChild(cell);
@@ -2000,8 +2002,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         const targetSet = new Set(targets.map(([row, col]) => `${row},${col}`));
         const cells = overlay.children;
         let i = 0;
-        for(let row = 1; row <= 25; row += 1){
-          for(let col = 1; col <= 25; col += 1){
+        for(let row = 1; row <= BOARD_ROWS; row += 1){
+          for(let col = 1; col <= BOARD_COLS; col += 1){
             const cellEl = cells[i++];
             if(!cellEl) continue;
             if(targetSet.has(`${row},${col}`)){
@@ -2072,7 +2074,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     };
     let maskResult;
     if(stepMask && isAutoMask){
-      const size = Array.isArray(window.boardMatrix) ? window.boardMatrix.length : 25;
+      const size = Array.isArray(window.boardMatrix)
+        ? window.boardMatrix.length
+        : (isFunction(window.getActiveQrBoardSize) ? window.getActiveQrBoardSize() : 25);
       const scores = {};
       let bestIdx = defaultMaskIndex;
       let bestScore = Number.POSITIVE_INFINITY;
@@ -2144,7 +2148,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       const overlay = document.createElement("div");
       overlay.className = "mask-overlay";
       const frag = document.createDocumentFragment();
-      for(let i = 0; i < 25 * 25; i++){
+      for(let i = 0; i < BOARD_ROWS * BOARD_COLS; i++){
         const cell = document.createElement("div");
         cell.className = "mask-cell";
         frag.appendChild(cell);
@@ -2198,8 +2202,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       if(!overlay) return;
       const cells = overlay.children;
       let idx = 0;
-      for(let row = 1; row <= 25; row++){
-        for(let col = 1; col <= 25; col++){
+      for(let row = 1; row <= BOARD_ROWS; row++){
+        for(let col = 1; col <= BOARD_COLS; col++){
           const cellEl = cells[idx++];
           if(!cellEl) continue;
           const encoded = window.getCell(row, col);
@@ -2221,8 +2225,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }
     };
     const applyMaskBatch = () => {
-      for(let row = 1; row <= 25; row++){
-        for(let col = 1; col <= 25; col++){
+      for(let row = 1; row <= BOARD_ROWS; row++){
+        for(let col = 1; col <= BOARD_COLS; col++){
           if(shouldAbort()) return false;
           const encoded = window.getCell(row, col);
           if(typeof encoded !== "number") continue;
@@ -2258,12 +2262,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
           : undefined;
         restoreStepAnim = true;
         window.stepAnimationEnabled = false;
-        const targets = getMaskTargets(maskFn, 25);
+        const targets = getMaskTargets(maskFn, BOARD_ROWS);
         completed = await applyMaskTargetsWithFade(targets, { mode: "apply" });
         if(!completed) return false;
       }else{
-      for(let row = 1; row <= 25; row++){
-        for(let col = 1; col <= 25; col++){
+      for(let row = 1; row <= BOARD_ROWS; row++){
+        for(let col = 1; col <= BOARD_COLS; col++){
           if(shouldAbort()) break;
           const encoded = window.getCell(row, col);
           if(typeof encoded !== "number") continue;
@@ -2674,15 +2678,14 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   function buildFunctionSet(){
     const set = new Set();
     const add = (r, c) => {
-      if(r < 1 || r > 25 || c < 1 || c > 25) return;
+      if(r < 1 || r > BOARD_ROWS || c < 1 || c > BOARD_COLS) return;
       set.add(`${r}-${c}`);
     };
     // finder + white separator (9x9 around each)
-    const finders = [
-      [1, 1],
-      [1, 19],
-      [19, 1],
-    ];
+    const spec = isFunction(window.getActiveQrSpec) ? window.getActiveQrSpec(txtInput?.value ?? "") : activeQrSpec;
+    const finders = isFunction(window.getQrFinderOriginsForSpec)
+      ? window.getQrFinderOriginsForSpec(spec)
+      : [[1, 1], [1, BOARD_COLS - 6], [BOARD_ROWS - 6, 1]];
     for(const [tr, tc] of finders){
       for(let dr = -1; dr <= 7; dr++){
         for(let dc = -1; dc <= 7; dc++){
@@ -2692,25 +2695,33 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     // timing (row 7, col 7)
     if(timingRowIndex > 0){
-      for(let c = 1; c <= 25; c++) add(timingRowIndex, c);
+      for(let c = 1; c <= BOARD_COLS; c++) add(timingRowIndex, c);
     }
     if(timingColIndex > 0){
-      for(let r = 1; r <= 25; r++) add(r, timingColIndex);
+      for(let r = 1; r <= BOARD_ROWS; r++) add(r, timingColIndex);
     }
-    // alignment 5x5 at (19,19)
-    for(let dr = -2; dr <= 2; dr++){
-      for(let dc = -2; dc <= 2; dc++){
-        add(19 + dr, 19 + dc);
+    // alignment patterns
+    const alignments = isFunction(window.getQrAlignmentCentersForSpec)
+      ? window.getQrAlignmentCentersForSpec(spec)
+      : [[BOARD_ROWS - 6, BOARD_COLS - 6]];
+    for(const [row, col] of alignments){
+      for(let dr = -2; dr <= 2; dr++){
+        for(let dc = -2; dc <= 2; dc++){
+          add(row + dr, col + dc);
+        }
       }
     }
     // dark module
-    add(18, 9);
+    const darkModule = isFunction(window.getQrDarkModuleCoordForSpec)
+      ? window.getQrDarkModuleCoordForSpec(spec)
+      : [BOARD_ROWS - 7, 9];
+    add(darkModule[0], darkModule[1]);
     // format info positions (both copies)
     const coordsA = [
       [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],
       [8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8],
     ];
-    const n = 25;
+    const n = BOARD_ROWS;
     const coordsB = [
       [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
       [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],

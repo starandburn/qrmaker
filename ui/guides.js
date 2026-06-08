@@ -19,6 +19,9 @@
           : rows;
       return Math.min(rows, cols);
     }
+    if (typeof window.getActiveQrBoardSize === "function") {
+      return window.getActiveQrBoardSize();
+    }
     return 25;
   };
 

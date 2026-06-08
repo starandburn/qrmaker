@@ -533,7 +533,8 @@ function syncViewLayout(){
   const rawSize = isSingleColumn
     ? Math.max(60, Math.floor(w)) // single-column/tall: base strictly on available width
     : Math.max(60, Math.floor(Math.min(w, h))); // two-column: fit both axes
-  const size = Math.max(60, rawSize - (rawSize % 25));
+  const boardSize = Number(callIfFunction(window.getActiveQrBoardSize) ?? 25) || 25;
+  const size = Math.max(60, rawSize - (rawSize % boardSize));
 
   // Hide guide text if the available width is too narrow
   const guideCompact = w < 420 || h < 420 || size < 280;

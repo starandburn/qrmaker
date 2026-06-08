@@ -4,7 +4,12 @@
 (function(global){
   if(!global) return;
 
-  const BOARD_SIZE = 25;
+  const getBoardSize = () => {
+    const spec = getDefaultQrSpec();
+    if(Number.isFinite(spec?.boardSize)) return spec.boardSize;
+    if(Number.isFinite(global.BOARD_ROWS)) return global.BOARD_ROWS;
+    return 25;
+  };
   const getDefaultQrSpec = () => (typeof global.getActiveQrSpec === "function"
     ? global.getActiveQrSpec()
     : { expectedBits: 352, dataCodewords: 34, ecCodewords: 10 });
@@ -37,10 +42,9 @@
     [8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [8, 7],
     [8, 8], [7, 8], [5, 8], [4, 8], [3, 8], [2, 8], [1, 8], [0, 8],
   ];
-  const n = 25;
-  const FORMAT_COORDS_B = [
-    [8, n - 1], [8, n - 2], [8, n - 3], [8, n - 4], [8, n - 5], [8, n - 6], [8, n - 7], [8, n - 8],
-    [n - 7, 8], [n - 6, 8], [n - 5, 8], [n - 4, 8], [n - 3, 8], [n - 2, 8], [n - 1, 8],
+  const buildFormatCoordsB = (boardSize) => [
+    [8, boardSize - 1], [8, boardSize - 2], [8, boardSize - 3], [8, boardSize - 4], [8, boardSize - 5], [8, boardSize - 6], [8, boardSize - 7], [8, boardSize - 8],
+    [boardSize - 7, 8], [boardSize - 6, 8], [boardSize - 5, 8], [boardSize - 4, 8], [boardSize - 3, 8], [boardSize - 2, 8], [boardSize - 1, 8],
   ];
   const FORMAT_INFO_DECODE = [
     { bits: 0x5412, data: 0x00 },
@@ -76,10 +80,11 @@
     { bits: 0x2eda, data: 0x1e },
     { bits: 0x2bed, data: 0x1f },
   ];
-  const EXPECTED_FUNCTIONAL_COORDS = (() => {
+  const buildExpectedFunctionalCoords = (spec = getDefaultQrSpec()) => {
+    const boardSize = Number.isFinite(spec?.boardSize) ? spec.boardSize : getBoardSize();
     const set = new Set();
     const add = (row, col) => {
-      if(row < 1 || row > BOARD_SIZE || col < 1 || col > BOARD_SIZE) return;
+      if(row < 1 || row > boardSize || col < 1 || col > boardSize) return;
       set.add(`${row},${col}`);
     };
     const addFinderWithSeparator = (baseRow, baseCol) => {
@@ -89,32 +94,43 @@
         }
       }
     };
-    addFinderWithSeparator(1, 1);
-    addFinderWithSeparator(1, 19);
-    addFinderWithSeparator(19, 1);
-    for(let row = 17; row <= 21; row++){
-      for(let col = 17; col <= 21; col++){
-        add(row, col);
+    const finderOrigins = typeof global.getQrFinderOriginsForSpec === "function"
+      ? global.getQrFinderOriginsForSpec(spec)
+      : [[1, 1], [1, boardSize - 6], [boardSize - 6, 1]];
+    for(const [row, col] of finderOrigins){
+      addFinderWithSeparator(row, col);
+    }
+    const alignmentCenters = typeof global.getQrAlignmentCentersForSpec === "function"
+      ? global.getQrAlignmentCentersForSpec(spec)
+      : [[boardSize - 6, boardSize - 6]];
+    for(const [centerRow, centerCol] of alignmentCenters){
+      for(let row = centerRow - 2; row <= centerRow + 2; row++){
+        for(let col = centerCol - 2; col <= centerCol + 2; col++){
+          add(row, col);
+        }
       }
     }
-    add(18, 9);
+    const darkModule = typeof global.getQrDarkModuleCoordForSpec === "function"
+      ? global.getQrDarkModuleCoordForSpec(spec)
+      : [boardSize - 7, 9];
+    add(darkModule[0], darkModule[1]);
     for(const [rowOff, colOff] of FORMAT_COORDS_A){
       add(rowOff + 1, colOff + 1);
     }
-    for(const [rowOff, colOff] of FORMAT_COORDS_B){
+    for(const [rowOff, colOff] of buildFormatCoordsB(boardSize)){
       add(rowOff + 1, colOff + 1);
     }
-    for(let col = 1; col <= BOARD_SIZE; col++){
+    for(let col = 1; col <= boardSize; col++){
       add(7, col);
     }
-    for(let row = 1; row <= BOARD_SIZE; row++){
+    for(let row = 1; row <= boardSize; row++){
       add(row, 7);
     }
     return Array.from(set, (key) => {
       const [row, col] = key.split(",").map((v) => Number(v));
       return { row, col };
     });
-  })();
+  };
 
   function cellToBit(value){
     if(typeof value !== "number") return 0;
@@ -136,9 +152,10 @@
     if(kindVal === global.BIT_MASK) return true;
     return FUNCTION_KINDS.includes(kindVal);
   }
-  function verifyFunctionalPatterns(){
+  function verifyFunctionalPatterns(spec = getDefaultQrSpec()){
+    const expectedFunctionalCoords = buildExpectedFunctionalCoords(spec);
     let missingCount = 0;
-    for(const coord of EXPECTED_FUNCTIONAL_COORDS){
+    for(const coord of expectedFunctionalCoords){
       const value = getCellValue(coord.row, coord.col);
       if(!isFunctionalCellValue(value)){
         missingCount += 1;
@@ -147,27 +164,28 @@
     return {
       ok: missingCount === 0,
       missingCount,
-      expectedCount: EXPECTED_FUNCTIONAL_COORDS.length,
+      expectedCount: expectedFunctionalCoords.length,
     };
   }
 
   function iterateDataCells(callback){
     if(typeof callback !== "function") return;
     const timingCol = Number.isFinite(global.timingColIndex) ? Number(global.timingColIndex) : 0;
-    let col = BOARD_SIZE;
+    const boardSize = getBoardSize();
+    let col = boardSize;
     let upward = true;
-    let startRow = BOARD_SIZE;
+    let startRow = boardSize;
     while(col > 0){
       if(timingCol > 0 && col === timingCol){
         col--;
         continue;
       }
       const leftCol = col - 1;
-      for(let step = 0; step < BOARD_SIZE; step++){
+      for(let step = 0; step < boardSize; step++){
         const rawRow = upward ? startRow - step : startRow + step;
         const row = upward
-          ? (rawRow >= 1 ? rawRow : BOARD_SIZE + rawRow)
-          : (rawRow <= BOARD_SIZE ? rawRow : rawRow - BOARD_SIZE);
+          ? (rawRow >= 1 ? rawRow : boardSize + rawRow)
+          : (rawRow <= boardSize ? rawRow : rawRow - boardSize);
         for(const targetCol of [col, leftCol]){
           if(targetCol < 1) continue;
           if(timingCol > 0 && targetCol === timingCol) continue;
@@ -178,7 +196,7 @@
         }
       }
       upward = !upward;
-      startRow = upward ? BOARD_SIZE : 1;
+      startRow = upward ? boardSize : 1;
       col -= 2;
     }
   }
@@ -316,8 +334,9 @@
   }
 
   function readFormatInfo(){
+    const boardSize = getBoardSize();
     const rawA = readFormatBitsFrom(FORMAT_COORDS_A);
-    const rawB = readFormatBitsFrom(FORMAT_COORDS_B);
+    const rawB = readFormatBitsFrom(buildFormatCoordsB(boardSize));
     const decodedA = decodeFormatInfo(rawA);
     const decodedB = decodeFormatInfo(rawB);
     let chosen = {
@@ -406,7 +425,7 @@
   function verifyBoard(){
     const defaultSpec = getDefaultQrSpec();
     const { cells: dataEntries, stats } = readDataCells(defaultSpec);
-    const functionalCheck = verifyFunctionalPatterns();
+    const functionalCheck = verifyFunctionalPatterns(defaultSpec);
     const bitsAvailable = dataEntries.length;
     const formatInfo = readFormatInfo();
     const spec = getQrSpecForFormatInfo(formatInfo);

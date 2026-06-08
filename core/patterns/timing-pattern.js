@@ -29,12 +29,14 @@
     throw new Error("setTimingColIndex is required");
   }
   const setTimingColIndex = global.setTimingColIndex;
+  const getBoardSize = () => Number.isFinite(global.BOARD_ROWS) ? global.BOARD_ROWS : 25;
   const resolveStepDir = (dirVal) => (dirVal === TIMING_HORIZONTAL ? DIR_RIGHT : DIR_DOWN);
   const buildTimingLookahead = (dirVal, startPos) => {
+    const boardSize = getBoardSize();
     const infos = [];
     for(let i = 1; i <= 4; i++){
       const nextPos = startPos + i;
-      if(nextPos < 1 || nextPos > 25) break;
+      if(nextPos < 1 || nextPos > boardSize) break;
       const bit = (nextPos % 2 === 1) ? 1 : 0;
       infos.push({ kind: BIT_FUNC_TIMING, bit });
     }
@@ -53,7 +55,8 @@
     const pos = (dirVal === TIMING_HORIZONTAL)
       ? resolveRowCol(index, undefined, cursorPos.row, cursorPos.col).row
       : resolveRowCol(undefined, index, cursorPos.row, cursorPos.col).col;
-    if(!Number.isFinite(pos) || !Number.isInteger(pos) || pos < 1 || pos > 25) return false;
+    const boardSize = getBoardSize();
+    if(!Number.isFinite(pos) || !Number.isInteger(pos) || pos < 1 || pos > boardSize) return false;
     const step = !!resolvedStep;
     const allowOverwrite = overwrite !== false;
     const hasExistingPatternCell = (row, col) => {
@@ -78,13 +81,13 @@
         setTimingColIndex(pos);
       }
       if(dirVal === TIMING_HORIZONTAL){
-        for(let c = 1; c <= 25; c++){
+        for(let c = 1; c <= boardSize; c++){
           const bit = (c % 2 === 1) ? 1 : 0;
           if(!canWriteTimingCell(pos, c)) continue;
           window.updateCell(pos, c, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
         }
       }else{
-        for(let r = 1; r <= 25; r++){
+        for(let r = 1; r <= boardSize; r++){
           const bit = (r % 2 === 1) ? 1 : 0;
           if(!canWriteTimingCell(r, pos)) continue;
           window.updateCell(r, pos, window.encodeBit(BIT_FUNC_TIMING, bit === 1));
@@ -105,7 +108,7 @@
       if(dirVal === TIMING_HORIZONTAL){
         let col = 1;
         timingRowIndex = pos;
-        while(col <= 25){
+        while(col <= boardSize){
           if(shouldAbort(runToken, ctx)) return false;
           if(!ctx.helpers || !ctx.helpers.shouldStepFunctions() && !ctx.helpers.isStepModeOn()){
             ctx.setRenderMode(prevRender);
@@ -125,7 +128,7 @@
       }else{
         setTimingColIndex(pos);
         let row = 1;
-        while(row <= 25){
+        while(row <= boardSize){
           if(shouldAbort(runToken, ctx)) return false;
           if(!ctx.helpers || !ctx.helpers.shouldStepFunctions() && !ctx.helpers.isStepModeOn()){
             ctx.setRenderMode(prevRender);

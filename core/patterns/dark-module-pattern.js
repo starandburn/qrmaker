@@ -77,7 +77,11 @@
     if(!ctx) return false;
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const opts = { stepEnabled: resolvedStep, currentRun };
-    updateCursor(18, 9, DIR_RIGHT);
+    const spec = typeof global.getActiveQrSpec === "function" ? global.getActiveQrSpec() : null;
+    const coord = typeof global.getQrDarkModuleCoordForSpec === "function"
+      ? global.getQrDarkModuleCoordForSpec(spec)
+      : [(Number.isFinite(global.BOARD_ROWS) ? global.BOARD_ROWS : 25) - 7, 9];
+    updateCursor(coord[0], coord[1], DIR_RIGHT);
     await putDarkModuleCells(ctx, overwrite, opts);
     return true;
   }

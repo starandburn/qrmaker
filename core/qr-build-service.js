@@ -116,6 +116,7 @@
           updateCell: global.updateCell,
           isEmpty: global.isEmpty,
           getTimingColIndex: () => global.timingColIndex,
+          boardSize: Number.isFinite(global.BOARD_ROWS) ? global.BOARD_ROWS : 25,
           stepEnabled,
         });
         if(placementResult && placementResult.aborted){

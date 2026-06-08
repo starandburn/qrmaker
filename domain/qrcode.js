@@ -200,6 +200,55 @@ function getQrSpecForErrorCorrectionLevel(level){
   return QR_VERSION2_SPECS[normalized] || QR_VERSION2_SPECS.L;
 }
 
+function getQrBoardSizeForVersion(version){
+  const numeric = Number(version);
+  const resolvedVersion = Number.isFinite(numeric) ? Math.max(1, Math.trunc(numeric)) : 2;
+  return 17 + (4 * resolvedVersion);
+}
+
+function getQrFinderOriginsForSpec(spec){
+  const size = Number.isFinite(spec?.boardSize) ? spec.boardSize : getQrBoardSizeForVersion(spec?.version);
+  return [
+    [1, 1],
+    [1, size - 6],
+    [size - 6, 1],
+  ];
+}
+
+function getQrAlignmentCenterAxesForVersion(version){
+  const numeric = Number(version);
+  const resolvedVersion = Number.isFinite(numeric) ? Math.max(1, Math.trunc(numeric)) : 2;
+  if(resolvedVersion <= 1) return [];
+  return [7, getQrBoardSizeForVersion(resolvedVersion) - 6];
+}
+
+function getQrAlignmentCentersForSpec(spec){
+  const centers = getQrAlignmentCenterAxesForVersion(spec?.version);
+  const finderOrigins = getQrFinderOriginsForSpec(spec);
+  const overlapsFinder = (row, col) => finderOrigins.some(([originRow, originCol]) => (
+    row >= originRow - 2 && row <= originRow + 8 && col >= originCol - 2 && col <= originCol + 8
+  ));
+  const pairs = [];
+  for(const row of centers){
+    for(const col of centers){
+      if(!overlapsFinder(row, col)){
+        pairs.push([row, col]);
+      }
+    }
+  }
+  return pairs;
+}
+
+function getQrDarkModuleCoordForSpec(spec){
+  const version = Number.isFinite(spec?.version) ? spec.version : 2;
+  return [4 * version + 10, 9];
+}
+
+function getActiveQrBoardSize(text){
+  const spec = getActiveQrSpec(text);
+  return Number.isFinite(spec?.boardSize) ? spec.boardSize : getQrBoardSizeForVersion(spec?.version);
+}
+
 function getQrSpecForInputLength(length){
   const numeric = Number(length);
   const inputLength = Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : 0;
@@ -355,6 +404,11 @@ window.parsePattern = parsePattern;
 window.getConfiguredQrErrorCorrectionLevel = getConfiguredQrErrorCorrectionLevel;
 window.getActiveQrSpec = getActiveQrSpec;
 window.getActiveQrMaxBytes = getActiveQrMaxBytes;
+window.getActiveQrBoardSize = getActiveQrBoardSize;
+window.getQrBoardSizeForVersion = getQrBoardSizeForVersion;
+window.getQrFinderOriginsForSpec = getQrFinderOriginsForSpec;
+window.getQrAlignmentCentersForSpec = getQrAlignmentCentersForSpec;
+window.getQrDarkModuleCoordForSpec = getQrDarkModuleCoordForSpec;
 window.getQrSpecForErrorCorrectionLevel = getQrSpecForErrorCorrectionLevel;
 window.getQrSpecForFormatErrorLevelBits = getQrSpecForFormatErrorLevelBits;
 window.qrBuildPatternSegments = qrBuildPatternSegments;

@@ -59,6 +59,7 @@
     return DIR_RIGHT;
   };
   const PATTERN_STEP_SCALE = 1;
+  const getBoardSize = () => Number.isFinite(global.BOARD_ROWS) ? global.BOARD_ROWS : 25;
 
   /** Draws alignment square, respecting step/abort helpers. */
   async function putAlignmentCells(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
@@ -100,8 +101,9 @@
     if(!step){
       const prevRender = ctx.renderMode;
       ctx.setRenderMode(ctx.RENDER_BUFFERED);
+      const boardSize = getBoardSize();
       for(const [row, col] of patternCoords){
-        if(row < 1 || row > 25 || col < 1 || col > 25) continue;
+        if(row < 1 || row > boardSize || col < 1 || col > boardSize) continue;
         const relRow = row - startRow;
         const relCol = col - startCol;
         const bit = pattern[relRow][relCol];
@@ -158,8 +160,14 @@
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runVal = (typeof currentRun === "number") ? currentRun : ctx.runId;
     const opts = { stepEnabled: resolvedStep, currentRun: runVal };
-    updateCursor(19, 19, DIR_RIGHT);
-    await putAlignmentCells(ctx, overwrite, opts);
+    const spec = typeof global.getActiveQrSpec === "function" ? global.getActiveQrSpec() : null;
+    const centers = typeof global.getQrAlignmentCentersForSpec === "function"
+      ? global.getQrAlignmentCentersForSpec(spec)
+      : [[getBoardSize() - 6, getBoardSize() - 6]];
+    for(const [row, col] of centers){
+      updateCursor(row, col, DIR_RIGHT);
+      await putAlignmentCells(ctx, overwrite, opts);
+    }
     return true;
   }
 

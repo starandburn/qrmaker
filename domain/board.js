@@ -104,8 +104,11 @@ if(globalScope){
 }
 setTimingColIndex(0);
 let lastMoveBlocked = false;
-const BOARD_ROWS = 25;
-const BOARD_COLS = 25;
+const BOARD_SIZE = (typeof window !== "undefined" && typeof window.getActiveQrBoardSize === "function")
+  ? window.getActiveQrBoardSize()
+  : 25;
+const BOARD_ROWS = BOARD_SIZE;
+const BOARD_COLS = BOARD_SIZE;
 const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
 const GENERIC_WHITE = (typeof window !== "undefined" && typeof window.BIT_WHITE === "number") ? window.BIT_WHITE : 0;
 const GENERIC_BLACK = (typeof window !== "undefined" && typeof window.BIT_BLACK === "number") ? window.BIT_BLACK : 1;
@@ -1049,8 +1052,8 @@ function applyCursor(row, col, dir){
 
   cursor.classList.remove("is-set");
 
-  const r = Math.min(25, Math.max(1, row));
-  const c = Math.min(25, Math.max(1, col));
+  const r = Math.min(BOARD_ROWS, Math.max(1, row));
+  const c = Math.min(BOARD_COLS, Math.max(1, col));
   cursorPos.row = r;
   cursorPos.col = c;
   cursorPos.dir = dir;
@@ -1566,9 +1569,9 @@ function turnCursor(dirArg){
 function applySetCell(row, col, encodedValue, color = "black", allowGenericData = false){
   const cells = document.querySelectorAll(".qr-cells .cell");
   if(!cells || cells.length === 0) return;
-  const r = Math.min(25, Math.max(1, row));
-  const c = Math.min(25, Math.max(1, col));
-  const idx = (r - 1) * 25 + (c - 1);
+  const r = Math.min(BOARD_ROWS, Math.max(1, row));
+  const c = Math.min(BOARD_COLS, Math.max(1, col));
+  const idx = (r - 1) * BOARD_COLS + (c - 1);
   const cell = cells[idx];
   if(!cell) return;
   const finalColor = isColorEnabled ? color : "black";
@@ -2352,6 +2355,8 @@ window.resetLoopGuard = resetLoopGuard;
 window.canContinueLoop = canContinueLoop;
 window.pauseRunning = pauseRunning;
 window.updateCell = updateCell;
+window.BOARD_ROWS = BOARD_ROWS;
+window.BOARD_COLS = BOARD_COLS;
 window.putCell = putCell;
 window.drawText = drawText;
 window.getCell = getCell;

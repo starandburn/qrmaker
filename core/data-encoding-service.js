@@ -14,7 +14,9 @@
     const funcSet = typeof buildFunctionSet === "function" ? buildFunctionSet() : new Set();
     const bitsSeq = typeof buildBitSequence === "function" ? buildBitSequence() : [];
     if(typeof updateCursor === "function"){
-      updateCursor(25, 25, directionUp);
+      const boardRows = Number.isFinite(global.BOARD_ROWS) ? global.BOARD_ROWS : 25;
+      const boardCols = Number.isFinite(global.BOARD_COLS) ? global.BOARD_COLS : boardRows;
+      updateCursor(boardRows, boardCols, directionUp);
     }
     return { funcSet, bitsSeq };
   };
