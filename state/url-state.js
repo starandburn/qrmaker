@@ -17,6 +17,7 @@
   const OVERWRITE_DATA_ON_FUNCTIONAL_PARAM_KEY = "o";
   const AUTO_RESET_ON_RUN_PARAM_KEY = "a";
   const DEFAULT_PUT_PARAM_KEY = "u";
+  const ERROR_CORRECTION_LEVEL_PARAM_KEY = "ec";
 
   // Default URL parameter keys used across the app.
   // Keep PARAM_KEYS stable for compatibility with existing shared URLs.
@@ -38,6 +39,7 @@
     OVERWRITE_DATA_ON_FUNCTIONAL: OVERWRITE_DATA_ON_FUNCTIONAL_PARAM_KEY,
     AUTO_RESET_ON_RUN: AUTO_RESET_ON_RUN_PARAM_KEY,
     DEFAULT_PUT: DEFAULT_PUT_PARAM_KEY,
+    ERROR_CORRECTION_LEVEL: ERROR_CORRECTION_LEVEL_PARAM_KEY,
   };
 
   // INTERNAL_PARAM_KEYS: keys used internally and omitted from normal state URL output.
@@ -383,6 +385,8 @@
     defaultAutoAvoidTiming = false,
     useDirection,
     defaultUseDirection = false,
+    errorCorrectionLevel,
+    defaultErrorCorrectionLevel,
     initialDebugParamPresent = false,
     codePanel,
   } = {}) => {
@@ -510,6 +514,11 @@
     const normalizedDefaultDirection = Boolean(defaultUseDirection);
     if(normalizedDirection !== normalizedDefaultDirection){
       setBoolParam(stateParams, PARAM_KEYS.USE_DIRECTION, normalizedDirection);
+    }
+    const normalizedErrorCorrectionLevel = String(errorCorrectionLevel ?? "").trim().toUpperCase();
+    const normalizedDefaultErrorCorrectionLevel = String(defaultErrorCorrectionLevel ?? "").trim().toUpperCase();
+    if(normalizedErrorCorrectionLevel && normalizedErrorCorrectionLevel !== normalizedDefaultErrorCorrectionLevel){
+      setStringParam(stateParams, PARAM_KEYS.ERROR_CORRECTION_LEVEL, normalizedErrorCorrectionLevel);
     }
     if(params.get("z") === "1"){
       setStringParam(stateParams, INTERNAL_PARAM_KEYS.PRESENTATION_MODE, "1");

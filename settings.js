@@ -1,6 +1,10 @@
 window.appSettingsFromScript = {
   defaults: {
     qrData: "HelloWorld",
+    qrSpec: {
+      version: 2,
+      errorCorrectionLevel: "L",
+    },
     initialCode: 0,
     historyVisible: false,
     patternPanelOpen: false,

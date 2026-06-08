@@ -19,6 +19,7 @@
     r: { type: "bool", desc: "方向コマンドを有効化" },
     z: { type: "bool", desc: "プレゼンモード（内部キー）" },
   };
+  DEFAULT_PARAM_META.ec = { type: "string", desc: "QR error correction level (L/M/Q/H)" };
 
   const dom = {
     btnGenerate: document.getElementById("btnGenerate"),
@@ -194,6 +195,27 @@
       applyDefault = () => {
         value.checked = BOOL_DEFAULTS[key] ? true : false;
         stateLabel.textContent = value.checked ? "する" : "しない";
+      };
+    }else if(key === "ec"){
+      value = document.createElement("select");
+      value.className = "value-input mono";
+      value.style.fontSize = "20px";
+      value.style.width = "88px";
+      value.style.minWidth = "88px";
+      const defaultSpec = defaults.qrSpec && typeof defaults.qrSpec === "object" ? defaults.qrSpec : {};
+      const normalizedDefault = String(defaultSpec.errorCorrectionLevel ?? defaults.errorCorrectionLevel ?? "L").trim().toUpperCase();
+      ["L", "M", "Q", "H"].forEach((level) => {
+        const option = document.createElement("option");
+        option.value = level;
+        option.textContent = level;
+        value.appendChild(option);
+      });
+      value.value = ["L", "M", "Q", "H"].includes(normalizedDefault) ? normalizedDefault : "L";
+      tdValue.appendChild(value);
+      getParamValue = () => String(value.value || "").trim();
+      defaultParamValue = value.value;
+      applyDefault = () => {
+        value.value = defaultParamValue;
       };
     }else if(key === "w"){
       value = document.createElement("select");
@@ -556,6 +578,10 @@
     next.initialCode = Math.trunc(asNumber(get("c", String(next.initialCode ?? 0)), 0));
     next.presentationMode = parseBoolParam(get("z", next.presentationMode ? "1" : "0"));
     next.useDirection = parseBoolParam(get("r", next.useDirection ? "1" : "0"));
+    const errorCorrectionLevel = String(get("ec", next.qrSpec?.errorCorrectionLevel ?? next.errorCorrectionLevel ?? "L")).trim().toUpperCase();
+    next.qrSpec = Object.assign({}, next.qrSpec, {
+      errorCorrectionLevel: ["L", "M", "Q", "H"].includes(errorCorrectionLevel) ? errorCorrectionLevel : "L",
+    });
     const skipSpec = String(get("s", "01")).padEnd(2, "0");
     next.skipMode = skipSpec[0] === "1";
     next.stepSkipDataOnly = skipSpec[1] === "1";

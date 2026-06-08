@@ -181,12 +181,29 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   if(homeCursorDirectionOverride && isFunction(safeWindow?.setHomeCursor)){
     safeWindow.setHomeCursor({ dir: homeCursorDirectionOverride });
   }
+  const activeQrSpec = isFunction(safeWindow?.getActiveQrSpec)
+    ? safeWindow.getActiveQrSpec()
+    : null;
+  const activeQrMaxBytes = Number.isFinite(activeQrSpec?.maxBytes) ? activeQrSpec.maxBytes : null;
+  const defaultQrSpec = configDefaults.qrSpec && typeof configDefaults.qrSpec === "object"
+    ? configDefaults.qrSpec
+    : {};
+  const defaultErrorCorrectionRaw = String(defaultQrSpec.errorCorrectionLevel ?? configDefaults.errorCorrectionLevel ?? "L").trim().toUpperCase();
+  const defaultErrorCorrectionSpec = isFunction(safeWindow?.getQrSpecForErrorCorrectionLevel)
+    ? safeWindow.getQrSpecForErrorCorrectionLevel(defaultErrorCorrectionRaw)
+    : null;
+  const defaultErrorCorrectionLevel = typeof defaultErrorCorrectionSpec?.errorCorrectionLevel === "string"
+    ? defaultErrorCorrectionSpec.errorCorrectionLevel
+    : "L";
   const configuredQrData = (typeof configDefaults.qrData === "string") ? configDefaults.qrData : null;
-  if(txtInput && configuredQrData !== null){
-    txtInput.value = configuredQrData;
+  const configuredQrDataValue = (configuredQrData !== null && activeQrMaxBytes !== null)
+    ? configuredQrData.slice(0, activeQrMaxBytes)
+    : configuredQrData;
+  if(txtInput && configuredQrDataValue !== null){
+    txtInput.value = configuredQrDataValue;
   }
-  const DATA_DEFAULT_TEXT = configuredQrData !== null
-    ? configuredQrData
+  const DATA_DEFAULT_TEXT = configuredQrDataValue !== null
+    ? configuredQrDataValue
     : (txtInput?.value ?? "Hello, World!");
   callWindowFunctionIfExists("refreshPatternIfPanelOpen");
   if(userCodeInput){
@@ -577,6 +594,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     return fallback;
   };
   const defaultMaskIndex = resolveMaskIndex(configDefaults.defaultMask, 0);
+  if(txtInput && activeQrMaxBytes !== null){
+    txtInput.maxLength = activeQrMaxBytes;
+    if(typeof txtInput.value === "string" && txtInput.value.length > activeQrMaxBytes){
+      txtInput.value = txtInput.value.slice(0, activeQrMaxBytes);
+    }
+  }
+  callIfFunction(window.applyDataInputMaxLength, activeQrMaxBytes);
   const MASK_INDEX_MIN = 0;
   const MASK_INDEX_MAX = 7;
   const formatMaskInputValue = (value) => {
@@ -1340,16 +1364,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ABORT_ERR,
     RESET_DELAY_MS,
   } = globalScope;
-  const FORMAT_L = [
-    30660, // mask 0
-    29427, // mask 1
-    32170, // mask 2
-    30877, // mask 3
-    26159, // mask 4
-    25368, // mask 5
-    27713, // mask 6
-    26998, // mask 7
-  ];
+  const FORMAT_L = Array.isArray(activeQrSpec?.formatBits)
+    ? activeQrSpec.formatBits
+    : [30660, 29427, 32170, 30877, 26159, 25368, 27713, 26998];
   const originalSetRenderMode = window.setRenderMode;
   let renderModeState = RENDER_IMMEDIATE;
   const setRenderMode = (mode) => {
@@ -3231,6 +3248,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
     const settingEntries = [
       ["qrData", configDefaults.qrData],
+      ["qrSpec.errorCorrectionLevel", defaultErrorCorrectionLevel],
       ["initialCode", configDefaults.initialCode],
       ["historyVisible", configDefaults.historyVisible],
       ["patternPanelOpen", configDefaults.patternPanelOpen],
@@ -3280,6 +3298,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["x", hasParam(PARAM_KEYS.SKIP_EXISTING) ? getParam(PARAM_KEYS.SKIP_EXISTING) : undefined],
       ["t", hasParam(PARAM_KEYS.AUTO_AVOID_TIMING) ? getParam(PARAM_KEYS.AUTO_AVOID_TIMING) : undefined],
       ["r", hasParam(PARAM_KEYS.USE_DIRECTION) ? getParam(PARAM_KEYS.USE_DIRECTION) : undefined],
+      ["ec", hasParam(PARAM_KEYS.ERROR_CORRECTION_LEVEL) ? getParam(PARAM_KEYS.ERROR_CORRECTION_LEVEL) : undefined],
       ["toggleCursor", hasParam("toggleCursor") ? getParam("toggleCursor") : undefined],
       ["toggleGuide", hasParam("toggleGuide") ? getParam("toggleGuide") : undefined],
       ["toggleGrid", hasParam("toggleGrid") ? getParam("toggleGrid") : undefined],
@@ -3723,6 +3742,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         defaultAutoAvoidTiming,
         useDirection,
         defaultUseDirection,
+        errorCorrectionLevel: activeQrSpec?.errorCorrectionLevel,
+        defaultErrorCorrectionLevel,
         initialDebugParamPresent,
         codePanel,
         layoutLeftPaneRatio: (typeof window.getLayoutLeftPaneRatio === "function") ? window.getLayoutLeftPaneRatio() : undefined,

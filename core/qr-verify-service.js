@@ -5,9 +5,16 @@
   if(!global) return;
 
   const BOARD_SIZE = 25;
-  const EXPECTED_BITS = 352;
-  const DATA_CODEWORDS = 34;
-  const EC_CODEWORDS = 10;
+  const getDefaultQrSpec = () => (typeof global.getActiveQrSpec === "function"
+    ? global.getActiveQrSpec()
+    : { expectedBits: 352, dataCodewords: 34, ecCodewords: 10 });
+  const getQrSpecForFormatInfo = (formatInfo) => {
+    const bits = formatInfo && Number.isFinite(formatInfo.errorLevel) ? formatInfo.errorLevel : null;
+    if(bits !== null && typeof global.getQrSpecForFormatErrorLevelBits === "function"){
+      return global.getQrSpecForFormatErrorLevelBits(bits);
+    }
+    return getDefaultQrSpec();
+  };
   const FUNCTION_KINDS = [
     global.BIT_FUNC_FINDER,
     global.BIT_FUNC_TIMING,
@@ -176,7 +183,7 @@
     }
   }
 
-  function readDataCells(){
+  function readDataCells(spec = getDefaultQrSpec()){
     const stats = {
       unplacedCells: 0,
       dataBitsRead: 0,
@@ -195,13 +202,13 @@
       const bit = cellToBit(value);
       cells.push({ row, col, bit });
       stats.dataBitsRead = cells.length;
-      if(cells.length >= EXPECTED_BITS){
+      if(cells.length >= spec.expectedBits){
         return false;
       }
       return true;
     });
-    if(cells.length < EXPECTED_BITS){
-      stats.paddedBits = EXPECTED_BITS - cells.length;
+    if(cells.length < spec.expectedBits){
+      stats.paddedBits = spec.expectedBits - cells.length;
       stats.insufficientBits = true;
     }
     return { cells, stats };
@@ -344,18 +351,18 @@
     });
   }
 
-  function verifyWithMask(maskIdx, dataEntries, paddedBits){
+  function verifyWithMask(maskIdx, dataEntries, paddedBits, spec = getDefaultQrSpec()){
     const bits = unmaskBits(maskIdx, dataEntries);
     const filled = bits.concat(Array(paddedBits).fill(0));
     const bytes = buildBytesFromBits(filled);
-    const dataCodewords = bytes.slice(0, DATA_CODEWORDS);
-    const parityBytes = bytes.slice(DATA_CODEWORDS, DATA_CODEWORDS + EC_CODEWORDS);
+    const dataCodewords = bytes.slice(0, spec.dataCodewords);
+    const parityBytes = bytes.slice(spec.dataCodewords, spec.dataCodewords + spec.ecCodewords);
     const computedEc = (typeof global.qrComputeParity === "function")
-      ? global.qrComputeParity(dataCodewords, EC_CODEWORDS)
+      ? global.qrComputeParity(dataCodewords, spec.ecCodewords)
       : [];
     const ecMatch = computedEc.length === parityBytes.length
       && parityBytes.every((value, idx) => value === computedEc[idx]);
-    const decoded = decodeTextFromBits(filled.slice(0, DATA_CODEWORDS * 8));
+    const decoded = decodeTextFromBits(filled.slice(0, spec.dataCodewords * 8));
     let reason = null;
     if(!ecMatch){
       reason = "rs_mismatch";
@@ -374,18 +381,18 @@
     };
   }
 
-  function verifyWithoutMask(dataEntries, paddedBits){
+  function verifyWithoutMask(dataEntries, paddedBits, spec = getDefaultQrSpec()){
     const bits = dataEntries.map(({ bit }) => bit);
     const filled = bits.concat(Array(paddedBits).fill(0));
     const bytes = buildBytesFromBits(filled);
-    const dataCodewords = bytes.slice(0, DATA_CODEWORDS);
-    const parityBytes = bytes.slice(DATA_CODEWORDS, DATA_CODEWORDS + EC_CODEWORDS);
+    const dataCodewords = bytes.slice(0, spec.dataCodewords);
+    const parityBytes = bytes.slice(spec.dataCodewords, spec.dataCodewords + spec.ecCodewords);
     const computedEc = (typeof global.qrComputeParity === "function")
-      ? global.qrComputeParity(dataCodewords, EC_CODEWORDS)
+      ? global.qrComputeParity(dataCodewords, spec.ecCodewords)
       : [];
     const ecMatch = computedEc.length === parityBytes.length
       && parityBytes.every((value, idx) => value === computedEc[idx]);
-    const decoded = decodeTextFromBits(filled.slice(0, DATA_CODEWORDS * 8));
+    const decoded = decodeTextFromBits(filled.slice(0, spec.dataCodewords * 8));
     return {
       ok: ecMatch && decoded.ok,
       text: decoded.text,
@@ -397,13 +404,15 @@
   }
 
   function verifyBoard(){
-    const { cells: dataEntries, stats } = readDataCells();
+    const defaultSpec = getDefaultQrSpec();
+    const { cells: dataEntries, stats } = readDataCells(defaultSpec);
     const functionalCheck = verifyFunctionalPatterns();
     const bitsAvailable = dataEntries.length;
-    const paddedBits = Math.max(0, EXPECTED_BITS - bitsAvailable);
+    const formatInfo = readFormatInfo();
+    const spec = getQrSpecForFormatInfo(formatInfo);
+    const paddedBits = Math.max(0, spec.expectedBits - bitsAvailable);
     stats.paddedBits = paddedBits;
     stats.insufficientBits = paddedBits > 0;
-    const formatInfo = readFormatInfo();
     const formatValid = Boolean(formatInfo.decoded);
     const formatMaskIdx = formatInfo.maskIndex;
     const tried = new Set();
@@ -427,7 +436,7 @@
       if(candidate === null) continue;
       if(tried.has(candidate)) continue;
       tried.add(candidate);
-      const result = verifyWithMask(candidate, dataEntries, paddedBits);
+      const result = verifyWithMask(candidate, dataEntries, paddedBits, spec);
       if(result.ok){
         finalResult = result;
         break;
@@ -436,7 +445,7 @@
         finalResult = result;
       }
     }
-    const preMaskResult = verifyWithoutMask(dataEntries, paddedBits);
+    const preMaskResult = verifyWithoutMask(dataEntries, paddedBits, spec);
     const preMaskLikely = functionalCheck.ok && !finalResult.ok && preMaskResult.ok;
     if(preMaskLikely){
       finalResult.reason = "mask_missing";

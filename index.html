@@ -38,7 +38,7 @@
     <div class="panel pastel-1" id="dataPanel">
     <div class="row" id="dataInputArea">
       <div class="data-input-header">
-        <div class="label">QRコードにしたいデータ（半角英数字で32文字まで）</div>
+        <div class="label">QRコードにしたいデータ（半角英数字で<span id="qrDataMaxLengthLabel">32</span>文字まで）</div>
         <div class="data-status" id="dataInputStatus" role="status" aria-live="polite"></div>
       </div>
         <div class="input-row">
@@ -228,6 +228,8 @@
   <p><span id="footerSecretQr">QR</span>コードは<a href="https://www.denso-wave.com/ja/system/qr/" target="_blank" rel="noopener noreferrer">株式会社デンソーウェーブ</a>の登録商標です。</p>
 </footer>
 
+<script src="settings-ui.js"></script>
+<script src="settings.js"></script>
 <script src="domain/qrcode.js"></script>
 <script src="domain/board.js"></script>
 <script src="domain/util.js"></script>
@@ -282,8 +284,6 @@
 <script src="ui/ui-state.js"></script>
 <script src="ui/bind-events.js"></script>
 <script src="app/main.js"></script>
-<script src="settings-ui.js"></script>
-<script src="settings.js"></script>
 <script src="code-samples.js"></script>
 <script src="version.js"></script>
 <script src="app/bootstrap.js"></script>

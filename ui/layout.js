@@ -45,13 +45,27 @@ const btnFormatCode = document.getElementById("btnFormatCode");
 const btnClearCode = document.getElementById("btnClearCode");
 const dataInputStatus = document.getElementById("dataInputStatus");
 const dataCount = document.getElementById("dataCount");
+const qrDataMaxLengthLabel = document.getElementById("qrDataMaxLengthLabel");
 const sampleDropdown = document.getElementById("sampleDropdown");
 const sampleDropdownToggle = document.getElementById("btnSampleDropdown");
 const sampleDropdownMenu = document.getElementById("sampleDropdownMenu");
-const DATA_INPUT_MAX_LENGTH = Number(txtInput?.getAttribute("maxlength")) || 32;
+let DATA_INPUT_MAX_LENGTH = Number(callIfFunction(window.getActiveQrSpec)?.maxBytes ?? txtInput?.getAttribute("maxlength")) || 32;
+function applyDataInputMaxLength(maxLength){
+  const numeric = Number(maxLength);
+  DATA_INPUT_MAX_LENGTH = Number.isFinite(numeric) ? Math.max(1, Math.trunc(numeric)) : DATA_INPUT_MAX_LENGTH;
+  if(txtInput){
+    txtInput.maxLength = DATA_INPUT_MAX_LENGTH;
+  }
+  if(qrDataMaxLengthLabel){
+    qrDataMaxLengthLabel.textContent = String(DATA_INPUT_MAX_LENGTH);
+  }
+  updateDataStatus();
+  refreshGuide();
+}
 const FULLWIDTH_CHAR_REGEX = /[^\u0000-\u007F]/;
 const STOP_REASON_DATA = "データが変更されたので停止しました。";
 const STOP_REASON_CODE = "プログラムが変更されたので停止しました。";
+applyDataInputMaxLength(DATA_INPUT_MAX_LENGTH);
 const isExecutionRunningNow = () => {
   const statusEl = document.getElementById("executionStatus");
   return Boolean(statusEl && statusEl.classList.contains("status-running"));
@@ -109,7 +123,8 @@ function updateDataStatus(){
 
 function setInputValue(value){
   if(!txtInput) return;
-  txtInput.value = value;
+  const source = typeof value === "string" ? value : String(value ?? "");
+  txtInput.value = source.length > DATA_INPUT_MAX_LENGTH ? source.slice(0, DATA_INPUT_MAX_LENGTH) : source;
   stopCurrentRunIfRunning(STOP_REASON_DATA);
   refreshPatternIfPanelOpen();
   updateDataStatus();
@@ -348,7 +363,7 @@ function refreshPattern({ force = false } = {}){
     terminatorBits,
     zeroPadBits,
     padEntries,
-    dataCodewords,
+    parityBytes,
   } = builder;
 
   const groupA = [];
@@ -372,11 +387,7 @@ function refreshPattern({ force = false } = {}){
     groupB.push({ label: padLabel, bits: padEntry.bits, color: getKindColor(BIT_INFO_PADDING), padding: true });
   }
 
-  const EC_CODEWORDS = 10;
-  const parityBytes = (typeof window.qrComputeParity === "function")
-    ? window.qrComputeParity(dataCodewords, EC_CODEWORDS)
-    : [];
-  const groupC = parityBytes.map((val) => ({
+  const groupC = (Array.isArray(parityBytes) ? parityBytes : []).map((val) => ({
     label: "",
     bits: val.toString(2).padStart(8, "0"),
     color: getKindColor(BIT_INFO_PARITY),
@@ -391,7 +402,7 @@ function refreshPattern({ force = false } = {}){
 }
 function refreshGuide(){
   if(!inputGuide || !txtInput) return;
-  const remain = Math.max(0, 32 - txtInput.value.length);
+  const remain = Math.max(0, DATA_INPUT_MAX_LENGTH - txtInput.value.length);
   inputGuide.textContent = `${remain}`;
 }
 if(txtInput){
@@ -923,6 +934,7 @@ if(typeof window.refreshPatternForCreate !== "function"){
 if(typeof window.refreshPatternIfPanelOpen !== "function"){
   window.refreshPatternIfPanelOpen = refreshPatternIfPanelOpen;
 }
+window.applyDataInputMaxLength = applyDataInputMaxLength;
 /**
   * Module that composes layout constants, toggle controls, and panel rendering helpers.
  */
