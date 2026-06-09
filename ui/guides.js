@@ -31,11 +31,18 @@
     return span;
   };
 
+  const getGuideLabelSize = (boardSize) => {
+    const numeric = Number(boardSize);
+    const size = Number.isFinite(numeric) ? Math.max(1, numeric) : 25;
+    return Math.max(7, Math.min(12, 260 / size));
+  };
+
   const rebuildGuides = () => {
     const boardSize = Math.max(1, getBoardSize());
     const boardEl = document.querySelector(".qr-board");
     if (boardEl) {
       boardEl.style.setProperty("--board-size", boardSize.toString());
+      boardEl.style.setProperty("--guide-label-size", `${getGuideLabelSize(boardSize)}px`);
     }
 
     const colContainer = document.querySelector(".guide-col");

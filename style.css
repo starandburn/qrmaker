@@ -1940,6 +1940,7 @@ textarea:focus{
 .qr-board{
   --guide: 26px;
   --board-size: 25;
+  --guide-label-size: 10.4px;
   width:100%;
   height:100%;
   padding:10px;
@@ -1986,9 +1987,10 @@ textarea:focus{
   align-items:center;
   justify-content:center;
   font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size:clamp(10px, 1.1vw, 12px);
+  font-size:var(--guide-label-size);
   color:#8b919a;
   border-left:1px solid #cfd3da;
+  white-space:nowrap;
 }
 .guide-col span.is-active{
   background:#e8f0ff;
@@ -2013,9 +2015,10 @@ textarea:focus{
   align-items:center;
   justify-content:center;
   font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-size:clamp(10px, 1.1vw, 12px);
+  font-size:var(--guide-label-size);
   color:#8b919a;
   border-top:1px solid #cfd3da;
+  white-space:nowrap;
 }
 .guide-row span.is-active{
   background:#e8f0ff;

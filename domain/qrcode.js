@@ -146,6 +146,24 @@ const QR_SPEC_ROWS = {
     Q: { dataCodewords: 34, ecCodewords: 36, maxBytes: 32, blocks: [{ count: 2, dataCodewords: 17, ecCodewords: 18 }] },
     H: { dataCodewords: 26, ecCodewords: 44, maxBytes: 24, blocks: [{ count: 2, dataCodewords: 13, ecCodewords: 22 }] },
   },
+  4: {
+    L: { dataCodewords: 80, ecCodewords: 20, maxBytes: 78 },
+    M: { dataCodewords: 64, ecCodewords: 36, maxBytes: 62, blocks: [{ count: 2, dataCodewords: 32, ecCodewords: 18 }] },
+    Q: { dataCodewords: 48, ecCodewords: 52, maxBytes: 46, blocks: [{ count: 2, dataCodewords: 24, ecCodewords: 26 }] },
+    H: { dataCodewords: 36, ecCodewords: 64, maxBytes: 34, blocks: [{ count: 4, dataCodewords: 9, ecCodewords: 16 }] },
+  },
+  5: {
+    L: { dataCodewords: 108, ecCodewords: 26, maxBytes: 106 },
+    M: { dataCodewords: 86, ecCodewords: 48, maxBytes: 84, blocks: [{ count: 2, dataCodewords: 43, ecCodewords: 24 }] },
+    Q: { dataCodewords: 62, ecCodewords: 72, maxBytes: 60, blocks: [{ count: 2, dataCodewords: 15, ecCodewords: 18 }, { count: 2, dataCodewords: 16, ecCodewords: 18 }] },
+    H: { dataCodewords: 46, ecCodewords: 88, maxBytes: 44, blocks: [{ count: 2, dataCodewords: 11, ecCodewords: 22 }, { count: 2, dataCodewords: 12, ecCodewords: 22 }] },
+  },
+  6: {
+    L: { dataCodewords: 136, ecCodewords: 36, maxBytes: 134, blocks: [{ count: 2, dataCodewords: 68, ecCodewords: 18 }] },
+    M: { dataCodewords: 108, ecCodewords: 64, maxBytes: 106, blocks: [{ count: 4, dataCodewords: 27, ecCodewords: 16 }] },
+    Q: { dataCodewords: 76, ecCodewords: 96, maxBytes: 74, blocks: [{ count: 4, dataCodewords: 19, ecCodewords: 24 }] },
+    H: { dataCodewords: 60, ecCodewords: 112, maxBytes: 58, blocks: [{ count: 4, dataCodewords: 15, ecCodewords: 28 }] },
+  },
 };
 
 const QR_ERROR_CORRECTION_BITS_BY_LEVEL = {

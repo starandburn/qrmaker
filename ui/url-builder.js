@@ -20,7 +20,7 @@
     z: { type: "bool", desc: "プレゼンモード（内部キー）" },
   };
   DEFAULT_PARAM_META.ec = { type: "string", desc: "QR error correction level (A/L/M/Q/H)" };
-  DEFAULT_PARAM_META.qrv = { type: "number", desc: "QR version (1/2/3)" };
+  DEFAULT_PARAM_META.qrv = { type: "number", desc: "QR version (1-6)" };
 
   const dom = {
     btnGenerate: document.getElementById("btnGenerate"),
@@ -184,10 +184,10 @@
       value.style.minWidth = "220px";
       const defaultSpec = defaults.qrSpec && typeof defaults.qrSpec === "object" ? defaults.qrSpec : {};
       const defaultVersion = Number(defaultSpec.version ?? defaults.qrVersion ?? 2);
-      const normalizedDefault = Number.isInteger(defaultVersion) && defaultVersion >= 1 && defaultVersion <= 3
+      const normalizedDefault = Number.isInteger(defaultVersion) && defaultVersion >= 1 && defaultVersion <= 6
         ? defaultVersion
         : 2;
-      [1, 2, 3].forEach((version) => {
+      [1, 2, 3, 4, 5, 6].forEach((version) => {
         const option = document.createElement("option");
         const boardSize = 17 + (4 * version);
         option.value = String(version);
@@ -608,7 +608,7 @@
     const errorCorrectionLevel = String(get("ec", next.qrSpec?.errorCorrectionLevel ?? next.errorCorrectionLevel ?? "A")).trim().toUpperCase();
     const qrVersion = Math.trunc(asNumber(get("qrv", String(next.qrSpec?.version ?? next.qrVersion ?? 2)), 2));
     next.qrSpec = Object.assign({}, next.qrSpec, {
-      version: (qrVersion >= 1 && qrVersion <= 3) ? qrVersion : 2,
+      version: (qrVersion >= 1 && qrVersion <= 6) ? qrVersion : 2,
       errorCorrectionLevel: ["A", "L", "M", "Q", "H"].includes(errorCorrectionLevel) ? errorCorrectionLevel : "A",
     });
     const skipSpec = String(get("s", "01")).padEnd(2, "0");
