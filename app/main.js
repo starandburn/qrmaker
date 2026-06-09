@@ -5,13 +5,11 @@ const typeUtils = (safeWindow && safeWindow.typeUtils) ? safeWindow.typeUtils : 
 if(!typeUtils
   || typeof typeUtils.isFunction !== "function"
   || typeof typeUtils.callIfFunction !== "function"
-  || typeof typeUtils.callWithFallback !== "function"
 ){
   throw new Error("app/utils/type-utils.js must be loaded before main.js.");
 }
 const {
   callIfFunction,
-  callWithFallback,
   isFunction,
 } = typeUtils;
 const REQUIRED_KEYS = [
