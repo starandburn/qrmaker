@@ -20,6 +20,7 @@
     z: { type: "bool", desc: "プレゼンモード（内部キー）" },
   };
   DEFAULT_PARAM_META.ec = { type: "string", desc: "QR error correction level (A/L/M/Q/H)" };
+  DEFAULT_PARAM_META.qrv = { type: "number", desc: "QR version (1/2/3)" };
 
   const dom = {
     btnGenerate: document.getElementById("btnGenerate"),
@@ -36,6 +37,7 @@
   const keySets = (() => {
     const keys = [];
     const orderedKeys = [
+      "qrv",
       "d",  // 入力データ
       "v",  // 表示トグル一括
       "g",  // デバッグ表示
@@ -173,6 +175,31 @@
         flagInputs.forEach((input, index) => {
           input.checked = VIEW_FLAG_DEFAULT[index] === "1";
         });
+      };
+    }else if(key === "qrv"){
+      value = document.createElement("select");
+      value.className = "value-input mono";
+      value.style.fontSize = "20px";
+      value.style.width = "220px";
+      value.style.minWidth = "220px";
+      const defaultSpec = defaults.qrSpec && typeof defaults.qrSpec === "object" ? defaults.qrSpec : {};
+      const defaultVersion = Number(defaultSpec.version ?? defaults.qrVersion ?? 2);
+      const normalizedDefault = Number.isInteger(defaultVersion) && defaultVersion >= 1 && defaultVersion <= 3
+        ? defaultVersion
+        : 2;
+      [1, 2, 3].forEach((version) => {
+        const option = document.createElement("option");
+        const boardSize = 17 + (4 * version);
+        option.value = String(version);
+        option.textContent = `Version ${version} (${boardSize}x${boardSize})`;
+        value.appendChild(option);
+      });
+      value.value = String(normalizedDefault);
+      tdValue.appendChild(value);
+      getParamValue = () => String(value.value || "").trim();
+      defaultParamValue = String(normalizedDefault);
+      applyDefault = () => {
+        value.value = defaultParamValue;
       };
     }else if(meta.type === "bool"){
       const wrap = document.createElement("label");
@@ -579,7 +606,9 @@
     next.presentationMode = parseBoolParam(get("z", next.presentationMode ? "1" : "0"));
     next.useDirection = parseBoolParam(get("r", next.useDirection ? "1" : "0"));
     const errorCorrectionLevel = String(get("ec", next.qrSpec?.errorCorrectionLevel ?? next.errorCorrectionLevel ?? "A")).trim().toUpperCase();
+    const qrVersion = Math.trunc(asNumber(get("qrv", String(next.qrSpec?.version ?? next.qrVersion ?? 2)), 2));
     next.qrSpec = Object.assign({}, next.qrSpec, {
+      version: (qrVersion >= 1 && qrVersion <= 3) ? qrVersion : 2,
       errorCorrectionLevel: ["A", "L", "M", "Q", "H"].includes(errorCorrectionLevel) ? errorCorrectionLevel : "A",
     });
     const skipSpec = String(get("s", "01")).padEnd(2, "0");

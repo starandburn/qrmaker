@@ -246,6 +246,86 @@
     return bytes;
   }
 
+  function bytesToBits(bytes){
+    const bits = [];
+    for(const byte of bytes){
+      const value = Number(byte) & 0xff;
+      for(let shift = 7; shift >= 0; shift--){
+        bits.push((value >> shift) & 1);
+      }
+    }
+    return bits;
+  }
+
+  function getBlockSpecs(spec){
+    if(Array.isArray(spec?.blocks) && spec.blocks.length > 0){
+      const result = [];
+      for(const blockSpec of spec.blocks){
+        const count = Number.isFinite(blockSpec.count) ? Math.max(1, Math.trunc(blockSpec.count)) : 1;
+        const dataCodewords = Number.isFinite(blockSpec.dataCodewords) ? Math.max(0, Math.trunc(blockSpec.dataCodewords)) : 0;
+        const ecCodewords = Number.isFinite(blockSpec.ecCodewords) ? Math.max(0, Math.trunc(blockSpec.ecCodewords)) : 0;
+        for(let i = 0; i < count; i++){
+          result.push({ dataCodewords, ecCodewords });
+        }
+      }
+      return result;
+    }
+    return [{ dataCodewords: spec.dataCodewords, ecCodewords: spec.ecCodewords }];
+  }
+
+  function deinterleaveCodewords(bytes, spec){
+    const blockSpecs = getBlockSpecs(spec);
+    const blocks = blockSpecs.map((blockSpec) => Object.assign({}, blockSpec, {
+      dataCodewordsList: [],
+      parityBytes: [],
+      computedEc: [],
+    }));
+    const dataArea = bytes.slice(0, spec.dataCodewords);
+    const parityArea = bytes.slice(spec.dataCodewords, spec.dataCodewords + spec.ecCodewords);
+    const maxDataLength = Math.max(0, ...blocks.map((block) => block.dataCodewords));
+    const maxParityLength = Math.max(0, ...blocks.map((block) => block.ecCodewords));
+    let offset = 0;
+    for(let idx = 0; idx < maxDataLength; idx++){
+      for(const block of blocks){
+        if(idx < block.dataCodewords && Number.isFinite(dataArea[offset])){
+          block.dataCodewordsList.push(dataArea[offset]);
+          offset++;
+        }
+      }
+    }
+    offset = 0;
+    for(let idx = 0; idx < maxParityLength; idx++){
+      for(const block of blocks){
+        if(idx < block.ecCodewords && Number.isFinite(parityArea[offset])){
+          block.parityBytes.push(parityArea[offset]);
+          offset++;
+        }
+      }
+    }
+    const dataCodewords = blocks.flatMap((block) => block.dataCodewordsList);
+    const computedEcBlocks = blocks.map((block) => {
+      const computedEc = (typeof global.qrComputeParity === "function")
+        ? global.qrComputeParity(block.dataCodewordsList, block.ecCodewords)
+        : [];
+      block.computedEc = computedEc;
+      return computedEc;
+    });
+    const computedEc = [];
+    for(let idx = 0; idx < maxParityLength; idx++){
+      computedEcBlocks.forEach((blockEc, blockIdx) => {
+        if(idx < blocks[blockIdx].ecCodewords && Number.isFinite(blockEc[idx])){
+          computedEc.push(blockEc[idx]);
+        }
+      });
+    }
+    return {
+      blocks,
+      dataCodewords,
+      parityBytes: parityArea,
+      computedEc,
+    };
+  }
+
   function reverseBits(value, width = 15){
     let v = value >>> 0;
     let rev = 0;
@@ -374,14 +454,13 @@
     const bits = unmaskBits(maskIdx, dataEntries);
     const filled = bits.concat(Array(paddedBits).fill(0));
     const bytes = buildBytesFromBits(filled);
-    const dataCodewords = bytes.slice(0, spec.dataCodewords);
-    const parityBytes = bytes.slice(spec.dataCodewords, spec.dataCodewords + spec.ecCodewords);
-    const computedEc = (typeof global.qrComputeParity === "function")
-      ? global.qrComputeParity(dataCodewords, spec.ecCodewords)
-      : [];
+    const codewords = deinterleaveCodewords(bytes, spec);
+    const dataCodewords = codewords.dataCodewords;
+    const parityBytes = codewords.parityBytes;
+    const computedEc = codewords.computedEc;
     const ecMatch = computedEc.length === parityBytes.length
       && parityBytes.every((value, idx) => value === computedEc[idx]);
-    const decoded = decodeTextFromBits(filled.slice(0, spec.dataCodewords * 8));
+    const decoded = decodeTextFromBits(bytesToBits(dataCodewords));
     let reason = null;
     if(!ecMatch){
       reason = "rs_mismatch";
@@ -396,6 +475,7 @@
       dataCodewords,
       parityBytes,
       computedEc,
+      blocks: codewords.blocks,
       maskIndex: maskIdx,
     };
   }
@@ -404,14 +484,13 @@
     const bits = dataEntries.map(({ bit }) => bit);
     const filled = bits.concat(Array(paddedBits).fill(0));
     const bytes = buildBytesFromBits(filled);
-    const dataCodewords = bytes.slice(0, spec.dataCodewords);
-    const parityBytes = bytes.slice(spec.dataCodewords, spec.dataCodewords + spec.ecCodewords);
-    const computedEc = (typeof global.qrComputeParity === "function")
-      ? global.qrComputeParity(dataCodewords, spec.ecCodewords)
-      : [];
+    const codewords = deinterleaveCodewords(bytes, spec);
+    const dataCodewords = codewords.dataCodewords;
+    const parityBytes = codewords.parityBytes;
+    const computedEc = codewords.computedEc;
     const ecMatch = computedEc.length === parityBytes.length
       && parityBytes.every((value, idx) => value === computedEc[idx]);
-    const decoded = decodeTextFromBits(filled.slice(0, spec.dataCodewords * 8));
+    const decoded = decodeTextFromBits(bytesToBits(dataCodewords));
     return {
       ok: ecMatch && decoded.ok,
       text: decoded.text,
@@ -419,6 +498,7 @@
       dataCodewords,
       parityBytes,
       computedEc,
+      blocks: codewords.blocks,
     };
   }
 
