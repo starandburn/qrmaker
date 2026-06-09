@@ -211,6 +211,7 @@ const QR_SUPPORTED_VERSIONS = Object.freeze(Object.keys(QR_SPECS_BY_VERSION).map
 
 const QR_ERROR_CORRECTION_AUTO_LEVEL = "A";
 const QR_ERROR_CORRECTION_LEVEL_ORDER = ["H", "Q", "M", "L"];
+const QR_VERSION_AUTO = "A";
 
 function normalizeQrErrorCorrectionLevel(value, fallback = "A"){
   const raw = String(value ?? "").trim().toUpperCase();
@@ -219,6 +220,10 @@ function normalizeQrErrorCorrectionLevel(value, fallback = "A"){
 }
 
 function normalizeQrVersion(value, fallback = 2){
+  const raw = String(value ?? "").trim().toUpperCase();
+  if(raw === QR_VERSION_AUTO || raw === "AUTO"){
+    return QR_VERSION_AUTO;
+  }
   const numeric = Number(value);
   const version = Number.isFinite(numeric) ? Math.trunc(numeric) : Number(fallback);
   return QR_SUPPORTED_VERSIONS.includes(version) ? version : 2;
@@ -263,6 +268,15 @@ function getConfiguredQrErrorCorrectionLevel(){
 function getQrSpecsForVersion(version){
   const normalizedVersion = normalizeQrVersion(version, getConfiguredQrVersion());
   return QR_SPECS_BY_VERSION[normalizedVersion] || QR_SPECS_BY_VERSION[2];
+}
+
+function getQrVersionFromBoardSize(){
+  if(typeof window === "undefined") return null;
+  const boardSize = Number(window.BOARD_ROWS);
+  if(!Number.isFinite(boardSize)) return null;
+  const version = (boardSize - 17) / 4;
+  if(!Number.isInteger(version)) return null;
+  return QR_SUPPORTED_VERSIONS.includes(version) ? version : null;
 }
 
 function getQrSpecForErrorCorrectionLevel(level, version){
@@ -322,11 +336,52 @@ function getQrSpecForInputLength(length, version){
   return specs[level];
 }
 
+function getQrSpecForAutoVersionInputLength(length, level){
+  const numeric = Number(length);
+  const inputLength = Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : 0;
+  const normalizedLevel = normalizeQrErrorCorrectionLevel(level, QR_ERROR_CORRECTION_AUTO_LEVEL);
+  const levels = normalizedLevel === QR_ERROR_CORRECTION_AUTO_LEVEL
+    ? QR_ERROR_CORRECTION_LEVEL_ORDER
+    : [normalizedLevel];
+  for(const version of QR_SUPPORTED_VERSIONS){
+    const specs = getQrSpecsForVersion(version);
+    for(const candidate of levels){
+      if(inputLength <= specs[candidate].maxBytes){
+        return specs[candidate];
+      }
+    }
+  }
+  return getQrSpecForErrorCorrectionLevel(level, QR_SUPPORTED_VERSIONS[QR_SUPPORTED_VERSIONS.length - 1]);
+}
+
+function getQrTextForSpecSelection(text){
+  if(text !== undefined){
+    return String(text ?? "");
+  }
+  if(typeof window !== "undefined" && window.location && typeof URLSearchParams === "function"){
+    const params = new URLSearchParams(window.location.search || "");
+    const rawData = params.get("d");
+    if(rawData !== null){
+      if(rawData === "_") return "";
+      if(rawData.startsWith("~")) return rawData.slice(1);
+      return rawData;
+    }
+  }
+  const defaults = (typeof window !== "undefined" && window.appSettings?.defaults)
+    || (typeof window !== "undefined" && window.appSettingsFromScript?.defaults)
+    || {};
+  return String(defaults.qrData ?? "");
+}
+
 function getQrSpecForText(text){
   const configuredLevel = getConfiguredQrErrorCorrectionLevel();
   const configuredVersion = getConfiguredQrVersion();
+  const inputText = getQrTextForSpecSelection(text);
+  if(configuredVersion === QR_VERSION_AUTO){
+    return getQrSpecForAutoVersionInputLength(inputText.length, configuredLevel);
+  }
   if(configuredLevel === QR_ERROR_CORRECTION_AUTO_LEVEL){
-    return getQrSpecForInputLength(String(text ?? "").length, configuredVersion);
+    return getQrSpecForInputLength(inputText.length, configuredVersion);
   }
   return getQrSpecForErrorCorrectionLevel(configuredLevel, configuredVersion);
 }
@@ -334,6 +389,13 @@ function getQrSpecForText(text){
 function getActiveQrMaxBytes(){
   const configuredLevel = getConfiguredQrErrorCorrectionLevel();
   const configuredVersion = getConfiguredQrVersion();
+  if(configuredVersion === QR_VERSION_AUTO){
+    const maxVersion = QR_SUPPORTED_VERSIONS[QR_SUPPORTED_VERSIONS.length - 1];
+    if(configuredLevel === QR_ERROR_CORRECTION_AUTO_LEVEL){
+      return getQrSpecsForVersion(maxVersion).L.maxBytes;
+    }
+    return getQrSpecForErrorCorrectionLevel(configuredLevel, maxVersion).maxBytes;
+  }
   if(configuredLevel === QR_ERROR_CORRECTION_AUTO_LEVEL){
     return getQrSpecsForVersion(configuredVersion).L.maxBytes;
   }
@@ -343,7 +405,8 @@ function getActiveQrMaxBytes(){
 function getQrSpecForFormatErrorLevelBits(bits){
   const numeric = Number(bits);
   if(!Number.isFinite(numeric)) return getQrSpecForErrorCorrectionLevel("L");
-  const match = Object.values(getQrSpecsForVersion(getConfiguredQrVersion())).find((spec) => spec.errorCorrectionBits === numeric);
+  const version = getQrVersionFromBoardSize() ?? getConfiguredQrVersion();
+  const match = Object.values(getQrSpecsForVersion(version)).find((spec) => spec.errorCorrectionBits === numeric);
   return match || getQrSpecForErrorCorrectionLevel("L");
 }
 

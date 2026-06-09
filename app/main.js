@@ -2792,8 +2792,53 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     return Object.assign({ ok: result.ok }, payload);
   };
 
+  const AUTO_QR_RELOAD_KEY = "qrmaker:autoVersionReload";
+  const encodeDataParamForReload = (value) => {
+    const normalized = String(value ?? "");
+    if(normalized === "") return "_";
+    if(normalized === "_" || normalized.startsWith("~")) return `~${normalized}`;
+    return normalized;
+  };
+  const getAutoQrBoardSizeForInput = () => {
+    if(!isFunction(window.getConfiguredQrVersion) || window.getConfiguredQrVersion() !== "A") return null;
+    if(!isFunction(window.getActiveQrSpec)) return null;
+    const spec = window.getActiveQrSpec(txtInput?.value ?? "");
+    return Number.isFinite(spec?.boardSize) ? spec.boardSize : null;
+  };
+  const reloadForAutoQrBoardSizeIfNeeded = () => {
+    const nextBoardSize = getAutoQrBoardSizeForInput();
+    if(!Number.isFinite(nextBoardSize) || nextBoardSize === BOARD_ROWS) return false;
+    let reloadCount = 0;
+    try{
+      const previous = JSON.parse(sessionStorage.getItem(AUTO_QR_RELOAD_KEY) || "null");
+      reloadCount = Number.isFinite(previous?.reloadCount) ? previous.reloadCount : 0;
+    }catch(_err){
+      reloadCount = 0;
+    }
+    if(reloadCount > 0) return false;
+    const payload = {
+      data: txtInput?.value ?? "",
+      code: userCodeInput?.value ?? "",
+      targetBoardSize: nextBoardSize,
+      reloadCount: reloadCount + 1,
+    };
+    try{
+      sessionStorage.setItem(AUTO_QR_RELOAD_KEY, JSON.stringify(payload));
+    }catch(_err){
+      return false;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("qrv", "A");
+    url.searchParams.set("d", encodeDataParamForReload(payload.data));
+    window.location.replace(url.toString());
+    return true;
+  };
+
   btnGenerate.addEventListener("click", async (ev) => {
     const currentVerificationSequence = ++verificationSequence;
+    if(reloadForAutoQrBoardSizeIfNeeded()){
+      return;
+    }
     const clickForceAutoReset = Boolean(ev?.ctrlKey) && !Boolean(ev?.shiftKey);
     const clickSkipAutoReset = Boolean(ev?.shiftKey) && !Boolean(ev?.ctrlKey);
     const skipAutoResetOnce = clickSkipAutoReset || Boolean(window.__skipAutoResetOnRunOnce);
@@ -3219,6 +3264,33 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     codeSampleParamKey: PARAM_KEYS.CODE_SAMPLE,
     codeSamples: resolvedCodeSamples,
   });
+  try{
+    const pendingAutoReload = JSON.parse(sessionStorage.getItem(AUTO_QR_RELOAD_KEY) || "null");
+    if(pendingAutoReload && Number(pendingAutoReload.targetBoardSize) === BOARD_ROWS){
+      sessionStorage.removeItem(AUTO_QR_RELOAD_KEY);
+      if(txtInput && typeof pendingAutoReload.data === "string"){
+        txtInput.value = pendingAutoReload.data;
+        txtInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      if(userCodeInput && typeof pendingAutoReload.code === "string"){
+        userCodeInput.value = pendingAutoReload.code;
+        userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      setTimeout(() => {
+        if(btnGenerate && !btnGenerate.disabled){
+          btnGenerate.click();
+        }
+      }, 0);
+    }else if(pendingAutoReload){
+      sessionStorage.removeItem(AUTO_QR_RELOAD_KEY);
+    }
+  }catch(_err){
+    try{
+      sessionStorage.removeItem(AUTO_QR_RELOAD_KEY);
+    }catch(_removeErr){
+      // ignore storage cleanup failures
+    }
+  }
   if(btnGenerate && userCodeInput){
     const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
     btnGenerate.disabled = !codeText;

@@ -20,7 +20,7 @@
     z: { type: "bool", desc: "プレゼンモード（内部キー）" },
   };
   DEFAULT_PARAM_META.ec = { type: "string", desc: "QR error correction level (A/L/M/Q/H)" };
-  DEFAULT_PARAM_META.qrv = { type: "number", desc: "QR version (1-6)" };
+  DEFAULT_PARAM_META.qrv = { type: "string", desc: "QR version (A/1-6)" };
 
   const dom = {
     btnGenerate: document.getElementById("btnGenerate"),
@@ -183,10 +183,17 @@
       value.style.width = "220px";
       value.style.minWidth = "220px";
       const defaultSpec = defaults.qrSpec && typeof defaults.qrSpec === "object" ? defaults.qrSpec : {};
-      const defaultVersion = Number(defaultSpec.version ?? defaults.qrVersion ?? 2);
-      const normalizedDefault = Number.isInteger(defaultVersion) && defaultVersion >= 1 && defaultVersion <= 6
-        ? defaultVersion
-        : 2;
+      const defaultVersionRaw = String(defaultSpec.version ?? defaults.qrVersion ?? 2).trim().toUpperCase();
+      const defaultVersionNumber = Number(defaultVersionRaw);
+      const normalizedDefault = (defaultVersionRaw === "A" || defaultVersionRaw === "AUTO")
+        ? "A"
+        : ((Number.isInteger(defaultVersionNumber) && defaultVersionNumber >= 1 && defaultVersionNumber <= 6)
+          ? String(defaultVersionNumber)
+          : "2");
+      const autoOption = document.createElement("option");
+      autoOption.value = "A";
+      autoOption.textContent = "Auto (up to V6 L)";
+      value.appendChild(autoOption);
       [1, 2, 3, 4, 5, 6].forEach((version) => {
         const option = document.createElement("option");
         const boardSize = 17 + (4 * version);
@@ -194,10 +201,10 @@
         option.textContent = `Version ${version} (${boardSize}x${boardSize})`;
         value.appendChild(option);
       });
-      value.value = String(normalizedDefault);
+      value.value = normalizedDefault;
       tdValue.appendChild(value);
       getParamValue = () => String(value.value || "").trim();
-      defaultParamValue = String(normalizedDefault);
+      defaultParamValue = normalizedDefault;
       applyDefault = () => {
         value.value = defaultParamValue;
       };
@@ -606,9 +613,12 @@
     next.presentationMode = parseBoolParam(get("z", next.presentationMode ? "1" : "0"));
     next.useDirection = parseBoolParam(get("r", next.useDirection ? "1" : "0"));
     const errorCorrectionLevel = String(get("ec", next.qrSpec?.errorCorrectionLevel ?? next.errorCorrectionLevel ?? "A")).trim().toUpperCase();
-    const qrVersion = Math.trunc(asNumber(get("qrv", String(next.qrSpec?.version ?? next.qrVersion ?? 2)), 2));
+    const qrVersionRaw = String(get("qrv", String(next.qrSpec?.version ?? next.qrVersion ?? 2))).trim().toUpperCase();
+    const qrVersionNumber = Math.trunc(asNumber(qrVersionRaw, 2));
     next.qrSpec = Object.assign({}, next.qrSpec, {
-      version: (qrVersion >= 1 && qrVersion <= 6) ? qrVersion : 2,
+      version: (qrVersionRaw === "A" || qrVersionRaw === "AUTO")
+        ? "A"
+        : ((qrVersionNumber >= 1 && qrVersionNumber <= 6) ? qrVersionNumber : 2),
       errorCorrectionLevel: ["A", "L", "M", "Q", "H"].includes(errorCorrectionLevel) ? errorCorrectionLevel : "A",
     });
     const skipSpec = String(get("s", "01")).padEnd(2, "0");
