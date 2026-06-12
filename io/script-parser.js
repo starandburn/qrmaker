@@ -224,6 +224,7 @@
   const ALLOWED_CONTROL = new Set([
     "if",
     "else",
+    "elseif",
     "while",
     "until",
     "repeat",
@@ -859,7 +860,8 @@
       }
     const rawLineContent = trimmed.replace(/\s+$/g, "");
     const hasInlineElseMarker = rawLineContent.startsWith(INLINE_ELSE_MARKER);
-    const line = hasInlineElseMarker ? rawLineContent.slice(INLINE_ELSE_MARKER.length) : rawLineContent;
+    const lineRaw = hasInlineElseMarker ? rawLineContent.slice(INLINE_ELSE_MARKER.length) : rawLineContent;
+    const line = lineRaw.replace(/^elseif\b/i, "else if");
     const lineLower = line.toLowerCase();
     const indent = typeof raw === "string" ? raw.match(/^\s*/)[0] : "";
       const endMatch = pendingEndMatch || line.match(/^end\s*(for|while|until|repeat|loop|if)$/i);
@@ -873,13 +875,17 @@
       }
       const elseMatch = line.match(/^else\b(.*)$/i);
       const elseRest = elseMatch ? (elseMatch[1] || "").trim() : "";
+      const elseRestIsIf = /^if\b/i.test(elseRest);
       let handledInlineElse = false;
-      if(pendingInlineIf && !(elseMatch && elseRest)){
-        combined.push(pendingInlineIf.singleLine);
-        blockDepth += countBraceDelta(pendingInlineIf.singleLine);
+      if(pendingInlineIf && (!(elseMatch && elseRest) || elseRestIsIf)){
+        const pendingLine = elseRestIsIf && pendingInlineIf.condFormatted && pendingInlineIf.awaitedBody
+          ? `if (${pendingInlineIf.condFormatted}) { ${pendingInlineIf.awaitedBody}`
+          : pendingInlineIf.singleLine;
+        combined.push(pendingLine);
+        blockDepth += countBraceDelta(pendingLine);
         pendingInlineIf = null;
       }
-      if(pendingInlineIf && elseMatch && elseRest){
+      if(pendingInlineIf && elseMatch && elseRest && !elseRestIsIf){
         if(pendingInlineIf.condFormatted && pendingInlineIf.awaitedBody){
           const elseFormatted = formatStudentCodeLine(elseRest);
           const elseStmt = elseFormatted ? (elseFormatted.endsWith(";") ? elseFormatted : `${elseFormatted};`) : "";

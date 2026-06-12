@@ -32,7 +32,12 @@
         const script = buildUserScript(userCodeInput ? userCodeInput.value : "", { awaitCalls: true });
         userCodeParsed.value = script;
       }catch(err){
-        userCodeParsed.value = `// ${err && err.message ? String(err.message) : String(err)}`;
+        const message = err && err.message ? String(err.message) : String(err);
+        const debugSource = err && typeof err.userScriptDebugSource === "string" ? err.userScriptDebugSource : "";
+        const debugLabel = err && typeof err.userScriptDebugSourceLabel === "string" ? err.userScriptDebugSourceLabel : "converted";
+        userCodeParsed.value = debugSource
+          ? `// ${message}\n// ${debugLabel}\n${debugSource}`
+          : `// ${message}`;
       }
     }
 

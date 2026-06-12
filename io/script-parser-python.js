@@ -28,10 +28,26 @@
     return !trimmed || trimmed.startsWith("#") || trimmed.startsWith("//") || trimmed.startsWith("'");
   };
 
-  const toDslLine = (line) => {
+  const toDslLines = (line) => {
     const trimmed = String(line ?? "").trim();
-    if(!trimmed.endsWith(":")) return trimmed;
-    return trimmed.slice(0, -1).trim();
+    const inlineIfMatch = trimmed.match(/^(if)\s+([^:]+):\s+(.+)$/i);
+    if(inlineIfMatch){
+      return [`${inlineIfMatch[1]} ${inlineIfMatch[2].trim()} ${inlineIfMatch[3].trim()}`];
+    }
+    const inlineElifMatch = trimmed.match(/^elif\s+([^:]+):\s+(.+)$/i);
+    if(inlineElifMatch){
+      return [`elseif ${inlineElifMatch[1].trim()}`, inlineElifMatch[2].trim()];
+    }
+    const elifMatch = trimmed.match(/^elif\s+(.+):$/i);
+    if(elifMatch){
+      return [`elseif ${elifMatch[1].trim()}`];
+    }
+    const inlineElseMatch = trimmed.match(/^else\s*:\s+(.+)$/i);
+    if(inlineElseMatch){
+      return ["else", inlineElseMatch[1].trim()];
+    }
+    if(!trimmed.endsWith(":")) return [trimmed];
+    return [trimmed.slice(0, -1).trim()];
   };
 
   const isBlockLine = (line) => {
@@ -40,6 +56,11 @@
 
   const isElseLine = (line) => {
     return /^else\s*:?\s*$/i.test(line);
+  };
+
+  const isBranchContinuationLine = (line) => {
+    const trimmed = String(line ?? "").trim();
+    return isElseLine(trimmed) || /^else\s*:\s+.+$/i.test(trimmed) || /^elif\s+.+:\s*.*$/i.test(trimmed);
   };
 
   function buildPythonLikeDsl(rawText){
@@ -54,18 +75,19 @@
       }
       const indent = countIndent(rawLine);
       const trimmed = rawLine.trim();
-      const elseLine = isElseLine(trimmed);
+      const branchContinuationLine = isBranchContinuationLine(trimmed);
 
       while(stack.length){
         const top = stack[stack.length - 1];
-        const shouldClose = elseLine ? indent < top.indent : indent <= top.indent;
+        const shouldClose = branchContinuationLine ? indent < top.indent : indent <= top.indent;
         if(!shouldClose) break;
         out.push("end");
         stack.pop();
       }
 
-      const dslLine = elseLine ? "} else {" : toDslLine(trimmed);
-      out.push(dslLine);
+      const dslLines = isElseLine(trimmed) ? ["else"] : toDslLines(trimmed);
+      out.push(...dslLines);
+      const dslLine = dslLines[0] || "";
       if(trimmed.endsWith(":") && isBlockLine(dslLine)){
         stack.push({ indent });
       }
@@ -82,7 +104,16 @@
     if(!isFunction(buildDefaultUserScript)){
       throw new Error("script-parser.js must be loaded before script-parser-python.js");
     }
-    return buildDefaultUserScript(buildPythonLikeDsl(rawText), options);
+    const dslText = buildPythonLikeDsl(rawText);
+    try{
+      return buildDefaultUserScript(dslText, options);
+    }catch(err){
+      if(err && typeof err === "object"){
+        err.userScriptDebugSource = dslText;
+        err.userScriptDebugSourceLabel = "PH -> QR";
+      }
+      throw err;
+    }
   }
 
   if(!isFunction(registerUserScriptLanguage)){
