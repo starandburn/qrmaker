@@ -21,6 +21,7 @@
   };
   DEFAULT_PARAM_META.ec = { type: "string", desc: "QR error correction level (A/L/M/Q/H)" };
   DEFAULT_PARAM_META.qrv = { type: "string", desc: "QR version (A/1-6)" };
+  DEFAULT_PARAM_META.lang = { type: "string", desc: "User script language id" };
 
   const dom = {
     btnGenerate: document.getElementById("btnGenerate"),
@@ -82,6 +83,10 @@
     { key: "toggleDebugValues", label: "セルの値" },
   ];
   const defaults = (window.appSettingsFromScript && window.appSettingsFromScript.defaults) ? window.appSettingsFromScript.defaults : {};
+  const USER_SCRIPT_LANGUAGE_OPTIONS = [
+    { id: "qr-dsl", label: "QR Maker DSL" },
+    { id: "python", label: "Python-like" },
+  ];
   const resolvedCodeSamples = (() => {
     if(Array.isArray(window.appCodeSamplesFromScript)){
       return window.appCodeSamplesFromScript;
@@ -436,6 +441,30 @@
         modeInput.checked = composite[0] === "1";
         dataOnlyInput.checked = composite[1] === "1";
       };
+    }else if(key === "lang"){
+      value = document.createElement("select");
+      value.className = "value-input mono";
+      value.style.fontSize = "20px";
+      value.style.width = "220px";
+      value.style.minWidth = "220px";
+      const defaultLanguage = String(defaults.userScriptLanguage ?? window.DEFAULT_USER_SCRIPT_LANGUAGE_ID ?? "qr-dsl").trim() || "qr-dsl";
+      const options = USER_SCRIPT_LANGUAGE_OPTIONS.slice();
+      if(!options.some((entry) => entry.id === defaultLanguage)){
+        options.push({ id: defaultLanguage, label: defaultLanguage });
+      }
+      options.forEach((entry) => {
+        const option = document.createElement("option");
+        option.value = entry.id;
+        option.textContent = entry.label;
+        value.appendChild(option);
+      });
+      value.value = defaultLanguage;
+      tdValue.appendChild(value);
+      getParamValue = () => String(value.value || "").trim();
+      defaultParamValue = defaultLanguage;
+      applyDefault = () => {
+        value.value = defaultParamValue;
+      };
     }else{
       value = document.createElement("input");
       value.type = "text";
@@ -536,6 +565,15 @@
       return;
     }
     if(row.value && typeof row.value.value === "string"){
+      if(key === "lang" && row.value.tagName === "SELECT"){
+        const nextValue = String(raw ?? "").trim();
+        if(nextValue && !Array.from(row.value.options).some((option) => option.value === nextValue)){
+          const option = document.createElement("option");
+          option.value = nextValue;
+          option.textContent = nextValue;
+          row.value.appendChild(option);
+        }
+      }
       row.value.value = String(raw ?? "");
       const label = row.value.parentElement ? row.value.parentElement.querySelector(".toggle-label.mono") : null;
       if(label){
@@ -612,6 +650,7 @@
     next.initialCode = Math.trunc(asNumber(get("c", String(next.initialCode ?? 0)), 0));
     next.presentationMode = parseBoolParam(get("z", next.presentationMode ? "1" : "0"));
     next.useDirection = parseBoolParam(get("r", next.useDirection ? "1" : "0"));
+    next.userScriptLanguage = String(get("lang", next.userScriptLanguage ?? "qr-dsl")).trim() || "qr-dsl";
     const errorCorrectionLevel = String(get("ec", next.qrSpec?.errorCorrectionLevel ?? next.errorCorrectionLevel ?? "A")).trim().toUpperCase();
     const qrVersionRaw = String(get("qrv", String(next.qrSpec?.version ?? next.qrVersion ?? 2))).trim().toUpperCase();
     const qrVersionNumber = Math.trunc(asNumber(qrVersionRaw, 2));

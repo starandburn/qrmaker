@@ -76,6 +76,32 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const toggleColor = dom.toggleColor;
   const txtInput = dom.txtInput;
   const configDefaults = (settings && typeof settings === "object") ? settings.defaults || {} : {};
+  const defaultUserScriptLanguage = (() => {
+    const configured = String(configDefaults.userScriptLanguage ?? "").trim();
+    return configured || (safeWindow?.DEFAULT_USER_SCRIPT_LANGUAGE_ID || "qr-dsl");
+  })();
+  const userScriptLanguageFromParam = (() => {
+    const key = urlState && urlState.PARAM_KEYS ? urlState.PARAM_KEYS.USER_SCRIPT_LANGUAGE : null;
+    if(!key || !isFunction(urlState?.hasParam) || !isFunction(urlState?.getParam)) return "";
+    return urlState.hasParam(key) ? String(urlState.getParam(key) ?? "").trim() : "";
+  })();
+  const userScriptLanguage = userScriptLanguageFromParam || defaultUserScriptLanguage;
+  let activeUserScriptLanguage = userScriptLanguage;
+  if(safeWindow && isFunction(safeWindow.setActiveUserScriptLanguage)){
+    try{
+      safeWindow.setActiveUserScriptLanguage(userScriptLanguage);
+    }catch(err){
+      callIfFunction(console?.error, err);
+      if(userScriptLanguage !== defaultUserScriptLanguage){
+        try{
+          safeWindow.setActiveUserScriptLanguage(defaultUserScriptLanguage);
+          activeUserScriptLanguage = defaultUserScriptLanguage;
+        }catch(fallbackErr){
+          callIfFunction(console?.error, fallbackErr);
+        }
+      }
+    }
+  }
   const focusCodeArea = () => {
     const editor = (typeof window !== "undefined") ? window.__codeEditor : null;
     if(editor && typeof editor.focus === "function"){
@@ -3375,6 +3401,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["drawText.skipNonAlnum", configDefaults.drawText && configDefaults.drawText.skipNonAlnum],
       ["useDirection", configDefaults.useDirection],
       ["homeCursorDirection", configDefaults.homeCursorDirection],
+      ["userScriptLanguage", configDefaults.userScriptLanguage],
     ];
 
     const urlEntries = [
@@ -3396,6 +3423,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["t", hasParam(PARAM_KEYS.AUTO_AVOID_TIMING) ? getParam(PARAM_KEYS.AUTO_AVOID_TIMING) : undefined],
       ["r", hasParam(PARAM_KEYS.USE_DIRECTION) ? getParam(PARAM_KEYS.USE_DIRECTION) : undefined],
       ["ec", hasParam(PARAM_KEYS.ERROR_CORRECTION_LEVEL) ? getParam(PARAM_KEYS.ERROR_CORRECTION_LEVEL) : undefined],
+      ["lang", hasParam(PARAM_KEYS.USER_SCRIPT_LANGUAGE) ? getParam(PARAM_KEYS.USER_SCRIPT_LANGUAGE) : undefined],
       ["toggleCursor", hasParam("toggleCursor") ? getParam("toggleCursor") : undefined],
       ["toggleGuide", hasParam("toggleGuide") ? getParam("toggleGuide") : undefined],
       ["toggleGrid", hasParam("toggleGrid") ? getParam("toggleGrid") : undefined],
@@ -3841,6 +3869,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         defaultUseDirection,
         errorCorrectionLevel: currentErrorCorrectionLevel,
         defaultErrorCorrectionLevel,
+        userScriptLanguage: activeUserScriptLanguage,
+        defaultUserScriptLanguage,
         initialDebugParamPresent,
         codePanel,
         layoutLeftPaneRatio: (typeof window.getLayoutLeftPaneRatio === "function") ? window.getLayoutLeftPaneRatio() : undefined,

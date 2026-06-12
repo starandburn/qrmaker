@@ -29,6 +29,7 @@ window.appSettingsFromScript = {
       viewDebugValues: true,
     },
     useDirection: false,
+    userScriptLanguage: "qr-dsl",
     codeSamples: [],
   },
 };

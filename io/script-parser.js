@@ -14,6 +14,8 @@
   const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
   const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
   const isDefined = typeUtils.isDefined || ((value) => typeof value !== "undefined");
+  const registerUserScriptLanguage = global.registerUserScriptLanguage;
+  const DEFAULT_USER_SCRIPT_LANGUAGE_ID = global.DEFAULT_USER_SCRIPT_LANGUAGE_ID || "qr-dsl";
 
   const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const ALIAS_MAP = {
@@ -1309,6 +1311,15 @@
     return `${fn}(${args.join(", ")})`;
   }
 
-  global.buildUserScript = buildUserScript;
+  if(!isFunction(registerUserScriptLanguage)){
+    throw new Error("user-script-language-registry.js must be loaded before script-parser.js");
+  }
+  registerUserScriptLanguage(DEFAULT_USER_SCRIPT_LANGUAGE_ID, {
+    label: "QR Maker DSL",
+    buildUserScript,
+    formatStudentCodeLine,
+  });
+
+  global.buildDefaultUserScript = buildUserScript;
   global.formatStudentCodeLine = formatStudentCodeLine;
 })(typeof window !== "undefined" ? window : globalThis);

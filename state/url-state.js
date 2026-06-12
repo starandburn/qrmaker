@@ -18,6 +18,7 @@
   const AUTO_RESET_ON_RUN_PARAM_KEY = "a";
   const DEFAULT_PUT_PARAM_KEY = "u";
   const ERROR_CORRECTION_LEVEL_PARAM_KEY = "ec";
+  const USER_SCRIPT_LANGUAGE_PARAM_KEY = "lang";
 
   // Default URL parameter keys used across the app.
   // Keep PARAM_KEYS stable for compatibility with existing shared URLs.
@@ -40,6 +41,7 @@
     AUTO_RESET_ON_RUN: AUTO_RESET_ON_RUN_PARAM_KEY,
     DEFAULT_PUT: DEFAULT_PUT_PARAM_KEY,
     ERROR_CORRECTION_LEVEL: ERROR_CORRECTION_LEVEL_PARAM_KEY,
+    USER_SCRIPT_LANGUAGE: USER_SCRIPT_LANGUAGE_PARAM_KEY,
   };
 
   // INTERNAL_PARAM_KEYS: keys used internally and omitted from normal state URL output.
@@ -387,6 +389,8 @@
     defaultUseDirection = false,
     errorCorrectionLevel,
     defaultErrorCorrectionLevel,
+    userScriptLanguage,
+    defaultUserScriptLanguage,
     initialDebugParamPresent = false,
     codePanel,
   } = {}) => {
@@ -519,6 +523,11 @@
     const normalizedDefaultErrorCorrectionLevel = String(defaultErrorCorrectionLevel ?? "").trim().toUpperCase();
     if(normalizedErrorCorrectionLevel && normalizedErrorCorrectionLevel !== normalizedDefaultErrorCorrectionLevel){
       setStringParam(stateParams, PARAM_KEYS.ERROR_CORRECTION_LEVEL, normalizedErrorCorrectionLevel);
+    }
+    const normalizedUserScriptLanguage = String(userScriptLanguage ?? "").trim();
+    const normalizedDefaultUserScriptLanguage = String(defaultUserScriptLanguage ?? "").trim();
+    if(normalizedUserScriptLanguage && normalizedUserScriptLanguage !== normalizedDefaultUserScriptLanguage){
+      setStringParam(stateParams, PARAM_KEYS.USER_SCRIPT_LANGUAGE, normalizedUserScriptLanguage);
     }
     if(params.get("z") === "1"){
       setStringParam(stateParams, INTERNAL_PARAM_KEYS.PRESENTATION_MODE, "1");
