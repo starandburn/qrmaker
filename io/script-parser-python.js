@@ -28,8 +28,15 @@
     return !trimmed || trimmed.startsWith("#") || trimmed.startsWith("//") || trimmed.startsWith("'");
   };
 
+  const normalizeCallSyntax = (line) => {
+    return String(line ?? "").replace(/\b([A-Za-z_$][A-Za-z0-9_$-]*)\s*\(([^()]*)\)/g, (match, name, args) => {
+      const normalizedArgs = String(args ?? "").trim().replace(/\s*,\s*/g, " ");
+      return normalizedArgs ? `${name} ${normalizedArgs}` : name;
+    });
+  };
+
   const toDslLines = (line) => {
-    const trimmed = String(line ?? "").trim();
+    const trimmed = normalizeCallSyntax(line).trim();
     const inlineIfMatch = trimmed.match(/^(if)\s+([^:]+):\s+(.+)$/i);
     if(inlineIfMatch){
       return [`${inlineIfMatch[1]} ${inlineIfMatch[2].trim()} ${inlineIfMatch[3].trim()}`];
