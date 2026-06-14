@@ -1395,6 +1395,12 @@ details.pattern-panel:not([open]) .summary-title::before{
   font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size:0.86em;
 }
+.command-reference-insert{
+  cursor:pointer;
+}
+.command-reference-insert:hover{
+  background:#dfe8ff;
+}
 .command-reference-pane pre{
   margin:0;
   padding:8px;

@@ -104,6 +104,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }
     }
   }
+  callIfFunction(safeWindow?.renderCommandReference, activeUserScriptLanguage);
   const focusCodeArea = () => {
     const editor = (typeof window !== "undefined") ? window.__codeEditor : null;
     if(editor && typeof editor.focus === "function"){
@@ -3773,12 +3774,11 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         const line = String(raw ?? "");
         let min = -1;
         const candidates = [];
-        const slash = line.indexOf("//");
-        if(slash >= 0) candidates.push(slash);
-        const hash = line.indexOf("#");
-        if(hash >= 0) candidates.push(hash);
-        const apos = line.indexOf("'");
-        if(apos >= 0) candidates.push(apos);
+        const commentTokens = activeUserScriptLanguage === "python" ? ["#"] : ["//", "#", "'"];
+        commentTokens.forEach((token) => {
+          const index = line.indexOf(token);
+          if(index >= 0) candidates.push(index);
+        });
         for(const idx of candidates){
           if(idx < 0) continue;
           if(min === -1 || idx < min) min = idx;

@@ -25,7 +25,38 @@
 
   const isIgnorableLine = (line) => {
     const trimmed = String(line ?? "").trim();
-    return !trimmed || trimmed.startsWith("#") || trimmed.startsWith("//") || trimmed.startsWith("'");
+    return !trimmed || trimmed.startsWith("#");
+  };
+
+  const stripPythonComment = (line) => {
+    const text = String(line ?? "");
+    let quote = "";
+    let escaped = false;
+    for(let i = 0; i < text.length; i++){
+      const ch = text[i];
+      if(escaped){
+        escaped = false;
+        continue;
+      }
+      if(ch === "\\"){
+        escaped = true;
+        continue;
+      }
+      if(quote){
+        if(ch === quote){
+          quote = "";
+        }
+        continue;
+      }
+      if(ch === "\"" || ch === "'"){
+        quote = ch;
+        continue;
+      }
+      if(ch === "#"){
+        return text.slice(0, i);
+      }
+    }
+    return text;
   };
 
   const CALL_NAME_MAP = {
@@ -33,6 +64,7 @@
     can_continue_loop: "canContinueLoop",
     draw_alignment_patterns: "drawAlignmentPatterns",
     draw_base_patterns: "drawBasePatterns",
+    draw_data_patterns: "drawDataPatterns",
     draw_dark_module_patterns: "drawDarkModulePatterns",
     draw_finder_patterns: "drawFinderPatterns",
     draw_format_patterns: "drawFormatPatterns",
@@ -155,8 +187,9 @@
         out.push(rawLine);
         continue;
       }
-      const indent = countIndent(rawLine);
-      const trimmed = rawLine.trim();
+      const lineWithoutComment = stripPythonComment(rawLine);
+      const indent = countIndent(lineWithoutComment);
+      const trimmed = lineWithoutComment.trim();
       const branchContinuationLine = isBranchContinuationLine(trimmed);
 
       while(stack.length){
@@ -261,7 +294,7 @@
       const nextSignificantLine = (startIndex) => {
         for(let i = startIndex + 1; i < lines.length; i++){
           const candidate = String(lines[i] ?? "").trim();
-          if(!candidate || candidate.startsWith("#") || candidate.startsWith("//") || candidate.startsWith("'")) continue;
+          if(!candidate || candidate.startsWith("#")) continue;
           return candidate;
         }
         return "";
@@ -269,7 +302,7 @@
       for(let lineIndex = 0; lineIndex < lines.length; lineIndex++){
         const rawLine = lines[lineIndex];
         const line = String(rawLine ?? "").trim();
-        if(!line || line.startsWith("#") || line.startsWith("//") || line.startsWith("'")) continue;
+        if(!line || line.startsWith("#")) continue;
         if(/^end$/i.test(line)){
           if(blockDepth > 0){
             combined.push("}");
