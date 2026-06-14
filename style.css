@@ -1384,6 +1384,11 @@ details.pattern-panel:not([open]) .summary-title::before{
   font-weight:700;
   color:#303644;
 }
+.command-reference-terms-multi code{
+  display:block;
+  width:max-content;
+  margin-bottom:3px;
+}
 .command-reference-list dd{
   margin:0;
 }

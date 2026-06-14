@@ -49,5 +49,6 @@ window.OfflineCodeEditorConfig = {
   ],
   predicateWord: ["block","wall","empty","used","timing","skip","last"],
   switchNames: ["red","blue","green","yellow"],
-  constants: ["left","right","up","down","on","off","flip"]
+  constants: ["left","right","up","down","on","off","flip"],
+  commentTokens: ["//","#","'"]
 };

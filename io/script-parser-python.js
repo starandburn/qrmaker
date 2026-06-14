@@ -109,11 +109,85 @@
     return normalizeCallName(trimmed);
   };
 
+  const SWITCH_ACTION_CALLS = {
+    on_switch: "on",
+    off_switch: "off",
+    flip_switch: "flip",
+  };
+
+  const normalizeSwitchArg = (arg) => {
+    return String(arg ?? "").trim().replace(/^["'](.+)["']$/, "$1");
+  };
+
+  const BASE_SWITCH_NAMES = ["red", "blue", "green", "yellow"];
+  const DEFAULT_ACTIVE_SWITCH_NAMES = BASE_SWITCH_NAMES.slice(0, 2);
+
+  const normalizeSwitchName = (value) => {
+    return String(value ?? "").trim().toLowerCase();
+  };
+
+  const getConfiguredSwitchNames = () => {
+    const switchConfig = global.__qrSwitchConfig;
+    if(!switchConfig || !Array.isArray(switchConfig.switchNames)) return null;
+    const configured = switchConfig.switchNames
+      .map(normalizeSwitchName)
+      .filter((name) => BASE_SWITCH_NAMES.includes(name));
+    const unique = Array.from(new Set(configured));
+    return BASE_SWITCH_NAMES.filter((name) => unique.includes(name));
+  };
+
+  const getActiveSwitchNames = () => {
+    const configured = getConfiguredSwitchNames();
+    return Array.isArray(configured) ? configured : DEFAULT_ACTIVE_SWITCH_NAMES;
+  };
+
+  const normalizeSwitchCondition = (condition) => {
+    const trimmed = String(condition ?? "").trim();
+    const names = getActiveSwitchNames();
+    const namePattern = names.join("|");
+    if(!namePattern) return trimmed;
+    const match = trimmed.match(new RegExp(`^(not\\s+)?(${namePattern})$`, "i"));
+    if(!match) return trimmed;
+    const switchName = match[2].toLowerCase();
+    return match[1] ? `!isSwitchOn("${switchName}")` : `isSwitchOn("${switchName}")`;
+  };
+
+  const normalizeSwitchAssignment = (line) => {
+    const trimmed = String(line ?? "").trim();
+    const names = getActiveSwitchNames();
+    const namePattern = names.join("|");
+    if(!namePattern) return "";
+    const match = trimmed.match(new RegExp(`^(${namePattern})\\s*=\\s*(.+)$`, "i"));
+    if(!match) return "";
+    const switchName = match[1].toLowerCase();
+    const rawValue = match[2].trim();
+    const lowerValue = rawValue.toLowerCase();
+    if(lowerValue === "true"){
+      return `setSwitch("${switchName}", true)`;
+    }
+    if(lowerValue === "false"){
+      return `setSwitch("${switchName}", false)`;
+    }
+    const switchCondition = normalizeSwitchCondition(rawValue);
+    if(switchCondition !== rawValue){
+      return `setSwitch("${switchName}", ${switchCondition})`;
+    }
+    return "";
+  };
+
   const normalizeCallSyntax = (line) => {
     let current = String(line ?? "");
     const callPattern = /\b([A-Za-z_$][A-Za-z0-9_$-]*)\s*\(([^()]*)\)/g;
     for(let i = 0; i < 20; i++){
       const next = current.replace(callPattern, (match, name, args) => {
+        const lowerName = String(name ?? "").toLowerCase();
+        const rawArgs = String(args ?? "").split(",").map(normalizeSwitchArg).filter(Boolean);
+        if(lowerName === "set_switch" && rawArgs.length >= 1){
+          return [rawArgs[0], rawArgs[1] || "on"].join(" ");
+        }
+        if(Object.prototype.hasOwnProperty.call(SWITCH_ACTION_CALLS, lowerName) && rawArgs.length >= 1){
+          return `${rawArgs[0]} ${SWITCH_ACTION_CALLS[lowerName]}`;
+        }
         const normalizedArgs = String(args ?? "")
           .split(",")
           .map(normalizeCallArg)
@@ -135,7 +209,7 @@
   };
 
   const normalizeConditionCallName = (condition) => {
-    return normalizeBareCallName(String(condition ?? "").trim());
+    return normalizeBareCallName(normalizeSwitchCondition(condition));
   };
 
   const normalizePhLine = (line) => {
@@ -237,6 +311,11 @@
   };
 
   const formatStatement = (line, awaitCalls) => {
+    const switchAssignment = normalizeSwitchAssignment(line);
+    if(switchAssignment){
+      const stmt = `${switchAssignment};`;
+      return awaitCalls ? `await ${stmt}` : stmt;
+    }
     const callArgMatch = String(line ?? "").trim().match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s+([A-Za-z_$][A-Za-z0-9_$]*\(\))$/);
     const formatted = callArgMatch
       ? `${callArgMatch[1]}(${callArgMatch[2]})`
@@ -253,7 +332,9 @@
   const formatCondition = (condition) => {
     const trimmed = String(condition ?? "").trim();
     if(!trimmed) return "";
-    if(trimmed.toLowerCase() === "last") return "!hasNextData()";
+    if(/^is_data_finished(?:\s*\(\s*\))?$/i.test(trimmed)) return "!hasNextData()";
+    const switchCondition = normalizeSwitchCondition(trimmed);
+    if(switchCondition !== trimmed) return switchCondition;
     return formatStudentCodeLine(trimmed, { context: "condition" });
   };
 

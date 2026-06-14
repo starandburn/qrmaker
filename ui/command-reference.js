@@ -185,12 +185,16 @@
           { terms: ["is_timing_zone()"], description: "タイミング領域なら真です。" },
           { terms: ["is_skip_zone()"], description: "スキップ対象領域なら真です。" },
           { terms: ["has_next_data()"], description: "次のデータが残っていれば真です。" },
-          { terms: ["last"], description: "次のデータがなくなったら真です。" },
+          { terms: ["is_data_finished()"], description: "データが終わっていれば真です。" },
         ],
       },
       {
         heading: "スイッチ",
         items: [
+          { terms: ["set_switch(\"red\")", "set_switch(\"red\", \"on\")", "set_switch(\"blue\", \"off\")", "set_switch(\"green\", \"flip\")"], description: "スイッチをON/OFF、または反転します。色は red、blue、green、yellow です。" },
+          { terms: ["on_switch(\"red\")", "off_switch(\"blue\")", "flip_switch(\"red\")"], description: "スイッチをON/OFF、または反転します。" },
+          { terms: ["if red:", "if not red:"], description: "スイッチを真偽値のように条件で使えます。" },
+          { terms: ["red = True", "blue = False", "red = blue", "red = not red"], description: "スイッチを真偽値のように代入できます。" },
           { terms: ["red(\"on\")", "red(\"off\")"], description: "スイッチをON/OFFします。色は red、blue、green、yellow です。" },
           { terms: ["red(\"flip\")"], description: "ON/OFFを反転します。" },
           { terms: ["is_switch_on(\"red\")"], description: "スイッチがONなら真です。" },
@@ -256,6 +260,9 @@
     list.className = "command-reference-list";
     sectionData.items.forEach((item) => {
       const term = document.createElement("dt");
+      if(item.terms.length > 1){
+        term.className = "command-reference-terms-multi";
+      }
       item.terms.forEach((value, index) => {
         if(index > 0){
           term.appendChild(document.createTextNode(" "));

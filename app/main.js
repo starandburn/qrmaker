@@ -104,6 +104,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }
     }
   }
+  if(safeWindow?.OfflineCodeEditorConfig){
+    safeWindow.OfflineCodeEditorConfig.commentTokens = activeUserScriptLanguage === "python" ? ["#"] : ["//", "#", "'"];
+  }
   callIfFunction(safeWindow?.renderCommandReference, activeUserScriptLanguage);
   const focusCodeArea = () => {
     const editor = (typeof window !== "undefined") ? window.__codeEditor : null;
