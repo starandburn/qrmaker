@@ -234,7 +234,7 @@
     }
     const formatted = formatCondition(trimmed);
     if(!formatted) return "";
-    return `while (!(${formatted}) && canContinueLoop()) {`;
+    return `while (${formatted} && canContinueLoop()) {`;
   };
 
   const buildForLine = (count) => {
