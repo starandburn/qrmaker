@@ -5,6 +5,7 @@
     p: { type: "bool", desc: "データパターン表示" },
     d: { type: "string", desc: "入力データ（空文字は _）" },
     h: { type: "bool", desc: "履歴パネル表示" },
+    ref: { type: "bool", desc: "コマンドリファレンス表示" },
     m: { type: "bool", desc: "サンプル表示" },
     e: { type: "number", desc: "ステップ速度（0-120）" },
     s: { type: "string", desc: "ステップ実行フラグ（2桁01）" },
@@ -44,6 +45,7 @@
       "g",  // デバッグ表示
       "p",  // パターンパネル
       "h",  // 履歴表示
+      "ref",  // コマンドリファレンス表示
       "m",  // サンプル表示
       "e",  // ステップ速度
       "s",  // ステップ実行フラグ
@@ -101,6 +103,7 @@
     g: Boolean(defaults.debugVisible),
     p: Boolean(defaults.patternPanelOpen),
     h: Boolean(defaults.historyVisible),
+    ref: Boolean(defaults.commandReferenceVisible),
     m: false,
     o: Boolean(defaults.overwriteDataOnFunctional),
     a: (typeof defaults.autoResetOnRun === "boolean") ? defaults.autoResetOnRun : false,
@@ -639,6 +642,7 @@
     next.debugVisible = parseBoolParam(get("g", next.debugVisible ? "1" : "0"));
     next.patternPanelOpen = parseBoolParam(get("p", next.patternPanelOpen ? "1" : "0"));
     next.historyVisible = parseBoolParam(get("h", next.historyVisible ? "1" : "0"));
+    next.commandReferenceVisible = parseBoolParam(get("ref", next.commandReferenceVisible ? "1" : "0"));
     next.layoutLeftPaneRatio = asNumber(get("l", String(next.layoutLeftPaneRatio ?? 0.5)), 0.5);
     next.autoResetOnRun = parseBoolParam(get("a", next.autoResetOnRun ? "1" : "0"));
     next.skipExistingCells = parseBoolParam(get("x", next.skipExistingCells ? "1" : "0"));

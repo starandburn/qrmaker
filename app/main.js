@@ -52,10 +52,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const debugLog = dom.debugLog;
   const dataPatternPanel = dom.dataPatternPanel;
   const codePanel = dom.codePanel;
+  const btnCommandReference = dom.btnCommandReference;
   if(!dataPatternPanel){
     throw new Error("dataPatternPanel is required");
   }
   const userCodeParsed = dom.userCodeParsed;
+  const commandReferencePane = dom.commandReferencePane;
   const footerCopy = dom.footerCopy;
   const footerSecretQr = dom.footerSecretQr;
   const versionInfo = dom.versionInfo;
@@ -426,16 +428,30 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
   const appState = safeWindow?.appState;
   const store = (appState && isFunction(appState.getStore))
-    ? appState.getStore({ historyVisible: false, patternPanelOpen: false, debugVisible: false })
+    ? appState.getStore({ historyVisible: false, patternPanelOpen: false, debugVisible: false, commandReferenceVisible: false })
     : null;
   const getHistoryVisible = () => (store ? Boolean(store.getState().historyVisible) : false);
   const getPatternPanelOpen = () => (store ? Boolean(store.getState().patternPanelOpen) : Boolean(dataPatternPanel?.open));
+  const getCommandReferenceVisible = () => (store ? Boolean(store.getState().commandReferenceVisible) : Boolean(codePanel?.classList.contains("reference-mode")));
   const debugViewApply = isFunction(debugUI.applyDebugVisibility) ? debugUI.applyDebugVisibility : (() => {});
   const debugViewIsVisible = isFunction(debugUI.isDebugVisible) ? debugUI.isDebugVisible : (() => false);
   const getDebugVisible = () => (store ? Boolean(store.getState().debugVisible) : debugViewIsVisible());
   const isDebugVisible = () => getDebugVisible();
   const applyDebugVisibilityDom = (visible) => {
     debugViewApply(Boolean(visible));
+  };
+  const applyCommandReferenceVisibilityDom = (visible) => {
+    const target = Boolean(visible);
+    if(codePanel){
+      codePanel.classList.toggle("reference-mode", target);
+    }
+    if(btnCommandReference){
+      btnCommandReference.classList.toggle("is-active", target);
+      btnCommandReference.setAttribute("aria-pressed", target ? "true" : "false");
+    }
+    if(commandReferencePane){
+      commandReferencePane.setAttribute("aria-hidden", target ? "false" : "true");
+    }
   };
 
   const setPatternPanelOpen = (value) => {
@@ -475,6 +491,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       const target = Boolean(next.debugVisible);
       applyDebugVisibilityDom(target);
     }
+    if(typeof next.commandReferenceVisible === "boolean"){
+      applyCommandReferenceVisibilityDom(Boolean(next.commandReferenceVisible));
+    }
   };
   if(store){
     handleStoreUpdate(store.getState());
@@ -497,6 +516,16 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       return;
     }
     applyDebugVisibilityDom(target);
+  };
+  const setCommandReferenceVisible = (value) => {
+    const target = Boolean(value);
+    if(store){
+      const current = Boolean(store.getState().commandReferenceVisible);
+      if(current === target) return;
+      store.setState({ commandReferenceVisible: target }, "commandReferenceToggle");
+      return;
+    }
+    applyCommandReferenceVisibilityDom(target);
   };
   const applyDebugVisibility = (visible) => {
     if(store){
@@ -535,6 +564,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     applyDebugFromParam,
     applyHistoryFromParam,
     applySampleParam,
+    applyCommandReferenceFromParam,
     applyCombinedStepParam,
     applyStepSpeedParam,
     applyUrlControlStates,
@@ -577,6 +607,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
     ? configDefaults.historyVisible
     : getHistoryVisible();
+  const defaultCommandReferenceVisible = (typeof configDefaults.commandReferenceVisible === "boolean")
+    ? configDefaults.commandReferenceVisible
+    : getCommandReferenceVisible();
   let defaultDebugVisible = (typeof configDefaults.debugVisible === "boolean")
     ? configDefaults.debugVisible
     : isDebugVisible();
@@ -744,6 +777,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   applyDebugFromParam({ debugPanel: getDebugPanel(), setDebugVisible });
   applyHistoryFromParam({ codePanel, setHistoryVisibility });
   applySampleParam({ codePanel });
+  applyCommandReferenceFromParam({ setCommandReferenceVisible });
   if(!hasParam(PARAM_KEYS.PATTERN_PANEL)){
     setPatternPanelOpen(defaultPatternOpen);
   }
@@ -752,6 +786,14 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
   if(!hasParam(PARAM_KEYS.HISTORY)){
     setHistoryVisibility(defaultHistoryVisible);
+  }
+  if(!hasParam(PARAM_KEYS.COMMAND_REFERENCE)){
+    setCommandReferenceVisible(defaultCommandReferenceVisible);
+  }
+  if(btnCommandReference){
+    btnCommandReference.addEventListener("click", () => {
+      setCommandReferenceVisible(!getCommandReferenceVisible());
+    });
   }
   if(!btnGenerate || !btnInit) return;
   const statusManager = (safeWindow && isFunction(safeWindow.createExecutionStatusManager))
@@ -3374,6 +3416,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["qrSpec.errorCorrectionLevel", defaultErrorCorrectionLevel],
       ["initialCode", configDefaults.initialCode],
       ["historyVisible", configDefaults.historyVisible],
+      ["commandReferenceVisible", configDefaults.commandReferenceVisible],
       ["patternPanelOpen", configDefaults.patternPanelOpen],
       ["layoutLeftPaneRatio", configDefaults.layoutLeftPaneRatio],
       ["debugVisible", configDefaults.debugVisible],
@@ -3410,6 +3453,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["p", hasParam(PARAM_KEYS.PATTERN_PANEL) ? getParam(PARAM_KEYS.PATTERN_PANEL) : undefined],
       ["d", hasParam(PARAM_KEYS.DATA) ? getParam(PARAM_KEYS.DATA) : undefined],
       ["h", hasParam(PARAM_KEYS.HISTORY) ? getParam(PARAM_KEYS.HISTORY) : undefined],
+      ["ref", hasParam(PARAM_KEYS.COMMAND_REFERENCE) ? getParam(PARAM_KEYS.COMMAND_REFERENCE) : undefined],
       ["m", hasParam(PARAM_KEYS.SAMPLES) ? getParam(PARAM_KEYS.SAMPLES) : undefined],
       ["e", hasParam(PARAM_KEYS.STEP_SPEED) ? getParam(PARAM_KEYS.STEP_SPEED) : undefined],
       ["s", hasParam(PARAM_KEYS.STEP_FLAGS) ? getParam(PARAM_KEYS.STEP_FLAGS) : undefined],
@@ -3851,9 +3895,11 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         stepMode,
         stepSkipFunctions,
         historyVisible: getHistoryVisible(),
+        commandReferenceVisible: getCommandReferenceVisible(),
         isDebugVisible,
         defaultFlagString,
         defaultHistoryVisible,
+        defaultCommandReferenceVisible,
         defaultDebugVisible,
         defaultPatternOpen,
         defaultStepMode,

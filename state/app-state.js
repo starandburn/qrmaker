@@ -8,10 +8,12 @@
   // - historyVisible: boolean
   // - patternPanelOpen: boolean
   // - debugVisible: boolean
+  // - commandReferenceVisible: boolean
   const DEFAULT_STATE = {
     historyVisible: false,
     patternPanelOpen: false,
     debugVisible: false,
+    commandReferenceVisible: false,
   };
 
   const createStore = (initialState = {}) => {

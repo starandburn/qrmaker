@@ -108,10 +108,13 @@
           <textarea id="userCode" spellcheck="false" autocorrect="off" autocomplete="off" autocapitalize="off">
 </textarea>
           <div id="userCodeEditor" class="code-editor-host"></div>
-          <div class="code-debug-toolbar" id="codeSampleToolbar"></div>
         </div>
         <div class="code-editor-pane code-editor-parsed">
           <textarea id="userCodeParsed" class="parsed-code" spellcheck="false" readonly></textarea>
+          <div id="commandReferencePane" class="command-reference-pane" aria-label="コマンドリファレンス" aria-hidden="true">
+            <div class="command-reference-title">コマンドリファレンス</div>
+            <div id="commandReferenceContent" class="command-reference-content" data-language="qr-dsl"></div>
+          </div>
         </div>
         <div class="code-history-pane" id="codeHistoryPane">
           <div class="history-header">
@@ -123,6 +126,10 @@
           </div>
           <ul id="codeHistoryList" class="history-list" role="list"></ul>
         </div>
+      </div>
+      <div class="code-panel-footer">
+        <div class="code-debug-toolbar" id="codeSampleToolbar"></div>
+        <button id="btnCommandReference" type="button" class="command-reference-link" aria-pressed="false">コマンドリファレンス</button>
       </div>
     </div>
     <div class="panel pastel-4 debug-panel" id="debugPanel">
@@ -277,6 +284,7 @@
 <script src="ui/switch-indicators.js"></script>
 <script src="ui/history-binding.js"></script>
 <script src="ui/sample-ui.js"></script>
+<script src="ui/command-reference.js"></script>
 <script src="ui/view-flags.js"></script>
 <script src="app/board-reset.js"></script>
 <script src="app/utils/type-utils.js"></script>

@@ -22,6 +22,8 @@
       dataPatternPanel: getById("dataPatternPanel"),
       codePanel: query(".code-panel"),
       userCodeParsed: getById("userCodeParsed"),
+      commandReferencePane: getById("commandReferencePane"),
+      btnCommandReference: getById("btnCommandReference"),
       footerCopy: query(".page-footer p:first-child"),
       footerSecretQr: getById("footerSecretQr"),
       versionInfo: getById("appVersionInfo"),

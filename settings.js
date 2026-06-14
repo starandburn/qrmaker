@@ -11,6 +11,7 @@ window.appSettingsFromScript = {
     layoutLeftPaneRatio: 0.5,
     autoResetOnRun: false,
     debugVisible: false,
+    commandReferenceVisible: false,
     skipExistingCells: false,
     autoAvoidTiming: false,
     overwriteDataOnFunctional: true,

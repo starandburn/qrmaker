@@ -32,6 +32,7 @@
     SAMPLES: SAMPLES_PARAM_KEY,
     DATA: "d",
     HISTORY: HISTORY_PARAM_KEY,
+    COMMAND_REFERENCE: "ref",
     SKIP_EXISTING: "x",
     AUTO_AVOID_TIMING: "t",
     USE_DIRECTION: "r",
@@ -196,6 +197,16 @@
     const parsed = stringifyBool(params.get(SAMPLES_PARAM_KEY));
     if(parsed === null) return false;
     codePanel.classList.toggle("show-samples", parsed);
+    return true;
+  };
+
+  const applyCommandReferenceFromParam = ({ setCommandReferenceVisible } = {}) => {
+    if(typeof setCommandReferenceVisible !== "function") return false;
+    const spec = getParam(PARAM_KEYS.COMMAND_REFERENCE);
+    if(spec === null) return false;
+    const parsed = stringifyBool(spec);
+    if(parsed === null) return false;
+    setCommandReferenceVisible(parsed);
     return true;
   };
 
@@ -365,9 +376,11 @@
     stepMode,
     stepSkipFunctions,
     historyVisible,
+    commandReferenceVisible,
     isDebugVisible,
     defaultFlagString,
     defaultHistoryVisible = false,
+    defaultCommandReferenceVisible = false,
     defaultDebugVisible = false,
     defaultPatternOpen = false,
     defaultStepMode = false,
@@ -504,6 +517,9 @@
     if(historyVisible !== Boolean(defaultHistoryVisible)){
       setBoolParam(stateParams, PARAM_KEYS.HISTORY, Boolean(historyVisible));
     }
+    if(Boolean(commandReferenceVisible) !== Boolean(defaultCommandReferenceVisible)){
+      setBoolParam(stateParams, PARAM_KEYS.COMMAND_REFERENCE, Boolean(commandReferenceVisible));
+    }
     const normalizedSkipExisting = Boolean(skipExistingCells);
     const normalizedSkipDefault = Boolean(defaultSkipExistingCells);
     if(normalizedSkipExisting !== normalizedSkipDefault){
@@ -547,6 +563,7 @@
     applyDebugFromParam,
     applyHistoryFromParam,
     applySampleParam,
+    applyCommandReferenceFromParam,
     applyCombinedStepParam,
     applyStepSpeedParam,
     applyUrlControlStates,
