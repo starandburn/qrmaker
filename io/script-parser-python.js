@@ -90,6 +90,46 @@
     set_switch: "setSwitch",
     turn_cursor: "turnCursor",
   };
+  const QR_DSL_COMMAND_HEADS = [
+    "move",
+    "turn",
+    "reset",
+    "base",
+    "mask",
+    "data",
+    "qrcode",
+    "empty",
+    "block",
+    "wall",
+    "put",
+    "timing",
+    "skip",
+    "finder",
+    "finders",
+    "alignment",
+    "alignments",
+    "dark",
+    "darkmodule",
+    "darkmodules",
+    "format",
+    "formats",
+    "timings",
+    "pause",
+    "text",
+    "left",
+    "right",
+    "up",
+    "down",
+    "stop",
+  ];
+  const PH_ALLOWED_STATEMENT_HEADS = new Set([
+    ...Object.keys(CALL_NAME_MAP),
+    ...Object.values(CALL_NAME_MAP),
+    ...QR_DSL_COMMAND_HEADS,
+  ]);
+  const PH_KNOWN_STATEMENT_HEADS_LOWER = new Set(
+    Array.from(PH_ALLOWED_STATEMENT_HEADS).map((name) => name.toLowerCase()),
+  );
 
   const normalizeCallName = (name) => {
     return CALL_NAME_MAP[name] || name;
@@ -146,9 +186,9 @@
     const names = getActiveSwitchNames();
     const namePattern = names.join("|");
     if(!namePattern) return trimmed;
-    const match = trimmed.match(new RegExp(`^(not\\s+)?(${namePattern})$`, "i"));
+    const match = trimmed.match(new RegExp(`^(not\\s+)?(${namePattern})$`));
     if(!match) return trimmed;
-    const switchName = match[2].toLowerCase();
+    const switchName = match[2];
     return match[1] ? `!isSwitchOn("${switchName}")` : `isSwitchOn("${switchName}")`;
   };
 
@@ -157,15 +197,14 @@
     const names = getActiveSwitchNames();
     const namePattern = names.join("|");
     if(!namePattern) return "";
-    const match = trimmed.match(new RegExp(`^(${namePattern})\\s*=\\s*(.+)$`, "i"));
+    const match = trimmed.match(new RegExp(`^(${namePattern})\\s*=\\s*(.+)$`));
     if(!match) return "";
-    const switchName = match[1].toLowerCase();
+    const switchName = match[1];
     const rawValue = match[2].trim();
-    const lowerValue = rawValue.toLowerCase();
-    if(lowerValue === "true"){
+    if(rawValue === "true"){
       return `setSwitch("${switchName}", true)`;
     }
-    if(lowerValue === "false"){
+    if(rawValue === "false"){
       return `setSwitch("${switchName}", false)`;
     }
     const switchCondition = normalizeSwitchCondition(rawValue);
@@ -180,13 +219,12 @@
     const callPattern = /\b([A-Za-z_$][A-Za-z0-9_$-]*)\s*\(([^()]*)\)/g;
     for(let i = 0; i < 20; i++){
       const next = current.replace(callPattern, (match, name, args) => {
-        const lowerName = String(name ?? "").toLowerCase();
         const rawArgs = String(args ?? "").split(",").map(normalizeSwitchArg).filter(Boolean);
-        if(lowerName === "set_switch" && rawArgs.length >= 1){
+        if(name === "set_switch" && rawArgs.length >= 1){
           return [rawArgs[0], rawArgs[1] || "on"].join(" ");
         }
-        if(Object.prototype.hasOwnProperty.call(SWITCH_ACTION_CALLS, lowerName) && rawArgs.length >= 1){
-          return `${rawArgs[0]} ${SWITCH_ACTION_CALLS[lowerName]}`;
+        if(Object.prototype.hasOwnProperty.call(SWITCH_ACTION_CALLS, name) && rawArgs.length >= 1){
+          return `${rawArgs[0]} ${SWITCH_ACTION_CALLS[name]}`;
         }
         const normalizedArgs = String(args ?? "")
           .split(",")
@@ -218,19 +256,19 @@
 
   const toDslLines = (line) => {
     const trimmed = normalizePhLine(line).trim();
-    const inlineIfMatch = trimmed.match(/^(if)\s+([^:]+):\s+(.+)$/i);
+    const inlineIfMatch = trimmed.match(/^(if)\s+([^:]+):\s+(.+)$/);
     if(inlineIfMatch){
       return [`${inlineIfMatch[1]} ${normalizeConditionCallName(inlineIfMatch[2])} : ${inlineIfMatch[3].trim()}`];
     }
-    const inlineElifMatch = trimmed.match(/^elif\s+([^:]+):\s+(.+)$/i);
+    const inlineElifMatch = trimmed.match(/^elif\s+([^:]+):\s+(.+)$/);
     if(inlineElifMatch){
       return [`elseif ${normalizeConditionCallName(inlineElifMatch[1])} : ${inlineElifMatch[2].trim()}`];
     }
-    const elifMatch = trimmed.match(/^elif\s+(.+):$/i);
+    const elifMatch = trimmed.match(/^elif\s+(.+):$/);
     if(elifMatch){
       return [`elseif ${normalizeConditionCallName(elifMatch[1])}`];
     }
-    const inlineElseMatch = trimmed.match(/^else\s*:\s+(.+)$/i);
+    const inlineElseMatch = trimmed.match(/^else\s*:\s+(.+)$/);
     if(inlineElseMatch){
       return [`else : ${inlineElseMatch[1].trim()}`];
     }
@@ -239,16 +277,16 @@
   };
 
   const isBlockLine = (line) => {
-    return /^(?:if|while|for)\b/i.test(line);
+    return /^(?:if|while|for)\b/.test(line);
   };
 
   const isElseLine = (line) => {
-    return /^else\s*:?\s*$/i.test(line);
+    return /^else\s*:?\s*$/.test(line);
   };
 
   const isBranchContinuationLine = (line) => {
     const trimmed = String(line ?? "").trim();
-    return isElseLine(trimmed) || /^else\s*:\s+.+$/i.test(trimmed) || /^elif\s+.+:\s*.*$/i.test(trimmed);
+    return isElseLine(trimmed) || /^else\s*:\s+.+$/.test(trimmed) || /^elif\s+.+:\s*.*$/.test(trimmed);
   };
 
   function buildPythonLikeDsl(rawText){
@@ -310,7 +348,18 @@
     return match ? match[1] : "";
   };
 
+  const assertPhStatementHeadCasing = (line) => {
+    const match = String(line ?? "").trim().match(/^([A-Za-z_$][A-Za-z0-9_$-]*)\b/);
+    if(!match) return;
+    const head = match[1];
+    if(PH_ALLOWED_STATEMENT_HEADS.has(head)) return;
+    if(PH_KNOWN_STATEMENT_HEADS_LOWER.has(head.toLowerCase())){
+      throw new Error(`Unknown PH command casing: ${head}`);
+    }
+  };
+
   const formatStatement = (line, awaitCalls) => {
+    assertPhStatementHeadCasing(line);
     const switchAssignment = normalizeSwitchAssignment(line);
     if(switchAssignment){
       const stmt = `${switchAssignment};`;
@@ -323,7 +372,7 @@
     if(!formatted) return "";
     const stmt = formatted.endsWith(";") ? formatted : `${formatted};`;
     const commandName = getCommandName(formatted);
-    if((awaitCalls || ASYNC_COMMANDS.has(commandName)) && !/^return\b/i.test(formatted)){
+    if((awaitCalls || ASYNC_COMMANDS.has(commandName)) && !/^return\b/.test(formatted)){
       return `await ${stmt}`;
     }
     return stmt;
@@ -332,7 +381,7 @@
   const formatCondition = (condition) => {
     const trimmed = String(condition ?? "").trim();
     if(!trimmed) return "";
-    if(/^is_data_finished(?:\s*\(\s*\))?$/i.test(trimmed)) return "!hasNextData()";
+    if(/^is_data_finished(?:\s*\(\s*\))?$/.test(trimmed)) return "!hasNextData()";
     const switchCondition = normalizeSwitchCondition(trimmed);
     if(switchCondition !== trimmed) return switchCondition;
     return formatStudentCodeLine(trimmed, { context: "condition" });
@@ -371,7 +420,7 @@
       const lines = dslText.replace(/\r/g, "").split("\n");
       const combined = [];
       let blockDepth = 0;
-      const isBranchLine = (value) => /^(?:elseif\b|else\b)/i.test(String(value ?? "").trim());
+      const isBranchLine = (value) => /^(?:elseif\b|else\b)/.test(String(value ?? "").trim());
       const nextSignificantLine = (startIndex) => {
         for(let i = startIndex + 1; i < lines.length; i++){
           const candidate = String(lines[i] ?? "").trim();
@@ -384,35 +433,35 @@
         const rawLine = lines[lineIndex];
         const line = String(rawLine ?? "").trim();
         if(!line || line.startsWith("#")) continue;
-        if(/^end$/i.test(line)){
+        if(/^end$/.test(line)){
           if(blockDepth > 0){
             combined.push("}");
             blockDepth--;
           }
           continue;
         }
-        const elseInlineMatch = line.match(/^else\s+:\s+(.+)$/i);
+        const elseInlineMatch = line.match(/^else\s+:\s+(.+)$/);
         if(elseInlineMatch){
           combined.push(`} else { ${formatStatement(elseInlineMatch[1], awaitCalls)}`);
           continue;
         }
-        if(/^else$/i.test(line)){
+        if(/^else$/.test(line)){
           combined.push("} else {");
           continue;
         }
-        const elseifInlineMatch = line.match(/^elseif\s+(.+?)\s+:\s+(.+)$/i);
+        const elseifInlineMatch = line.match(/^elseif\s+(.+?)\s+:\s+(.+)$/);
         if(elseifInlineMatch){
           const condition = formatCondition(elseifInlineMatch[1]);
           combined.push(`} else if (${condition}) { ${formatStatement(elseifInlineMatch[2], awaitCalls)}`);
           continue;
         }
-        const elseifMatch = line.match(/^elseif\s+(.+)$/i);
+        const elseifMatch = line.match(/^elseif\s+(.+)$/);
         if(elseifMatch){
           const condition = formatCondition(elseifMatch[1]);
           combined.push(`} else if (${condition}) {`);
           continue;
         }
-        const ifInlineMatch = line.match(/^if\s+(.+?)\s+:\s+(.+)$/i);
+        const ifInlineMatch = line.match(/^if\s+(.+?)\s+:\s+(.+)$/);
         if(ifInlineMatch){
           const condition = formatCondition(ifInlineMatch[1]);
           if(isBranchLine(nextSignificantLine(lineIndex))){
@@ -423,14 +472,14 @@
           }
           continue;
         }
-        const ifMatch = line.match(/^if\s+(.+)$/i);
+        const ifMatch = line.match(/^if\s+(.+)$/);
         if(ifMatch){
           const condition = formatCondition(ifMatch[1]);
           combined.push(`if (${condition}) {`);
           blockDepth++;
           continue;
         }
-        const whileMatch = line.match(/^while(?:\s+(.+))?$/i);
+        const whileMatch = line.match(/^while(?:\s+(.+))?$/);
         if(whileMatch){
           const whileLine = buildWhileLine(whileMatch[1]);
           if(whileLine){
@@ -439,7 +488,7 @@
           }
           continue;
         }
-        const forMatch = line.match(/^for(?:\s+(.+))?$/i);
+        const forMatch = line.match(/^for(?:\s+(.+))?$/);
         if(forMatch){
           const forLine = buildForLine(forMatch[1]);
           combined.push(forLine);
