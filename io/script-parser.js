@@ -1213,6 +1213,12 @@
       const value = normalizeArgValue(parts[index]);
       return value ? value.toLowerCase() : "";
     };
+    const directionArgMap = {
+      up: "up",
+      right: "right",
+      down: "down",
+      left: "left",
+    };
     if(fnLower === "next?"){
       return "hasNextData()";
     }
@@ -1272,6 +1278,9 @@
       if(firstArgLower === "end"){
         return "moveCursor(\"end\")";
       }
+    }
+    if(fnLower === "isempty" && parts.length === 1 && directionArgMap[firstArgLower]){
+      return `isEmpty("${directionArgMap[firstArgLower]}")`;
     }
     if(!directionEnabled){
       if(fnLower === "turn" || fnLower === "turncursor"){

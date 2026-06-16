@@ -153,6 +153,20 @@
     DOWN: "\"down\"",
     LEFT: "\"left\"",
   };
+  const PH_CARDINAL_DIRECTION_ARGS = {
+    1: "\"up\"",
+    2: "\"right\"",
+    3: "\"down\"",
+    4: "\"left\"",
+    UP: "\"up\"",
+    RIGHT: "\"right\"",
+    DOWN: "\"down\"",
+    LEFT: "\"left\"",
+    up: "\"up\"",
+    right: "\"right\"",
+    down: "\"down\"",
+    left: "\"left\"",
+  };
   const PH_MOVE_DIRECTION_WORDS = new Set(["up", "right", "down", "left", "front", "back"]);
 
   const normalizeCallArg = (arg) => {
@@ -283,6 +297,10 @@
       }
       assertNoPhMoveDirectionLiteral(rawMoveArg, sourceArgs[0]);
       throw new Error("PH position moves require jump_cursor(...)");
+    }
+    if(normalizedName === "isEmpty" && rawArgs.length === 1
+      && Object.prototype.hasOwnProperty.call(PH_CARDINAL_DIRECTION_ARGS, rawArgs[0])){
+      return `${normalizedName} ${PH_CARDINAL_DIRECTION_ARGS[rawArgs[0]]}`;
     }
     if(normalizedName === "jumpCursor" && rawArgs.length === 1){
       const rawJumpArg = rawArgs[0];

@@ -78,7 +78,7 @@
       {
         heading: "条件に使える語",
         items: [
-          { terms: ["empty"], description: "現在のセルが未配置なら真です。" },
+          { terms: ["empty", "empty up/down/left/right"], description: "現在のセル、または指定方向の隣のセルが未配置なら真です。盤面外は偽です。" },
           { terms: ["block", "wall"], description: "次の移動が盤面外などで止まるなら真です。" },
           { terms: ["timing"], description: "タイミング領域なら真です。" },
           { terms: ["skip"], description: "スキップ対象領域なら真です。" },
@@ -180,7 +180,7 @@
       {
         heading: "条件に使える関数",
         items: [
-          { terms: ["is_empty()"], description: "現在のセルが未配置なら真です。" },
+          { terms: ["is_empty()", "is_empty(UP/DOWN/LEFT/RIGHT)"], description: "現在のセル、または指定方向の隣のセルが未配置なら真です。盤面外は偽です。" },
           { terms: ["is_move_blocked()"], description: "前回の move_cursor() が盤面外などで止まったなら真です。" },
           { terms: ["did_move()"], description: "前回の move_cursor() がぶつからず、実際に移動できていれば true です。" },
           { terms: ["is_timing_zone()"], description: "タイミング領域なら真です。" },

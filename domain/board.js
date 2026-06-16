@@ -2325,9 +2325,26 @@ function invertCell(rowOrRef, colMaybe){
   return encoded;
 }
 
-function isEmpty(){
-  const r = cursorPos.row - 1;
-  const c = cursorPos.col - 1;
+function isEmpty(dirArg){
+  let row = cursorPos.row;
+  let col = cursorPos.col;
+  if(dirArg !== undefined){
+    const dir = DIR_NUMBER_MAP[Math.trunc(Number(dirArg))] || normalizeDir(dirArg);
+    if(dir === DIR_UP){
+      row -= 1;
+    }else if(dir === DIR_RIGHT){
+      col += 1;
+    }else if(dir === DIR_DOWN){
+      row += 1;
+    }else if(dir === DIR_LEFT){
+      col -= 1;
+    }else{
+      return false;
+    }
+    if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
+  }
+  const r = row - 1;
+  const c = col - 1;
   const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
   if(boardMatrix[r] && typeof boardMatrix[r][c] === "number"){
     const val = boardMatrix[r][c];
@@ -2337,7 +2354,7 @@ function isEmpty(){
     const kind = (typeof window.bitKind === "function") ? window.bitKind(val) : Math.abs(val);
     return kind === unplacedKind;
   }
-  const key = `${cursorPos.row}-${cursorPos.col}`;
+  const key = `${row}-${col}`;
   const entry = cellStates.get(key);
   if(!entry) return true;
   const kind = (typeof window.bitKind === "function") ? window.bitKind(entry.value) : Math.abs(entry.value);
