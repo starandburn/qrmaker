@@ -83,9 +83,13 @@
         };
       };
       const moveWrapper = wrapTimed("moveCursor", "moveCount", "moveMs");
+      const jumpWrapper = wrapTimed("jumpCursor", "moveCount", "moveMs");
       const putWrapper = wrapTimed("putCell", "putCount", "putMs");
       if(moveWrapper){
         globalObj.moveCursor = moveWrapper.wrapped;
+      }
+      if(jumpWrapper){
+        globalObj.jumpCursor = jumpWrapper.wrapped;
       }
       if(putWrapper){
         globalObj.putCell = putWrapper.wrapped;
@@ -121,6 +125,9 @@
       }finally{
         if(moveWrapper){
           globalObj.moveCursor = moveWrapper.original;
+        }
+        if(jumpWrapper){
+          globalObj.jumpCursor = jumpWrapper.original;
         }
         if(putWrapper){
           globalObj.putCell = putWrapper.original;

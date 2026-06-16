@@ -7,6 +7,12 @@ const DIR_DOWN = "down";
 const DIR_LEFT = "left";
 const DIR_FRONT = "front";
 const DIR_BACK = "back";
+const DIR_NUMBER_MAP = {
+  1: DIR_UP,
+  2: DIR_RIGHT,
+  3: DIR_DOWN,
+  4: DIR_LEFT,
+};
 const RENDER_IMMEDIATE = "immediate";
 const RENDER_BUFFERED = "buffered";
 const STEP_DELAY_MS = 12;
@@ -1178,6 +1184,10 @@ function moveCursor(...args){
     }
     return true;
   };
+  const normalizeNumericMoveDir = (value) => {
+    if(typeof value !== "number" || !Number.isFinite(value)) return null;
+    return DIR_NUMBER_MAP[Math.trunc(value)] || null;
+  };
   const getOrientationLabel = (dirVal) => {
     if(!dirVal) return "";
     const orientationMap = {
@@ -1270,7 +1280,12 @@ function moveCursor(...args){
     return true;
   };
 
-  if(args.length === 0){
+  const shouldUseDefaultMove = (
+    args.length === 0
+    || (args.length === 1 && args[0] === 0)
+  );
+
+  if(shouldUseDefaultMove){
     if(directionEnabled || shouldAllowDirectionCommands()){
       recordRelativeMove("front");
       scheduleRelativeMove(cursorPos.dir);
@@ -1290,9 +1305,11 @@ function moveCursor(...args){
   }else if(args.length === 1){
     const v = args[0];
     if(typeof v === "number" && Number.isFinite(v)){
-      return false;
-    }
-    if(typeof v === "string"){
+      const dirAbs = normalizeNumericMoveDir(v);
+      if(!dirAbs) return false;
+      recordRelativeMove(dirAbs);
+      scheduleRelativeMove(dirAbs);
+    }else if(typeof v === "string"){
       const aliasCoord = resolveCoordinateAlias(v);
       if(aliasCoord){
         targetRow = aliasCoord.row;
@@ -1333,7 +1350,15 @@ function moveCursor(...args){
       const d = normalizeDir(val);
       if(d) finalDir = d;
     };
-    if(typeof first === "string"){
+    const firstNumericDir = normalizeNumericMoveDir(first);
+    if(firstNumericDir){
+      if(typeof second !== "number" || !Number.isFinite(second)){
+        return false;
+      }
+      if(!scheduleRelativeMove(firstNumericDir)) return false;
+      relativeMoveCount = Math.max(0, Math.trunc(second));
+      recordRelativeMove(firstNumericDir);
+    }else if(typeof first === "string"){
       const aliasCoord = resolveCoordinateAlias(first);
       if(aliasCoord){
         targetRow = aliasCoord.row;
@@ -1512,6 +1537,21 @@ function makeStepResult(value, options = {}){
     };
   }
   return value;
+}
+
+function jumpCursor(...args){
+  if(args.length === 0 || (args.length === 1 && args[0] === 0)){
+    return moveCursor("A1");
+  }
+  if(args.length >= 2 && Number.isFinite(args[0]) && Number.isFinite(args[1])){
+    const ref = cellRefFromRowCol(args[0], args[1]);
+    if(!ref) return false;
+    if(args.length >= 3){
+      return moveCursor(ref, args[2]);
+    }
+    return moveCursor(ref);
+  }
+  return moveCursor(...args);
 }
 
 function turnCursor(dirArg){
@@ -2336,6 +2376,10 @@ window.DIR_UP = DIR_UP;
 window.DIR_RIGHT = DIR_RIGHT;
 window.DIR_DOWN = DIR_DOWN;
 window.DIR_LEFT = DIR_LEFT;
+window.UP = 1;
+window.RIGHT = 2;
+window.DOWN = 3;
+window.LEFT = 4;
 window.DIR_FRONT = DIR_FRONT;
 window.DIR_BACK = DIR_BACK;
 window.RENDER_IMMEDIATE = RENDER_IMMEDIATE;
@@ -2373,6 +2417,7 @@ window.isMoveBlocked = isMoveBlocked;
 window.didMove = didMove;
 window.shouldPlaceCell = shouldPlaceCell;
 window.moveCursor = moveCursor;
+window.jumpCursor = jumpCursor;
 window.turnCursor = turnCursor;
 window.updateCursor = updateCursor;
 window.resetCursor = resetCursor;

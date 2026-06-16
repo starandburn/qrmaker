@@ -78,6 +78,7 @@
     is_skip_zone: "isSkipZone",
     is_switch_on: "isSwitchOn",
     is_timing_zone: "isTimingZone",
+    jump_cursor: "jumpCursor",
     move_cursor: "moveCursor",
     pause_running: "pauseRunning",
     put_alignment_cells: "putAlignmentCells",
@@ -141,6 +142,19 @@
       || Object.values(CALL_NAME_MAP).includes(name);
   };
 
+  const PH_MOVE_DIRECTION_ARGS = {
+    0: "",
+    1: "\"up\"",
+    2: "\"right\"",
+    3: "\"down\"",
+    4: "\"left\"",
+    UP: "\"up\"",
+    RIGHT: "\"right\"",
+    DOWN: "\"down\"",
+    LEFT: "\"left\"",
+  };
+  const PH_MOVE_DIRECTION_WORDS = new Set(["up", "right", "down", "left", "front", "back"]);
+
   const normalizeCallArg = (arg) => {
     const trimmed = String(arg ?? "").trim();
     const normalizedName = normalizeCallName(trimmed);
@@ -148,12 +162,6 @@
       throw new Error(`PH command requires parentheses: ${trimmed}`);
     }
     return normalizeCallName(trimmed);
-  };
-
-  const SWITCH_ACTION_CALLS = {
-    on_switch: "on",
-    off_switch: "off",
-    flip_switch: "flip",
   };
 
   const normalizeSwitchArg = (arg) => {
@@ -202,10 +210,10 @@
     if(!match) return "";
     const switchName = match[1];
     const rawValue = match[2].trim();
-    if(rawValue === "true"){
+    if(rawValue === "True"){
       return `setSwitch("${switchName}", true)`;
     }
-    if(rawValue === "false"){
+    if(rawValue === "False"){
       return `setSwitch("${switchName}", false)`;
     }
     const switchCondition = normalizeSwitchCondition(rawValue);
@@ -215,21 +223,92 @@
     return "";
   };
 
-  const CALL_SYNTAX_PATTERN = /\b([A-Za-z_$][A-Za-z0-9_$-]*)\s*\(([^()]*)\)/g;
-  const normalizeCallMatch = (name, args) => {
-    const rawArgs = String(args ?? "").split(",").map(normalizeSwitchArg).filter(Boolean);
-    if(name === "set_switch" && rawArgs.length >= 1){
-      return [rawArgs[0], rawArgs[1] || "on"].join(" ");
+  const isActiveSwitchName = (name) => {
+    const normalized = normalizeSwitchName(name);
+    return getActiveSwitchNames().includes(normalized);
+  };
+
+  const assertNoSwitchCommandShorthand = (line) => {
+    const trimmed = String(line ?? "").trim();
+    const match = trimmed.match(/^([A-Za-z_$][A-Za-z0-9_$-]*)\b/);
+    if(!match) return;
+    if(isActiveSwitchName(match[1])){
+      throw new Error("PH switch shorthand commands are disabled; use set_switch(..., True/False) or assignment");
     }
-    if(Object.prototype.hasOwnProperty.call(SWITCH_ACTION_CALLS, name) && rawArgs.length >= 1){
-      return `${rawArgs[0]} ${SWITCH_ACTION_CALLS[name]}`;
+  };
+
+  const normalizeSwitchCommandNameArg = (arg) => {
+    const normalized = normalizeSwitchArg(arg);
+    if(!isActiveSwitchName(normalized)){
+      return normalizeCallArg(arg);
+    }
+    return `"${normalized}"`;
+  };
+
+  const normalizeSwitchValueArg = (arg) => {
+    const rawValue = normalizeSwitchArg(arg);
+    if(rawValue === "True") return "true";
+    if(rawValue === "False") return "false";
+    if(isActiveSwitchName(rawValue)) return `isSwitchOn("${rawValue}")`;
+    throw new Error("PH set_switch value must be True or False");
+  };
+
+  const CALL_SYNTAX_PATTERN = /\b([A-Za-z_$][A-Za-z0-9_$-]*)\s*\(([^()]*)\)/g;
+  const isQuotedArg = (arg) => /^["'][\s\S]*["']$/.test(String(arg ?? "").trim());
+  const isPhMoveDirectionLiteral = (rawArg, sourceArg) => {
+    const lower = String(rawArg ?? "").trim().toLowerCase();
+    if(!PH_MOVE_DIRECTION_WORDS.has(lower)) return false;
+    return isQuotedArg(sourceArg);
+  };
+  const assertNoPhMoveDirectionLiteral = (rawArg, sourceArg) => {
+    if(isPhMoveDirectionLiteral(rawArg, sourceArg)){
+      throw new Error("PH move_cursor direction strings are disabled; use 1/2/3/4 or UP/RIGHT/DOWN/LEFT");
+    }
+  };
+  const normalizeCallMatch = (name, args) => {
+    const sourceArgs = String(args ?? "").split(",").map((arg) => String(arg ?? "").trim()).filter(Boolean);
+    const rawArgs = sourceArgs.map(normalizeSwitchArg).filter(Boolean);
+    const normalizedName = normalizeCallName(name);
+    if(isActiveSwitchName(normalizedName)){
+      throw new Error("PH switch shorthand commands are disabled; use set_switch(..., True/False) or assignment");
+    }
+    if(normalizedName === "moveCursor" && rawArgs.length >= 1){
+      const rawMoveArg = rawArgs[0];
+      if(Object.prototype.hasOwnProperty.call(PH_MOVE_DIRECTION_ARGS, rawMoveArg)){
+        if(rawMoveArg === "0" && rawArgs.length === 1){
+          return normalizedName;
+        }
+        const restArgs = sourceArgs.slice(1).map(normalizeCallArg).filter(Boolean);
+        return [normalizedName, PH_MOVE_DIRECTION_ARGS[rawMoveArg], ...restArgs].join(" ");
+      }
+      assertNoPhMoveDirectionLiteral(rawMoveArg, sourceArgs[0]);
+      throw new Error("PH position moves require jump_cursor(...)");
+    }
+    if(normalizedName === "jumpCursor" && rawArgs.length === 1){
+      const rawJumpArg = rawArgs[0];
+      if(rawJumpArg === "0"){
+        return `${normalizedName} ${rawJumpArg}`;
+      }
+      if(Object.prototype.hasOwnProperty.call(PH_MOVE_DIRECTION_ARGS, rawJumpArg)
+        || isPhMoveDirectionLiteral(rawJumpArg, sourceArgs[0])){
+        throw new Error("PH direction moves require move_cursor(...)");
+      }
+    }
+    if(name === "set_switch" && rawArgs.length >= 1){
+      const switchArgs = [normalizeSwitchCommandNameArg(sourceArgs[0])];
+      if(sourceArgs.length >= 2){
+        switchArgs.push(normalizeSwitchValueArg(sourceArgs[1]));
+      }
+      return `setSwitch ${switchArgs.join(" ")}`;
+    }
+    if(name === "on_switch" || name === "off_switch" || name === "flip_switch"){
+      throw new Error("PH on_switch/off_switch/flip_switch are disabled; use set_switch(..., True/False) or assignment");
     }
     const normalizedArgs = String(args ?? "")
       .split(",")
       .map(normalizeCallArg)
       .filter(Boolean)
       .join(" ");
-    const normalizedName = normalizeCallName(name);
     return normalizedArgs ? `${normalizedName} ${normalizedArgs}` : normalizedName;
   };
 
@@ -371,6 +450,7 @@
       const stmt = `${switchAssignment};`;
       return awaitCalls ? `await ${stmt}` : stmt;
     }
+    assertNoSwitchCommandShorthand(line);
     const callArgMatch = String(line ?? "").trim().match(/^([A-Za-z_$][A-Za-z0-9_$]*)\s+([A-Za-z_$][A-Za-z0-9_$]*\(\))$/);
     const formatted = callArgMatch
       ? `${callArgMatch[1]}(${callArgMatch[2]})`

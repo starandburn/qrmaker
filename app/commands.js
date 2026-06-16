@@ -10,6 +10,7 @@
     assignIfFunction(commandsPublic, "pauseRunning", win.pauseRunning);
     // Cursor & Movement
     assignIfFunction(commandsPublic, "moveCursor", win.moveCursor);
+    assignIfFunction(commandsPublic, "jumpCursor", win.jumpCursor);
     assignIfFunction(commandsPublic, "turnCursor", win.turnCursor);
     // QR Drawing
     assignIfFunction(commandsPublic, "drawQRCode", win.drawQRCode);
