@@ -33,6 +33,7 @@
     // Queries & Utilities
     assignIfFunction(commandsPublic, "isEmpty", win.isEmpty);
     assignIfFunction(commandsPublic, "isMoveBlocked", win.isMoveBlocked);
+    assignIfFunction(commandsPublic, "didMove", win.didMove);
     assignIfFunction(commandsPublic, "isSkipZone", win.isSkipZone);
     assignIfFunction(commandsPublic, "hasNextData", win.hasNextData);
     assignIfFunction(commandsPublic, "getNextData", win.getNextData);

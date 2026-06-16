@@ -89,6 +89,7 @@
     reset_board: "resetBoard",
     set_switch: "setSwitch",
     turn_cursor: "turnCursor",
+    did_move: "didMove",
   };
   const QR_DSL_COMMAND_HEADS = [
     "move",
@@ -144,7 +145,7 @@
     const trimmed = String(arg ?? "").trim();
     const normalizedName = normalizeCallName(trimmed);
     if(/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(normalizedName) && shouldCallMappedName(trimmed)){
-      return `${normalizedName}()`;
+      throw new Error(`PH command requires parentheses: ${trimmed}`);
     }
     return normalizeCallName(trimmed);
   };
@@ -214,44 +215,49 @@
     return "";
   };
 
-  const normalizeCallSyntax = (line) => {
-    let current = String(line ?? "");
-    const callPattern = /\b([A-Za-z_$][A-Za-z0-9_$-]*)\s*\(([^()]*)\)/g;
-    for(let i = 0; i < 20; i++){
-      const next = current.replace(callPattern, (match, name, args) => {
-        const rawArgs = String(args ?? "").split(",").map(normalizeSwitchArg).filter(Boolean);
-        if(name === "set_switch" && rawArgs.length >= 1){
-          return [rawArgs[0], rawArgs[1] || "on"].join(" ");
-        }
-        if(Object.prototype.hasOwnProperty.call(SWITCH_ACTION_CALLS, name) && rawArgs.length >= 1){
-          return `${rawArgs[0]} ${SWITCH_ACTION_CALLS[name]}`;
-        }
-        const normalizedArgs = String(args ?? "")
-          .split(",")
-          .map(normalizeCallArg)
-          .filter(Boolean)
-          .join(" ");
-        const normalizedName = normalizeCallName(name);
-        return normalizedArgs ? `${normalizedName} ${normalizedArgs}` : normalizedName;
-      });
-      if(next === current) return next;
-      current = next;
+  const CALL_SYNTAX_PATTERN = /\b([A-Za-z_$][A-Za-z0-9_$-]*)\s*\(([^()]*)\)/g;
+  const normalizeCallMatch = (name, args) => {
+    const rawArgs = String(args ?? "").split(",").map(normalizeSwitchArg).filter(Boolean);
+    if(name === "set_switch" && rawArgs.length >= 1){
+      return [rawArgs[0], rawArgs[1] || "on"].join(" ");
     }
-    return current;
+    if(Object.prototype.hasOwnProperty.call(SWITCH_ACTION_CALLS, name) && rawArgs.length >= 1){
+      return `${rawArgs[0]} ${SWITCH_ACTION_CALLS[name]}`;
+    }
+    const normalizedArgs = String(args ?? "")
+      .split(",")
+      .map(normalizeCallArg)
+      .filter(Boolean)
+      .join(" ");
+    const normalizedName = normalizeCallName(name);
+    return normalizedArgs ? `${normalizedName} ${normalizedArgs}` : normalizedName;
   };
 
-  const normalizeBareCallName = (line) => {
-    return String(line ?? "").replace(/^(\s*)([A-Za-z_$][A-Za-z0-9_$-]*)(\b)/, (match, indent, name, boundary) => {
-      return `${indent}${normalizeCallName(name)}${boundary}`;
+  const assertNoBarePhCalls = (line) => {
+    const protectedCalls = [];
+    const protectedLine = String(line ?? "").replace(CALL_SYNTAX_PATTERN, (match, name, args) => {
+      const placeholder = `__PH_CALL_${protectedCalls.length}__`;
+      protectedCalls.push(normalizeCallMatch(name, args));
+      return placeholder;
     });
+    const tokenPattern = /\b[A-Za-z_$][A-Za-z0-9_$-]*\b/g;
+    let match = tokenPattern.exec(protectedLine);
+    while(match){
+      const token = match[0];
+      if(PH_ALLOWED_STATEMENT_HEADS.has(token) || PH_KNOWN_STATEMENT_HEADS_LOWER.has(token.toLowerCase())){
+        throw new Error(`PH command requires parentheses: ${token}`);
+      }
+      match = tokenPattern.exec(protectedLine);
+    }
+    return protectedLine.replace(/__PH_CALL_(\d+)__/g, (match, index) => protectedCalls[Number(index)] || match);
   };
 
   const normalizeConditionCallName = (condition) => {
-    return normalizeBareCallName(normalizeSwitchCondition(condition));
+    return normalizeSwitchCondition(condition);
   };
 
   const normalizePhLine = (line) => {
-    return normalizeBareCallName(normalizeCallSyntax(line));
+    return assertNoBarePhCalls(line);
   };
 
   const toDslLines = (line) => {
@@ -381,6 +387,11 @@
   const formatCondition = (condition) => {
     const trimmed = String(condition ?? "").trim();
     if(!trimmed) return "";
+    const notMatch = trimmed.match(/^not\s+(.+)$/);
+    if(notMatch){
+      const inner = formatCondition(notMatch[1]);
+      return inner ? `!(${inner})` : "";
+    }
     if(/^is_data_finished(?:\s*\(\s*\))?$/.test(trimmed)) return "!hasNextData()";
     const switchCondition = normalizeSwitchCondition(trimmed);
     if(switchCondition !== trimmed) return switchCondition;

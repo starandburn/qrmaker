@@ -1100,6 +1100,7 @@ function updateCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.
 }
 
 function resetCursor(){
+  lastMoveBlocked = false;
   const ok = updateCursor(HOME_CURSOR.row, HOME_CURSOR.col, HOME_CURSOR.dir);
   if(ok && !(typeof window !== "undefined" && window.suppressCursorUpdates)
     && typeof window.logEvent === "function"){
@@ -2327,6 +2328,9 @@ function isFunctionalCell(){
 function isMoveBlocked(){
   return lastMoveBlocked;
 }
+function didMove(){
+  return !isMoveBlocked();
+}
 
 window.DIR_UP = DIR_UP;
 window.DIR_RIGHT = DIR_RIGHT;
@@ -2366,6 +2370,7 @@ window.isSkipZone = isSkipZone;
 window.isTimingZone = isTimingZone;
 window.isFunctionalCell = isFunctionalCell;
 window.isMoveBlocked = isMoveBlocked;
+window.didMove = didMove;
 window.shouldPlaceCell = shouldPlaceCell;
 window.moveCursor = moveCursor;
 window.turnCursor = turnCursor;

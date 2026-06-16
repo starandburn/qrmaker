@@ -125,6 +125,7 @@
           { terms: ["draw_text()"], description: "入力データをドット文字として盤面に描画します。" },
           { terms: ["reset_board()"], description: "盤面、カーソル、データ読み出し位置をリセットします。" },
           { terms: ["pause_running(ms)"], description: "指定時間だけ待機します。ステップ確認用です。" },
+          { terms: ["関数名(...)"], description: "PHでは命令呼び出しのカッコは省略できません。" },
           { terms: ["stop"], description: "以降の実行を停止します。" },
         ],
       },
@@ -181,7 +182,8 @@
         heading: "条件に使える関数",
         items: [
           { terms: ["is_empty()"], description: "現在のセルが未配置なら真です。" },
-          { terms: ["is_move_blocked()"], description: "次の移動が盤面外などで止まるなら真です。" },
+          { terms: ["is_move_blocked()"], description: "前回の move_cursor() が盤面外などで止まったなら真です。" },
+          { terms: ["did_move()"], description: "前回の move_cursor() がぶつからず、実際に移動できていれば true です。" },
           { terms: ["is_timing_zone()"], description: "タイミング領域なら真です。" },
           { terms: ["is_skip_zone()"], description: "スキップ対象領域なら真です。" },
           { terms: ["has_next_data()"], description: "次のデータが残っていれば真です。" },
