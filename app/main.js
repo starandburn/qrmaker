@@ -106,6 +106,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
   if(safeWindow?.OfflineCodeEditorConfig){
     safeWindow.OfflineCodeEditorConfig.commentTokens = activeUserScriptLanguage === "python" ? ["#"] : ["//", "#", "'"];
+    if(activeUserScriptLanguage === "python" && Array.isArray(safeWindow.OfflineCodeEditorConfig.control)){
+      safeWindow.OfflineCodeEditorConfig.control = safeWindow.OfflineCodeEditorConfig.control.filter((word) => String(word).toLowerCase() !== "end");
+    }
   }
   callIfFunction(safeWindow?.renderCommandReference, activeUserScriptLanguage);
   const focusCodeArea = () => {
@@ -932,7 +935,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
           : null;
         const unplacedKind = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number")
           ? window.BIT_UNPLACED
-          : -1;
+          : 0;
         const bitKindFn = (typeof window !== "undefined" && typeof window.bitKind === "function")
           ? window.bitKind
           : null;
@@ -1224,7 +1227,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         isBlackBit: (value) => (typeof window.isBlackBit === "function")
           ? safeWindow?.isBlackBit(value)
           : value > 0,
-        unplacedKind: (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1,
+        unplacedKind: (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0,
         isDrawingBasePattern: Boolean(window.isDrawingBasePattern),
         getNextBasePatternInfos: (count) => (typeof window.getNextBasePatternInfos === "function")
           ? safeWindow?.getNextBasePatternInfos(count)
@@ -3192,7 +3195,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       : null;
     const unplacedKind = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number")
       ? window.BIT_UNPLACED
-      : -1;
+      : 0;
     const bitKindFn = (typeof window !== "undefined" && typeof window.bitKind === "function")
       ? window.bitKind
       : null;

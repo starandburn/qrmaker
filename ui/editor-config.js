@@ -44,11 +44,10 @@ window.OfflineCodeEditorConfig = {
     "format",
     "formats",
     "timings",
-    "next",
     "pause",
   ],
   predicateWord: ["block","wall","empty","used","timing","skip","last"],
   switchNames: ["red","blue","green","yellow"],
-  constants: ["left","right","up","down","on","off","flip"],
+  constants: ["left","right","up","down","home","end","on","off","flip","true","false","next","black","white"],
   commentTokens: ["//","#","'"]
 };

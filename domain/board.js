@@ -115,8 +115,8 @@ const BOARD_SIZE = (typeof window !== "undefined" && typeof window.getActiveQrBo
   : 25;
 const BOARD_ROWS = BOARD_SIZE;
 const BOARD_COLS = BOARD_SIZE;
-const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
-const GENERIC_WHITE = (typeof window !== "undefined" && typeof window.BIT_WHITE === "number") ? window.BIT_WHITE : 0;
+const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+const GENERIC_WHITE = (typeof window !== "undefined" && typeof window.BIT_WHITE === "number") ? window.BIT_WHITE : -1;
 const GENERIC_BLACK = (typeof window !== "undefined" && typeof window.BIT_BLACK === "number") ? window.BIT_BLACK : 1;
 const DEFAULT_CURSOR_COLOR = "#e60000";
 const STEP_CURSOR_COLOR = "#1a73e8";
@@ -1618,7 +1618,7 @@ function applySetCell(row, col, encodedValue, color = "black", allowGenericData 
   const finalColor = isColorEnabled ? color : "black";
   cell.className = "cell";
   const kind = (typeof window.bitKind === "function") ? window.bitKind(encodedValue) : Math.abs(encodedValue);
-  const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
+  const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
   if(kind !== unplacedKind){
     const isBlack = (typeof window.isBlackBit === "function")
       ? window.isBlackBit(encodedValue)
@@ -1997,7 +1997,7 @@ function updateCell(row, col, encodedValue, options = null){
   const r = row;
   const c = col;
   const kind = (typeof window.bitKind === "function") ? window.bitKind(encodedValue) : Math.abs(encodedValue);
-  const colorEntry = colorsForKind(kind);
+  const colorEntry = encodedValue === GENERIC_WHITE ? colorsForKind(GENERIC_WHITE) : colorsForKind(kind);
   const color = colorEntry || "black";
   const allowGenericData = Boolean(options && options.treatGenericAsData);
   if(renderMode === RENDER_BUFFERED){
@@ -2027,12 +2027,7 @@ function putCell(encodedValue, options = null){
       return makeStepResult(false, { scale: 0.5 });
     }
   }
-  if(val === -1){
-    if(!consumeNextFromSequence()){
-      return makeStepResult(false, { scale: 0.5 });
-    }
-  }
-  let treatGenericAsData = (val === 0 || val === 1);
+  let treatGenericAsData = false;
   if(val === undefined){
     const rawDefaultPutMode = (typeof window !== "undefined") ? window.defaultPutMode : undefined;
     const numericDefaultPutMode = Number(rawDefaultPutMode);
@@ -2046,17 +2041,13 @@ function putCell(encodedValue, options = null){
     }else if(defaultPutMode === 1){
       val = UNPLACED_KIND;
     }else if(defaultPutMode === 3){
-      val = 0;
+      val = GENERIC_WHITE;
+      treatGenericAsData = true;
     }else{
-      val = 1;
+      val = GENERIC_BLACK;
+      treatGenericAsData = true;
     }
   }
-  if(val === -1){
-    val = UNPLACED_KIND;
-  }else if(val === 0 || val === 1){
-    val = (val === 1) ? GENERIC_BLACK : GENERIC_WHITE;
-  }
-  treatGenericAsData = (val === GENERIC_WHITE || val === GENERIC_BLACK);
   const skipExisting = Boolean(window.skipExistingCells);
   if(skipExisting && typeof window.isEmpty === "function" && !window.isEmpty()){
     if(usedAuto && dataSeqIndex > 0){

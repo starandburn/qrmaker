@@ -166,7 +166,7 @@ const USER_CODE_AUTOCORRECT_WORDS = {
     "get_next_data", "has_next_data", "is_empty", "is_move_blocked", "is_skip_zone", "is_switch_on", "is_timing_zone", "jump_cursor", "move_cursor", "pause_running", "put_alignment_cells", "put_cell", "put_dark_module_cells", "put_finder_cells", "put_format_cells", "put_timing_cells", "reset_board", "set_switch", "turn_cursor", "did_move",
     "applyMask", "canContinueLoop", "drawAlignmentPatterns", "drawBasePatterns", "drawDataPatterns", "drawDarkModulePatterns", "drawFinderPatterns", "drawFormatPatterns", "drawQRCode", "drawText", "drawTimingPatterns",
     "getNextData", "hasNextData", "isEmpty", "isMoveBlocked", "isSkipZone", "isSwitchOn", "isTimingZone", "jumpCursor", "moveCursor", "pauseRunning", "putAlignmentCells", "putCell", "putDarkModuleCells", "putFinderCells", "putFormatCells", "putTimingCells", "resetBoard", "setSwitch", "turnCursor",
-    "UP", "RIGHT", "DOWN", "LEFT", "red", "blue", "green", "yellow",
+    "UP", "RIGHT", "DOWN", "LEFT", "HOME", "END", "NEXT", "BLACK", "WHITE", "red", "blue", "green", "yellow",
   ],
 };
 const USER_CODE_AUTOCORRECT_MAPS = Object.fromEntries(Object.entries(USER_CODE_AUTOCORRECT_WORDS).map(([languageId, words]) => [

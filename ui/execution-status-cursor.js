@@ -36,7 +36,7 @@
       const getCurrentKind = boardInfo ? boardInfo.getCurrentKind : null;
       const colorsForKind = boardInfo ? boardInfo.colorsForKind : null;
       const isBlackBit = boardInfo ? boardInfo.isBlackBit : null;
-      const unplacedKind = (boardInfo && typeof boardInfo.unplacedKind === "number") ? boardInfo.unplacedKind : -1;
+      const unplacedKind = (boardInfo && typeof boardInfo.unplacedKind === "number") ? boardInfo.unplacedKind : 0;
       const basePatternActive = Boolean(boardInfo ? boardInfo.isDrawingBasePattern : false);
       const getNextBasePatternInfos = boardInfo ? boardInfo.getNextBasePatternInfos : null;
       const getNextDataInfos = boardInfo ? boardInfo.getNextDataInfos : null;

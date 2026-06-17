@@ -304,6 +304,12 @@
     }
     if(normalizedName === "jumpCursor" && rawArgs.length === 1){
       const rawJumpArg = rawArgs[0];
+      if(rawJumpArg === "HOME"){
+        return `${normalizedName} "home"`;
+      }
+      if(rawJumpArg === "END"){
+        return `${normalizedName} "end"`;
+      }
       if(rawJumpArg === "0"){
         return `${normalizedName} ${rawJumpArg}`;
       }
@@ -311,6 +317,15 @@
         || isPhMoveDirectionLiteral(rawJumpArg, sourceArgs[0])){
         throw new Error("PH direction moves require move_cursor(...)");
       }
+    }
+    if(normalizedName === "putCell" && rawArgs.length === 1 && rawArgs[0] === "NEXT"){
+      return "putCell getNextData()";
+    }
+    if(normalizedName === "putCell" && rawArgs.length === 1 && rawArgs[0] === "BLACK"){
+      return "putCell 1";
+    }
+    if(normalizedName === "putCell" && rawArgs.length === 1 && rawArgs[0] === "WHITE"){
+      return "putCell -1";
     }
     if(name === "set_switch" && rawArgs.length >= 1){
       const switchArgs = [normalizeSwitchCommandNameArg(sourceArgs[0])];
@@ -332,11 +347,16 @@
 
   const assertNoBarePhCalls = (line) => {
     const protectedCalls = [];
-    const protectedLine = String(line ?? "").replace(CALL_SYNTAX_PATTERN, (match, name, args) => {
-      const placeholder = `__PH_CALL_${protectedCalls.length}__`;
-      protectedCalls.push(normalizeCallMatch(name, args));
-      return placeholder;
-    });
+    let protectedLine = String(line ?? "");
+    let previousLine = "";
+    while(protectedLine !== previousLine){
+      previousLine = protectedLine;
+      protectedLine = protectedLine.replace(CALL_SYNTAX_PATTERN, (match, name, args) => {
+        const placeholder = `__PH_CALL_${protectedCalls.length}__`;
+        protectedCalls.push(normalizeCallMatch(name, args));
+        return placeholder;
+      });
+    }
     const tokenPattern = /\b[A-Za-z_$][A-Za-z0-9_$-]*\b/g;
     let match = tokenPattern.exec(protectedLine);
     while(match){
@@ -346,7 +366,13 @@
       }
       match = tokenPattern.exec(protectedLine);
     }
-    return protectedLine.replace(/__PH_CALL_(\d+)__/g, (match, index) => protectedCalls[Number(index)] || match);
+    let restoredLine = protectedLine;
+    let previousRestoredLine = "";
+    while(restoredLine !== previousRestoredLine){
+      previousRestoredLine = restoredLine;
+      restoredLine = restoredLine.replace(/__PH_CALL_(\d+)__/g, (match, index) => protectedCalls[Number(index)] || match);
+    }
+    return restoredLine;
   };
 
   const normalizeConditionCallName = (condition) => {

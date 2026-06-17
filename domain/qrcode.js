@@ -1,8 +1,8 @@
 /**
  * QR core domain constants and helpers for bit encoding and parity calculation.
  */
-const BIT_UNPLACED = -1;
-const BIT_WHITE = 0;
+const BIT_UNPLACED = 0;
+const BIT_WHITE = -1;
 const BIT_BLACK = 1;
 const BIT_FUNC_FINDER = 10;
 const BIT_FUNC_TIMING = 11;
@@ -20,7 +20,7 @@ const BIT_MASK = 30;
 const BIT_UNKNOWN = 99;
 
 /**
- * Encode a bit with sign: positive => black(1), negative => white(0).
+ * Encode a bit with sign: positive => black(1), negative => white(0), zero => unplaced.
  * kind is the absolute category id (BIT_***).
  */
 function encodeBit(kind, isBlack){
@@ -40,7 +40,7 @@ function isBlackBit(val){
   return val > 0;
 }
 
-/** Is white? (0) */
+/** Is white? (negative) */
 function isWhiteBit(val){
   return val < 0;
 }
