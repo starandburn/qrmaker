@@ -151,6 +151,102 @@ function setInputValue(value){
   txtInput.focus();
 }
 
+const USER_CODE_AUTOCORRECT_WORDS = {
+  "qr-dsl": [
+    "if", "else", "elseif", "while", "until", "repeat", "loop", "for", "stop", "end", "endif", "endfor", "endwhile", "enduntil", "endrepeat", "endloop",
+    "move", "turn", "reset", "base", "mask", "data", "qrcode", "empty", "block", "wall", "put", "timing", "skip", "finder", "finders", "alignment", "alignments", "dark", "darkmodule", "darkmodules", "format", "formats", "timings", "pause", "text",
+    "drawText", "drawQRCode", "drawBasePatterns", "drawDataPatterns", "applyMask", "drawFinderPatterns", "drawAlignmentPatterns", "drawDarkModulePatterns", "drawFormatPatterns", "drawTimingPatterns",
+    "moveCursor", "jumpCursor", "turnCursor", "resetBoard", "pauseRunning", "putCell", "putFinderCells", "putAlignmentCells", "putDarkModuleCells", "putFormatCells", "putTimingCells",
+    "isEmpty", "isMoveBlocked", "isSkipZone", "isTimingZone", "hasNextData", "getNextData", "didMove", "setSwitch", "isSwitchOn", "canContinueLoop",
+    "up", "right", "down", "left", "front", "back", "home", "next", "advance", "black", "white", "red", "blue", "green", "yellow", "on", "off", "flip", "toggle", "true", "false",
+  ],
+  python: [
+    "if", "elif", "else", "while", "for", "not", "True", "False",
+    "apply_mask", "can_continue_loop", "draw_alignment_patterns", "draw_base_patterns", "draw_data_patterns", "draw_dark_module_patterns", "draw_finder_patterns", "draw_format_patterns", "draw_qr_code", "draw_text", "draw_timing_patterns",
+    "get_next_data", "has_next_data", "is_empty", "is_move_blocked", "is_skip_zone", "is_switch_on", "is_timing_zone", "jump_cursor", "move_cursor", "pause_running", "put_alignment_cells", "put_cell", "put_dark_module_cells", "put_finder_cells", "put_format_cells", "put_timing_cells", "reset_board", "set_switch", "turn_cursor", "did_move",
+    "applyMask", "canContinueLoop", "drawAlignmentPatterns", "drawBasePatterns", "drawDataPatterns", "drawDarkModulePatterns", "drawFinderPatterns", "drawFormatPatterns", "drawQRCode", "drawText", "drawTimingPatterns",
+    "getNextData", "hasNextData", "isEmpty", "isMoveBlocked", "isSkipZone", "isSwitchOn", "isTimingZone", "jumpCursor", "moveCursor", "pauseRunning", "putAlignmentCells", "putCell", "putDarkModuleCells", "putFinderCells", "putFormatCells", "putTimingCells", "resetBoard", "setSwitch", "turnCursor",
+    "UP", "RIGHT", "DOWN", "LEFT", "red", "blue", "green", "yellow",
+  ],
+};
+const USER_CODE_AUTOCORRECT_MAPS = Object.fromEntries(Object.entries(USER_CODE_AUTOCORRECT_WORDS).map(([languageId, words]) => [
+  languageId,
+  new Map(words.map((word) => [word.toLowerCase(), word])),
+]));
+const getActiveUserCodeLanguageId = () => {
+  const language = callIfFunction(window.getActiveUserScriptLanguage);
+  return typeof language?.id === "string" && language.id ? language.id : "qr-dsl";
+};
+const normalizeUserCodeLineCasing = (line) => {
+  const map = USER_CODE_AUTOCORRECT_MAPS[getActiveUserCodeLanguageId()];
+  if(!map || typeof line !== "string" || !line) return line;
+  let out = "";
+  let token = "";
+  let quote = "";
+  let escaped = false;
+  const flushToken = () => {
+    if(!token) return;
+    out += map.get(token.toLowerCase()) || token;
+    token = "";
+  };
+  for(let i = 0; i < line.length; i++){
+    const ch = line[i];
+    if(quote){
+      out += ch;
+      if(escaped){
+        escaped = false;
+      }else if(ch === "\\"){
+        escaped = true;
+      }else if(ch === quote){
+        quote = "";
+      }
+      continue;
+    }
+    if(ch === "\"" || ch === "'"){
+      flushToken();
+      quote = ch;
+      out += ch;
+      continue;
+    }
+    if(ch === "#" || (ch === "/" && line[i + 1] === "/")){
+      flushToken();
+      out += line.slice(i);
+      break;
+    }
+    if(/[A-Za-z_$]/.test(ch) || (token && /[0-9]/.test(ch))){
+      token += ch;
+      continue;
+    }
+    flushToken();
+    out += ch;
+  }
+  flushToken();
+  return out;
+};
+const normalizeCompletedUserCodeLines = (value) => {
+  const text = typeof value === "string" ? value : String(value ?? "");
+  const lastLf = text.lastIndexOf("\n");
+  if(lastLf < 0) return text;
+  const head = text.slice(0, lastLf);
+  const tail = text.slice(lastLf);
+  const newline = head.includes("\r\n") ? "\r\n" : "\n";
+  return head.split(/\r?\n/).map(normalizeUserCodeLineCasing).join(newline) + tail;
+};
+const normalizeUserCodeLineBeforePosition = (position) => {
+  if(!userCodeTextarea) return false;
+  const value = userCodeTextarea.value ?? "";
+  const end = Math.max(0, Math.min(Number(position) || 0, value.length));
+  const lineStart = value.lastIndexOf("\n", end - 1) + 1;
+  const before = value.slice(lineStart, end);
+  const after = normalizeUserCodeLineCasing(before);
+  if(after === before) return false;
+  const delta = after.length - before.length;
+  userCodeTextarea.value = value.slice(0, lineStart) + after + value.slice(end);
+  const nextPos = end + delta;
+  userCodeTextarea.selectionStart = userCodeTextarea.selectionEnd = nextPos;
+  return true;
+};
+
 function closeSampleDropdown(){
   if(!sampleDropdown) return;
   sampleDropdown.classList.remove("is-open");
@@ -454,13 +550,27 @@ if(userCodeTextarea){
     }
     if(e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey){
       const start = userCodeTextarea.selectionStart ?? 0;
+      normalizeUserCodeLineBeforePosition(start);
+      const normalizedStart = userCodeTextarea.selectionStart ?? start;
       const val = userCodeTextarea.value ?? "";
-      const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-      const currentLine = val.slice(lineStart, start);
+      const lineStart = val.lastIndexOf("\n", normalizedStart - 1) + 1;
+      const currentLine = val.slice(lineStart, normalizedStart);
       const indent = (currentLine.match(/^[\t ]*/) || [""])[0];
       e.preventDefault();
       insertText("\n" + indent);
     }
+  });
+  let isNormalizingUserCode = false;
+  userCodeTextarea.addEventListener("input", () => {
+    if(isNormalizingUserCode) return;
+    const before = userCodeTextarea.value ?? "";
+    const after = normalizeCompletedUserCodeLines(before);
+    if(after === before) return;
+    const pos = userCodeTextarea.selectionStart ?? after.length;
+    isNormalizingUserCode = true;
+    userCodeTextarea.value = after;
+    userCodeTextarea.selectionStart = userCodeTextarea.selectionEnd = Math.min(pos, after.length);
+    isNormalizingUserCode = false;
   });
 }
 
