@@ -1263,7 +1263,7 @@
         return "putCell(1)";
       }
       if(argLower === "white"){
-        return "putCell(0)";
+        return "putCell(-1)";
       }
       const kindConst = getKindNameForColor(argLower);
       if(kindConst){
