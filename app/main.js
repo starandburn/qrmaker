@@ -3767,6 +3767,107 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       const text = (typeof value === "string") ? value : "";
       const newline = text.includes("\r\n") ? "\r\n" : "\n";
       const lines = text.split(/\r?\n/);
+      const formatPythonLikeCode = () => {
+        const splitPythonComment = (raw) => {
+          const line = String(raw ?? "");
+          let quote = "";
+          let escaped = false;
+          for(let i = 0; i < line.length; i++){
+            const ch = line[i];
+            if(escaped){
+              escaped = false;
+              continue;
+            }
+            if(ch === "\\"){
+              escaped = true;
+              continue;
+            }
+            if(quote){
+              if(ch === quote){
+                quote = "";
+              }
+              continue;
+            }
+            if(ch === "\"" || ch === "'"){
+              quote = ch;
+              continue;
+            }
+            if(ch === "#"){
+              return { code: line.slice(0, i), comment: line.slice(i) };
+            }
+          }
+          return { code: line, comment: "" };
+        };
+        const normalizePythonSpacing = (code) => {
+          const source = String(code ?? "");
+          const indent = (source.match(/^[\t ]*/) || [""])[0];
+          let body = source.slice(indent.length).replace(/[ \t]+$/g, "");
+          const normalizePlain = (plain) => String(plain ?? "")
+            .replace(/\s*,\s*/g, ", ")
+            .replace(/\s*(==|!=|<=|>=)\s*/g, " $1 ")
+            .replace(/(^|[^=!<>])\s*=\s*([^=])/g, "$1 = $2")
+            .replace(/\s*:\s*$/g, ":")
+            .replace(/\s*\(\s*/g, "(")
+            .replace(/\s*\)\s*/g, ")")
+            .replace(/\s+/g, " ");
+          let normalized = "";
+          let plain = "";
+          let quote = "";
+          let escaped = false;
+          const flushPlain = () => {
+            if(!plain) return;
+            normalized += normalizePlain(plain);
+            plain = "";
+          };
+          for(let i = 0; i < body.length; i++){
+            const ch = body[i];
+            if(quote){
+              normalized += ch;
+              if(escaped){
+                escaped = false;
+              }else if(ch === "\\"){
+                escaped = true;
+              }else if(ch === quote){
+                quote = "";
+              }
+              continue;
+            }
+            if(ch === "\"" || ch === "'"){
+              flushPlain();
+              quote = ch;
+              normalized += ch;
+              continue;
+            }
+            plain += ch;
+          }
+          flushPlain();
+          body = normalized.trim();
+          return body ? indent + body : "";
+        };
+        return lines.map((rawLine) => {
+          if(FULLWIDTH_CHAR_REGEX.test(rawLine)){
+            return rawLine;
+          }
+          const original = String(rawLine ?? "");
+          if(!original.trim()){
+            return "";
+          }
+          const { code, comment } = splitPythonComment(original);
+          const formattedCode = normalizePythonSpacing(code);
+          const formattedComment = comment.replace(/[ \t]+$/g, "");
+          if(!formattedComment){
+            return formattedCode;
+          }
+          if(!formattedCode){
+            const indent = (code.match(/^[\t ]*/) || [""])[0];
+            return indent + formattedComment.trimStart();
+          }
+          return `${formattedCode} ${formattedComment.trimStart()}`;
+        }).join(newline);
+      };
+      if(activeUserScriptLanguage === "python"){
+        return formatPythonLikeCode();
+      }
       const leadingTabLines = lines.filter((line) => /^\t+/.test(line)).length;
       const leadingSpaceLines = lines.filter((line) => /^ +/.test(line)).length;
       const indentUnit = (leadingTabLines > leadingSpaceLines) ? "\t" : "    ";
