@@ -173,6 +173,13 @@
         metaSpan.textContent = ` ${metaSuffix}`;
         target.appendChild(metaSpan);
       }
+      const fullText = `${resolved}${metaSuffix ? ` ${metaSuffix}` : ""}`;
+      const updateTooltip = () => {
+        target.title = target.scrollWidth > target.clientWidth ? fullText : "";
+      };
+      target.onmouseenter = updateTooltip;
+      target.onfocus = updateTooltip;
+      updateTooltip();
     };
 
     const INPUT_MAX_LENGTH = Number(inputMaxLength ?? txtInput?.getAttribute("maxlength")) || 32;
