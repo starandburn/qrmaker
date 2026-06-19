@@ -1072,9 +1072,18 @@ details.pattern-panel:not([open]) .summary-title::before{
 .code-panel.show-samples .code-debug-toolbar{
   display:flex;
 }
+.code-panel-tabs{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  margin-left:auto;
+  flex:0 0 auto;
+}
+.code-panel-tab{
+  min-height:28px;
+}
 .command-reference-link{
   flex:0 0 auto;
-  margin-left:auto;
   padding:3px 10px;
   border:1px solid #cfd6df;
   border-radius:4px;
@@ -1088,7 +1097,9 @@ details.pattern-panel:not([open]) .summary-title::before{
   background:#e8efff;
   border-color:#a8b7d5;
 }
-.code-panel.reference-mode .command-reference-link{
+.code-panel.reference-mode .command-reference-link,
+.code-history-toggle.is-active,
+.code-panel.history-visible .code-history-toggle{
   background:#2f5cff;
   color:#fff;
   border-color:#1f4aed;
@@ -1198,6 +1209,28 @@ details.pattern-panel:not([open]) .summary-title::before{
 
 .code-panel.history-visible .code-history-pane{
   display:flex;
+}
+
+.code-panel.debug-mode.history-visible .code-columns{
+  display:grid;
+  grid-template-columns:minmax(0, 1fr) minmax(200px, 1fr);
+  grid-template-rows:minmax(0, 1fr) minmax(0, 1fr);
+}
+.code-panel.debug-mode.history-visible .code-editor-main{
+  grid-column:1;
+  grid-row:1 / span 2;
+}
+.code-panel.debug-mode.history-visible .code-editor-parsed{
+  grid-column:2;
+  grid-row:1;
+  min-height:0;
+}
+.code-panel.debug-mode.history-visible .code-history-pane{
+  grid-column:2;
+  grid-row:2;
+  width:auto;
+  min-width:0;
+  max-height:none;
 }
 
 .history-header{
@@ -1325,13 +1358,6 @@ details.pattern-panel:not([open]) .summary-title::before{
 
 .code-history-toggle{
   border-color:#cfd6df;
-}
-
-.code-history-toggle.is-active,
-.code-panel.history-visible .code-history-toggle{
-  background:#1f4aed;
-  color:#fff;
-  border-color:#1f4aed;
 }
 
 .parsed-code{
@@ -2566,7 +2592,14 @@ textarea:focus{
     padding:0;
   }
   .code-panel .code-columns{
+    display:flex;
     flex-direction:column;
+  }
+  .code-panel.debug-mode.history-visible .code-editor-main,
+  .code-panel.debug-mode.history-visible .code-editor-parsed,
+  .code-panel.debug-mode.history-visible .code-history-pane{
+    grid-column:auto;
+    grid-row:auto;
   }
   .code-panel.history-visible .code-history-pane{
     width:100%;

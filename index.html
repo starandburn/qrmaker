@@ -100,7 +100,6 @@
           <button id="btnPasteCode" type="button" class="code-action-btn">貼付</button>
           <button id="btnFormatCode" type="button" class="code-action-btn">整形</button>
           <button id="btnClearCode" type="button" class="code-action-btn">全消去</button>
-          <button id="btnToggleHistory" type="button" class="code-action-btn code-history-toggle" aria-pressed="false">履歴</button>
         </div>
       </div>
       <div class="code-columns">
@@ -129,7 +128,10 @@
       </div>
       <div class="code-panel-footer">
         <div class="code-debug-toolbar" id="codeSampleToolbar"></div>
-        <button id="btnCommandReference" type="button" class="command-reference-link" aria-pressed="false">コマンドリファレンス</button>
+        <div class="code-panel-tabs" role="group" aria-label="表示切替">
+          <button id="btnToggleHistory" type="button" class="code-action-btn code-panel-tab code-history-toggle" aria-pressed="false">履歴</button>
+          <button id="btnCommandReference" type="button" class="command-reference-link code-panel-tab" aria-pressed="false">コマンドリファレンス</button>
+        </div>
       </div>
     </div>
     <div class="panel pastel-4 debug-panel" id="debugPanel">

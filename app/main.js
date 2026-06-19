@@ -509,9 +509,15 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const setHistoryVisibility = (visible) => {
     const target = Boolean(visible);
     if(store){
-      store.setState({ historyVisible: target }, "historyVisibility");
+      const next = target
+        ? { historyVisible: true, commandReferenceVisible: false }
+        : { historyVisible: false };
+      store.setState(next, "historyVisibility");
     }else{
       layoutSetHistoryVisibility(target);
+      if(target){
+        applyCommandReferenceVisibilityDom(false);
+      }
     }
   };
   const setDebugVisible = (value) => {
@@ -529,10 +535,16 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(store){
       const current = Boolean(store.getState().commandReferenceVisible);
       if(current === target) return;
-      store.setState({ commandReferenceVisible: target }, "commandReferenceToggle");
+      const next = target
+        ? { commandReferenceVisible: true, historyVisible: false }
+        : { commandReferenceVisible: false };
+      store.setState(next, "commandReferenceToggle");
       return;
     }
     applyCommandReferenceVisibilityDom(target);
+    if(target){
+      layoutSetHistoryVisibility(false);
+    }
   };
   const applyDebugVisibility = (visible) => {
     if(store){

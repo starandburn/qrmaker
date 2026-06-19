@@ -863,7 +863,6 @@ const codeActionButtonLabels = [
   { el: btnPasteCode, normal: "貼付", portrait: "貼" },
   { el: btnFormatCode, normal: "整形", portrait: "整" },
   { el: btnClearCode, normal: "全消去", portrait: "消" },
-  { el: btnToggleHistory, normal: "履歴", portrait: "履" },
 ];
 const setCodeActionButtonText = (compact) => {
   codeActionButtonLabels.forEach((entry) => {
