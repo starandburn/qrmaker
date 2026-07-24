@@ -1,6 +1,6 @@
 window.appVersion = {
-  major: 2,
-  minor: 7,
-  revision: 0,
+  major: 4,
+  minor: 2,
+  revision: 7,
 };
 window.appVersionString = `${window.appVersion.major}.${window.appVersion.minor}.${window.appVersion.revision}`;

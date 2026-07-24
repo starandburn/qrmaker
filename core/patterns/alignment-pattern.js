@@ -1,10 +1,9 @@
 /**
- * [役割] Alignment pattern drawing
- * [入力] ctx, runToken, helpers
- * [副作用] writes 5x5 alignment cells, cursor updates when stepping
- * [中断] executionControl.shouldAbort のみで中断判定
- * [非対象] data placement, mask, UI, URL, history
- * [公開] window.alignmentPattern: putAlignmentCells, drawAlignmentPatterns
+ * [Purpose] Alignment pattern drawing
+ * [Inputs] ctx, runToken, helpers
+ * [Outputs] writes 5x5 alignment cells, cursor updates when stepping
+ * [Abort] executionControl.shouldAbort only
+ * [Exports] window.alignmentPattern: putAlignmentCells, drawAlignmentPatterns
  */
 (function(global){
   if(!global) return;
@@ -60,6 +59,7 @@
     return DIR_RIGHT;
   };
   const PATTERN_STEP_SCALE = 1;
+  const getBoardSize = () => Number.isFinite(global.BOARD_ROWS) ? global.BOARD_ROWS : 25;
 
   /** Draws alignment square, respecting step/abort helpers. */
   async function putAlignmentCells(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
@@ -101,8 +101,9 @@
     if(!step){
       const prevRender = ctx.renderMode;
       ctx.setRenderMode(ctx.RENDER_BUFFERED);
+      const boardSize = getBoardSize();
       for(const [row, col] of patternCoords){
-        if(row < 1 || row > 25 || col < 1 || col > 25) continue;
+        if(row < 1 || row > boardSize || col < 1 || col > boardSize) continue;
         const relRow = row - startRow;
         const relCol = col - startCol;
         const bit = pattern[relRow][relCol];
@@ -159,14 +160,14 @@
     const { overwrite, currentRun, stepEnabled: resolvedStep } = resolveFunctionalOptions(ctx, overwriteOrOpts, currentRunOrOpts, stepEnabled);
     const runVal = (typeof currentRun === "number") ? currentRun : ctx.runId;
     const opts = { stepEnabled: resolvedStep, currentRun: runVal };
-    /*
-     * [前提] Alignment base is fixed at (19,19) on the 25x25 board used here.
-     * [理由] QR version and teaching setup use the lower-right finder corner as anchor.
-     * [影響] Any board resizing or version change would misplace this updateCursor call.
-     * [将来] Derive center positions from ctx metadata instead of hard-coding.
-     */
-    updateCursor(19, 19, DIR_RIGHT);
-    await putAlignmentCells(ctx, overwrite, opts);
+    const spec = typeof global.getActiveQrSpec === "function" ? global.getActiveQrSpec() : null;
+    const centers = typeof global.getQrAlignmentCentersForSpec === "function"
+      ? global.getQrAlignmentCentersForSpec(spec)
+      : [[getBoardSize() - 6, getBoardSize() - 6]];
+    for(const [row, col] of centers){
+      updateCursor(row, col, DIR_RIGHT);
+      await putAlignmentCells(ctx, overwrite, opts);
+    }
     return true;
   }
 

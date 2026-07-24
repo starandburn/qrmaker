@@ -1,5 +1,5 @@
 /**
- * 描画リクエストをまとめて requestAnimationFrame に流すレンダリングサイクル周りのユーティリティ。
+ * Render-cycle utility for scheduling and batching requestAnimationFrame updates.
  */
 (function(global){
   if(!global) return;

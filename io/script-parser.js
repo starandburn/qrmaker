@@ -1,5 +1,5 @@
 /**
- * 学習用スクリプト（英語キーワード→内部API）を解析/変換するパーサ実装。
+ * Script parser for command tokenization and parsing helpers.
  */
 (function(global){
   if(!global) return;
@@ -14,6 +14,8 @@
   const typeUtils = (typeof window !== "undefined" && window.typeUtils) ? window.typeUtils : {};
   const isFunction = typeUtils.isFunction || ((value) => typeof value === "function");
   const isDefined = typeUtils.isDefined || ((value) => typeof value !== "undefined");
+  const registerUserScriptLanguage = global.registerUserScriptLanguage;
+  const DEFAULT_USER_SCRIPT_LANGUAGE_ID = global.DEFAULT_USER_SCRIPT_LANGUAGE_ID || "qr-dsl";
 
   const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const ALIAS_MAP = {
@@ -222,6 +224,7 @@
   const ALLOWED_CONTROL = new Set([
     "if",
     "else",
+    "elseif",
     "while",
     "until",
     "repeat",
@@ -857,7 +860,8 @@
       }
     const rawLineContent = trimmed.replace(/\s+$/g, "");
     const hasInlineElseMarker = rawLineContent.startsWith(INLINE_ELSE_MARKER);
-    const line = hasInlineElseMarker ? rawLineContent.slice(INLINE_ELSE_MARKER.length) : rawLineContent;
+    const lineRaw = hasInlineElseMarker ? rawLineContent.slice(INLINE_ELSE_MARKER.length) : rawLineContent;
+    const line = lineRaw.replace(/^elseif\b/i, "else if");
     const lineLower = line.toLowerCase();
     const indent = typeof raw === "string" ? raw.match(/^\s*/)[0] : "";
       const endMatch = pendingEndMatch || line.match(/^end\s*(for|while|until|repeat|loop|if)$/i);
@@ -871,13 +875,17 @@
       }
       const elseMatch = line.match(/^else\b(.*)$/i);
       const elseRest = elseMatch ? (elseMatch[1] || "").trim() : "";
+      const elseRestIsIf = /^if\b/i.test(elseRest);
       let handledInlineElse = false;
-      if(pendingInlineIf && !(elseMatch && elseRest)){
-        combined.push(pendingInlineIf.singleLine);
-        blockDepth += countBraceDelta(pendingInlineIf.singleLine);
+      if(pendingInlineIf && (!(elseMatch && elseRest) || elseRestIsIf)){
+        const pendingLine = elseRestIsIf && pendingInlineIf.condFormatted && pendingInlineIf.awaitedBody
+          ? `if (${pendingInlineIf.condFormatted}) { ${pendingInlineIf.awaitedBody}`
+          : pendingInlineIf.singleLine;
+        combined.push(pendingLine);
+        blockDepth += countBraceDelta(pendingLine);
         pendingInlineIf = null;
       }
-      if(pendingInlineIf && elseMatch && elseRest){
+      if(pendingInlineIf && elseMatch && elseRest && !elseRestIsIf){
         if(pendingInlineIf.condFormatted && pendingInlineIf.awaitedBody){
           const elseFormatted = formatStudentCodeLine(elseRest);
           const elseStmt = elseFormatted ? (elseFormatted.endsWith(";") ? elseFormatted : `${elseFormatted};`) : "";
@@ -1205,6 +1213,12 @@
       const value = normalizeArgValue(parts[index]);
       return value ? value.toLowerCase() : "";
     };
+    const directionArgMap = {
+      up: "up",
+      right: "right",
+      down: "down",
+      left: "left",
+    };
     if(fnLower === "next?"){
       return "hasNextData()";
     }
@@ -1243,13 +1257,13 @@
     if(fnLower === "putcell" && parts.length === 1){
       const argLower = firstArgLower;
       if(argLower === "next"){
-        return "putCell(-1)";
+        return "putCell(getNextData())";
       }
       if(argLower === "black"){
         return "putCell(1)";
       }
       if(argLower === "white"){
-        return "putCell(0)";
+        return "putCell(-1)";
       }
       const kindConst = getKindNameForColor(argLower);
       if(kindConst){
@@ -1264,6 +1278,9 @@
       if(firstArgLower === "end"){
         return "moveCursor(\"end\")";
       }
+    }
+    if(fnLower === "isempty" && parts.length === 1 && directionArgMap[firstArgLower]){
+      return `isEmpty("${directionArgMap[firstArgLower]}")`;
     }
     if(!directionEnabled){
       if(fnLower === "turn" || fnLower === "turncursor"){
@@ -1309,6 +1326,15 @@
     return `${fn}(${args.join(", ")})`;
   }
 
-  global.buildUserScript = buildUserScript;
+  if(!isFunction(registerUserScriptLanguage)){
+    throw new Error("user-script-language-registry.js must be loaded before script-parser.js");
+  }
+  registerUserScriptLanguage(DEFAULT_USER_SCRIPT_LANGUAGE_ID, {
+    label: "QR Maker DSL",
+    buildUserScript,
+    formatStudentCodeLine,
+  });
+
+  global.buildDefaultUserScript = buildUserScript;
   global.formatStudentCodeLine = formatStudentCodeLine;
 })(typeof window !== "undefined" ? window : globalThis);

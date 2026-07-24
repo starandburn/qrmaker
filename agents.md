@@ -45,3 +45,15 @@ You must prioritize stability, reproducibility, and educational clarity over opt
 
 ## Priority
 If any instruction conflicts with this document, this document takes precedence.
+
+## Version Update Rules
+- When instructed with `更新`, increment the revision version by `+1`.
+- When instructed with `マイナー更新`, increment the minor version by `+1` and reset revision to `0`.
+- After version update, generate a one-line commit message based on current diff.
+- Commit messages must not mention version numbers.
+- Prefix commit messages by primary intent:
+  - `Add: ...` for feature additions
+  - `Update: ...` for updates/improvements
+  - `Remove: ...` for removals
+  - `Chore: ...` for maintenance tasks
+  - `Fix: ...` when bug fixes are primary

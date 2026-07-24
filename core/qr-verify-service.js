@@ -1,14 +1,25 @@
 /**
- * QR検証サービス
- * 盤面の正負から暗号ビット列を復元し、RS検証／デコードを試みる検証サービス。
+ * QR verification service that decodes board state and validates RS parity.
  */
 (function(global){
   if(!global) return;
 
-  const BOARD_SIZE = 25;
-  const EXPECTED_BITS = 352;
-  const DATA_CODEWORDS = 34;
-  const EC_CODEWORDS = 10;
+  const getBoardSize = () => {
+    const spec = getDefaultQrSpec();
+    if(Number.isFinite(spec?.boardSize)) return spec.boardSize;
+    if(Number.isFinite(global.BOARD_ROWS)) return global.BOARD_ROWS;
+    return 25;
+  };
+  const getDefaultQrSpec = () => (typeof global.getActiveQrSpec === "function"
+    ? global.getActiveQrSpec()
+    : { expectedBits: 352, dataCodewords: 34, ecCodewords: 10 });
+  const getQrSpecForFormatInfo = (formatInfo) => {
+    const bits = formatInfo && Number.isFinite(formatInfo.errorLevel) ? formatInfo.errorLevel : null;
+    if(bits !== null && typeof global.getQrSpecForFormatErrorLevelBits === "function"){
+      return global.getQrSpecForFormatErrorLevelBits(bits);
+    }
+    return getDefaultQrSpec();
+  };
   const FUNCTION_KINDS = [
     global.BIT_FUNC_FINDER,
     global.BIT_FUNC_TIMING,
@@ -31,10 +42,9 @@
     [8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [8, 7],
     [8, 8], [7, 8], [5, 8], [4, 8], [3, 8], [2, 8], [1, 8], [0, 8],
   ];
-  const n = 25;
-  const FORMAT_COORDS_B = [
-    [8, n - 1], [8, n - 2], [8, n - 3], [8, n - 4], [8, n - 5], [8, n - 6], [8, n - 7], [8, n - 8],
-    [n - 7, 8], [n - 6, 8], [n - 5, 8], [n - 4, 8], [n - 3, 8], [n - 2, 8], [n - 1, 8],
+  const buildFormatCoordsB = (boardSize) => [
+    [8, boardSize - 1], [8, boardSize - 2], [8, boardSize - 3], [8, boardSize - 4], [8, boardSize - 5], [8, boardSize - 6], [8, boardSize - 7], [8, boardSize - 8],
+    [boardSize - 7, 8], [boardSize - 6, 8], [boardSize - 5, 8], [boardSize - 4, 8], [boardSize - 3, 8], [boardSize - 2, 8], [boardSize - 1, 8],
   ];
   const FORMAT_INFO_DECODE = [
     { bits: 0x5412, data: 0x00 },
@@ -70,10 +80,11 @@
     { bits: 0x2eda, data: 0x1e },
     { bits: 0x2bed, data: 0x1f },
   ];
-  const EXPECTED_FUNCTIONAL_COORDS = (() => {
+  const buildExpectedFunctionalCoords = (spec = getDefaultQrSpec()) => {
+    const boardSize = Number.isFinite(spec?.boardSize) ? spec.boardSize : getBoardSize();
     const set = new Set();
     const add = (row, col) => {
-      if(row < 1 || row > BOARD_SIZE || col < 1 || col > BOARD_SIZE) return;
+      if(row < 1 || row > boardSize || col < 1 || col > boardSize) return;
       set.add(`${row},${col}`);
     };
     const addFinderWithSeparator = (baseRow, baseCol) => {
@@ -83,32 +94,43 @@
         }
       }
     };
-    addFinderWithSeparator(1, 1);
-    addFinderWithSeparator(1, 19);
-    addFinderWithSeparator(19, 1);
-    for(let row = 17; row <= 21; row++){
-      for(let col = 17; col <= 21; col++){
-        add(row, col);
+    const finderOrigins = typeof global.getQrFinderOriginsForSpec === "function"
+      ? global.getQrFinderOriginsForSpec(spec)
+      : [[1, 1], [1, boardSize - 6], [boardSize - 6, 1]];
+    for(const [row, col] of finderOrigins){
+      addFinderWithSeparator(row, col);
+    }
+    const alignmentCenters = typeof global.getQrAlignmentCentersForSpec === "function"
+      ? global.getQrAlignmentCentersForSpec(spec)
+      : [[boardSize - 6, boardSize - 6]];
+    for(const [centerRow, centerCol] of alignmentCenters){
+      for(let row = centerRow - 2; row <= centerRow + 2; row++){
+        for(let col = centerCol - 2; col <= centerCol + 2; col++){
+          add(row, col);
+        }
       }
     }
-    add(18, 9);
+    const darkModule = typeof global.getQrDarkModuleCoordForSpec === "function"
+      ? global.getQrDarkModuleCoordForSpec(spec)
+      : [boardSize - 7, 9];
+    add(darkModule[0], darkModule[1]);
     for(const [rowOff, colOff] of FORMAT_COORDS_A){
       add(rowOff + 1, colOff + 1);
     }
-    for(const [rowOff, colOff] of FORMAT_COORDS_B){
+    for(const [rowOff, colOff] of buildFormatCoordsB(boardSize)){
       add(rowOff + 1, colOff + 1);
     }
-    for(let col = 1; col <= BOARD_SIZE; col++){
+    for(let col = 1; col <= boardSize; col++){
       add(7, col);
     }
-    for(let row = 1; row <= BOARD_SIZE; row++){
+    for(let row = 1; row <= boardSize; row++){
       add(row, 7);
     }
     return Array.from(set, (key) => {
       const [row, col] = key.split(",").map((v) => Number(v));
       return { row, col };
     });
-  })();
+  };
 
   function cellToBit(value){
     if(typeof value !== "number") return 0;
@@ -130,9 +152,10 @@
     if(kindVal === global.BIT_MASK) return true;
     return FUNCTION_KINDS.includes(kindVal);
   }
-  function verifyFunctionalPatterns(){
+  function verifyFunctionalPatterns(spec = getDefaultQrSpec()){
+    const expectedFunctionalCoords = buildExpectedFunctionalCoords(spec);
     let missingCount = 0;
-    for(const coord of EXPECTED_FUNCTIONAL_COORDS){
+    for(const coord of expectedFunctionalCoords){
       const value = getCellValue(coord.row, coord.col);
       if(!isFunctionalCellValue(value)){
         missingCount += 1;
@@ -141,27 +164,28 @@
     return {
       ok: missingCount === 0,
       missingCount,
-      expectedCount: EXPECTED_FUNCTIONAL_COORDS.length,
+      expectedCount: expectedFunctionalCoords.length,
     };
   }
 
   function iterateDataCells(callback){
     if(typeof callback !== "function") return;
     const timingCol = Number.isFinite(global.timingColIndex) ? Number(global.timingColIndex) : 0;
-    let col = BOARD_SIZE;
+    const boardSize = getBoardSize();
+    let col = boardSize;
     let upward = true;
-    let startRow = BOARD_SIZE;
+    let startRow = boardSize;
     while(col > 0){
       if(timingCol > 0 && col === timingCol){
         col--;
         continue;
       }
       const leftCol = col - 1;
-      for(let step = 0; step < BOARD_SIZE; step++){
+      for(let step = 0; step < boardSize; step++){
         const rawRow = upward ? startRow - step : startRow + step;
         const row = upward
-          ? (rawRow >= 1 ? rawRow : BOARD_SIZE + rawRow)
-          : (rawRow <= BOARD_SIZE ? rawRow : rawRow - BOARD_SIZE);
+          ? (rawRow >= 1 ? rawRow : boardSize + rawRow)
+          : (rawRow <= boardSize ? rawRow : rawRow - boardSize);
         for(const targetCol of [col, leftCol]){
           if(targetCol < 1) continue;
           if(timingCol > 0 && targetCol === timingCol) continue;
@@ -172,12 +196,12 @@
         }
       }
       upward = !upward;
-      startRow = upward ? BOARD_SIZE : 1;
+      startRow = upward ? boardSize : 1;
       col -= 2;
     }
   }
 
-  function readDataCells(){
+  function readDataCells(spec = getDefaultQrSpec()){
     const stats = {
       unplacedCells: 0,
       dataBitsRead: 0,
@@ -196,13 +220,13 @@
       const bit = cellToBit(value);
       cells.push({ row, col, bit });
       stats.dataBitsRead = cells.length;
-      if(cells.length >= EXPECTED_BITS){
+      if(cells.length >= spec.expectedBits){
         return false;
       }
       return true;
     });
-    if(cells.length < EXPECTED_BITS){
-      stats.paddedBits = EXPECTED_BITS - cells.length;
+    if(cells.length < spec.expectedBits){
+      stats.paddedBits = spec.expectedBits - cells.length;
       stats.insufficientBits = true;
     }
     return { cells, stats };
@@ -220,6 +244,86 @@
       bytes.push(val);
     }
     return bytes;
+  }
+
+  function bytesToBits(bytes){
+    const bits = [];
+    for(const byte of bytes){
+      const value = Number(byte) & 0xff;
+      for(let shift = 7; shift >= 0; shift--){
+        bits.push((value >> shift) & 1);
+      }
+    }
+    return bits;
+  }
+
+  function getBlockSpecs(spec){
+    if(Array.isArray(spec?.blocks) && spec.blocks.length > 0){
+      const result = [];
+      for(const blockSpec of spec.blocks){
+        const count = Number.isFinite(blockSpec.count) ? Math.max(1, Math.trunc(blockSpec.count)) : 1;
+        const dataCodewords = Number.isFinite(blockSpec.dataCodewords) ? Math.max(0, Math.trunc(blockSpec.dataCodewords)) : 0;
+        const ecCodewords = Number.isFinite(blockSpec.ecCodewords) ? Math.max(0, Math.trunc(blockSpec.ecCodewords)) : 0;
+        for(let i = 0; i < count; i++){
+          result.push({ dataCodewords, ecCodewords });
+        }
+      }
+      return result;
+    }
+    return [{ dataCodewords: spec.dataCodewords, ecCodewords: spec.ecCodewords }];
+  }
+
+  function deinterleaveCodewords(bytes, spec){
+    const blockSpecs = getBlockSpecs(spec);
+    const blocks = blockSpecs.map((blockSpec) => Object.assign({}, blockSpec, {
+      dataCodewordsList: [],
+      parityBytes: [],
+      computedEc: [],
+    }));
+    const dataArea = bytes.slice(0, spec.dataCodewords);
+    const parityArea = bytes.slice(spec.dataCodewords, spec.dataCodewords + spec.ecCodewords);
+    const maxDataLength = Math.max(0, ...blocks.map((block) => block.dataCodewords));
+    const maxParityLength = Math.max(0, ...blocks.map((block) => block.ecCodewords));
+    let offset = 0;
+    for(let idx = 0; idx < maxDataLength; idx++){
+      for(const block of blocks){
+        if(idx < block.dataCodewords && Number.isFinite(dataArea[offset])){
+          block.dataCodewordsList.push(dataArea[offset]);
+          offset++;
+        }
+      }
+    }
+    offset = 0;
+    for(let idx = 0; idx < maxParityLength; idx++){
+      for(const block of blocks){
+        if(idx < block.ecCodewords && Number.isFinite(parityArea[offset])){
+          block.parityBytes.push(parityArea[offset]);
+          offset++;
+        }
+      }
+    }
+    const dataCodewords = blocks.flatMap((block) => block.dataCodewordsList);
+    const computedEcBlocks = blocks.map((block) => {
+      const computedEc = (typeof global.qrComputeParity === "function")
+        ? global.qrComputeParity(block.dataCodewordsList, block.ecCodewords)
+        : [];
+      block.computedEc = computedEc;
+      return computedEc;
+    });
+    const computedEc = [];
+    for(let idx = 0; idx < maxParityLength; idx++){
+      computedEcBlocks.forEach((blockEc, blockIdx) => {
+        if(idx < blocks[blockIdx].ecCodewords && Number.isFinite(blockEc[idx])){
+          computedEc.push(blockEc[idx]);
+        }
+      });
+    }
+    return {
+      blocks,
+      dataCodewords,
+      parityBytes: parityArea,
+      computedEc,
+    };
   }
 
   function reverseBits(value, width = 15){
@@ -267,7 +371,7 @@
   }
 
   function decodeTextFromBits(bits){
-    if(bits.length < 12) return { ok: false, text: null };
+    if(bits.length < 12) return { ok: false, text: null, modeValue: null };
     let offset = 0;
     const take = (count) => {
       const slice = bits.slice(offset, offset + count);
@@ -280,21 +384,21 @@
       return chunk.reduce((acc, bit) => (acc << 1) | (bit ? 1 : 0), 0);
     };
     const modeValue = readBits(4);
-    if(modeValue !== 0b0100) return { ok: false, text: null };
+    if(modeValue !== 0b0100) return { ok: false, text: null, modeValue };
     const length = readBits(8);
-    if(length === null) return { ok: false, text: null };
+    if(length === null) return { ok: false, text: null, modeValue };
     if(!Number.isFinite(length) || length < 0){
-      return { ok: false, text: null };
+      return { ok: false, text: null, modeValue };
     }
     const chars = [];
     for(let i = 0; i < length; i++){
       const code = readBits(8);
       if(code === null){
-        return { ok: false, text: null };
+        return { ok: false, text: null, modeValue };
       }
       chars.push(String.fromCharCode(code));
     }
-    return { ok: chars.length === length, text: chars.join("") };
+    return { ok: chars.length === length, text: chars.join(""), modeValue };
   }
 
   function readFormatBitsFrom(coords){
@@ -310,8 +414,9 @@
   }
 
   function readFormatInfo(){
+    const boardSize = getBoardSize();
     const rawA = readFormatBitsFrom(FORMAT_COORDS_A);
-    const rawB = readFormatBitsFrom(FORMAT_COORDS_B);
+    const rawB = readFormatBitsFrom(buildFormatCoordsB(boardSize));
     const decodedA = decodeFormatInfo(rawA);
     const decodedB = decodeFormatInfo(rawB);
     let chosen = {
@@ -345,18 +450,17 @@
     });
   }
 
-  function verifyWithMask(maskIdx, dataEntries, paddedBits){
+  function verifyWithMask(maskIdx, dataEntries, paddedBits, spec = getDefaultQrSpec()){
     const bits = unmaskBits(maskIdx, dataEntries);
     const filled = bits.concat(Array(paddedBits).fill(0));
     const bytes = buildBytesFromBits(filled);
-    const dataCodewords = bytes.slice(0, DATA_CODEWORDS);
-    const parityBytes = bytes.slice(DATA_CODEWORDS, DATA_CODEWORDS + EC_CODEWORDS);
-    const computedEc = (typeof global.qrComputeParity === "function")
-      ? global.qrComputeParity(dataCodewords, EC_CODEWORDS)
-      : [];
+    const codewords = deinterleaveCodewords(bytes, spec);
+    const dataCodewords = codewords.dataCodewords;
+    const parityBytes = codewords.parityBytes;
+    const computedEc = codewords.computedEc;
     const ecMatch = computedEc.length === parityBytes.length
       && parityBytes.every((value, idx) => value === computedEc[idx]);
-    const decoded = decodeTextFromBits(filled.slice(0, DATA_CODEWORDS * 8));
+    const decoded = decodeTextFromBits(bytesToBits(dataCodewords));
     let reason = null;
     if(!ecMatch){
       reason = "rs_mismatch";
@@ -367,42 +471,47 @@
       ok: ecMatch && decoded.ok,
       reason,
       text: decoded.text,
+      modeValue: decoded.modeValue,
       dataCodewords,
       parityBytes,
       computedEc,
+      blocks: codewords.blocks,
       maskIndex: maskIdx,
     };
   }
 
-  function verifyWithoutMask(dataEntries, paddedBits){
+  function verifyWithoutMask(dataEntries, paddedBits, spec = getDefaultQrSpec()){
     const bits = dataEntries.map(({ bit }) => bit);
     const filled = bits.concat(Array(paddedBits).fill(0));
     const bytes = buildBytesFromBits(filled);
-    const dataCodewords = bytes.slice(0, DATA_CODEWORDS);
-    const parityBytes = bytes.slice(DATA_CODEWORDS, DATA_CODEWORDS + EC_CODEWORDS);
-    const computedEc = (typeof global.qrComputeParity === "function")
-      ? global.qrComputeParity(dataCodewords, EC_CODEWORDS)
-      : [];
+    const codewords = deinterleaveCodewords(bytes, spec);
+    const dataCodewords = codewords.dataCodewords;
+    const parityBytes = codewords.parityBytes;
+    const computedEc = codewords.computedEc;
     const ecMatch = computedEc.length === parityBytes.length
       && parityBytes.every((value, idx) => value === computedEc[idx]);
-    const decoded = decodeTextFromBits(filled.slice(0, DATA_CODEWORDS * 8));
+    const decoded = decodeTextFromBits(bytesToBits(dataCodewords));
     return {
       ok: ecMatch && decoded.ok,
       text: decoded.text,
+      modeValue: decoded.modeValue,
       dataCodewords,
       parityBytes,
       computedEc,
+      blocks: codewords.blocks,
     };
   }
 
   function verifyBoard(){
-    const { cells: dataEntries, stats } = readDataCells();
-    const functionalCheck = verifyFunctionalPatterns();
+    const defaultSpec = getDefaultQrSpec();
+    const { cells: dataEntries, stats } = readDataCells(defaultSpec);
+    const functionalCheck = verifyFunctionalPatterns(defaultSpec);
     const bitsAvailable = dataEntries.length;
-    const paddedBits = Math.max(0, EXPECTED_BITS - bitsAvailable);
+    const formatInfo = readFormatInfo();
+    const spec = getQrSpecForFormatInfo(formatInfo);
+    const paddedBits = Math.max(0, spec.expectedBits - bitsAvailable);
     stats.paddedBits = paddedBits;
     stats.insufficientBits = paddedBits > 0;
-    const formatInfo = readFormatInfo();
     const formatValid = Boolean(formatInfo.decoded);
     const formatMaskIdx = formatInfo.maskIndex;
     const tried = new Set();
@@ -426,7 +535,7 @@
       if(candidate === null) continue;
       if(tried.has(candidate)) continue;
       tried.add(candidate);
-      const result = verifyWithMask(candidate, dataEntries, paddedBits);
+      const result = verifyWithMask(candidate, dataEntries, paddedBits, spec);
       if(result.ok){
         finalResult = result;
         break;
@@ -435,7 +544,7 @@
         finalResult = result;
       }
     }
-    const preMaskResult = verifyWithoutMask(dataEntries, paddedBits);
+    const preMaskResult = verifyWithoutMask(dataEntries, paddedBits, spec);
     const preMaskLikely = functionalCheck.ok && !finalResult.ok && preMaskResult.ok;
     if(preMaskLikely){
       finalResult.reason = "mask_missing";

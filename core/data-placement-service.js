@@ -1,5 +1,5 @@
 /**
- * データビット配置ループを切り出したサービス。ステップモード/中断チェックと描画タイミングを含む。
+ * Service that places encoded data bits into QR matrix cells with traversal rules.
  */
 (function(global){
   if(!global) return;
@@ -37,10 +37,11 @@
       stepEnabled: initialStepEnabled = false,
     } = deps;
     const seq = Array.isArray(bitsSeq) ? bitsSeq : [];
+    const boardSize = Number.isFinite(deps.boardSize) ? deps.boardSize : 25;
     let bitIdx = 0;
-    let col = 25;
+    let col = boardSize;
     let upward = true;
-    let startRow = 25;
+    let startRow = boardSize;
     let aborted = false;
     let stepEnabled = !!initialStepEnabled;
     while(col > 0 && bitIdx < seq.length){
@@ -54,7 +55,7 @@
         continue;
       }
       const colLeft = col - 1;
-      for(let i = 0; i < 25 && bitIdx < seq.length; i++){
+      for(let i = 0; i < boardSize && bitIdx < seq.length; i++){
         if(currentRun !== runIdAccessor.get()){
           aborted = true;
           break;
@@ -62,17 +63,17 @@
         const row = (() => {
           if(upward){
             const r = startRow - i;
-            return r >= 1 ? r : 25 + r;
+            return r >= 1 ? r : boardSize + r;
           }
           const r = startRow + i;
-          return r <= 25 ? r : r - 25;
+          return r <= boardSize ? r : r - boardSize;
         })();
         callIfFunction(updateCursor, cursorPos.row, cursorPos.col, upward ? directionUp : directionDown);
         for(const cTarget of [col, colLeft]){
           if(bitIdx >= seq.length) break;
           if(cTarget < 1) continue;
           if(timingColIndex > 0 && cTarget === timingColIndex) continue;
-          if(cTarget < 1 || cTarget > 25) continue;
+          if(cTarget < 1 || cTarget > boardSize) continue;
           const moved = moveCursor(row, cTarget);
           if(!moved) continue;
           if(isFunction(isEmpty) && !isEmpty()){
@@ -124,7 +125,7 @@
       }
       if(aborted) break;
       upward = !upward;
-      startRow = upward ? 25 : 1;
+      startRow = upward ? boardSize : 1;
       col -= 2;
     }
     const stepEnded = !stepEnabled;

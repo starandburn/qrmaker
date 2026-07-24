@@ -45,13 +45,46 @@ const btnFormatCode = document.getElementById("btnFormatCode");
 const btnClearCode = document.getElementById("btnClearCode");
 const dataInputStatus = document.getElementById("dataInputStatus");
 const dataCount = document.getElementById("dataCount");
+const qrDataMaxLengthLabel = document.getElementById("qrDataMaxLengthLabel");
+const qrSpecCaption = document.getElementById("qrSpecCaption");
 const sampleDropdown = document.getElementById("sampleDropdown");
 const sampleDropdownToggle = document.getElementById("btnSampleDropdown");
 const sampleDropdownMenu = document.getElementById("sampleDropdownMenu");
-const DATA_INPUT_MAX_LENGTH = Number(txtInput?.getAttribute("maxlength")) || 32;
+let DATA_INPUT_MAX_LENGTH = Number(callIfFunction(window.getActiveQrMaxBytes) ?? callIfFunction(window.getActiveQrSpec)?.maxBytes ?? txtInput?.getAttribute("maxlength")) || 32;
+function refreshQrSpecCaption(){
+  if(!qrSpecCaption) return;
+  const spec = callIfFunction(window.getActiveQrSpec, txtInput?.value ?? "");
+  if(!spec){
+    qrSpecCaption.textContent = "";
+    return;
+  }
+  const version = Number.isFinite(spec.version) ? spec.version : "-";
+  const level = typeof spec.errorCorrectionLevel === "string" ? spec.errorCorrectionLevel : "-";
+  const boardSize = Number.isFinite(spec.boardSize) ? spec.boardSize : "-";
+  const correctionPercent = ({ L: 7, M: 15, Q: 25, H: 30 })[level] ?? "-";
+  const configuredLevel = callIfFunction(window.getConfiguredQrErrorCorrectionLevel);
+  const levelText = configuredLevel === "A"
+    ? `${level}(${correctionPercent}%) [自動判定]`
+    : `${level} (${correctionPercent}%)`;
+  qrSpecCaption.textContent = `QR Ver.${version} (${boardSize} x ${boardSize}) / 誤り訂正 ${levelText}`;
+}
+function applyDataInputMaxLength(maxLength){
+  const numeric = Number(maxLength);
+  DATA_INPUT_MAX_LENGTH = Number.isFinite(numeric) ? Math.max(1, Math.trunc(numeric)) : DATA_INPUT_MAX_LENGTH;
+  if(txtInput){
+    txtInput.maxLength = DATA_INPUT_MAX_LENGTH;
+  }
+  if(qrDataMaxLengthLabel){
+    qrDataMaxLengthLabel.textContent = String(DATA_INPUT_MAX_LENGTH);
+  }
+  updateDataStatus();
+  refreshGuide();
+  refreshQrSpecCaption();
+}
 const FULLWIDTH_CHAR_REGEX = /[^\u0000-\u007F]/;
 const STOP_REASON_DATA = "データが変更されたので停止しました。";
 const STOP_REASON_CODE = "プログラムが変更されたので停止しました。";
+applyDataInputMaxLength(DATA_INPUT_MAX_LENGTH);
 const isExecutionRunningNow = () => {
   const statusEl = document.getElementById("executionStatus");
   return Boolean(statusEl && statusEl.classList.contains("status-running"));
@@ -84,6 +117,7 @@ function updateDataStatus(){
   if(!txtInput || !dataInputStatus) return;
   const value = txtInput.value ?? "";
   const length = value.length;
+  refreshQrSpecCaption();
   const errors = [];
   if(length === 0){
     errors.push("何か入力してください。");
@@ -109,12 +143,109 @@ function updateDataStatus(){
 
 function setInputValue(value){
   if(!txtInput) return;
-  txtInput.value = value;
+  const source = typeof value === "string" ? value : String(value ?? "");
+  txtInput.value = source.length > DATA_INPUT_MAX_LENGTH ? source.slice(0, DATA_INPUT_MAX_LENGTH) : source;
   stopCurrentRunIfRunning(STOP_REASON_DATA);
   refreshPatternIfPanelOpen();
   updateDataStatus();
   txtInput.focus();
 }
+
+const USER_CODE_AUTOCORRECT_WORDS = {
+  "qr-dsl": [
+    "if", "else", "elseif", "while", "until", "repeat", "loop", "for", "stop", "end", "endif", "endfor", "endwhile", "enduntil", "endrepeat", "endloop",
+    "move", "turn", "reset", "base", "mask", "data", "qrcode", "empty", "block", "wall", "put", "timing", "skip", "finder", "finders", "alignment", "alignments", "dark", "darkmodule", "darkmodules", "format", "formats", "timings", "pause", "text",
+    "drawText", "drawQRCode", "drawBasePatterns", "drawDataPatterns", "applyMask", "drawFinderPatterns", "drawAlignmentPatterns", "drawDarkModulePatterns", "drawFormatPatterns", "drawTimingPatterns",
+    "moveCursor", "jumpCursor", "turnCursor", "resetBoard", "pauseRunning", "putCell", "putFinderCells", "putAlignmentCells", "putDarkModuleCells", "putFormatCells", "putTimingCells",
+    "isEmpty", "isMoveBlocked", "isSkipZone", "isTimingZone", "hasNextData", "getNextData", "didMove", "setSwitch", "isSwitchOn", "canContinueLoop",
+    "up", "right", "down", "left", "front", "back", "home", "next", "advance", "black", "white", "red", "blue", "green", "yellow", "on", "off", "flip", "toggle", "true", "false",
+  ],
+  python: [
+    "if", "elif", "else", "while", "for", "not", "True", "False",
+    "apply_mask", "can_continue_loop", "draw_alignment_patterns", "draw_base_patterns", "draw_data_patterns", "draw_dark_module_patterns", "draw_finder_patterns", "draw_format_patterns", "draw_qr_code", "draw_text", "draw_timing_patterns",
+    "get_next_data", "has_next_data", "is_empty", "is_move_blocked", "is_skip_zone", "is_switch_on", "is_timing_zone", "jump_cursor", "move_cursor", "pause_running", "put_alignment_cells", "put_cell", "put_dark_module_cells", "put_finder_cells", "put_format_cells", "put_timing_cells", "reset_board", "set_switch", "turn_cursor", "did_move",
+    "applyMask", "canContinueLoop", "drawAlignmentPatterns", "drawBasePatterns", "drawDataPatterns", "drawDarkModulePatterns", "drawFinderPatterns", "drawFormatPatterns", "drawQRCode", "drawText", "drawTimingPatterns",
+    "getNextData", "hasNextData", "isEmpty", "isMoveBlocked", "isSkipZone", "isSwitchOn", "isTimingZone", "jumpCursor", "moveCursor", "pauseRunning", "putAlignmentCells", "putCell", "putDarkModuleCells", "putFinderCells", "putFormatCells", "putTimingCells", "resetBoard", "setSwitch", "turnCursor",
+    "UP", "RIGHT", "DOWN", "LEFT", "HOME", "END", "NEXT", "BLACK", "WHITE", "red", "blue", "green", "yellow",
+  ],
+};
+const USER_CODE_AUTOCORRECT_MAPS = Object.fromEntries(Object.entries(USER_CODE_AUTOCORRECT_WORDS).map(([languageId, words]) => [
+  languageId,
+  new Map(words.map((word) => [word.toLowerCase(), word])),
+]));
+const getActiveUserCodeLanguageId = () => {
+  const language = callIfFunction(window.getActiveUserScriptLanguage);
+  return typeof language?.id === "string" && language.id ? language.id : "qr-dsl";
+};
+const normalizeUserCodeLineCasing = (line) => {
+  const map = USER_CODE_AUTOCORRECT_MAPS[getActiveUserCodeLanguageId()];
+  if(!map || typeof line !== "string" || !line) return line;
+  let out = "";
+  let token = "";
+  let quote = "";
+  let escaped = false;
+  const flushToken = () => {
+    if(!token) return;
+    out += map.get(token.toLowerCase()) || token;
+    token = "";
+  };
+  for(let i = 0; i < line.length; i++){
+    const ch = line[i];
+    if(quote){
+      out += ch;
+      if(escaped){
+        escaped = false;
+      }else if(ch === "\\"){
+        escaped = true;
+      }else if(ch === quote){
+        quote = "";
+      }
+      continue;
+    }
+    if(ch === "\"" || ch === "'"){
+      flushToken();
+      quote = ch;
+      out += ch;
+      continue;
+    }
+    if(ch === "#" || (ch === "/" && line[i + 1] === "/")){
+      flushToken();
+      out += line.slice(i);
+      break;
+    }
+    if(/[A-Za-z_$]/.test(ch) || (token && /[0-9]/.test(ch))){
+      token += ch;
+      continue;
+    }
+    flushToken();
+    out += ch;
+  }
+  flushToken();
+  return out;
+};
+const normalizeCompletedUserCodeLines = (value) => {
+  const text = typeof value === "string" ? value : String(value ?? "");
+  const lastLf = text.lastIndexOf("\n");
+  if(lastLf < 0) return text;
+  const head = text.slice(0, lastLf);
+  const tail = text.slice(lastLf);
+  const newline = head.includes("\r\n") ? "\r\n" : "\n";
+  return head.split(/\r?\n/).map(normalizeUserCodeLineCasing).join(newline) + tail;
+};
+const normalizeUserCodeLineBeforePosition = (position) => {
+  if(!userCodeTextarea) return false;
+  const value = userCodeTextarea.value ?? "";
+  const end = Math.max(0, Math.min(Number(position) || 0, value.length));
+  const lineStart = value.lastIndexOf("\n", end - 1) + 1;
+  const before = value.slice(lineStart, end);
+  const after = normalizeUserCodeLineCasing(before);
+  if(after === before) return false;
+  const delta = after.length - before.length;
+  userCodeTextarea.value = value.slice(0, lineStart) + after + value.slice(end);
+  const nextPos = end + delta;
+  userCodeTextarea.selectionStart = userCodeTextarea.selectionEnd = nextPos;
+  return true;
+};
 
 function closeSampleDropdown(){
   if(!sampleDropdown) return;
@@ -348,7 +479,7 @@ function refreshPattern({ force = false } = {}){
     terminatorBits,
     zeroPadBits,
     padEntries,
-    dataCodewords,
+    parityBytes,
   } = builder;
 
   const groupA = [];
@@ -372,11 +503,7 @@ function refreshPattern({ force = false } = {}){
     groupB.push({ label: padLabel, bits: padEntry.bits, color: getKindColor(BIT_INFO_PADDING), padding: true });
   }
 
-  const EC_CODEWORDS = 10;
-  const parityBytes = (typeof window.qrComputeParity === "function")
-    ? window.qrComputeParity(dataCodewords, EC_CODEWORDS)
-    : [];
-  const groupC = parityBytes.map((val) => ({
+  const groupC = (Array.isArray(parityBytes) ? parityBytes : []).map((val) => ({
     label: "",
     bits: val.toString(2).padStart(8, "0"),
     color: getKindColor(BIT_INFO_PARITY),
@@ -391,7 +518,7 @@ function refreshPattern({ force = false } = {}){
 }
 function refreshGuide(){
   if(!inputGuide || !txtInput) return;
-  const remain = Math.max(0, 32 - txtInput.value.length);
+  const remain = Math.max(0, DATA_INPUT_MAX_LENGTH - txtInput.value.length);
   inputGuide.textContent = `${remain}`;
 }
 if(txtInput){
@@ -423,13 +550,27 @@ if(userCodeTextarea){
     }
     if(e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey){
       const start = userCodeTextarea.selectionStart ?? 0;
+      normalizeUserCodeLineBeforePosition(start);
+      const normalizedStart = userCodeTextarea.selectionStart ?? start;
       const val = userCodeTextarea.value ?? "";
-      const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-      const currentLine = val.slice(lineStart, start);
+      const lineStart = val.lastIndexOf("\n", normalizedStart - 1) + 1;
+      const currentLine = val.slice(lineStart, normalizedStart);
       const indent = (currentLine.match(/^[\t ]*/) || [""])[0];
       e.preventDefault();
       insertText("\n" + indent);
     }
+  });
+  let isNormalizingUserCode = false;
+  userCodeTextarea.addEventListener("input", () => {
+    if(isNormalizingUserCode) return;
+    const before = userCodeTextarea.value ?? "";
+    const after = normalizeCompletedUserCodeLines(before);
+    if(after === before) return;
+    const pos = userCodeTextarea.selectionStart ?? after.length;
+    isNormalizingUserCode = true;
+    userCodeTextarea.value = after;
+    userCodeTextarea.selectionStart = userCodeTextarea.selectionEnd = Math.min(pos, after.length);
+    isNormalizingUserCode = false;
   });
 }
 
@@ -502,7 +643,8 @@ function syncViewLayout(){
   const rawSize = isSingleColumn
     ? Math.max(60, Math.floor(w)) // single-column/tall: base strictly on available width
     : Math.max(60, Math.floor(Math.min(w, h))); // two-column: fit both axes
-  const size = Math.max(60, rawSize - (rawSize % 25));
+  const boardSize = Number(callIfFunction(window.getActiveQrBoardSize) ?? 25) || 25;
+  const size = Math.max(60, rawSize - (rawSize % boardSize));
 
   // Hide guide text if the available width is too narrow
   const guideCompact = w < 420 || h < 420 || size < 280;
@@ -706,6 +848,13 @@ const historyCount = document.getElementById("historyCount");
 const codeHistoryList = document.getElementById("codeHistoryList");
 const codePanelElement = document.querySelector(".code-panel");
 const btnToggleHistory = document.getElementById("btnToggleHistory");
+const codePanelTitleRow = document.querySelector(".code-panel .panel-title-row");
+const codeActionToolbar = document.querySelector(".code-action-toolbar");
+const executionStatusElement = document.getElementById("executionStatus");
+const executionStatusSubpanels = executionStatusElement
+  ? executionStatusElement.querySelector(".execution-status-subpanels")
+  : null;
+let executionStatusCompactSticky = false;
 const portraitMediaQuery = (typeof window !== "undefined" && typeof window.matchMedia === "function")
   ? window.matchMedia("(orientation: portrait)")
   : null;
@@ -714,27 +863,148 @@ const codeActionButtonLabels = [
   { el: btnPasteCode, normal: "貼付", portrait: "貼" },
   { el: btnFormatCode, normal: "整形", portrait: "整" },
   { el: btnClearCode, normal: "全消去", portrait: "消" },
-  { el: btnToggleHistory, normal: "履歴", portrait: "履" },
 ];
-const updateCodeActionButtonLabels = () => {
-  const isPortrait = Boolean(portraitMediaQuery && portraitMediaQuery.matches);
+const setCodeActionButtonText = (compact) => {
   codeActionButtonLabels.forEach((entry) => {
     if(!entry.el) return;
-    entry.el.textContent = isPortrait ? entry.portrait : entry.normal;
+    const next = compact ? entry.portrait : entry.normal;
+    if(entry.el.textContent !== next){
+      entry.el.textContent = next;
+    }
   });
+};
+const measureTitleSingleLineWidth = () => {
+  if(!codePanelTitleRow) return 0;
+  const title = codePanelTitleRow.querySelector(".panel-title");
+  if(!title) return 0;
+  const previous = title.style.whiteSpace;
+  title.style.whiteSpace = "nowrap";
+  const width = title.scrollWidth;
+  title.style.whiteSpace = previous;
+  return width;
+};
+const measureToolbarWidth = (compact) => {
+  if(!codeActionToolbar) return 0;
+  const previousLabels = codeActionButtonLabels.map((entry) => (entry.el ? entry.el.textContent : ""));
+  setCodeActionButtonText(compact);
+  const width = codeActionToolbar.scrollWidth;
+  codeActionButtonLabels.forEach((entry, index) => {
+    if(!entry.el) return;
+    const previous = previousLabels[index];
+    if(entry.el.textContent !== previous){
+      entry.el.textContent = previous;
+    }
+  });
+  return width;
+};
+const updateCodeActionButtonLabels = () => {
+  const isPortrait = Boolean(portraitMediaQuery && portraitMediaQuery.matches);
+  if(isPortrait){
+    setCodeActionButtonText(true);
+    if(codePanelElement){
+      codePanelElement.classList.remove("compact-title-actions");
+    }
+    return;
+  }
+  if(!codePanelElement || !codePanelTitleRow || !codeActionToolbar){
+    setCodeActionButtonText(false);
+    return;
+  }
+  const wasStacked = codePanelElement.classList.contains("compact-title-actions");
+  if(wasStacked){
+    codePanelElement.classList.remove("compact-title-actions");
+  }
+  const panelStyle = window.getComputedStyle(codePanelElement);
+  const panelPaddingLeft = Number.parseFloat(panelStyle.paddingLeft || "0");
+  const panelPaddingRight = Number.parseFloat(panelStyle.paddingRight || "0");
+  const panelInnerWidth = codePanelElement.clientWidth
+    - (Number.isFinite(panelPaddingLeft) ? panelPaddingLeft : 0)
+    - (Number.isFinite(panelPaddingRight) ? panelPaddingRight : 0);
+  const rowWidth = Math.max(0, panelInnerWidth);
+  const rowStyle = window.getComputedStyle(codePanelTitleRow);
+  const gap = Number.parseFloat(rowStyle.columnGap || rowStyle.gap || "0");
+  const spacer = Number.isFinite(gap) ? gap : 0;
+  const titleWidth = measureTitleSingleLineWidth();
+  const toolbarNormalWidth = measureToolbarWidth(false);
+  const toolbarCompactWidth = measureToolbarWidth(true);
+  const canSingleNormal = (titleWidth + spacer + toolbarNormalWidth) <= rowWidth;
+  const canSingleCompact = (titleWidth + spacer + toolbarCompactWidth) <= rowWidth;
+  const canStackNormal = titleWidth <= rowWidth && toolbarNormalWidth <= rowWidth;
+  // Grid combinations:
+  // 0. 1 column + vertical
+  // 1. 1 column + horizontal
+  // 2. 2 columns + vertical
+  // 3. 2 columns + horizontal
+  if(canSingleNormal){
+    codePanelElement.classList.remove("compact-title-actions");
+    setCodeActionButtonText(false);
+    return;
+  }
+  if(canSingleCompact){
+    codePanelElement.classList.remove("compact-title-actions");
+    setCodeActionButtonText(true);
+    return;
+  }
+  if(canStackNormal){
+    codePanelElement.classList.add("compact-title-actions");
+    setCodeActionButtonText(false);
+    return;
+  }
+  codePanelElement.classList.add("compact-title-actions");
+  setCodeActionButtonText(true);
+};
+const updateExecutionStatusCompactLayout = () => {
+  if(!executionStatusElement || !executionStatusSubpanels) return;
+  const isPortrait = Boolean(portraitMediaQuery && portraitMediaQuery.matches);
+  if(isPortrait){
+    executionStatusElement.classList.remove("compact-subpanels");
+    executionStatusCompactSticky = false;
+    return;
+  }
+  const width = executionStatusSubpanels.clientWidth;
+  const enterWidthPx = 720;
+  const exitWidthPx = 760;
+  const needsCompact = executionStatusCompactSticky
+    ? width < exitWidthPx
+    : width < enterWidthPx;
+  executionStatusCompactSticky = needsCompact;
+  executionStatusElement.classList.toggle("compact-subpanels", needsCompact);
 };
 if(portraitMediaQuery){
   if(typeof portraitMediaQuery.addEventListener === "function"){
     portraitMediaQuery.addEventListener("change", updateCodeActionButtonLabels);
+    portraitMediaQuery.addEventListener("change", updateExecutionStatusCompactLayout);
   }else if(typeof portraitMediaQuery.addListener === "function"){
     portraitMediaQuery.addListener(updateCodeActionButtonLabels);
+    portraitMediaQuery.addListener(updateExecutionStatusCompactLayout);
   }
 }
 if(typeof window !== "undefined"){
   window.addEventListener("resize", updateCodeActionButtonLabels);
+  window.addEventListener("load", updateCodeActionButtonLabels);
+  window.addEventListener("resize", updateExecutionStatusCompactLayout);
+  window.addEventListener("load", updateExecutionStatusCompactLayout);
+}
+if(typeof ResizeObserver !== "undefined" && codePanelTitleRow){
+  const titleRowResizeObserver = new ResizeObserver(() => {
+    updateCodeActionButtonLabels();
+  });
+  titleRowResizeObserver.observe(codePanelTitleRow);
+}
+if(typeof ResizeObserver !== "undefined" && codeActionToolbar){
+  const toolbarResizeObserver = new ResizeObserver(() => {
+    updateCodeActionButtonLabels();
+  });
+  toolbarResizeObserver.observe(codeActionToolbar);
+}
+if(typeof ResizeObserver !== "undefined" && executionStatusSubpanels){
+  const statusResizeObserver = new ResizeObserver(() => {
+    updateExecutionStatusCompactLayout();
+  });
+  statusResizeObserver.observe(executionStatusSubpanels);
 }
 updateCodeActionButtonLabels();
-
+updateExecutionStatusCompactLayout();
 const LAYOUT_HISTORY_PREVIEW_LENGTH = 64;
 const escapeHtml = (value) => {
   const text = value ?? "";
@@ -794,6 +1064,8 @@ if(typeof window.refreshPatternForCreate !== "function"){
 if(typeof window.refreshPatternIfPanelOpen !== "function"){
   window.refreshPatternIfPanelOpen = refreshPatternIfPanelOpen;
 }
+window.applyDataInputMaxLength = applyDataInputMaxLength;
+window.refreshQrSpecCaption = refreshQrSpecCaption;
 /**
- * レイアウト周りの定数/表示トグル/パターン出力ロジックをまとめたモジュール。
+  * Module that composes layout constants, toggle controls, and panel rendering helpers.
  */

@@ -10,6 +10,7 @@
     assignIfFunction(commandsPublic, "pauseRunning", win.pauseRunning);
     // Cursor & Movement
     assignIfFunction(commandsPublic, "moveCursor", win.moveCursor);
+    assignIfFunction(commandsPublic, "jumpCursor", win.jumpCursor);
     assignIfFunction(commandsPublic, "turnCursor", win.turnCursor);
     // QR Drawing
     assignIfFunction(commandsPublic, "drawQRCode", win.drawQRCode);
@@ -33,6 +34,7 @@
     // Queries & Utilities
     assignIfFunction(commandsPublic, "isEmpty", win.isEmpty);
     assignIfFunction(commandsPublic, "isMoveBlocked", win.isMoveBlocked);
+    assignIfFunction(commandsPublic, "didMove", win.didMove);
     assignIfFunction(commandsPublic, "isSkipZone", win.isSkipZone);
     assignIfFunction(commandsPublic, "hasNextData", win.hasNextData);
     assignIfFunction(commandsPublic, "getNextData", win.getNextData);

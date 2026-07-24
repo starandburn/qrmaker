@@ -1,5 +1,5 @@
 /**
- * URLパラメータの解析・適用・URL再構築の補助処理をまとめたstateモジュール。
+ * URL-state module for parameter parsing, normalization, and state URL building.
  */
 (function(){
   const params = new URLSearchParams(window.location.search || "");
@@ -17,13 +17,11 @@
   const OVERWRITE_DATA_ON_FUNCTIONAL_PARAM_KEY = "o";
   const AUTO_RESET_ON_RUN_PARAM_KEY = "a";
   const DEFAULT_PUT_PARAM_KEY = "u";
+  const ERROR_CORRECTION_LEVEL_PARAM_KEY = "ec";
+  const USER_SCRIPT_LANGUAGE_PARAM_KEY = "lang";
 
-  // URL パラメータキーの唯一の定義源。
-  // ここに定義されたキーと既定値をもとに PARAM_KEYS が正規化され、
-  // 読み取り・書き出しの両方で共通に使用される。
-  // 新しい URL パラメータを追加する場合は、必ずここに定義すること。
-  // 文字列キーは原則 DEFAULT_PARAM_KEYS に直接定義する。
-  // *_PARAM_KEY 定数は「複数箇所で参照する」「説明上重要で可読性が上がる」場合のみ例外的に用いる。
+  // Default URL parameter keys used across the app.
+  // Keep PARAM_KEYS stable for compatibility with existing shared URLs.
   const DEFAULT_PARAM_KEYS = {
     VIEW_FLAGS: VIEW_FLAGS_PARAM_KEY,
     DEBUG: DEBUG_PARAM_KEY,
@@ -34,6 +32,7 @@
     SAMPLES: SAMPLES_PARAM_KEY,
     DATA: "d",
     HISTORY: HISTORY_PARAM_KEY,
+    COMMAND_REFERENCE: "ref",
     SKIP_EXISTING: "x",
     AUTO_AVOID_TIMING: "t",
     USE_DIRECTION: "r",
@@ -42,27 +41,11 @@
     OVERWRITE_DATA_ON_FUNCTIONAL: OVERWRITE_DATA_ON_FUNCTIONAL_PARAM_KEY,
     AUTO_RESET_ON_RUN: AUTO_RESET_ON_RUN_PARAM_KEY,
     DEFAULT_PUT: DEFAULT_PUT_PARAM_KEY,
+    ERROR_CORRECTION_LEVEL: ERROR_CORRECTION_LEVEL_PARAM_KEY,
+    USER_SCRIPT_LANGUAGE: USER_SCRIPT_LANGUAGE_PARAM_KEY,
   };
 
-  // URL パラメータ仕様（DEFAULT_PARAM_KEYS を唯一の定義源とする）
-  // - VIEW_FLAGS: key=v, type=string, note=—
-  // - DEBUG: key=g, type=bool, values="1"/"0", note=デバッグ表示
-  // - PATTERN_PANEL: key=p, type=string, note=—
-  // - STEP_SPEED: key=e, type=number, note=—
-  // - STEP_FLAGS: key=s, type=string, note=—
-  // - SAMPLES: key=m, type=string, note=—
-  // - DATA: key=d, type=encoded string, note=DATA_EMPTY_TOKEN="_" を使用
-  // - HISTORY: key=h, type=string, note=—
-  // - SKIP_EXISTING: key=x, type=bool, values=既存仕様, note=—
-  // - AUTO_AVOID_TIMING: key=t, type=bool, values=既存仕様, note=—
-  // - USE_DIRECTION: key=r, type=bool, values=既存仕様, note=—
-  //
-  // 内部/例外（PARAM_KEYS 管理外）
-  // - PRESENTATION_MODE: key=z, type=bool-ish, values="1" で有効
-
-  // PARAM_KEYS 管理外の内部/実験用 URL パラメータキー。
-  // 通常の URL パラメータは DEFAULT_PARAM_KEYS で管理するが、
-  // 互換や公開仕様の対象外にしたいフラグは例外としてここに置く。
+  // INTERNAL_PARAM_KEYS: keys used internally and omitted from normal state URL output.
   const INTERNAL_PARAM_KEYS = {
     PRESENTATION_MODE: "z",
   };
@@ -214,6 +197,16 @@
     const parsed = stringifyBool(params.get(SAMPLES_PARAM_KEY));
     if(parsed === null) return false;
     codePanel.classList.toggle("show-samples", parsed);
+    return true;
+  };
+
+  const applyCommandReferenceFromParam = ({ setCommandReferenceVisible } = {}) => {
+    if(typeof setCommandReferenceVisible !== "function") return false;
+    const spec = getParam(PARAM_KEYS.COMMAND_REFERENCE);
+    if(spec === null) return false;
+    const parsed = stringifyBool(spec);
+    if(parsed === null) return false;
+    setCommandReferenceVisible(parsed);
     return true;
   };
 
@@ -383,9 +376,11 @@
     stepMode,
     stepSkipFunctions,
     historyVisible,
+    commandReferenceVisible,
     isDebugVisible,
     defaultFlagString,
     defaultHistoryVisible = false,
+    defaultCommandReferenceVisible = false,
     defaultDebugVisible = false,
     defaultPatternOpen = false,
     defaultStepMode = false,
@@ -405,6 +400,10 @@
     defaultAutoAvoidTiming = false,
     useDirection,
     defaultUseDirection = false,
+    errorCorrectionLevel,
+    defaultErrorCorrectionLevel,
+    userScriptLanguage,
+    defaultUserScriptLanguage,
     initialDebugParamPresent = false,
     codePanel,
   } = {}) => {
@@ -518,6 +517,9 @@
     if(historyVisible !== Boolean(defaultHistoryVisible)){
       setBoolParam(stateParams, PARAM_KEYS.HISTORY, Boolean(historyVisible));
     }
+    if(Boolean(commandReferenceVisible) !== Boolean(defaultCommandReferenceVisible)){
+      setBoolParam(stateParams, PARAM_KEYS.COMMAND_REFERENCE, Boolean(commandReferenceVisible));
+    }
     const normalizedSkipExisting = Boolean(skipExistingCells);
     const normalizedSkipDefault = Boolean(defaultSkipExistingCells);
     if(normalizedSkipExisting !== normalizedSkipDefault){
@@ -532,6 +534,16 @@
     const normalizedDefaultDirection = Boolean(defaultUseDirection);
     if(normalizedDirection !== normalizedDefaultDirection){
       setBoolParam(stateParams, PARAM_KEYS.USE_DIRECTION, normalizedDirection);
+    }
+    const normalizedErrorCorrectionLevel = String(errorCorrectionLevel ?? "").trim().toUpperCase();
+    const normalizedDefaultErrorCorrectionLevel = String(defaultErrorCorrectionLevel ?? "").trim().toUpperCase();
+    if(normalizedErrorCorrectionLevel && normalizedErrorCorrectionLevel !== normalizedDefaultErrorCorrectionLevel){
+      setStringParam(stateParams, PARAM_KEYS.ERROR_CORRECTION_LEVEL, normalizedErrorCorrectionLevel);
+    }
+    const normalizedUserScriptLanguage = String(userScriptLanguage ?? "").trim();
+    const normalizedDefaultUserScriptLanguage = String(defaultUserScriptLanguage ?? "").trim();
+    if(normalizedUserScriptLanguage && normalizedUserScriptLanguage !== normalizedDefaultUserScriptLanguage){
+      setStringParam(stateParams, PARAM_KEYS.USER_SCRIPT_LANGUAGE, normalizedUserScriptLanguage);
     }
     if(params.get("z") === "1"){
       setStringParam(stateParams, INTERNAL_PARAM_KEYS.PRESENTATION_MODE, "1");
@@ -551,6 +563,7 @@
     applyDebugFromParam,
     applyHistoryFromParam,
     applySampleParam,
+    applyCommandReferenceFromParam,
     applyCombinedStepParam,
     applyStepSpeedParam,
     applyUrlControlStates,

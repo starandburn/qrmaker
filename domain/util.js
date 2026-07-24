@@ -1,5 +1,5 @@
 /**
- * 純粋なユーティリティ（乱数など）を domain 層に集約する。
+ * Domain-level shared utility helpers.
  */
 (function(global){
   if(!global) return;

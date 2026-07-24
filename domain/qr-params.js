@@ -1,5 +1,5 @@
 /**
- * URLパラメータ/ステータス解決の純粋関数をまとめた domain 層モジュール。
+ * Domain utilities for normalizing QR drawing options and parameter handling.
  */
 (function(global){
   if(!global) return;

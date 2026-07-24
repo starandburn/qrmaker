@@ -1,5 +1,5 @@
 /**
- * ユーザーコードの同期・構文チェック・実行（ステップ/通常）の機構を提供するモジュール。
+ * User-code runner module with execution orchestration and safety checks.
  */
 (function(global){
   if(!global) return;
@@ -32,7 +32,12 @@
         const script = buildUserScript(userCodeInput ? userCodeInput.value : "", { awaitCalls: true });
         userCodeParsed.value = script;
       }catch(err){
-        userCodeParsed.value = `// ${err && err.message ? String(err.message) : String(err)}`;
+        const message = err && err.message ? String(err.message) : String(err);
+        const debugSource = err && typeof err.userScriptDebugSource === "string" ? err.userScriptDebugSource : "";
+        const debugLabel = err && typeof err.userScriptDebugSourceLabel === "string" ? err.userScriptDebugSourceLabel : "converted";
+        userCodeParsed.value = debugSource
+          ? `// ${message}\n// ${debugLabel}\n${debugSource}`
+          : `// ${message}`;
       }
     }
 
@@ -78,9 +83,13 @@
         };
       };
       const moveWrapper = wrapTimed("moveCursor", "moveCount", "moveMs");
+      const jumpWrapper = wrapTimed("jumpCursor", "moveCount", "moveMs");
       const putWrapper = wrapTimed("putCell", "putCount", "putMs");
       if(moveWrapper){
         globalObj.moveCursor = moveWrapper.wrapped;
+      }
+      if(jumpWrapper){
+        globalObj.jumpCursor = jumpWrapper.wrapped;
       }
       if(putWrapper){
         globalObj.putCell = putWrapper.wrapped;
@@ -116,6 +125,9 @@
       }finally{
         if(moveWrapper){
           globalObj.moveCursor = moveWrapper.original;
+        }
+        if(jumpWrapper){
+          globalObj.jumpCursor = jumpWrapper.original;
         }
         if(putWrapper){
           globalObj.putCell = putWrapper.original;

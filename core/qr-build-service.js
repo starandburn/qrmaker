@@ -1,5 +1,5 @@
 /**
- * QR生成処理を束ねたオーケストレーター。各サービスを呼び出しながら実行制御/ステップ処理/データ配置を進める。
+ * High-level QR build orchestrator that composes base patterns, data placement, and masking.
  */
 (function(global){
   if(!global) return;
@@ -116,6 +116,7 @@
           updateCell: global.updateCell,
           isEmpty: global.isEmpty,
           getTimingColIndex: () => global.timingColIndex,
+          boardSize: Number.isFinite(global.BOARD_ROWS) ? global.BOARD_ROWS : 25,
           stepEnabled,
         });
         if(placementResult && placementResult.aborted){
@@ -130,7 +131,7 @@
           requestRender("runGenerate");
         }
         if(currentRun === runIdAccessor.get() && Array.isArray(global.toggleInputs)){
-          // do not auto-clear toggles; user can use 全解除 as needed
+          // Do not auto-clear toggles; use full reset when needed.
         }
         return result();
       }catch(err){

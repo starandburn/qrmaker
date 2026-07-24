@@ -1,5 +1,5 @@
 /**
- * 最終的に window 入口APIを統一公開するブートストラップ処理。
+ * Bootstrap entrypoint that exposes window APIs and starts the app.
  */
  (function(){
   if(typeof window === "undefined") return;

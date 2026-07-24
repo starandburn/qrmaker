@@ -1,12 +1,17 @@
 window.appSettingsFromScript = {
   defaults: {
     qrData: "HelloWorld",
+    qrSpec: {
+      version: 2,
+      errorCorrectionLevel: "A",
+    },
     initialCode: 0,
     historyVisible: false,
     patternPanelOpen: false,
     layoutLeftPaneRatio: 0.5,
     autoResetOnRun: false,
     debugVisible: false,
+    commandReferenceVisible: false,
     skipExistingCells: false,
     autoAvoidTiming: false,
     overwriteDataOnFunctional: true,
@@ -25,6 +30,7 @@ window.appSettingsFromScript = {
       viewDebugValues: true,
     },
     useDirection: false,
+    userScriptLanguage: "qr-dsl",
     codeSamples: [],
   },
 };

@@ -60,6 +60,7 @@
       "parseCellRef",
       "cellRefFromRowCol",
       "moveCursor",
+      "jumpCursor",
       "turnCursor",
       "setSwitch",
       "isSwitchOn",

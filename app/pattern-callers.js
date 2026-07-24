@@ -32,14 +32,12 @@
     if(!typeUtils
       || typeof typeUtils.isFunction !== "function"
       || typeof typeUtils.callIfFunction !== "function"
-      || typeof typeUtils.callWithFallback !== "function"
       || typeof typeUtils.isDefined !== "function"
     ){
       throw new Error("app/utils/type-utils.js must be loaded before pattern-callers.js.");
     }
     const {
       callIfFunction,
-      callWithFallback,
       isDefined,
       isFunction,
     } = typeUtils;
@@ -86,9 +84,6 @@
         return invalid;
       }
       if(hasObjectToken){
-        if(tokens.length === 1 && typeof tokens[0] === "object"){
-          return { type: "legacy" };
-        }
         return invalid;
       }
       let maskIndex = null;
@@ -154,9 +149,6 @@
         return invalid;
       }
       if(objectTokens.length){
-        if(objectTokens.length === tokens.length){
-          return { type: "legacy" };
-        }
         return invalid;
       }
       if(tokens.length === 0){
@@ -329,9 +321,6 @@
       const invalid = { type: "invalid", detail: buildPlacementWarningDetail(commandName, filtered) };
       const objectTokens = tokens.filter((value) => typeof value === "object" && value !== null);
       if(objectTokens.length){
-        if(objectTokens.length === tokens.length && objectTokens.length === 1){
-          return { type: "legacy" };
-        }
         return invalid;
       }
       if(tokens.length === 0){
@@ -398,10 +387,6 @@
       const pattern = window.finderPattern;
       if(pattern && typeof pattern.putFinderCells === "function"){
         const parsed = normalizePlacementCommandArgs(args, "finder");
-        if(parsed.type === "legacy"){
-          const normalized = (args.length === 0) ? [false] : args;
-          return pattern.putFinderCells(ctx, ...normalized);
-        }
         if(parsed.type === "invalid"){
           reportPlacementCommandWarning("finder", parsed.detail);
           return false;
@@ -429,10 +414,6 @@
       const pattern = window.alignmentPattern;
       if(pattern && typeof pattern.putAlignmentCells === "function"){
         const parsed = normalizePlacementCommandArgs(args, "alignment");
-        if(parsed.type === "legacy"){
-          const normalized = (args.length === 0) ? [false] : args;
-          return pattern.putAlignmentCells(ctx, ...normalized);
-        }
         if(parsed.type === "invalid"){
           reportPlacementCommandWarning("alignment", parsed.detail);
           return false;
@@ -478,10 +459,6 @@
       const pattern = window.darkModulePattern;
       if(pattern && typeof pattern.putDarkModuleCells === "function"){
         const parsed = normalizePlacementCommandArgs(args, "dark");
-        if(parsed.type === "legacy"){
-          const normalized = (args.length === 0) ? [false] : args;
-          return pattern.putDarkModuleCells(ctx, ...normalized);
-        }
         if(parsed.type === "invalid"){
           reportPlacementCommandWarning("dark", parsed.detail);
           return false;
@@ -512,10 +489,6 @@
         return false;
       }
       const parsed = normalizeFormatCommandArgs(args);
-      if(parsed.type === "legacy"){
-        const normalized = (args.length === 0) ? [false] : args;
-        return putFormatFn(ctx, ...normalized);
-      }
       if(parsed.type === "invalid"){
         reportFormatCommandWarning(parsed.detail);
         return false;
@@ -543,13 +516,6 @@
       if(!pattern) return false;
       const drawFn = pattern.drawFormatPatterns;
       const normalized = normalizeFormatsCommandArgs(args);
-      if(normalized.type === "legacy"){
-        if(!isFunction(drawFn)){
-          return false;
-        }
-        const fallback = (args.length === 0) ? [] : args;
-        return drawFn(ctx, ...fallback);
-      }
       if(normalized.type === "invalid"){
         reportFormatCommandWarning(normalized.detail);
         return false;

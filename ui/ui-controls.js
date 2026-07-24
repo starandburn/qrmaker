@@ -1,5 +1,5 @@
 /**
- * UIコントロール群（トグルやフッター、ステップ速度）を初期化し、状態と連動させるヘルパー。
+ * UI controls module for toggle setup, step controls, and related helpers.
  */
 (function(global){
   function initUIControls(opts = {}){

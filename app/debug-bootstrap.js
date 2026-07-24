@@ -1,6 +1,5 @@
 /**
- * デバッグ入口コンテナの最速初期化。
- * ui/debug.js より先に読み込むこと
+ * Debug bootstrap for wiring debug container state before loading ui/debug.js.
  */
 (function(){
   if(typeof window === "undefined") return;

@@ -1,10 +1,10 @@
 /**
- * [役割] Finder pattern drawing
- * [入力] ctx, runToken, functional options, helpers
- * [副作用] board cell updates, cursor moves, renderMode changes
- * [中断] executionControl.shouldAbort のみで中断判定
- * [非対象] data placement, mask, UI, URL, history
- * [公開] window.finderPattern: putFinderCells, drawFinderPatterns
+ * [Purpose] Finder pattern drawing
+ * [Inputs] ctx, runToken, functional options, helpers
+ * [Outputs] board cell updates, cursor moves, renderMode changes
+ * [Abort] executionControl.shouldAbort only
+ * [Exports] window.finderPattern: putFinderCells, drawFinderPatterns
+ * [Exports] window.finderPattern: putFinderCells, drawFinderPatterns
  */
 (function(global){
   if(!global) return;
@@ -60,6 +60,7 @@
     return DIR_RIGHT;
   };
   const PATTERN_STEP_SCALE = 1;
+  const getBoardSize = () => Number.isFinite(global.BOARD_ROWS) ? global.BOARD_ROWS : 25;
 
   /** Draws a single finder block with step/abort awareness. */
   async function putFinderCells(ctx, overwriteOrOpts = false, currentRunOrOpts, stepEnabled){
@@ -91,7 +92,8 @@
     const ringBottom = baseRow + 7;
     const ringLeft = baseCol - 1;
     const ringRight = baseCol + 7;
-    const inBounds = (row, col) => row >= 1 && row <= 25 && col >= 1 && col <= 25;
+    const boardSize = getBoardSize();
+    const inBounds = (row, col) => row >= 1 && row <= boardSize && col >= 1 && col <= boardSize;
     const coreSeq = coreCoords
       .filter(([row, col]) => inBounds(row, col))
       .map(([row, col]) => {
@@ -117,7 +119,7 @@
       for(const [row, col] of coreCoords){
         const relRow = row - baseRow;
         const relCol = col - baseCol;
-        if(row < 1 || row > 25 || col < 1 || col > 25) continue;
+        if(!inBounds(row, col)) continue;
         const bit = pattern[relRow][relCol];
         if(!shouldDrawCell(row, col)) continue;
         window.updateCell(row, col, window.encodeBit(BIT_FUNC_FINDER, bit === 1));
@@ -125,7 +127,7 @@
         lastCursorCol = col;
       }
       for(const [row, col] of borderCoords){
-        if(row < 1 || row > 25 || col < 1 || col > 25) continue;
+        if(!inBounds(row, col)) continue;
         const isBorder = row === ringTop || row === ringBottom || col === ringLeft || col === ringRight;
         if(!isBorder) continue;
         if(!shouldDrawCell(row, col)) continue;
@@ -211,9 +213,13 @@
       updateCursor(row, col, DIR_RIGHT);
       await putFinderCells(ctx, overwrite, opts);
     };
-    await moveAndDraw(1, 1);
-    await moveAndDraw(1, 19);
-    await moveAndDraw(19, 1);
+    const spec = typeof global.getActiveQrSpec === "function" ? global.getActiveQrSpec() : null;
+    const origins = typeof global.getQrFinderOriginsForSpec === "function"
+      ? global.getQrFinderOriginsForSpec(spec)
+      : [[1, 1], [1, getBoardSize() - 6], [getBoardSize() - 6, 1]];
+    for(const [row, col] of origins){
+      await moveAndDraw(row, col);
+    }
     return true;
   }
 

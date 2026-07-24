@@ -1,5 +1,5 @@
 /**
- * マスの座標/方向・カーソル制御・セル更新を担う board モジュール。
+ * Board domain module for cursor movement, cell operations, and board state updates.
  */
 const DIR_UP = "up";
 const DIR_RIGHT = "right";
@@ -7,6 +7,12 @@ const DIR_DOWN = "down";
 const DIR_LEFT = "left";
 const DIR_FRONT = "front";
 const DIR_BACK = "back";
+const DIR_NUMBER_MAP = {
+  1: DIR_UP,
+  2: DIR_RIGHT,
+  3: DIR_DOWN,
+  4: DIR_LEFT,
+};
 const RENDER_IMMEDIATE = "immediate";
 const RENDER_BUFFERED = "buffered";
 const STEP_DELAY_MS = 12;
@@ -104,10 +110,13 @@ if(globalScope){
 }
 setTimingColIndex(0);
 let lastMoveBlocked = false;
-const BOARD_ROWS = 25;
-const BOARD_COLS = 25;
-const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
-const GENERIC_WHITE = (typeof window !== "undefined" && typeof window.BIT_WHITE === "number") ? window.BIT_WHITE : 0;
+const BOARD_SIZE = (typeof window !== "undefined" && typeof window.getActiveQrBoardSize === "function")
+  ? window.getActiveQrBoardSize()
+  : 25;
+const BOARD_ROWS = BOARD_SIZE;
+const BOARD_COLS = BOARD_SIZE;
+const UNPLACED_KIND = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
+const GENERIC_WHITE = (typeof window !== "undefined" && typeof window.BIT_WHITE === "number") ? window.BIT_WHITE : -1;
 const GENERIC_BLACK = (typeof window !== "undefined" && typeof window.BIT_BLACK === "number") ? window.BIT_BLACK : 1;
 const DEFAULT_CURSOR_COLOR = "#e60000";
 const STEP_CURSOR_COLOR = "#1a73e8";
@@ -1049,8 +1058,8 @@ function applyCursor(row, col, dir){
 
   cursor.classList.remove("is-set");
 
-  const r = Math.min(25, Math.max(1, row));
-  const c = Math.min(25, Math.max(1, col));
+  const r = Math.min(BOARD_ROWS, Math.max(1, row));
+  const c = Math.min(BOARD_COLS, Math.max(1, col));
   cursorPos.row = r;
   cursorPos.col = c;
   cursorPos.dir = dir;
@@ -1097,6 +1106,7 @@ function updateCursor(row = cursorPos.row, col = cursorPos.col, dir = cursorPos.
 }
 
 function resetCursor(){
+  lastMoveBlocked = false;
   const ok = updateCursor(HOME_CURSOR.row, HOME_CURSOR.col, HOME_CURSOR.dir);
   if(ok && !(typeof window !== "undefined" && window.suppressCursorUpdates)
     && typeof window.logEvent === "function"){
@@ -1133,6 +1143,9 @@ function setHomeCursor({ row, col, dir } = {}){
 }
 
 function moveCursor(...args){
+  const moveStartRow = cursorPos.row;
+  const moveStartCol = cursorPos.col;
+  let crossedTimingLine = false;
   const directionEnabled = isDirectionEnabled();
   if(!directionEnabled && !shouldAllowDirectionCommands()){
     if(args.length === 0){
@@ -1170,6 +1183,10 @@ function moveCursor(...args){
       targetCol -= 1;
     }
     return true;
+  };
+  const normalizeNumericMoveDir = (value) => {
+    if(typeof value !== "number" || !Number.isFinite(value)) return null;
+    return DIR_NUMBER_MAP[Math.trunc(value)] || null;
   };
   const getOrientationLabel = (dirVal) => {
     if(!dirVal) return "";
@@ -1219,6 +1236,7 @@ function moveCursor(...args){
     const hitTimingRow = isVertical && timingRowIndex > 0 && row === timingRowIndex;
     const hitTimingCol = isHorizontal && timingColIndex > 0 && col === timingColIndex;
     if(!hitTimingRow && !hitTimingCol) return;
+    crossedTimingLine = true;
     const rowDelta = isVertical ? ((dirVal === DIR_DOWN) ? 1 : -1) : 0;
     const colDelta = isHorizontal ? ((dirVal === DIR_RIGHT) ? 1 : -1) : 0;
     const nextRow = row + rowDelta;
@@ -1262,7 +1280,12 @@ function moveCursor(...args){
     return true;
   };
 
-  if(args.length === 0){
+  const shouldUseDefaultMove = (
+    args.length === 0
+    || (args.length === 1 && args[0] === 0)
+  );
+
+  if(shouldUseDefaultMove){
     if(directionEnabled || shouldAllowDirectionCommands()){
       recordRelativeMove("front");
       scheduleRelativeMove(cursorPos.dir);
@@ -1282,9 +1305,11 @@ function moveCursor(...args){
   }else if(args.length === 1){
     const v = args[0];
     if(typeof v === "number" && Number.isFinite(v)){
-      return false;
-    }
-    if(typeof v === "string"){
+      const dirAbs = normalizeNumericMoveDir(v);
+      if(!dirAbs) return false;
+      recordRelativeMove(dirAbs);
+      scheduleRelativeMove(dirAbs);
+    }else if(typeof v === "string"){
       const aliasCoord = resolveCoordinateAlias(v);
       if(aliasCoord){
         targetRow = aliasCoord.row;
@@ -1325,7 +1350,15 @@ function moveCursor(...args){
       const d = normalizeDir(val);
       if(d) finalDir = d;
     };
-    if(typeof first === "string"){
+    const firstNumericDir = normalizeNumericMoveDir(first);
+    if(firstNumericDir){
+      if(typeof second !== "number" || !Number.isFinite(second)){
+        return false;
+      }
+      if(!scheduleRelativeMove(firstNumericDir)) return false;
+      relativeMoveCount = Math.max(0, Math.trunc(second));
+      recordRelativeMove(firstNumericDir);
+    }else if(typeof first === "string"){
       const aliasCoord = resolveCoordinateAlias(first);
       if(aliasCoord){
         targetRow = aliasCoord.row;
@@ -1445,6 +1478,42 @@ function moveCursor(...args){
       }
     }
   }
+  const isStepModeActiveForStatus = (
+    typeof window !== "undefined"
+    && typeof window.isStepModeOn === "function"
+    && window.isStepModeOn()
+  );
+  const enteredTimingRow = (
+    timingRowIndex > 0
+    && moveStartRow !== timingRowIndex
+    && cursorPos.row === timingRowIndex
+  );
+  const enteredTimingCol = (
+    timingColIndex > 0
+    && moveStartCol !== timingColIndex
+    && cursorPos.col === timingColIndex
+  );
+  const enteredTimingLine = enteredTimingRow || enteredTimingCol;
+  if(
+    isStepModeActiveForStatus
+    && (enteredTimingLine || crossedTimingLine)
+    && typeof window.setExecutionStatus === "function"
+  ){
+    const timingCellKey = `${cursorPos.row}-${cursorPos.col}`;
+    const prevTimingCellKey = (typeof window.__lastTimingDetectedCellKey === "string")
+      ? window.__lastTimingDetectedCellKey
+      : "";
+    if(timingCellKey !== prevTimingCellKey){
+      window.__lastTimingDetectedCellKey = timingCellKey;
+      const now = Date.now();
+      window.__statusHoldUntil = now + 180;
+      window.__statusHoldMessageKey = "timing-detected";
+      window.setExecutionStatus("running", undefined, {
+        l2: "データパターン",
+        l3: "タイミングパターンを検出しました。",
+      }, { allowHoldMessage: true });
+    }
+  }
   resetCursorColorAfterStepMove();
   lastMoveBlocked = false;
   return callMakeStepThenable();
@@ -1470,6 +1539,21 @@ function makeStepResult(value, options = {}){
   return value;
 }
 
+function jumpCursor(...args){
+  if(args.length === 0 || (args.length === 1 && args[0] === 0)){
+    return moveCursor("A1");
+  }
+  if(args.length >= 2 && Number.isFinite(args[0]) && Number.isFinite(args[1])){
+    const ref = cellRefFromRowCol(args[0], args[1]);
+    if(!ref) return false;
+    if(args.length >= 3){
+      return moveCursor(ref, args[2]);
+    }
+    return moveCursor(ref);
+  }
+  return moveCursor(...args);
+}
+
 function turnCursor(dirArg){
   if(!isDirectionEnabled() && !shouldAllowDirectionCommands()){
     throw new Error("Direction commands are disabled (useDirection=false): turn");
@@ -1486,7 +1570,7 @@ function turnCursor(dirArg){
       result: targetDir,
     };
     if(typeof window.logEvent === "function"){
-      // window.logEvent("turnCursor", JSON.stringify(logPayload), "回転");
+      // window.logEvent("turnCursor", JSON.stringify(logPayload), "turn");
     }
     return callMakeStepThenable();
   }
@@ -1518,7 +1602,7 @@ function turnCursor(dirArg){
     result: targetDir,
   };
   if(typeof window.logEvent === "function"){
-    // window.logEvent("turnCursor", JSON.stringify(logPayload), "回転");
+    // window.logEvent("turnCursor", JSON.stringify(logPayload), "turn");
   }
   return callMakeStepThenable();
 }
@@ -1526,15 +1610,15 @@ function turnCursor(dirArg){
 function applySetCell(row, col, encodedValue, color = "black", allowGenericData = false){
   const cells = document.querySelectorAll(".qr-cells .cell");
   if(!cells || cells.length === 0) return;
-  const r = Math.min(25, Math.max(1, row));
-  const c = Math.min(25, Math.max(1, col));
-  const idx = (r - 1) * 25 + (c - 1);
+  const r = Math.min(BOARD_ROWS, Math.max(1, row));
+  const c = Math.min(BOARD_COLS, Math.max(1, col));
+  const idx = (r - 1) * BOARD_COLS + (c - 1);
   const cell = cells[idx];
   if(!cell) return;
   const finalColor = isColorEnabled ? color : "black";
   cell.className = "cell";
   const kind = (typeof window.bitKind === "function") ? window.bitKind(encodedValue) : Math.abs(encodedValue);
-  const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1;
+  const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0;
   if(kind !== unplacedKind){
     const isBlack = (typeof window.isBlackBit === "function")
       ? window.isBlackBit(encodedValue)
@@ -1913,7 +1997,7 @@ function updateCell(row, col, encodedValue, options = null){
   const r = row;
   const c = col;
   const kind = (typeof window.bitKind === "function") ? window.bitKind(encodedValue) : Math.abs(encodedValue);
-  const colorEntry = colorsForKind(kind);
+  const colorEntry = encodedValue === GENERIC_WHITE ? colorsForKind(GENERIC_WHITE) : colorsForKind(kind);
   const color = colorEntry || "black";
   const allowGenericData = Boolean(options && options.treatGenericAsData);
   if(renderMode === RENDER_BUFFERED){
@@ -1943,12 +2027,7 @@ function putCell(encodedValue, options = null){
       return makeStepResult(false, { scale: 0.5 });
     }
   }
-  if(val === -1){
-    if(!consumeNextFromSequence()){
-      return makeStepResult(false, { scale: 0.5 });
-    }
-  }
-  let treatGenericAsData = (val === 0 || val === 1);
+  let treatGenericAsData = false;
   if(val === undefined){
     const rawDefaultPutMode = (typeof window !== "undefined") ? window.defaultPutMode : undefined;
     const numericDefaultPutMode = Number(rawDefaultPutMode);
@@ -1962,17 +2041,13 @@ function putCell(encodedValue, options = null){
     }else if(defaultPutMode === 1){
       val = UNPLACED_KIND;
     }else if(defaultPutMode === 3){
-      val = 0;
+      val = GENERIC_WHITE;
+      treatGenericAsData = true;
     }else{
-      val = 1;
+      val = GENERIC_BLACK;
+      treatGenericAsData = true;
     }
   }
-  if(val === -1){
-    val = UNPLACED_KIND;
-  }else if(val === 0 || val === 1){
-    val = (val === 1) ? GENERIC_BLACK : GENERIC_WHITE;
-  }
-  treatGenericAsData = (val === GENERIC_WHITE || val === GENERIC_BLACK);
   const skipExisting = Boolean(window.skipExistingCells);
   if(skipExisting && typeof window.isEmpty === "function" && !window.isEmpty()){
     if(usedAuto && dataSeqIndex > 0){
@@ -2241,9 +2316,26 @@ function invertCell(rowOrRef, colMaybe){
   return encoded;
 }
 
-function isEmpty(){
-  const r = cursorPos.row - 1;
-  const c = cursorPos.col - 1;
+function isEmpty(dirArg){
+  let row = cursorPos.row;
+  let col = cursorPos.col;
+  if(dirArg !== undefined){
+    const dir = DIR_NUMBER_MAP[Math.trunc(Number(dirArg))] || normalizeDir(dirArg);
+    if(dir === DIR_UP){
+      row -= 1;
+    }else if(dir === DIR_RIGHT){
+      col += 1;
+    }else if(dir === DIR_DOWN){
+      row += 1;
+    }else if(dir === DIR_LEFT){
+      col -= 1;
+    }else{
+      return false;
+    }
+    if(row < 1 || row > BOARD_ROWS || col < 1 || col > BOARD_COLS) return false;
+  }
+  const r = row - 1;
+  const c = col - 1;
   const unplacedKind = (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : UNPLACED_KIND;
   if(boardMatrix[r] && typeof boardMatrix[r][c] === "number"){
     const val = boardMatrix[r][c];
@@ -2253,7 +2345,7 @@ function isEmpty(){
     const kind = (typeof window.bitKind === "function") ? window.bitKind(val) : Math.abs(val);
     return kind === unplacedKind;
   }
-  const key = `${cursorPos.row}-${cursorPos.col}`;
+  const key = `${row}-${col}`;
   const entry = cellStates.get(key);
   if(!entry) return true;
   const kind = (typeof window.bitKind === "function") ? window.bitKind(entry.value) : Math.abs(entry.value);
@@ -2284,11 +2376,18 @@ function isFunctionalCell(){
 function isMoveBlocked(){
   return lastMoveBlocked;
 }
+function didMove(){
+  return !isMoveBlocked();
+}
 
 window.DIR_UP = DIR_UP;
 window.DIR_RIGHT = DIR_RIGHT;
 window.DIR_DOWN = DIR_DOWN;
 window.DIR_LEFT = DIR_LEFT;
+window.UP = 1;
+window.RIGHT = 2;
+window.DOWN = 3;
+window.LEFT = 4;
 window.DIR_FRONT = DIR_FRONT;
 window.DIR_BACK = DIR_BACK;
 window.RENDER_IMMEDIATE = RENDER_IMMEDIATE;
@@ -2312,6 +2411,8 @@ window.resetLoopGuard = resetLoopGuard;
 window.canContinueLoop = canContinueLoop;
 window.pauseRunning = pauseRunning;
 window.updateCell = updateCell;
+window.BOARD_ROWS = BOARD_ROWS;
+window.BOARD_COLS = BOARD_COLS;
 window.putCell = putCell;
 window.drawText = drawText;
 window.getCell = getCell;
@@ -2321,8 +2422,10 @@ window.isSkipZone = isSkipZone;
 window.isTimingZone = isTimingZone;
 window.isFunctionalCell = isFunctionalCell;
 window.isMoveBlocked = isMoveBlocked;
+window.didMove = didMove;
 window.shouldPlaceCell = shouldPlaceCell;
 window.moveCursor = moveCursor;
+window.jumpCursor = jumpCursor;
 window.turnCursor = turnCursor;
 window.updateCursor = updateCursor;
 window.resetCursor = resetCursor;

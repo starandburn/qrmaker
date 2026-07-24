@@ -5,6 +5,7 @@
     p: { type: "bool", desc: "データパターン表示" },
     d: { type: "string", desc: "入力データ（空文字は _）" },
     h: { type: "bool", desc: "履歴パネル表示" },
+    ref: { type: "bool", desc: "コマンドリファレンス表示" },
     m: { type: "bool", desc: "サンプル表示" },
     e: { type: "number", desc: "ステップ速度（0-120）" },
     s: { type: "string", desc: "ステップ実行フラグ（2桁01）" },
@@ -19,6 +20,9 @@
     r: { type: "bool", desc: "方向コマンドを有効化" },
     z: { type: "bool", desc: "プレゼンモード（内部キー）" },
   };
+  DEFAULT_PARAM_META.ec = { type: "string", desc: "QR error correction level (A/L/M/Q/H)" };
+  DEFAULT_PARAM_META.qrv = { type: "string", desc: "QR version (A/1-6)" };
+  DEFAULT_PARAM_META.lang = { type: "string", desc: "User script language id" };
 
   const dom = {
     btnGenerate: document.getElementById("btnGenerate"),
@@ -35,11 +39,13 @@
   const keySets = (() => {
     const keys = [];
     const orderedKeys = [
+      "qrv",
       "d",  // 入力データ
       "v",  // 表示トグル一括
       "g",  // デバッグ表示
       "p",  // パターンパネル
       "h",  // 履歴表示
+      "ref",  // コマンドリファレンス表示
       "m",  // サンプル表示
       "e",  // ステップ速度
       "s",  // ステップ実行フラグ
@@ -79,6 +85,10 @@
     { key: "toggleDebugValues", label: "セルの値" },
   ];
   const defaults = (window.appSettingsFromScript && window.appSettingsFromScript.defaults) ? window.appSettingsFromScript.defaults : {};
+  const USER_SCRIPT_LANGUAGE_OPTIONS = [
+    { id: "qr-dsl", label: "QR Maker DSL" },
+    { id: "python", label: "Python-like" },
+  ];
   const resolvedCodeSamples = (() => {
     if(Array.isArray(window.appCodeSamplesFromScript)){
       return window.appCodeSamplesFromScript;
@@ -93,6 +103,7 @@
     g: Boolean(defaults.debugVisible),
     p: Boolean(defaults.patternPanelOpen),
     h: Boolean(defaults.historyVisible),
+    ref: Boolean(defaults.commandReferenceVisible),
     m: false,
     o: Boolean(defaults.overwriteDataOnFunctional),
     a: (typeof defaults.autoResetOnRun === "boolean") ? defaults.autoResetOnRun : false,
@@ -173,6 +184,38 @@
           input.checked = VIEW_FLAG_DEFAULT[index] === "1";
         });
       };
+    }else if(key === "qrv"){
+      value = document.createElement("select");
+      value.className = "value-input mono";
+      value.style.fontSize = "20px";
+      value.style.width = "220px";
+      value.style.minWidth = "220px";
+      const defaultSpec = defaults.qrSpec && typeof defaults.qrSpec === "object" ? defaults.qrSpec : {};
+      const defaultVersionRaw = String(defaultSpec.version ?? defaults.qrVersion ?? 2).trim().toUpperCase();
+      const defaultVersionNumber = Number(defaultVersionRaw);
+      const normalizedDefault = (defaultVersionRaw === "A" || defaultVersionRaw === "AUTO")
+        ? "A"
+        : ((Number.isInteger(defaultVersionNumber) && defaultVersionNumber >= 1 && defaultVersionNumber <= 6)
+          ? String(defaultVersionNumber)
+          : "2");
+      const autoOption = document.createElement("option");
+      autoOption.value = "A";
+      autoOption.textContent = "Auto (up to V6 L)";
+      value.appendChild(autoOption);
+      [1, 2, 3, 4, 5, 6].forEach((version) => {
+        const option = document.createElement("option");
+        const boardSize = 17 + (4 * version);
+        option.value = String(version);
+        option.textContent = `Version ${version} (${boardSize}x${boardSize})`;
+        value.appendChild(option);
+      });
+      value.value = normalizedDefault;
+      tdValue.appendChild(value);
+      getParamValue = () => String(value.value || "").trim();
+      defaultParamValue = normalizedDefault;
+      applyDefault = () => {
+        value.value = defaultParamValue;
+      };
     }else if(meta.type === "bool"){
       const wrap = document.createElement("label");
       wrap.className = "toggle-wrap";
@@ -194,6 +237,27 @@
       applyDefault = () => {
         value.checked = BOOL_DEFAULTS[key] ? true : false;
         stateLabel.textContent = value.checked ? "する" : "しない";
+      };
+    }else if(key === "ec"){
+      value = document.createElement("select");
+      value.className = "value-input mono";
+      value.style.fontSize = "20px";
+      value.style.width = "88px";
+      value.style.minWidth = "88px";
+      const defaultSpec = defaults.qrSpec && typeof defaults.qrSpec === "object" ? defaults.qrSpec : {};
+      const normalizedDefault = String(defaultSpec.errorCorrectionLevel ?? defaults.errorCorrectionLevel ?? "A").trim().toUpperCase();
+      ["A", "L", "M", "Q", "H"].forEach((level) => {
+        const option = document.createElement("option");
+        option.value = level;
+        option.textContent = level;
+        value.appendChild(option);
+      });
+      value.value = ["A", "L", "M", "Q", "H"].includes(normalizedDefault) ? normalizedDefault : "A";
+      tdValue.appendChild(value);
+      getParamValue = () => String(value.value || "").trim();
+      defaultParamValue = value.value;
+      applyDefault = () => {
+        value.value = defaultParamValue;
       };
     }else if(key === "w"){
       value = document.createElement("select");
@@ -380,6 +444,30 @@
         modeInput.checked = composite[0] === "1";
         dataOnlyInput.checked = composite[1] === "1";
       };
+    }else if(key === "lang"){
+      value = document.createElement("select");
+      value.className = "value-input mono";
+      value.style.fontSize = "20px";
+      value.style.width = "220px";
+      value.style.minWidth = "220px";
+      const defaultLanguage = String(defaults.userScriptLanguage ?? window.DEFAULT_USER_SCRIPT_LANGUAGE_ID ?? "qr-dsl").trim() || "qr-dsl";
+      const options = USER_SCRIPT_LANGUAGE_OPTIONS.slice();
+      if(!options.some((entry) => entry.id === defaultLanguage)){
+        options.push({ id: defaultLanguage, label: defaultLanguage });
+      }
+      options.forEach((entry) => {
+        const option = document.createElement("option");
+        option.value = entry.id;
+        option.textContent = entry.label;
+        value.appendChild(option);
+      });
+      value.value = defaultLanguage;
+      tdValue.appendChild(value);
+      getParamValue = () => String(value.value || "").trim();
+      defaultParamValue = defaultLanguage;
+      applyDefault = () => {
+        value.value = defaultParamValue;
+      };
     }else{
       value = document.createElement("input");
       value.type = "text";
@@ -480,6 +568,15 @@
       return;
     }
     if(row.value && typeof row.value.value === "string"){
+      if(key === "lang" && row.value.tagName === "SELECT"){
+        const nextValue = String(raw ?? "").trim();
+        if(nextValue && !Array.from(row.value.options).some((option) => option.value === nextValue)){
+          const option = document.createElement("option");
+          option.value = nextValue;
+          option.textContent = nextValue;
+          row.value.appendChild(option);
+        }
+      }
       row.value.value = String(raw ?? "");
       const label = row.value.parentElement ? row.value.parentElement.querySelector(".toggle-label.mono") : null;
       if(label){
@@ -545,6 +642,7 @@
     next.debugVisible = parseBoolParam(get("g", next.debugVisible ? "1" : "0"));
     next.patternPanelOpen = parseBoolParam(get("p", next.patternPanelOpen ? "1" : "0"));
     next.historyVisible = parseBoolParam(get("h", next.historyVisible ? "1" : "0"));
+    next.commandReferenceVisible = parseBoolParam(get("ref", next.commandReferenceVisible ? "1" : "0"));
     next.layoutLeftPaneRatio = asNumber(get("l", String(next.layoutLeftPaneRatio ?? 0.5)), 0.5);
     next.autoResetOnRun = parseBoolParam(get("a", next.autoResetOnRun ? "1" : "0"));
     next.skipExistingCells = parseBoolParam(get("x", next.skipExistingCells ? "1" : "0"));
@@ -556,6 +654,16 @@
     next.initialCode = Math.trunc(asNumber(get("c", String(next.initialCode ?? 0)), 0));
     next.presentationMode = parseBoolParam(get("z", next.presentationMode ? "1" : "0"));
     next.useDirection = parseBoolParam(get("r", next.useDirection ? "1" : "0"));
+    next.userScriptLanguage = String(get("lang", next.userScriptLanguage ?? "qr-dsl")).trim() || "qr-dsl";
+    const errorCorrectionLevel = String(get("ec", next.qrSpec?.errorCorrectionLevel ?? next.errorCorrectionLevel ?? "A")).trim().toUpperCase();
+    const qrVersionRaw = String(get("qrv", String(next.qrSpec?.version ?? next.qrVersion ?? 2))).trim().toUpperCase();
+    const qrVersionNumber = Math.trunc(asNumber(qrVersionRaw, 2));
+    next.qrSpec = Object.assign({}, next.qrSpec, {
+      version: (qrVersionRaw === "A" || qrVersionRaw === "AUTO")
+        ? "A"
+        : ((qrVersionNumber >= 1 && qrVersionNumber <= 6) ? qrVersionNumber : 2),
+      errorCorrectionLevel: ["A", "L", "M", "Q", "H"].includes(errorCorrectionLevel) ? errorCorrectionLevel : "A",
+    });
     const skipSpec = String(get("s", "01")).padEnd(2, "0");
     next.skipMode = skipSpec[0] === "1";
     next.stepSkipDataOnly = skipSpec[1] === "1";

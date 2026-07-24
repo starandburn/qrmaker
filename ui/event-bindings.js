@@ -1,5 +1,5 @@
 /**
- * UIイベント（履歴パネルトグル、パターンパネルトグル等）のバインディングをまとめたエントリ。
+ * UI event-binding module for panel toggles and app-level interaction wiring.
  */
 (function(global){
   if(!global) return;

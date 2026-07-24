@@ -1,8 +1,8 @@
 /**
- * QRコードのビット種別や符号化・パリティ計算を扱うドメインロジック。
+ * QR core domain constants and helpers for bit encoding and parity calculation.
  */
-const BIT_UNPLACED = -1;
-const BIT_WHITE = 0;
+const BIT_UNPLACED = 0;
+const BIT_WHITE = -1;
 const BIT_BLACK = 1;
 const BIT_FUNC_FINDER = 10;
 const BIT_FUNC_TIMING = 11;
@@ -20,7 +20,7 @@ const BIT_MASK = 30;
 const BIT_UNKNOWN = 99;
 
 /**
- * Encode a bit with sign: positive => black(1), negative => white(0).
+ * Encode a bit with sign: positive => black(1), negative => white(0), zero => unplaced.
  * kind is the absolute category id (BIT_***).
  */
 function encodeBit(kind, isBlack){
@@ -40,7 +40,7 @@ function isBlackBit(val){
   return val > 0;
 }
 
-/** Is white? (0) */
+/** Is white? (negative) */
 function isWhiteBit(val){
   return val < 0;
 }
@@ -120,10 +120,350 @@ const toBinaryString = (value, width = 8) => {
   return numeric.toString(2).padStart(width, "0");
 };
 
+const QR_FORMAT_BITS_BY_LEVEL = {
+  L: [0x77c4, 0x72f3, 0x7daa, 0x789d, 0x662f, 0x6318, 0x6c41, 0x6976],
+  M: [0x5412, 0x5125, 0x5e7c, 0x5b4b, 0x45f9, 0x40ce, 0x4f97, 0x4aa0],
+  Q: [0x355f, 0x3068, 0x3f31, 0x3a06, 0x24b4, 0x2183, 0x2eda, 0x2bed],
+  H: [0x1689, 0x13be, 0x1ce7, 0x19d0, 0x0762, 0x0255, 0x0d0c, 0x083b],
+};
+
+const QR_SPEC_ROWS = {
+  1: {
+    L: { dataCodewords: 19, ecCodewords: 7, maxBytes: 17 },
+    M: { dataCodewords: 16, ecCodewords: 10, maxBytes: 14 },
+    Q: { dataCodewords: 13, ecCodewords: 13, maxBytes: 11 },
+    H: { dataCodewords: 9, ecCodewords: 17, maxBytes: 7 },
+  },
+  2: {
+    L: { dataCodewords: 34, ecCodewords: 10, maxBytes: 32 },
+    M: { dataCodewords: 28, ecCodewords: 16, maxBytes: 26 },
+    Q: { dataCodewords: 22, ecCodewords: 22, maxBytes: 20 },
+    H: { dataCodewords: 16, ecCodewords: 28, maxBytes: 14 },
+  },
+  3: {
+    L: { dataCodewords: 55, ecCodewords: 15, maxBytes: 53 },
+    M: { dataCodewords: 44, ecCodewords: 26, maxBytes: 42 },
+    Q: { dataCodewords: 34, ecCodewords: 36, maxBytes: 32, blocks: [{ count: 2, dataCodewords: 17, ecCodewords: 18 }] },
+    H: { dataCodewords: 26, ecCodewords: 44, maxBytes: 24, blocks: [{ count: 2, dataCodewords: 13, ecCodewords: 22 }] },
+  },
+  4: {
+    L: { dataCodewords: 80, ecCodewords: 20, maxBytes: 78 },
+    M: { dataCodewords: 64, ecCodewords: 36, maxBytes: 62, blocks: [{ count: 2, dataCodewords: 32, ecCodewords: 18 }] },
+    Q: { dataCodewords: 48, ecCodewords: 52, maxBytes: 46, blocks: [{ count: 2, dataCodewords: 24, ecCodewords: 26 }] },
+    H: { dataCodewords: 36, ecCodewords: 64, maxBytes: 34, blocks: [{ count: 4, dataCodewords: 9, ecCodewords: 16 }] },
+  },
+  5: {
+    L: { dataCodewords: 108, ecCodewords: 26, maxBytes: 106 },
+    M: { dataCodewords: 86, ecCodewords: 48, maxBytes: 84, blocks: [{ count: 2, dataCodewords: 43, ecCodewords: 24 }] },
+    Q: { dataCodewords: 62, ecCodewords: 72, maxBytes: 60, blocks: [{ count: 2, dataCodewords: 15, ecCodewords: 18 }, { count: 2, dataCodewords: 16, ecCodewords: 18 }] },
+    H: { dataCodewords: 46, ecCodewords: 88, maxBytes: 44, blocks: [{ count: 2, dataCodewords: 11, ecCodewords: 22 }, { count: 2, dataCodewords: 12, ecCodewords: 22 }] },
+  },
+  6: {
+    L: { dataCodewords: 136, ecCodewords: 36, maxBytes: 134, blocks: [{ count: 2, dataCodewords: 68, ecCodewords: 18 }] },
+    M: { dataCodewords: 108, ecCodewords: 64, maxBytes: 106, blocks: [{ count: 4, dataCodewords: 27, ecCodewords: 16 }] },
+    Q: { dataCodewords: 76, ecCodewords: 96, maxBytes: 74, blocks: [{ count: 4, dataCodewords: 19, ecCodewords: 24 }] },
+    H: { dataCodewords: 60, ecCodewords: 112, maxBytes: 58, blocks: [{ count: 4, dataCodewords: 15, ecCodewords: 28 }] },
+  },
+};
+
+const QR_ERROR_CORRECTION_BITS_BY_LEVEL = {
+  L: 1,
+  M: 0,
+  Q: 3,
+  H: 2,
+};
+
+function getQrBoardSizeForVersion(version){
+  const numeric = Number(version);
+  const resolvedVersion = Number.isFinite(numeric) ? Math.max(1, Math.trunc(numeric)) : 2;
+  return 17 + (4 * resolvedVersion);
+}
+
+const buildQrSpecsByVersion = () => {
+  const result = {};
+  Object.keys(QR_SPEC_ROWS).forEach((versionKey) => {
+    const version = Number(versionKey);
+    const boardSize = getQrBoardSizeForVersion(version);
+    result[version] = {};
+    Object.keys(QR_SPEC_ROWS[version]).forEach((level) => {
+      const row = QR_SPEC_ROWS[version][level];
+      result[version][level] = {
+        version,
+        errorCorrectionLevel: level,
+        errorCorrectionBits: QR_ERROR_CORRECTION_BITS_BY_LEVEL[level],
+        boardSize,
+        expectedBits: (row.dataCodewords + row.ecCodewords) * 8,
+        dataCodewords: row.dataCodewords,
+        ecCodewords: row.ecCodewords,
+        maxBytes: row.maxBytes,
+        formatBits: QR_FORMAT_BITS_BY_LEVEL[level],
+        blocks: Array.isArray(row.blocks) ? row.blocks.map((block) => Object.assign({}, block)) : [
+          { count: 1, dataCodewords: row.dataCodewords, ecCodewords: row.ecCodewords },
+        ],
+      };
+    });
+  });
+  return result;
+};
+
+const QR_SPECS_BY_VERSION = buildQrSpecsByVersion();
+const QR_SUPPORTED_VERSIONS = Object.freeze(Object.keys(QR_SPECS_BY_VERSION).map((key) => Number(key)));
+
+const QR_ERROR_CORRECTION_AUTO_LEVEL = "A";
+const QR_ERROR_CORRECTION_LEVEL_ORDER = ["H", "Q", "M", "L"];
+const QR_VERSION_AUTO = "A";
+
+function normalizeQrErrorCorrectionLevel(value, fallback = "A"){
+  const raw = String(value ?? "").trim().toUpperCase();
+  if(raw === QR_ERROR_CORRECTION_AUTO_LEVEL) return QR_ERROR_CORRECTION_AUTO_LEVEL;
+  return Object.prototype.hasOwnProperty.call(QR_FORMAT_BITS_BY_LEVEL, raw) ? raw : fallback;
+}
+
+function normalizeQrVersion(value, fallback = 2){
+  const raw = String(value ?? "").trim().toUpperCase();
+  if(raw === QR_VERSION_AUTO || raw === "AUTO"){
+    return QR_VERSION_AUTO;
+  }
+  const numeric = Number(value);
+  const version = Number.isFinite(numeric) ? Math.trunc(numeric) : Number(fallback);
+  return QR_SUPPORTED_VERSIONS.includes(version) ? version : 2;
+}
+
+function getConfiguredQrVersion(){
+  if(typeof window !== "undefined" && window.location && typeof URLSearchParams === "function"){
+    const params = new URLSearchParams(window.location.search || "");
+    const rawParam = params.get("qrv") ?? params.get("qrVersion");
+    if(rawParam !== null){
+      return normalizeQrVersion(rawParam, 2);
+    }
+  }
+  const defaults = (typeof window !== "undefined" && window.appSettings?.defaults)
+    || (typeof window !== "undefined" && window.appSettingsFromScript?.defaults)
+    || {};
+  const nested = defaults.qrSpec && typeof defaults.qrSpec === "object"
+    ? defaults.qrSpec.version
+    : undefined;
+  return normalizeQrVersion(nested ?? defaults.qrVersion, 2);
+}
+
+function getConfiguredQrErrorCorrectionLevel(){
+  const defaults = (typeof window !== "undefined" && window.appSettings?.defaults)
+    || (typeof window !== "undefined" && window.appSettingsFromScript?.defaults)
+    || {};
+  const nested = defaults.qrSpec && typeof defaults.qrSpec === "object"
+    ? defaults.qrSpec.errorCorrectionLevel
+    : undefined;
+  const configuredLevel = normalizeQrErrorCorrectionLevel(nested ?? defaults.errorCorrectionLevel, "A");
+  if(typeof window !== "undefined" && window.urlState){
+    const paramKey = window.urlState.PARAM_KEYS?.ERROR_CORRECTION_LEVEL || "ec";
+    if(typeof window.urlState.hasParam === "function"
+      && typeof window.urlState.getParam === "function"
+      && window.urlState.hasParam(paramKey)){
+      return normalizeQrErrorCorrectionLevel(window.urlState.getParam(paramKey), "A");
+    }
+  }
+  return configuredLevel;
+}
+
+function getQrSpecsForVersion(version){
+  const normalizedVersion = normalizeQrVersion(version, getConfiguredQrVersion());
+  return QR_SPECS_BY_VERSION[normalizedVersion] || QR_SPECS_BY_VERSION[2];
+}
+
+function getQrVersionFromBoardSize(){
+  if(typeof window === "undefined") return null;
+  const boardSize = Number(window.BOARD_ROWS);
+  if(!Number.isFinite(boardSize)) return null;
+  const version = (boardSize - 17) / 4;
+  if(!Number.isInteger(version)) return null;
+  return QR_SUPPORTED_VERSIONS.includes(version) ? version : null;
+}
+
+function getQrSpecForErrorCorrectionLevel(level, version){
+  const normalized = normalizeQrErrorCorrectionLevel(level, "A");
+  const specs = getQrSpecsForVersion(version);
+  return specs[normalized] || specs.L;
+}
+
+function getQrFinderOriginsForSpec(spec){
+  const size = Number.isFinite(spec?.boardSize) ? spec.boardSize : getQrBoardSizeForVersion(spec?.version);
+  return [
+    [1, 1],
+    [1, size - 6],
+    [size - 6, 1],
+  ];
+}
+
+function getQrAlignmentCenterAxesForVersion(version){
+  const numeric = Number(version);
+  const resolvedVersion = Number.isFinite(numeric) ? Math.max(1, Math.trunc(numeric)) : 2;
+  if(resolvedVersion <= 1) return [];
+  return [7, getQrBoardSizeForVersion(resolvedVersion) - 6];
+}
+
+function getQrAlignmentCentersForSpec(spec){
+  const centers = getQrAlignmentCenterAxesForVersion(spec?.version);
+  const finderOrigins = getQrFinderOriginsForSpec(spec);
+  const overlapsFinder = (row, col) => finderOrigins.some(([originRow, originCol]) => (
+    row >= originRow - 2 && row <= originRow + 8 && col >= originCol - 2 && col <= originCol + 8
+  ));
+  const pairs = [];
+  for(const row of centers){
+    for(const col of centers){
+      if(!overlapsFinder(row, col)){
+        pairs.push([row, col]);
+      }
+    }
+  }
+  return pairs;
+}
+
+function getQrDarkModuleCoordForSpec(spec){
+  const version = Number.isFinite(spec?.version) ? spec.version : 2;
+  return [4 * version + 10, 9];
+}
+
+function getActiveQrBoardSize(text){
+  const spec = getActiveQrSpec(text);
+  return Number.isFinite(spec?.boardSize) ? spec.boardSize : getQrBoardSizeForVersion(spec?.version);
+}
+
+function getQrSpecForInputLength(length, version){
+  const numeric = Number(length);
+  const inputLength = Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : 0;
+  const specs = getQrSpecsForVersion(version);
+  const level = QR_ERROR_CORRECTION_LEVEL_ORDER.find((candidate) => inputLength <= specs[candidate].maxBytes) || "L";
+  return specs[level];
+}
+
+function getQrSpecForAutoVersionInputLength(length, level){
+  const numeric = Number(length);
+  const inputLength = Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : 0;
+  const normalizedLevel = normalizeQrErrorCorrectionLevel(level, QR_ERROR_CORRECTION_AUTO_LEVEL);
+  const levels = normalizedLevel === QR_ERROR_CORRECTION_AUTO_LEVEL
+    ? QR_ERROR_CORRECTION_LEVEL_ORDER
+    : [normalizedLevel];
+  for(const version of QR_SUPPORTED_VERSIONS){
+    const specs = getQrSpecsForVersion(version);
+    for(const candidate of levels){
+      if(inputLength <= specs[candidate].maxBytes){
+        return specs[candidate];
+      }
+    }
+  }
+  return getQrSpecForErrorCorrectionLevel(level, QR_SUPPORTED_VERSIONS[QR_SUPPORTED_VERSIONS.length - 1]);
+}
+
+function getQrTextForSpecSelection(text){
+  if(text !== undefined){
+    return String(text ?? "");
+  }
+  if(typeof window !== "undefined" && window.location && typeof URLSearchParams === "function"){
+    const params = new URLSearchParams(window.location.search || "");
+    const rawData = params.get("d");
+    if(rawData !== null){
+      if(rawData === "_") return "";
+      if(rawData.startsWith("~")) return rawData.slice(1);
+      return rawData;
+    }
+  }
+  const defaults = (typeof window !== "undefined" && window.appSettings?.defaults)
+    || (typeof window !== "undefined" && window.appSettingsFromScript?.defaults)
+    || {};
+  return String(defaults.qrData ?? "");
+}
+
+function getQrSpecForText(text){
+  const configuredLevel = getConfiguredQrErrorCorrectionLevel();
+  const configuredVersion = getConfiguredQrVersion();
+  const inputText = getQrTextForSpecSelection(text);
+  if(configuredVersion === QR_VERSION_AUTO){
+    return getQrSpecForAutoVersionInputLength(inputText.length, configuredLevel);
+  }
+  if(configuredLevel === QR_ERROR_CORRECTION_AUTO_LEVEL){
+    return getQrSpecForInputLength(inputText.length, configuredVersion);
+  }
+  return getQrSpecForErrorCorrectionLevel(configuredLevel, configuredVersion);
+}
+
+function getActiveQrMaxBytes(){
+  const configuredLevel = getConfiguredQrErrorCorrectionLevel();
+  const configuredVersion = getConfiguredQrVersion();
+  if(configuredVersion === QR_VERSION_AUTO){
+    const maxVersion = QR_SUPPORTED_VERSIONS[QR_SUPPORTED_VERSIONS.length - 1];
+    if(configuredLevel === QR_ERROR_CORRECTION_AUTO_LEVEL){
+      return getQrSpecsForVersion(maxVersion).L.maxBytes;
+    }
+    return getQrSpecForErrorCorrectionLevel(configuredLevel, maxVersion).maxBytes;
+  }
+  if(configuredLevel === QR_ERROR_CORRECTION_AUTO_LEVEL){
+    return getQrSpecsForVersion(configuredVersion).L.maxBytes;
+  }
+  return getQrSpecForErrorCorrectionLevel(configuredLevel, configuredVersion).maxBytes;
+}
+
+function getQrSpecForFormatErrorLevelBits(bits){
+  const numeric = Number(bits);
+  if(!Number.isFinite(numeric)) return getQrSpecForErrorCorrectionLevel("L");
+  const version = getQrVersionFromBoardSize() ?? getConfiguredQrVersion();
+  const match = Object.values(getQrSpecsForVersion(version)).find((spec) => spec.errorCorrectionBits === numeric);
+  return match || getQrSpecForErrorCorrectionLevel("L");
+}
+
+function getActiveQrSpec(text){
+  return getQrSpecForText(text);
+}
+
+function buildCodewordBlocks(dataCodewordEntries, spec){
+  const blockSpecs = Array.isArray(spec?.blocks) && spec.blocks.length > 0
+    ? spec.blocks
+    : [{ count: 1, dataCodewords: spec.dataCodewords, ecCodewords: spec.ecCodewords }];
+  const blocks = [];
+  let offset = 0;
+  for(const blockSpec of blockSpecs){
+    const count = Number.isFinite(blockSpec.count) ? Math.max(1, Math.trunc(blockSpec.count)) : 1;
+    const dataCount = Number.isFinite(blockSpec.dataCodewords) ? Math.max(0, Math.trunc(blockSpec.dataCodewords)) : 0;
+    const ecCount = Number.isFinite(blockSpec.ecCodewords) ? Math.max(0, Math.trunc(blockSpec.ecCodewords)) : 0;
+    for(let i = 0; i < count; i++){
+      const dataEntries = dataCodewordEntries.slice(offset, offset + dataCount);
+      const dataValues = dataEntries.map((entry) => entry.value);
+      const parityBytes = qrComputeParity(dataValues, ecCount);
+      blocks.push({ dataEntries, dataValues, parityBytes });
+      offset += dataCount;
+    }
+  }
+  return blocks;
+}
+
+function interleaveBlocks(blocks){
+  const dataEntries = [];
+  const dataCodewords = [];
+  const parityBytes = [];
+  const maxDataLength = Math.max(0, ...blocks.map((block) => block.dataEntries.length));
+  const maxParityLength = Math.max(0, ...blocks.map((block) => block.parityBytes.length));
+  for(let idx = 0; idx < maxDataLength; idx++){
+    for(const block of blocks){
+      if(block.dataEntries[idx]){
+        dataEntries.push(block.dataEntries[idx]);
+        dataCodewords.push(block.dataEntries[idx].value);
+      }
+    }
+  }
+  for(let idx = 0; idx < maxParityLength; idx++){
+    for(const block of blocks){
+      if(Number.isFinite(block.parityBytes[idx])){
+        parityBytes.push(block.parityBytes[idx]);
+      }
+    }
+  }
+  return { dataEntries, dataCodewords, parityBytes };
+}
+
 function qrBuildPatternSegments(text){
-  const input = typeof text === "string" ? text : "";
-  const DATA_CODEWORDS = 34;
-  const EC_CODEWORDS = 10;
+  const rawInput = typeof text === "string" ? text : "";
+  const spec = getActiveQrSpec(rawInput);
+  const input = rawInput.length > spec.maxBytes ? rawInput.slice(0, spec.maxBytes) : rawInput;
+  const DATA_CODEWORDS = spec.dataCodewords;
   const PAD_CODEWORDS = [0xec, 0x11];
   const flat = [];
   const pushBitsToFlat = (bits, kind) => {
@@ -176,20 +516,42 @@ function qrBuildPatternSegments(text){
     padIdx++;
   }
 
-  const parityBytes = qrComputeParity(dataCodewords, EC_CODEWORDS);
-
-  pushBitsToFlat(modeBits, BIT_INFO_MODE);
-  pushBitsToFlat(lenBits, BIT_INFO_LENGTH);
+  const dataBitEntries = [];
+  const pushDataBitEntries = (bits, kind) => {
+    for(const bit of bits){
+      dataBitEntries.push({ bit, kind });
+    }
+  };
+  pushDataBitEntries(modeBits, BIT_INFO_MODE);
+  pushDataBitEntries(lenBits, BIT_INFO_LENGTH);
   for(const entry of characterEntries){
-    pushBitsToFlat(entry.bits, BIT_INFO_CHAR);
+    pushDataBitEntries(entry.bits, BIT_INFO_CHAR);
   }
-  pushBitsToFlat(terminatorBits, BIT_INFO_TERMINATOR);
+  pushDataBitEntries(terminatorBits, BIT_INFO_TERMINATOR);
   if(zeroPadBits){
-    pushBitsToFlat(zeroPadBits, BIT_INFO_PADDING);
+    pushDataBitEntries(zeroPadBits, BIT_INFO_PADDING);
   }
   for(const padEntry of padEntries){
-    pushBitsToFlat(padEntry.bits, BIT_INFO_PADDING);
+    pushDataBitEntries(padEntry.bits, BIT_INFO_PADDING);
   }
+  const dataCodewordEntries = [];
+  for(let offset = 0; offset < dataBitEntries.length; offset += 8){
+    const entries = dataBitEntries.slice(offset, offset + 8);
+    if(entries.length < 8) continue;
+    dataCodewordEntries.push({
+      value: dataCodewords[dataCodewordEntries.length],
+      entries,
+    });
+  }
+
+  const blocks = buildCodewordBlocks(dataCodewordEntries, spec);
+  const interleaved = interleaveBlocks(blocks);
+  for(const entry of interleaved.dataEntries){
+    for(const bitEntry of entry.entries){
+      pushBitsToFlat(bitEntry.bit, bitEntry.kind);
+    }
+  }
+  const parityBytes = interleaved.parityBytes;
   for(const byte of parityBytes){
     pushBitsToFlat(toBinaryString(byte, 8), BIT_INFO_PARITY);
   }
@@ -202,8 +564,9 @@ function qrBuildPatternSegments(text){
     terminatorBits,
     zeroPadBits,
     padEntries,
-    dataCodewords,
+    dataCodewords: interleaved.dataCodewords,
     parityBytes,
+    blocks,
   };
 }
 
@@ -236,5 +599,17 @@ window.isBlackBit = isBlackBit;
 window.isWhiteBit = isWhiteBit;
 window.isUnplacedBit = isUnplacedBit;
 window.parsePattern = parsePattern;
+window.getConfiguredQrErrorCorrectionLevel = getConfiguredQrErrorCorrectionLevel;
+window.getConfiguredQrVersion = getConfiguredQrVersion;
+window.getActiveQrSpec = getActiveQrSpec;
+window.getActiveQrMaxBytes = getActiveQrMaxBytes;
+window.getActiveQrBoardSize = getActiveQrBoardSize;
+window.getQrBoardSizeForVersion = getQrBoardSizeForVersion;
+window.getQrSpecsForVersion = getQrSpecsForVersion;
+window.getQrFinderOriginsForSpec = getQrFinderOriginsForSpec;
+window.getQrAlignmentCentersForSpec = getQrAlignmentCentersForSpec;
+window.getQrDarkModuleCoordForSpec = getQrDarkModuleCoordForSpec;
+window.getQrSpecForErrorCorrectionLevel = getQrSpecForErrorCorrectionLevel;
+window.getQrSpecForFormatErrorLevelBits = getQrSpecForFormatErrorLevelBits;
 window.qrBuildPatternSegments = qrBuildPatternSegments;
 window.qrComputeParity = qrComputeParity;

@@ -37,8 +37,11 @@
   <section class="left-col">
     <div class="panel pastel-1" id="dataPanel">
     <div class="row" id="dataInputArea">
+      <div class="qr-spec-row">
+        <div class="qr-spec-caption" id="qrSpecCaption" aria-live="polite"></div>
+      </div>
       <div class="data-input-header">
-        <div class="label">QRコードにしたいデータ（半角英数字で32文字まで）</div>
+        <div class="label">QRコードにしたいデータ（半角英数字で<span id="qrDataMaxLengthLabel">32</span>文字まで）</div>
         <div class="data-status" id="dataInputStatus" role="status" aria-live="polite"></div>
       </div>
         <div class="input-row">
@@ -74,7 +77,7 @@
           <div class="pattern-section section-b">
             <div class="pattern-title">
               <span class="pattern-title-main">B. 各文字に対応したパターン</span>
-              <span class="pattern-title-note">（1文字8桁・終端のみ4桁、32文字に満たない分は『パディング』で埋める）</span>
+              <span class="pattern-title-note">（1文字8桁・終端のみ4桁、最大文字数に満たない分は『パディング』で埋める）</span>
             </div>
             <div id="patternRowB" class="pattern-row"></div>
           </div>
@@ -97,7 +100,6 @@
           <button id="btnPasteCode" type="button" class="code-action-btn">貼付</button>
           <button id="btnFormatCode" type="button" class="code-action-btn">整形</button>
           <button id="btnClearCode" type="button" class="code-action-btn">全消去</button>
-          <button id="btnToggleHistory" type="button" class="code-action-btn code-history-toggle" aria-pressed="false">履歴</button>
         </div>
       </div>
       <div class="code-columns">
@@ -105,10 +107,13 @@
           <textarea id="userCode" spellcheck="false" autocorrect="off" autocomplete="off" autocapitalize="off">
 </textarea>
           <div id="userCodeEditor" class="code-editor-host"></div>
-          <div class="code-debug-toolbar" id="codeSampleToolbar"></div>
         </div>
         <div class="code-editor-pane code-editor-parsed">
           <textarea id="userCodeParsed" class="parsed-code" spellcheck="false" readonly></textarea>
+          <div id="commandReferencePane" class="command-reference-pane" aria-label="コマンドリファレンス" aria-hidden="true">
+            <div class="command-reference-title">コマンドリファレンス</div>
+            <div id="commandReferenceContent" class="command-reference-content" data-language="qr-dsl"></div>
+          </div>
         </div>
         <div class="code-history-pane" id="codeHistoryPane">
           <div class="history-header">
@@ -119,6 +124,13 @@
             </div>
           </div>
           <ul id="codeHistoryList" class="history-list" role="list"></ul>
+        </div>
+      </div>
+      <div class="code-panel-footer">
+        <div class="code-debug-toolbar" id="codeSampleToolbar"></div>
+        <div class="code-panel-tabs" role="group" aria-label="表示切替">
+          <button id="btnToggleHistory" type="button" class="code-action-btn code-panel-tab code-history-toggle" aria-pressed="false">履歴</button>
+          <button id="btnCommandReference" type="button" class="command-reference-link code-panel-tab" aria-pressed="false">コマンドリファレンス</button>
         </div>
       </div>
     </div>
@@ -208,12 +220,28 @@
     </div>
   </div>
 </div>
+<div id="qrDetailModal" class="ascii-modal hidden" role="dialog" aria-modal="true">
+  <div class="ascii-modal-content">
+    <div class="ascii-modal-head">
+      <span>QRコード詳細情報</span>
+      <div class="ascii-modal-head-actions">
+        <button type="button" id="qrDetailDownload" class="ascii-modal-close">画像を保存</button>
+        <button type="button" id="qrDetailClose" class="ascii-modal-close">閉じる</button>
+      </div>
+    </div>
+    <div class="ascii-modal-body">
+      <div id="qrDetailBody" class="qr-detail-body"></div>
+    </div>
+  </div>
+</div>
 
 <footer class="page-footer">
 <p>&copy; 2025 - <span id="currentYear">????</span> Japan International Institute of Cybernetics. All Rights Reserved.</p>
   <p><span id="footerSecretQr">QR</span>コードは<a href="https://www.denso-wave.com/ja/system/qr/" target="_blank" rel="noopener noreferrer">株式会社デンソーウェーブ</a>の登録商標です。</p>
 </footer>
 
+<script src="settings-ui.js"></script>
+<script src="settings.js"></script>
 <script src="domain/qrcode.js"></script>
 <script src="domain/board.js"></script>
 <script src="domain/util.js"></script>
@@ -228,7 +256,9 @@
 <script src="state/url-state.js"></script>
 <script src="state/history-store.js"></script>
 <script src="core/require.js"></script>
+<script src="io/user-script-language-registry.js"></script>
 <script src="io/script-parser.js"></script>
+<script src="io/script-parser-python.js"></script>
 <script src="ui/ui-controls.js"></script>
 <script src="ui/editor-config.js"></script>
 <script src="ui/editor.bundle.js"></script>
@@ -256,6 +286,7 @@
 <script src="ui/switch-indicators.js"></script>
 <script src="ui/history-binding.js"></script>
 <script src="ui/sample-ui.js"></script>
+<script src="ui/command-reference.js"></script>
 <script src="ui/view-flags.js"></script>
 <script src="app/board-reset.js"></script>
 <script src="app/utils/type-utils.js"></script>
@@ -268,8 +299,6 @@
 <script src="ui/ui-state.js"></script>
 <script src="ui/bind-events.js"></script>
 <script src="app/main.js"></script>
-<script src="settings-ui.js"></script>
-<script src="settings.js"></script>
 <script src="code-samples.js"></script>
 <script src="version.js"></script>
 <script src="app/bootstrap.js"></script>

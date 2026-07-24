@@ -5,13 +5,11 @@ const typeUtils = (safeWindow && safeWindow.typeUtils) ? safeWindow.typeUtils : 
 if(!typeUtils
   || typeof typeUtils.isFunction !== "function"
   || typeof typeUtils.callIfFunction !== "function"
-  || typeof typeUtils.callWithFallback !== "function"
 ){
   throw new Error("app/utils/type-utils.js must be loaded before main.js.");
 }
 const {
   callIfFunction,
-  callWithFallback,
   isFunction,
 } = typeUtils;
 const REQUIRED_KEYS = [
@@ -29,7 +27,7 @@ const REQUIRED_KEYS = [
 ];
 
 /**
- * 実行環境を初期化し、UI/状態/描画APIの依存を束ねるメイン関数。
+ * Main entry point that initializes the runtime and wires UI/state/render API dependencies.
  */
 function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   if(!urlState){
@@ -54,10 +52,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const debugLog = dom.debugLog;
   const dataPatternPanel = dom.dataPatternPanel;
   const codePanel = dom.codePanel;
+  const btnCommandReference = dom.btnCommandReference;
   if(!dataPatternPanel){
     throw new Error("dataPatternPanel is required");
   }
   const userCodeParsed = dom.userCodeParsed;
+  const commandReferencePane = dom.commandReferencePane;
   const footerCopy = dom.footerCopy;
   const footerSecretQr = dom.footerSecretQr;
   const versionInfo = dom.versionInfo;
@@ -78,6 +78,39 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const toggleColor = dom.toggleColor;
   const txtInput = dom.txtInput;
   const configDefaults = (settings && typeof settings === "object") ? settings.defaults || {} : {};
+  const defaultUserScriptLanguage = (() => {
+    const configured = String(configDefaults.userScriptLanguage ?? "").trim();
+    return configured || (safeWindow?.DEFAULT_USER_SCRIPT_LANGUAGE_ID || "qr-dsl");
+  })();
+  const userScriptLanguageFromParam = (() => {
+    const key = urlState && urlState.PARAM_KEYS ? urlState.PARAM_KEYS.USER_SCRIPT_LANGUAGE : null;
+    if(!key || !isFunction(urlState?.hasParam) || !isFunction(urlState?.getParam)) return "";
+    return urlState.hasParam(key) ? String(urlState.getParam(key) ?? "").trim() : "";
+  })();
+  const userScriptLanguage = userScriptLanguageFromParam || defaultUserScriptLanguage;
+  let activeUserScriptLanguage = userScriptLanguage;
+  if(safeWindow && isFunction(safeWindow.setActiveUserScriptLanguage)){
+    try{
+      safeWindow.setActiveUserScriptLanguage(userScriptLanguage);
+    }catch(err){
+      callIfFunction(console?.error, err);
+      if(userScriptLanguage !== defaultUserScriptLanguage){
+        try{
+          safeWindow.setActiveUserScriptLanguage(defaultUserScriptLanguage);
+          activeUserScriptLanguage = defaultUserScriptLanguage;
+        }catch(fallbackErr){
+          callIfFunction(console?.error, fallbackErr);
+        }
+      }
+    }
+  }
+  if(safeWindow?.OfflineCodeEditorConfig){
+    safeWindow.OfflineCodeEditorConfig.commentTokens = activeUserScriptLanguage === "python" ? ["#"] : ["//", "#", "'"];
+    if(activeUserScriptLanguage === "python" && Array.isArray(safeWindow.OfflineCodeEditorConfig.control)){
+      safeWindow.OfflineCodeEditorConfig.control = safeWindow.OfflineCodeEditorConfig.control.filter((word) => String(word).toLowerCase() !== "end");
+    }
+  }
+  callIfFunction(safeWindow?.renderCommandReference, activeUserScriptLanguage);
   const focusCodeArea = () => {
     const editor = (typeof window !== "undefined") ? window.__codeEditor : null;
     if(editor && typeof editor.focus === "function"){
@@ -181,12 +214,36 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   if(homeCursorDirectionOverride && isFunction(safeWindow?.setHomeCursor)){
     safeWindow.setHomeCursor({ dir: homeCursorDirectionOverride });
   }
+  const activeQrSpec = isFunction(safeWindow?.getActiveQrSpec)
+    ? safeWindow.getActiveQrSpec(txtInput?.value ?? "")
+    : null;
+  const activeQrMaxBytes = isFunction(safeWindow?.getActiveQrMaxBytes)
+    ? safeWindow.getActiveQrMaxBytes()
+    : (Number.isFinite(activeQrSpec?.maxBytes) ? activeQrSpec.maxBytes : null);
+  const defaultQrSpec = configDefaults.qrSpec && typeof configDefaults.qrSpec === "object"
+    ? configDefaults.qrSpec
+    : {};
+  const defaultErrorCorrectionRaw = String(defaultQrSpec.errorCorrectionLevel ?? configDefaults.errorCorrectionLevel ?? "A").trim().toUpperCase();
+  const defaultErrorCorrectionSpec = defaultErrorCorrectionRaw === "A"
+    ? { errorCorrectionLevel: "A" }
+    : (isFunction(safeWindow?.getQrSpecForErrorCorrectionLevel)
+      ? safeWindow.getQrSpecForErrorCorrectionLevel(defaultErrorCorrectionRaw)
+      : null);
+  const defaultErrorCorrectionLevel = typeof defaultErrorCorrectionSpec?.errorCorrectionLevel === "string"
+    ? defaultErrorCorrectionSpec.errorCorrectionLevel
+    : "A";
+  const currentErrorCorrectionLevel = isFunction(safeWindow?.getConfiguredQrErrorCorrectionLevel)
+    ? safeWindow.getConfiguredQrErrorCorrectionLevel()
+    : defaultErrorCorrectionLevel;
   const configuredQrData = (typeof configDefaults.qrData === "string") ? configDefaults.qrData : null;
-  if(txtInput && configuredQrData !== null){
-    txtInput.value = configuredQrData;
+  const configuredQrDataValue = (configuredQrData !== null && activeQrMaxBytes !== null)
+    ? configuredQrData.slice(0, activeQrMaxBytes)
+    : configuredQrData;
+  if(txtInput && configuredQrDataValue !== null){
+    txtInput.value = configuredQrDataValue;
   }
-  const DATA_DEFAULT_TEXT = configuredQrData !== null
-    ? configuredQrData
+  const DATA_DEFAULT_TEXT = configuredQrDataValue !== null
+    ? configuredQrDataValue
     : (txtInput?.value ?? "Hello, World!");
   callWindowFunctionIfExists("refreshPatternIfPanelOpen");
   if(userCodeInput){
@@ -378,16 +435,30 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const layoutSetHistoryVisibility = layoutUI.setHistoryVisibility || (() => {});
   const appState = safeWindow?.appState;
   const store = (appState && isFunction(appState.getStore))
-    ? appState.getStore({ historyVisible: false, patternPanelOpen: false, debugVisible: false })
+    ? appState.getStore({ historyVisible: false, patternPanelOpen: false, debugVisible: false, commandReferenceVisible: false })
     : null;
   const getHistoryVisible = () => (store ? Boolean(store.getState().historyVisible) : false);
   const getPatternPanelOpen = () => (store ? Boolean(store.getState().patternPanelOpen) : Boolean(dataPatternPanel?.open));
+  const getCommandReferenceVisible = () => (store ? Boolean(store.getState().commandReferenceVisible) : Boolean(codePanel?.classList.contains("reference-mode")));
   const debugViewApply = isFunction(debugUI.applyDebugVisibility) ? debugUI.applyDebugVisibility : (() => {});
   const debugViewIsVisible = isFunction(debugUI.isDebugVisible) ? debugUI.isDebugVisible : (() => false);
   const getDebugVisible = () => (store ? Boolean(store.getState().debugVisible) : debugViewIsVisible());
   const isDebugVisible = () => getDebugVisible();
   const applyDebugVisibilityDom = (visible) => {
     debugViewApply(Boolean(visible));
+  };
+  const applyCommandReferenceVisibilityDom = (visible) => {
+    const target = Boolean(visible);
+    if(codePanel){
+      codePanel.classList.toggle("reference-mode", target);
+    }
+    if(btnCommandReference){
+      btnCommandReference.classList.toggle("is-active", target);
+      btnCommandReference.setAttribute("aria-pressed", target ? "true" : "false");
+    }
+    if(commandReferencePane){
+      commandReferencePane.setAttribute("aria-hidden", target ? "false" : "true");
+    }
   };
 
   const setPatternPanelOpen = (value) => {
@@ -427,6 +498,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       const target = Boolean(next.debugVisible);
       applyDebugVisibilityDom(target);
     }
+    if(typeof next.commandReferenceVisible === "boolean"){
+      applyCommandReferenceVisibilityDom(Boolean(next.commandReferenceVisible));
+    }
   };
   if(store){
     handleStoreUpdate(store.getState());
@@ -435,9 +509,15 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const setHistoryVisibility = (visible) => {
     const target = Boolean(visible);
     if(store){
-      store.setState({ historyVisible: target }, "historyVisibility");
+      const next = target
+        ? { historyVisible: true, commandReferenceVisible: false }
+        : { historyVisible: false };
+      store.setState(next, "historyVisibility");
     }else{
       layoutSetHistoryVisibility(target);
+      if(target){
+        applyCommandReferenceVisibilityDom(false);
+      }
     }
   };
   const setDebugVisible = (value) => {
@@ -449,6 +529,22 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       return;
     }
     applyDebugVisibilityDom(target);
+  };
+  const setCommandReferenceVisible = (value) => {
+    const target = Boolean(value);
+    if(store){
+      const current = Boolean(store.getState().commandReferenceVisible);
+      if(current === target) return;
+      const next = target
+        ? { commandReferenceVisible: true, historyVisible: false }
+        : { commandReferenceVisible: false };
+      store.setState(next, "commandReferenceToggle");
+      return;
+    }
+    applyCommandReferenceVisibilityDom(target);
+    if(target){
+      layoutSetHistoryVisibility(false);
+    }
   };
   const applyDebugVisibility = (visible) => {
     if(store){
@@ -487,6 +583,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     applyDebugFromParam,
     applyHistoryFromParam,
     applySampleParam,
+    applyCommandReferenceFromParam,
     applyCombinedStepParam,
     applyStepSpeedParam,
     applyUrlControlStates,
@@ -529,6 +626,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const defaultHistoryVisible = (typeof configDefaults.historyVisible === "boolean")
     ? configDefaults.historyVisible
     : getHistoryVisible();
+  const defaultCommandReferenceVisible = (typeof configDefaults.commandReferenceVisible === "boolean")
+    ? configDefaults.commandReferenceVisible
+    : getCommandReferenceVisible();
   let defaultDebugVisible = (typeof configDefaults.debugVisible === "boolean")
     ? configDefaults.debugVisible
     : isDebugVisible();
@@ -577,6 +677,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     return fallback;
   };
   const defaultMaskIndex = resolveMaskIndex(configDefaults.defaultMask, 0);
+  if(txtInput && activeQrMaxBytes !== null){
+    txtInput.maxLength = activeQrMaxBytes;
+    if(typeof txtInput.value === "string" && txtInput.value.length > activeQrMaxBytes){
+      txtInput.value = txtInput.value.slice(0, activeQrMaxBytes);
+    }
+  }
+  callIfFunction(window.applyDataInputMaxLength, activeQrMaxBytes);
   const MASK_INDEX_MIN = 0;
   const MASK_INDEX_MAX = 7;
   const formatMaskInputValue = (value) => {
@@ -594,7 +701,13 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   };
     const normalizeMaskCommandValue = (rawValue) => {
       if(rawValue === undefined){
-        return { valid: true, index: 0 };
+        return { valid: true, auto: true };
+      }
+      if(rawValue === null){
+        return { valid: true, auto: true };
+      }
+      if(typeof rawValue === "string" && rawValue.trim() === ""){
+        return { valid: true, auto: true };
       }
     const numeric = Number(rawValue);
     if(!Number.isFinite(numeric)){
@@ -604,7 +717,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(truncated < MASK_INDEX_MIN || truncated > MASK_INDEX_MAX){
       return { valid: false, raw: rawValue };
     }
-    return { valid: true, index: truncated };
+    return { valid: true, auto: false, index: truncated };
   };
   const skipExistingFromParam = getBoolParam(PARAM_KEYS.SKIP_EXISTING);
   const skipExistingCells = (skipExistingFromParam !== null)
@@ -683,6 +796,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   applyDebugFromParam({ debugPanel: getDebugPanel(), setDebugVisible });
   applyHistoryFromParam({ codePanel, setHistoryVisibility });
   applySampleParam({ codePanel });
+  applyCommandReferenceFromParam({ setCommandReferenceVisible });
   if(!hasParam(PARAM_KEYS.PATTERN_PANEL)){
     setPatternPanelOpen(defaultPatternOpen);
   }
@@ -691,6 +805,14 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   }
   if(!hasParam(PARAM_KEYS.HISTORY)){
     setHistoryVisibility(defaultHistoryVisible);
+  }
+  if(!hasParam(PARAM_KEYS.COMMAND_REFERENCE)){
+    setCommandReferenceVisible(defaultCommandReferenceVisible);
+  }
+  if(btnCommandReference){
+    btnCommandReference.addEventListener("click", () => {
+      setCommandReferenceVisible(!getCommandReferenceVisible());
+    });
   }
   if(!btnGenerate || !btnInit) return;
   const statusManager = (safeWindow && isFunction(safeWindow.createExecutionStatusManager))
@@ -704,27 +826,194 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ? statusManager.setExecutionStatus
     : () => {};
   const executionStatusMessageWrapEl = dom?.executionStatusTextEl?.parentElement || null;
+  const qrDetailModalEl = document.getElementById("qrDetailModal");
+  const qrDetailCloseEl = document.getElementById("qrDetailClose");
+  const qrDetailDownloadEl = document.getElementById("qrDetailDownload");
+  const qrDetailBodyEl = document.getElementById("qrDetailBody");
   let readMaskLinkEl = null;
+  let qrDetailLinkEl = null;
+  let lastQrDetailPayload = null;
+  let verificationSequence = 0;
+  let qrDetailPreviewCanvas = null;
   const hideReadMaskButton = () => {
     if(readMaskLinkEl && readMaskLinkEl.isConnected){
       readMaskLinkEl.remove();
     }
     readMaskLinkEl = null;
   };
+  const hideQrDetailLink = () => {
+    if(qrDetailLinkEl && qrDetailLinkEl.isConnected){
+      qrDetailLinkEl.remove();
+    }
+    qrDetailLinkEl = null;
+  };
+  const closeQrDetailModal = () => {
+    if(qrDetailModalEl){
+      qrDetailModalEl.classList.add("hidden");
+    }
+  };
+  const openQrDetailModal = () => {
+    if(!qrDetailModalEl || !qrDetailBodyEl) return;
+    const payload = lastQrDetailPayload || {};
+    const urlPattern = /^(https?:\/\/[^\s]+)$/i;
+    const renderDetailValue = (key, valueEl, rawValue) => {
+      const valueText = String(rawValue ?? "-");
+      if(valueText.includes("TEXT:")){
+        const lines = valueText.split(/\r?\n/);
+        let rendered = false;
+        for(let i = 0; i < lines.length; i += 1){
+          const line = lines[i];
+          const m = line.match(/^TEXT:\s*(.+)$/);
+          if(m){
+            const urlText = String(m[1] || "").trim();
+            valueEl.appendChild(document.createTextNode("TEXT: "));
+            if(urlPattern.test(urlText)){
+              const link = document.createElement("a");
+              link.href = urlText;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              link.textContent = urlText;
+              valueEl.appendChild(link);
+              rendered = true;
+            }else{
+              valueEl.appendChild(document.createTextNode(urlText));
+            }
+          }else{
+            valueEl.appendChild(document.createTextNode(line));
+          }
+          if(i < lines.length - 1){
+            valueEl.appendChild(document.createElement("br"));
+          }
+        }
+        if(rendered){
+          return;
+        }
+      }
+      if(urlPattern.test(valueText.trim())){
+        const link = document.createElement("a");
+        link.href = valueText.trim();
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.textContent = valueText;
+        valueEl.appendChild(link);
+        return;
+      }
+      valueEl.textContent = valueText;
+    };
+    const rows = [
+      ["QRバージョン", payload.versionText ?? "-"],
+      ["モード", payload.modeText ?? "-"],
+      ["誤り訂正レベル", payload.errorLevelText ?? "-"],
+      ["読み取れるデータ", payload.decoded ?? "-"],
+      ["マスク番号", payload.maskIndexText ?? "-"],
+      ["評価値", payload.scoreText ?? "-"],
+    ];
+    qrDetailBodyEl.textContent = "";
+    const layoutEl = document.createElement("div");
+    layoutEl.className = "qr-detail-layout";
+    const infoEl = document.createElement("div");
+    infoEl.className = "qr-detail-info";
+    for(const [key, value] of rows){
+      const keyEl = document.createElement("div");
+      keyEl.className = "qr-detail-key";
+      keyEl.textContent = key;
+      const valueEl = document.createElement("div");
+      valueEl.className = "qr-detail-value";
+      renderDetailValue(key, valueEl, value);
+      infoEl.append(keyEl, valueEl);
+    }
+    const previewEl = document.createElement("div");
+    previewEl.className = "qr-detail-preview";
+    const canvas = document.createElement("canvas");
+    const matrix = (typeof window !== "undefined" && Array.isArray(window.boardMatrix))
+      ? window.boardMatrix
+      : null;
+    if(matrix && matrix.length && Array.isArray(matrix[0]) && matrix[0].length){
+      const rowsCount = matrix.length;
+      const colsCount = matrix[0].length;
+      const quietZoneModules = 4;
+      const moduleSize = 8;
+      const width = (colsCount + quietZoneModules * 2) * moduleSize;
+      const height = (rowsCount + quietZoneModules * 2) * moduleSize;
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if(ctx){
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, width, height);
+        ctx.fillStyle = "#000000";
+        const isBlackBitFn = (typeof window !== "undefined" && typeof window.isBlackBit === "function")
+          ? window.isBlackBit
+          : null;
+        const unplacedKind = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number")
+          ? window.BIT_UNPLACED
+          : 0;
+        const bitKindFn = (typeof window !== "undefined" && typeof window.bitKind === "function")
+          ? window.bitKind
+          : null;
+        for(let r = 0; r < rowsCount; r += 1){
+          const row = matrix[r];
+          if(!Array.isArray(row)) continue;
+          for(let c = 0; c < colsCount; c += 1){
+            const val = row[c];
+            if(typeof val !== "number") continue;
+            const kind = bitKindFn ? bitKindFn(val) : Math.abs(val);
+            if(kind === unplacedKind) continue;
+            const isBlack = isBlackBitFn ? isBlackBitFn(val) : val > 0;
+            if(!isBlack) continue;
+            const x = (c + quietZoneModules) * moduleSize;
+            const y = (r + quietZoneModules) * moduleSize;
+            ctx.fillRect(x, y, moduleSize, moduleSize);
+          }
+        }
+      }
+    }
+    previewEl.appendChild(canvas);
+    qrDetailPreviewCanvas = canvas;
+    layoutEl.append(infoEl, previewEl);
+    qrDetailBodyEl.appendChild(layoutEl);
+    qrDetailModalEl.classList.remove("hidden");
+  };
+  const showQrDetailLink = () => {
+    if(!executionStatusMessageWrapEl || qrDetailLinkEl || !lastQrDetailPayload) return;
+    const link = document.createElement("a");
+    link.href = "#";
+    link.className = "execution-status-read-link";
+    link.textContent = "▶詳細表示";
+    link.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      openQrDetailModal();
+    });
+    executionStatusMessageWrapEl.appendChild(link);
+    qrDetailLinkEl = link;
+  };
   const showReadMaskButton = () => {
     if(!executionStatusMessageWrapEl || readMaskLinkEl) return;
     const link = document.createElement("a");
     link.href = "#";
     link.className = "execution-status-read-link";
-    link.textContent = "▼読取用に調整";
+    link.textContent = "▶読み取り用に調整";
     link.addEventListener("click", async (ev) => {
       ev.preventDefault();
       if(typeof applyMask !== "function") return;
       link.classList.add("is-busy");
       try{
-        const ok = await applyMask(0);
+        const ok = await applyMask();
         if(ok){
           setExecutionStatus("finished", undefined, "読み取れる正しいQRコードです。");
+          const outcome = logVerificationOutcome();
+          if(lastQrDetailPayload && typeof lastQrDetailPayload === "object"){
+            const scoreValue = (typeof window !== "undefined" && Number.isFinite(window.lastMaskPenaltyScore))
+              ? window.lastMaskPenaltyScore
+              : null;
+            lastQrDetailPayload = Object.assign({}, lastQrDetailPayload, {
+              maskIndexText: (typeof outcome?.maskIndex === "number") ? String(outcome.maskIndex) : "-",
+              scoreText: (scoreValue !== null) ? String(scoreValue) : "-",
+            });
+          }
+          if(outcome && outcome.match && !outcome.preMaskLikely){
+            showQrDetailLink();
+          }
         }
       }finally{
         link.classList.remove("is-busy");
@@ -733,8 +1022,77 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     executionStatusMessageWrapEl.appendChild(link);
     readMaskLinkEl = link;
   };
+  if(qrDetailCloseEl){
+    qrDetailCloseEl.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      closeQrDetailModal();
+    });
+  }
+  if(qrDetailDownloadEl){
+    qrDetailDownloadEl.addEventListener("click", () => {
+      const matrix = (typeof window !== "undefined" && Array.isArray(window.boardMatrix))
+        ? window.boardMatrix
+        : null;
+      if(!matrix || !matrix.length || !Array.isArray(matrix[0]) || !matrix[0].length) return;
+      const rows = matrix.length;
+      const cols = matrix[0].length;
+      const quietZoneModules = 4;
+      const moduleSize = 20;
+      const width = (cols + quietZoneModules * 2) * moduleSize;
+      const height = (rows + quietZoneModules * 2) * moduleSize;
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if(!ctx) return;
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = "#000000";
+      const isBlackBitFn = (typeof window !== "undefined" && typeof window.isBlackBit === "function")
+        ? window.isBlackBit
+        : null;
+      const unplacedKind = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number")
+        ? window.BIT_UNPLACED
+        : -1;
+      const bitKindFn = (typeof window !== "undefined" && typeof window.bitKind === "function")
+        ? window.bitKind
+        : null;
+      for(let r = 0; r < rows; r += 1){
+        const row = matrix[r];
+        if(!Array.isArray(row)) continue;
+        for(let c = 0; c < cols; c += 1){
+          const val = row[c];
+          if(typeof val !== "number") continue;
+          const kind = bitKindFn ? bitKindFn(val) : Math.abs(val);
+          if(kind === unplacedKind) continue;
+          const isBlack = isBlackBitFn ? isBlackBitFn(val) : val > 0;
+          if(!isBlack) continue;
+          const x = (c + quietZoneModules) * moduleSize;
+          const y = (r + quietZoneModules) * moduleSize;
+          ctx.fillRect(x, y, moduleSize, moduleSize);
+        }
+      }
+      const link = document.createElement("a");
+      link.href = canvas.toDataURL("image/png");
+      const now = new Date();
+      const pad2 = (value) => String(value).padStart(2, "0");
+      const timestamp = `${now.getFullYear()}${pad2(now.getMonth() + 1)}${pad2(now.getDate())}${pad2(now.getHours())}${pad2(now.getMinutes())}${pad2(now.getSeconds())}`;
+      link.download = `qrcode_${timestamp}.png`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    });
+  }
+  if(qrDetailModalEl){
+    qrDetailModalEl.addEventListener("click", (ev) => {
+      if(ev.target === qrDetailModalEl){
+        closeQrDetailModal();
+      }
+    });
+  }
   const setExecutionStatus = (...args) => {
     hideReadMaskButton();
+    hideQrDetailLink();
     rawSetExecutionStatus(...args);
   };
   const normalizeInputBeforeRun = statusManager
@@ -831,7 +1189,20 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     drawFormatPatterns: { l2: "基本パターン", l3: "フォーマットパターンを描画しています。" },
     applyMaskFormat: { l2: "マスク", l3: "フォーマットパターンを更新しています。" },
     verify: { l2: "QRコード検証", l3: "作成中" },
-    applyMask: (maskIndex) => ({ l2: "マスク", l3: `マスク${maskIndex}を適用しています。` }),
+    applyMask: (payload) => {
+      if(payload && typeof payload === "object"){
+        if(payload.stage === "evaluate"){
+          return { l2: "マスク", l3: `マスク${payload.maskIndex}を評価しています。` };
+        }
+        if(payload.stage === "score"){
+          return { l2: "マスク", l3: `マスク${payload.maskIndex}の評価値：${payload.score}` };
+        }
+        if(payload.stage === "select"){
+          return { l2: "マスク", l3: `マスク${payload.maskIndex}を選択します。` };
+        }
+      }
+      return { l2: "マスク", l3: `マスク${payload}を適用しています。` };
+    },
   };
   const cursorUI = (isFunction(safeWindow?.createExecutionStatusCursor))
     ? safeWindow.createExecutionStatusCursor({
@@ -868,7 +1239,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         isBlackBit: (value) => (typeof window.isBlackBit === "function")
           ? safeWindow?.isBlackBit(value)
           : value > 0,
-        unplacedKind: (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : -1,
+        unplacedKind: (typeof window.BIT_UNPLACED === "number") ? window.BIT_UNPLACED : 0,
         isDrawingBasePattern: Boolean(window.isDrawingBasePattern),
         getNextBasePatternInfos: (count) => (typeof window.getNextBasePatternInfos === "function")
           ? safeWindow?.getNextBasePatternInfos(count)
@@ -961,7 +1332,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       const centerX = ev.clientX - rect.left;
       const centerY = ev.clientY - rect.top;
       const minDimension = Math.min(width, height);
-      const maxGridRadius = Math.min((minDimension / 25) * 6, 260);
+      const maxGridRadius = Math.min((minDimension / BOARD_ROWS) * 6, 260);
       const radius = Math.max(24, Math.min(maxGridRadius, minDimension * 0.15));
       const count = Math.max(16, Math.min(48, Math.round((width * height) / 18000)));
       const minSize = Math.max(6, Math.round(minDimension * 0.03));
@@ -1045,6 +1416,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   };
   const showApiStatus = (name, payload) => {
     if(!shouldShowStepStatus(name)) return null;
+    const holdUntil = (typeof window !== "undefined" && Number.isFinite(window.__statusHoldUntil))
+      ? window.__statusHoldUntil
+      : 0;
+    if(holdUntil > Date.now()){
+      return null;
+    }
     const detail = describeApiStatus(name, payload);
     if(detail){
       setExecutionStatus("running", undefined, detail);
@@ -1079,16 +1456,15 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     ABORT_ERR,
     RESET_DELAY_MS,
   } = globalScope;
-  const FORMAT_L = [
-    30660, // mask 0
-    29427, // mask 1
-    32170, // mask 2
-    30877, // mask 3
-    26159, // mask 4
-    25368, // mask 5
-    27713, // mask 6
-    26998, // mask 7
-  ];
+  const DEFAULT_FORMAT_BITS = Array.isArray(activeQrSpec?.formatBits)
+    ? activeQrSpec.formatBits
+    : [30660, 29427, 32170, 30877, 26159, 25368, 27713, 26998];
+  const getCurrentFormatBits = () => {
+    const spec = isFunction(safeWindow?.getActiveQrSpec)
+      ? safeWindow.getActiveQrSpec(txtInput?.value ?? "")
+      : null;
+    return Array.isArray(spec?.formatBits) ? spec.formatBits : DEFAULT_FORMAT_BITS;
+  };
   const originalSetRenderMode = window.setRenderMode;
   let renderModeState = RENDER_IMMEDIATE;
   const setRenderMode = (mode) => {
@@ -1163,7 +1539,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const applyCodeSampleParam = (typeof domainQrParams.applyCodeSampleParam === "function")
     ? (options) => domainQrParams.applyCodeSampleParam(options)
     : () => false;
-  ctx.FORMAT_L = FORMAT_L;
+  Object.defineProperty(ctx, "FORMAT_L", {
+    configurable: true,
+    get: getCurrentFormatBits,
+  });
   const runIdAccessor = {
     get: () => uiState.getRunId(),
     set: (value) => uiState.setRunId(value),
@@ -1406,7 +1785,140 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   const putDarkModuleCells = (...args) => putDarkModuleCellsCore(...args);
   const putFormatCells = (...args) => putFormatCellsCore(...args);
 
-  async function applyMaskCore(maskIndex = defaultMaskIndex){
+  const scoreMaskPenalty = (darkMatrix) => {
+    if(!Array.isArray(darkMatrix) || !darkMatrix.length || !Array.isArray(darkMatrix[0])){
+      return Number.POSITIVE_INFINITY;
+    }
+    const rows = darkMatrix.length;
+    const cols = darkMatrix[0].length;
+    let score = 0;
+    const penaltyForLine = (getter, length) => {
+      let total = 0;
+      let runColor = null;
+      let runLen = 0;
+      for(let i = 0; i < length; i += 1){
+        const isDark = Boolean(getter(i));
+        if(runColor === null){
+          runColor = isDark;
+          runLen = 1;
+          continue;
+        }
+        if(isDark === runColor){
+          runLen += 1;
+          continue;
+        }
+        if(runLen >= 5){
+          total += 3 + (runLen - 5);
+        }
+        runColor = isDark;
+        runLen = 1;
+      }
+      if(runLen >= 5){
+        total += 3 + (runLen - 5);
+      }
+      return total;
+    };
+    for(let r = 0; r < rows; r += 1){
+      score += penaltyForLine((c) => darkMatrix[r][c], cols);
+    }
+    for(let c = 0; c < cols; c += 1){
+      score += penaltyForLine((r) => darkMatrix[r][c], rows);
+    }
+    for(let r = 0; r < rows - 1; r += 1){
+      for(let c = 0; c < cols - 1; c += 1){
+        const v = darkMatrix[r][c];
+        if(
+          darkMatrix[r][c + 1] === v
+          && darkMatrix[r + 1][c] === v
+          && darkMatrix[r + 1][c + 1] === v
+        ){
+          score += 3;
+        }
+      }
+    }
+    const finderLikeA = [true, false, true, true, true, false, true, false, false, false, false];
+    const finderLikeB = [false, false, false, false, true, false, true, true, true, false, true];
+    const matchesPattern = (getter, start, pattern) => {
+      for(let i = 0; i < pattern.length; i += 1){
+        if(Boolean(getter(start + i)) !== pattern[i]){
+          return false;
+        }
+      }
+      return true;
+    };
+    for(let r = 0; r < rows; r += 1){
+      for(let c = 0; c <= cols - 11; c += 1){
+        if(matchesPattern((idx) => darkMatrix[r][idx], c, finderLikeA) || matchesPattern((idx) => darkMatrix[r][idx], c, finderLikeB)){
+          score += 40;
+        }
+      }
+    }
+    for(let c = 0; c < cols; c += 1){
+      for(let r = 0; r <= rows - 11; r += 1){
+        if(matchesPattern((idx) => darkMatrix[idx][c], r, finderLikeA) || matchesPattern((idx) => darkMatrix[idx][c], r, finderLikeB)){
+          score += 40;
+        }
+      }
+    }
+    let darkCount = 0;
+    const totalCount = rows * cols;
+    for(let r = 0; r < rows; r += 1){
+      for(let c = 0; c < cols; c += 1){
+        if(darkMatrix[r][c]){
+          darkCount += 1;
+        }
+      }
+    }
+    const ratio = (darkCount * 100) / totalCount;
+    const deviationSteps = Math.floor(Math.abs(ratio - 50) / 5);
+    score += deviationSteps * 10;
+    return score;
+  };
+  const chooseBestMaskResult = ({ MASK_FUNCTIONS, isFunctionalKind, onEvaluate, onScore }) => {
+    const size = Array.isArray(window.boardMatrix)
+      ? window.boardMatrix.length
+      : (isFunction(window.getActiveQrBoardSize) ? window.getActiveQrBoardSize() : 25);
+    const isBlackBitFn = (typeof window.isBlackBit === "function")
+      ? window.isBlackBit
+      : ((value) => value > 0);
+    const bitKindFn = (typeof window.bitKind === "function")
+      ? window.bitKind
+      : ((value) => Math.abs(value));
+    let bestIdx = defaultMaskIndex;
+    let bestScore = Number.POSITIVE_INFINITY;
+    const scores = {};
+    for(let maskIdx = MASK_INDEX_MIN; maskIdx <= MASK_INDEX_MAX; maskIdx += 1){
+      const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[maskIdx] === "function") ? MASK_FUNCTIONS[maskIdx] : null;
+      if(!maskFn) continue;
+      callIfFunction(onEvaluate, maskIdx);
+      const darkMatrix = [];
+      for(let row = 1; row <= size; row += 1){
+        const line = [];
+        for(let col = 1; col <= size; col += 1){
+          const encoded = window.getCell(row, col);
+          if(typeof encoded !== "number"){
+            line.push(false);
+            continue;
+          }
+          const kind = bitKindFn(encoded);
+          const isFunctional = (typeof isFunctionalKind === "function") ? isFunctionalKind(kind) : false;
+          const shouldFlip = !isFunctional && maskFn(row - 1, col - 1);
+          const isDark = Boolean(isBlackBitFn(encoded));
+          line.push(shouldFlip ? !isDark : isDark);
+        }
+        darkMatrix.push(line);
+      }
+      const score = scoreMaskPenalty(darkMatrix);
+      scores[maskIdx] = score;
+      callIfFunction(onScore, maskIdx, score);
+      if(score < bestScore){
+        bestScore = score;
+        bestIdx = maskIdx;
+      }
+    }
+    return { bestIdx, bestScore, scores };
+  };
+  async function applyMaskCore(maskIndex){
     if(!ctx) return false;
     const {
       isStepModeOn,
@@ -1425,18 +1937,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       };
     const baseRun = ctx.runId;
     const currentMaskRun = uiState.incrementMaskRunId();
-    let idx = Number(maskIndex);
-    if(!Number.isFinite(idx)){
-      idx = defaultMaskIndex;
-    }
-    if(idx < 0 || idx > 7){
-      window.logEvent("applyMask", maskIndex ?? "", "マスク指定が不正です");
-      return false;
-    }
-    window.logEvent("applyMask", idx, `マスク${idx}を適用`);
-    showApiStatus("applyMask", idx);
-    const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[idx] === "function") ? MASK_FUNCTIONS[idx] : null;
-    if(!maskFn) return false;
+    const isAutoMask = (maskIndex === undefined || maskIndex === null || maskIndex === "auto");
     const stepMask = (typeof isStepModeOn === "function" ? isStepModeOn() : false)
       && !(stepSkipFunctions && stepSkipFunctions.checked);
     const shouldAbort = () => executionControl.shouldAbort(baseRun, ctx, () => currentMaskRun !== ctx.maskRunId);
@@ -1448,6 +1949,273 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       dir,
       () => currentMaskRun !== ctx.maskRunId,
     );
+    const getMaskTargets = (maskFn, size) => {
+      const targets = [];
+      for(let row = 1; row <= size; row += 1){
+        for(let col = 1; col <= size; col += 1){
+          const encoded = window.getCell(row, col);
+          if(typeof encoded !== "number") continue;
+          const kind = (typeof window.bitKind === "function") ? window.bitKind(encoded) : Math.abs(encoded);
+          if(typeof isFunctionalKind === "function" && isFunctionalKind(kind)) continue;
+          if(maskFn(row - 1, col - 1)){
+            targets.push([row, col]);
+          }
+        }
+      }
+      return targets;
+    };
+    const evaluateMaskScoreFromBoard = (size) => {
+      const isBlackBitFn = (typeof window.isBlackBit === "function")
+        ? window.isBlackBit
+        : ((value) => value > 0);
+      const darkMatrix = [];
+      for(let row = 1; row <= size; row += 1){
+        const line = [];
+        for(let col = 1; col <= size; col += 1){
+          const encoded = window.getCell(row, col);
+          line.push(typeof encoded === "number" ? Boolean(isBlackBitFn(encoded)) : false);
+        }
+        darkMatrix.push(line);
+      }
+      return scoreMaskPenalty(darkMatrix);
+    };
+    const resolveMaskFadeMs = (stepDelay) => {
+      const baseFadeMs = (typeof window.maskFadeDurationMs === "number")
+        ? Math.max(0, window.maskFadeDurationMs)
+        : 250;
+      const delayMs = Math.max(0, Number(stepDelay) || 0);
+      return Math.max(50, Math.round(baseFadeMs + (delayMs * 2)));
+    };
+    const resolveMaskStepDelay = () => {
+      const sliderValue = Number(stepSpeed && typeof stepSpeed.value !== "undefined" ? stepSpeed.value : NaN);
+      if(Number.isFinite(sliderValue)){
+        return Math.max(0, Math.min(120, sliderValue));
+      }
+      const fallback = (typeof getStepDelay === "function") ? getStepDelay() : 0;
+      return Math.max(0, Math.min(120, Number(fallback) || 0));
+    };
+    const resolveMaskTempoScale = (stepDelay) => {
+      const delayMs = Math.max(0, Math.min(120, Number(stepDelay) || 0));
+      return 0.5 + (1.5 * (delayMs / 120));
+    };
+    const applyMaskTargetsWithFade = async (targets, { mode = "apply" } = {}) => {
+      const ensureEvalMaskOverlay = () => {
+        if(ctx.maskOverlayEl && ctx.maskOverlayEl.isConnected){
+          return ctx.maskOverlayEl;
+        }
+        const gridArea = document.querySelector(".grid-area");
+        if(!gridArea) return null;
+        const overlay = document.createElement("div");
+        overlay.className = "mask-overlay";
+        const frag = document.createDocumentFragment();
+        for(let i = 0; i < BOARD_ROWS * BOARD_COLS; i += 1){
+          const cell = document.createElement("div");
+          cell.className = "mask-cell";
+          frag.appendChild(cell);
+        }
+        overlay.appendChild(frag);
+        gridArea.appendChild(overlay);
+        ctx.maskOverlayEl = overlay;
+        return overlay;
+      };
+      const applyEvalMaskOverlayColor = (overlay) => {
+        if(!overlay) return;
+        const maskKind = (typeof window.BIT_MASK === "number") ? window.BIT_MASK : 30;
+        const colorName = (typeof window.colorsForKind === "function")
+          ? window.colorsForKind(maskKind)
+          : "gray";
+        if(typeof window.isColorEnabled !== "undefined" && !window.isColorEnabled){
+          overlay.style.setProperty("--mask-overlay-color", "#000");
+          return;
+        }
+        switch(colorName){
+          case "gray":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-gray-dark)");
+            break;
+          case "red":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-red-dark)");
+            break;
+          case "blue":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-blue-dark)");
+            break;
+          case "green":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-green-dark)");
+            break;
+          case "yellow":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-yellow-dark)");
+            break;
+          case "purple":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-purple-dark)");
+            break;
+          case "orange":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-orange-dark)");
+            break;
+          case "format":
+            overlay.style.setProperty("--mask-overlay-color", "var(--col-format-blue-dark)");
+            break;
+          default:
+            overlay.style.setProperty("--mask-overlay-color", "#000");
+            break;
+        }
+      };
+      const overlay = ensureEvalMaskOverlay();
+      const stepDelay = resolveMaskStepDelay();
+      const tempoScale = resolveMaskTempoScale(stepDelay);
+      const nMs = Math.max(50, Math.round(resolveMaskFadeMs(stepDelay) * tempoScale));
+      const halfMs = Math.max(25, Math.round(nMs / 2));
+      const invertTargets = async () => {
+        const prevStepAnim = (typeof window.stepAnimationEnabled === "boolean")
+          ? window.stepAnimationEnabled
+          : undefined;
+        window.stepAnimationEnabled = false;
+        try{
+          for(const [row, col] of targets){
+            if(shouldAbort()) return false;
+            invertCell(row, col);
+          }
+        }finally{
+          if(prevStepAnim === undefined){
+            delete window.stepAnimationEnabled;
+          }else{
+            window.stepAnimationEnabled = prevStepAnim;
+          }
+        }
+        return !shouldAbort();
+      };
+      const syncOverlayMaskCells = () => {
+        if(!overlay) return;
+        const targetSet = new Set(targets.map(([row, col]) => `${row},${col}`));
+        const cells = overlay.children;
+        let i = 0;
+        for(let row = 1; row <= BOARD_ROWS; row += 1){
+          for(let col = 1; col <= BOARD_COLS; col += 1){
+            const cellEl = cells[i++];
+            if(!cellEl) continue;
+            if(targetSet.has(`${row},${col}`)){
+              cellEl.classList.add("is-on");
+            }else{
+              cellEl.classList.remove("is-on");
+            }
+          }
+        }
+      };
+      syncOverlayMaskCells();
+      if(overlay){
+        applyEvalMaskOverlayColor(overlay);
+      }
+      if(mode === "revert"){
+        const revertFadeMs = Math.max(120, halfMs);
+        let fadePromise = null;
+        if(overlay){
+          overlay.style.transition = "";
+          overlay.style.opacity = "1";
+          overlay.offsetHeight;
+          const anim = overlay.animate(
+            [{ opacity: 1 }, { opacity: 0 }],
+            { duration: revertFadeMs, easing: "linear", fill: "forwards" },
+          );
+          fadePromise = anim.finished.catch(() => {});
+        }
+        const okRevert = await invertTargets();
+        if(!okRevert) return false;
+        if(fadePromise){
+          await fadePromise;
+        }else{
+          await sleep(revertFadeMs);
+        }
+        await sleep(halfMs);
+        if(overlay){
+          overlay.style.opacity = "";
+          overlay.offsetHeight;
+        }
+        return !shouldAbort();
+      }
+      if(overlay){
+        overlay.style.transition = "";
+        overlay.style.opacity = "0";
+        overlay.offsetHeight;
+        const animIn = overlay.animate(
+          [{ opacity: 0 }, { opacity: 1 }],
+          { duration: halfMs, easing: "linear", fill: "forwards" },
+        );
+        await animIn.finished.catch(() => {});
+      }else{
+        await sleep(halfMs);
+      }
+      const okApply = await invertTargets();
+      if(!okApply) return false;
+      if(overlay){
+        const animOut = overlay.animate(
+          [{ opacity: 1 }, { opacity: 0 }],
+          { duration: nMs, easing: "linear", fill: "forwards" },
+        );
+        await animOut.finished.catch(() => {});
+        overlay.style.opacity = "";
+        overlay.offsetHeight;
+      }else{
+        await sleep(nMs);
+      }
+      return !shouldAbort();
+    };
+    let maskResult;
+    if(stepMask && isAutoMask){
+      const size = Array.isArray(window.boardMatrix)
+        ? window.boardMatrix.length
+        : (isFunction(window.getActiveQrBoardSize) ? window.getActiveQrBoardSize() : 25);
+      const scores = {};
+      let bestIdx = defaultMaskIndex;
+      let bestScore = Number.POSITIVE_INFINITY;
+      for(let maskIdx = MASK_INDEX_MIN; maskIdx <= MASK_INDEX_MAX; maskIdx += 1){
+        const maskFnCandidate = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[maskIdx] === "function") ? MASK_FUNCTIONS[maskIdx] : null;
+        if(!maskFnCandidate) continue;
+        showApiStatus("applyMask", { stage: "evaluate", maskIndex: maskIdx });
+        const targets = getMaskTargets(maskFnCandidate, size);
+        const applied = await applyMaskTargetsWithFade(targets, { mode: "apply" });
+        if(!applied) return false;
+        const score = evaluateMaskScoreFromBoard(size);
+        scores[maskIdx] = score;
+        showApiStatus("applyMask", { stage: "score", maskIndex: maskIdx, score });
+        if(score < bestScore){
+          bestScore = score;
+          bestIdx = maskIdx;
+        }
+        const reverted = await applyMaskTargetsWithFade(targets, { mode: "revert" });
+        if(!reverted) return false;
+      }
+      maskResult = { bestIdx, bestScore, scores };
+    }else{
+      maskResult = chooseBestMaskResult({
+        MASK_FUNCTIONS,
+        isFunctionalKind,
+        onEvaluate: (maskIdx) => {
+          showApiStatus("applyMask", { stage: "evaluate", maskIndex: maskIdx });
+        },
+        onScore: (maskIdx, score) => {
+          showApiStatus("applyMask", { stage: "score", maskIndex: maskIdx, score });
+        },
+      });
+    }
+    const scoreDetail = Array.from({ length: 8 }, (_, i) => `m${i}:${Number.isFinite(maskResult.scores[i]) ? maskResult.scores[i] : "-"}`).join(", ");
+    window.logEvent("applyMask", "score", `マスク評価値 ${scoreDetail}`);
+    let idx = isAutoMask
+      ? maskResult.bestIdx
+      : Number(maskIndex);
+    if(!isAutoMask && !Number.isFinite(idx)){
+      idx = defaultMaskIndex;
+    }
+    if(idx < 0 || idx > 7){
+      window.logEvent("applyMask", maskIndex ?? "", "マスク指定が不正です");
+      return false;
+    }
+    window.logEvent("applyMask", idx, `マスク${idx}を適用`);
+    const selectedScore = Number.isFinite(maskResult.scores[idx]) ? maskResult.scores[idx] : null;
+    if(typeof window !== "undefined"){
+      window.lastMaskPenaltyScore = selectedScore;
+    }
+    showApiStatus("applyMask", { stage: "select", maskIndex: idx });
+    showApiStatus("applyMask", idx);
+    const maskFn = (MASK_FUNCTIONS && typeof MASK_FUNCTIONS[idx] === "function") ? MASK_FUNCTIONS[idx] : null;
+    if(!maskFn) return false;
     const prevCursor = { row: cursorPos.row, col: cursorPos.col, dir: cursorPos.dir };
     const maskCursorDir = stepMask ? DIR_RIGHT : prevCursor.dir;
     const prevRender = ctx.renderMode;
@@ -1465,7 +2233,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       const overlay = document.createElement("div");
       overlay.className = "mask-overlay";
       const frag = document.createDocumentFragment();
-      for(let i = 0; i < 25 * 25; i++){
+      for(let i = 0; i < BOARD_ROWS * BOARD_COLS; i++){
         const cell = document.createElement("div");
         cell.className = "mask-cell";
         frag.appendChild(cell);
@@ -1519,8 +2287,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       if(!overlay) return;
       const cells = overlay.children;
       let idx = 0;
-      for(let row = 1; row <= 25; row++){
-        for(let col = 1; col <= 25; col++){
+      for(let row = 1; row <= BOARD_ROWS; row++){
+        for(let col = 1; col <= BOARD_COLS; col++){
           const cellEl = cells[idx++];
           if(!cellEl) continue;
           const encoded = window.getCell(row, col);
@@ -1542,8 +2310,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       }
     };
     const applyMaskBatch = () => {
-      for(let row = 1; row <= 25; row++){
-        for(let col = 1; col <= 25; col++){
+      for(let row = 1; row <= BOARD_ROWS; row++){
+        for(let col = 1; col <= BOARD_COLS; col++){
           if(shouldAbort()) return false;
           const encoded = window.getCell(row, col);
           if(typeof encoded !== "number") continue;
@@ -1579,45 +2347,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
           : undefined;
         restoreStepAnim = true;
         window.stepAnimationEnabled = false;
-        const overlay = ensureMaskOverlay();
-        applyMaskOverlayColor(overlay);
-        updateMaskOverlay(overlay);
-        const stepDelay = (typeof getStepDelay === "function") ? getStepDelay() : 0;
-        const fadeMs = (typeof window.maskFadeDurationMs === "number")
-          ? Math.max(0, window.maskFadeDurationMs)
-          : 250;
-        const holdMs = Math.max(100, stepDelay * 10);
-        if(overlay){
-          overlay.style.transition = `opacity ${fadeMs}ms linear`;
-          overlay.style.opacity = "0";
-          await new Promise(requestAnimationFrame);
-          await new Promise(requestAnimationFrame);
-          overlay.style.opacity = "1";
-          await sleep(fadeMs);
-        }else{
-          await sleep(fadeMs);
-        }
-        if(shouldAbort()) return false;
-        completed = applyMaskBatch();
+        const targets = getMaskTargets(maskFn, BOARD_ROWS);
+        completed = await applyMaskTargetsWithFade(targets, { mode: "apply" });
         if(!completed) return false;
-        if(holdMs > 0){
-          await sleep(holdMs);
-        }
-        if(overlay){
-          overlay.style.transition = `opacity ${fadeMs}ms linear`;
-          overlay.style.opacity = "1";
-          await new Promise(requestAnimationFrame);
-          await new Promise(requestAnimationFrame);
-          overlay.style.opacity = "0";
-          await sleep(fadeMs);
-          overlay.style.transition = "";
-          overlay.style.opacity = "";
-          overlay.offsetHeight;
-        }
-        completed = !shouldAbort();
       }else{
-      for(let row = 1; row <= 25; row++){
-        for(let col = 1; col <= 25; col++){
+      for(let row = 1; row <= BOARD_ROWS; row++){
+        for(let col = 1; col <= BOARD_COLS; col++){
           if(shouldAbort()) break;
           const encoded = window.getCell(row, col);
           if(typeof encoded !== "number") continue;
@@ -1650,6 +2385,24 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         showApiStatus("applyMask", idx);
       }
     }finally{
+      if(ctx.maskOverlayEl){
+        try{
+          const animations = (typeof ctx.maskOverlayEl.getAnimations === "function")
+            ? ctx.maskOverlayEl.getAnimations()
+            : [];
+          for(const anim of animations){
+            if(anim && typeof anim.cancel === "function"){
+              anim.cancel();
+            }
+          }
+        }catch(_err){
+          // ignore animation cancel errors
+        }
+        ctx.maskOverlayEl.style.transition = "";
+        ctx.maskOverlayEl.style.opacity = "";
+        ctx.maskOverlayEl.classList.remove("is-half", "is-full");
+        ctx.maskOverlayEl.offsetHeight;
+      }
       if(maskApplyingActive){
         setMaskApplying(false);
       }
@@ -1683,7 +2436,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     return runGuardedExecution(
       { kind: "applyMask" },
-      () => applyMaskCore(normalized.index),
+      () => applyMaskCore(normalized.auto ? undefined : normalized.index),
     );
   };
   async function drawBasePatternsCore(ctx, { deferFlush = false, currentRun, resetDelay = false } = {}){
@@ -1934,7 +2687,18 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(arg === undefined){
       maskOk = await applyMask();
     }else if(typeof arg === "object" && arg !== null){
-      maskOk = await applyMask(arg.maskIndex);
+      const autoMaskFlag = (
+        arg.autoMask === true
+        || arg.maskAuto === true
+        || arg.useBestMask === true
+        || arg.maskMode === "auto"
+        || arg.mask === "auto"
+      );
+      if(autoMaskFlag){
+        maskOk = await applyMask();
+      }else{
+        maskOk = await applyMask(arg.maskIndex);
+      }
     }else{
       maskOk = await applyMask(arg);
     }
@@ -1952,6 +2716,20 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
   async function drawQRCode(arg){
     window.logEvent("drawQRCode", arg ?? "", "QRコード描画開始");
+    const shouldResetBeforeCompose = !(
+      typeof arg === "object"
+      && arg !== null
+      && (arg.noReset === true || arg.reset === false)
+    );
+    if(shouldResetBeforeCompose){
+      const resetResult = resetBoard({ resetData: true });
+      if(resetResult && isFunction(resetResult.then)){
+        const resetOk = await resetResult;
+        if(resetOk === false) return false;
+      }else if(resetResult === false){
+        return false;
+      }
+    }
     const composed = await composeQRCode(arg);
     if(!composed) return false;
     renderQRCode();
@@ -1985,15 +2763,14 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
   function buildFunctionSet(){
     const set = new Set();
     const add = (r, c) => {
-      if(r < 1 || r > 25 || c < 1 || c > 25) return;
+      if(r < 1 || r > BOARD_ROWS || c < 1 || c > BOARD_COLS) return;
       set.add(`${r}-${c}`);
     };
     // finder + white separator (9x9 around each)
-    const finders = [
-      [1, 1],
-      [1, 19],
-      [19, 1],
-    ];
+    const spec = isFunction(window.getActiveQrSpec) ? window.getActiveQrSpec(txtInput?.value ?? "") : activeQrSpec;
+    const finders = isFunction(window.getQrFinderOriginsForSpec)
+      ? window.getQrFinderOriginsForSpec(spec)
+      : [[1, 1], [1, BOARD_COLS - 6], [BOARD_ROWS - 6, 1]];
     for(const [tr, tc] of finders){
       for(let dr = -1; dr <= 7; dr++){
         for(let dc = -1; dc <= 7; dc++){
@@ -2003,25 +2780,33 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     }
     // timing (row 7, col 7)
     if(timingRowIndex > 0){
-      for(let c = 1; c <= 25; c++) add(timingRowIndex, c);
+      for(let c = 1; c <= BOARD_COLS; c++) add(timingRowIndex, c);
     }
     if(timingColIndex > 0){
-      for(let r = 1; r <= 25; r++) add(r, timingColIndex);
+      for(let r = 1; r <= BOARD_ROWS; r++) add(r, timingColIndex);
     }
-    // alignment 5x5 at (19,19)
-    for(let dr = -2; dr <= 2; dr++){
-      for(let dc = -2; dc <= 2; dc++){
-        add(19 + dr, 19 + dc);
+    // alignment patterns
+    const alignments = isFunction(window.getQrAlignmentCentersForSpec)
+      ? window.getQrAlignmentCentersForSpec(spec)
+      : [[BOARD_ROWS - 6, BOARD_COLS - 6]];
+    for(const [row, col] of alignments){
+      for(let dr = -2; dr <= 2; dr++){
+        for(let dc = -2; dc <= 2; dc++){
+          add(row + dr, col + dc);
+        }
       }
     }
     // dark module
-    add(18, 9);
+    const darkModule = isFunction(window.getQrDarkModuleCoordForSpec)
+      ? window.getQrDarkModuleCoordForSpec(spec)
+      : [BOARD_ROWS - 7, 9];
+    add(darkModule[0], darkModule[1]);
     // format info positions (both copies)
     const coordsA = [
       [8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],
       [8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8],
     ];
-    const n = 25;
+    const n = BOARD_ROWS;
     const coordsB = [
       [8,n-1],[8,n-2],[8,n-3],[8,n-4],[8,n-5],[8,n-6],[8,n-7],[8,n-8],
       [n-7,8],[n-6,8],[n-5,8],[n-4,8],[n-3,8],[n-2,8],[n-1,8],
@@ -2055,6 +2840,12 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(ev.repeat) return;
     const asciiModal = document.getElementById("asciiModal");
     if(asciiModal && !asciiModal.classList.contains("hidden")) return;
+    const qrDetailModal = document.getElementById("qrDetailModal");
+    if(qrDetailModal && !qrDetailModal.classList.contains("hidden")){
+      qrDetailModal.classList.add("hidden");
+      ev.preventDefault();
+      return;
+    }
     stopAndReset();
     ev.preventDefault();
   });
@@ -2076,6 +2867,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       reason: result.reason || (result.ok ? "ok" : "rs_mismatch"),
       maskIndex: result.maskIndex,
       decoded: result.text,
+      modeValue: result.modeValue,
+      dataCodewords: result.dataCodewords,
       match,
       preMaskLikely,
       stats: result.stats,
@@ -2084,7 +2877,53 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     return Object.assign({ ok: result.ok }, payload);
   };
 
+  const AUTO_QR_RELOAD_KEY = "qrmaker:autoVersionReload";
+  const encodeDataParamForReload = (value) => {
+    const normalized = String(value ?? "");
+    if(normalized === "") return "_";
+    if(normalized === "_" || normalized.startsWith("~")) return `~${normalized}`;
+    return normalized;
+  };
+  const getAutoQrBoardSizeForInput = () => {
+    if(!isFunction(window.getConfiguredQrVersion) || window.getConfiguredQrVersion() !== "A") return null;
+    if(!isFunction(window.getActiveQrSpec)) return null;
+    const spec = window.getActiveQrSpec(txtInput?.value ?? "");
+    return Number.isFinite(spec?.boardSize) ? spec.boardSize : null;
+  };
+  const reloadForAutoQrBoardSizeIfNeeded = () => {
+    const nextBoardSize = getAutoQrBoardSizeForInput();
+    if(!Number.isFinite(nextBoardSize) || nextBoardSize === BOARD_ROWS) return false;
+    let reloadCount = 0;
+    try{
+      const previous = JSON.parse(sessionStorage.getItem(AUTO_QR_RELOAD_KEY) || "null");
+      reloadCount = Number.isFinite(previous?.reloadCount) ? previous.reloadCount : 0;
+    }catch(_err){
+      reloadCount = 0;
+    }
+    if(reloadCount > 0) return false;
+    const payload = {
+      data: txtInput?.value ?? "",
+      code: userCodeInput?.value ?? "",
+      targetBoardSize: nextBoardSize,
+      reloadCount: reloadCount + 1,
+    };
+    try{
+      sessionStorage.setItem(AUTO_QR_RELOAD_KEY, JSON.stringify(payload));
+    }catch(_err){
+      return false;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set("qrv", "A");
+    url.searchParams.set("d", encodeDataParamForReload(payload.data));
+    window.location.replace(url.toString());
+    return true;
+  };
+
   btnGenerate.addEventListener("click", async (ev) => {
+    const currentVerificationSequence = ++verificationSequence;
+    if(reloadForAutoQrBoardSizeIfNeeded()){
+      return;
+    }
     const clickForceAutoReset = Boolean(ev?.ctrlKey) && !Boolean(ev?.shiftKey);
     const clickSkipAutoReset = Boolean(ev?.shiftKey) && !Boolean(ev?.ctrlKey);
     const skipAutoResetOnce = clickSkipAutoReset || Boolean(window.__skipAutoResetOnRunOnce);
@@ -2113,6 +2952,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     if(!inputCheck.ok){
       return;
     }
+    if(typeof window !== "undefined"){
+      window.lastMaskPenaltyScore = null;
+    }
+    lastQrDetailPayload = null;
     if((forceAutoResetOnce || autoResetOnRun) && !resetHandled && !skipAutoResetOnce){
       const resetWait = resetBoard({ resetData: true });
       if(resetWait && isFunction(resetWait.then)){
@@ -2178,10 +3021,82 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
               ? "正しいQRコードの配置です。"
               : (outcome.match ? "読み取れる正しいQRコードです。" : "この盤面はQRコードとして読み取れません。"))
             : "";
+          const scoreValue = (typeof window !== "undefined" && Number.isFinite(window.lastMaskPenaltyScore))
+            ? window.lastMaskPenaltyScore
+            : null;
+          const boardSize = Array.isArray(window.boardMatrix) ? window.boardMatrix.length : 0;
+          const versionValue = ((boardSize - 17) % 4 === 0 && boardSize > 0)
+            ? Math.trunc((boardSize - 17) / 4)
+            : null;
+          const ecLevelBits = Number(outcome?.stats?.formatErrorLevel);
+          const ecLevelMap = {
+            0: "M",
+            1: "L",
+            2: "H",
+            3: "Q",
+          };
+          const errorLevelText = Number.isFinite(ecLevelBits) && Object.prototype.hasOwnProperty.call(ecLevelMap, ecLevelBits)
+            ? `${ecLevelMap[ecLevelBits]} (${ecLevelBits.toString(2).padStart(2, "0")})`
+            : "-";
+          const modeValue = Number(outcome?.modeValue);
+          const modeMap = {
+            0b0001: "Numeric",
+            0b0010: "Alphanumeric",
+            0b0100: "Byte",
+            0b1000: "Kanji",
+            0b0111: "ECI",
+            0b0011: "Structured Append",
+            0b0101: "FNC1 (1st)",
+            0b1001: "FNC1 (2nd)",
+          };
+          const modeName = Number.isFinite(modeValue) && Object.prototype.hasOwnProperty.call(modeMap, modeValue)
+            ? modeMap[modeValue]
+            : "Unknown";
+          const modeText = Number.isFinite(modeValue)
+            ? `${modeName} (${modeValue.toString(2).padStart(4, "0")})`
+            : "-";
+          const dataBytes = Array.isArray(outcome?.dataCodewords)
+            ? outcome.dataCodewords.filter((value) => Number.isFinite(value)).map((value) => Number(value) & 0xff)
+            : [];
+          const hexDump = dataBytes.length
+            ? dataBytes.map((value) => value.toString(16).toUpperCase().padStart(2, "0")).join(" ")
+            : "";
+          const hasBinaryLike = dataBytes.some((value) => (
+            (value < 0x20 && value !== 0x09 && value !== 0x0A && value !== 0x0D)
+            || value === 0x7F
+            || value >= 0x80
+          ));
+          const decodedText = (typeof outcome?.decoded === "string") ? outcome.decoded : "";
+          const decodedDisplay = hasBinaryLike
+            ? (decodedText
+              ? `HEX: ${hexDump}\nTEXT: ${decodedText}`
+              : `HEX: ${hexDump || "-"}`)
+            : (decodedText || (hexDump ? `HEX: ${hexDump}` : "-"));
+          if(outcome){
+            lastQrDetailPayload = {
+              label: outcome.preMaskLikely
+                ? "正しいQRコードの配置です。"
+                : (outcome.match ? "読み取れる正しいQRコードです。" : "この盤面はQRコードとして読み取れません。"),
+              input: String(txtInput?.value ?? ""),
+              versionText: (versionValue !== null) ? `Version ${versionValue} (${boardSize}x${boardSize})` : "-",
+              modeText,
+              errorLevelText,
+              decoded: decodedDisplay,
+              matchText: outcome.preMaskLikely ? "-" : (outcome.match ? "一致" : "不一致"),
+              maskIndexText: (typeof outcome.maskIndex === "number") ? String(outcome.maskIndex) : "-",
+              scoreText: (scoreValue !== null) ? String(scoreValue) : "-",
+              reasonText: String(outcome.reason ?? "-"),
+            };
+          }else{
+            lastQrDetailPayload = null;
+          }
           if(outcome && !outcome.match && !outcome.preMaskLikely){
             setExecutionStatus("warning", undefined, verificationDetail);
           }else{
             setExecutionStatus("finished", undefined, verificationDetail);
+            if(outcome && outcome.match && !outcome.preMaskLikely){
+              showQrDetailLink();
+            }
             if(outcome && outcome.preMaskLikely){
               showReadMaskButton();
             }
@@ -2199,12 +3114,15 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       historyController.finalizeRunHistoryEntry(runOk);
       if(runOk){
         (async () => {
+          if(currentVerificationSequence !== verificationSequence) return;
           if(!shouldStepRun){
             await new Promise((resolve) => setTimeout(resolve, 0));
           }
+          if(currentVerificationSequence !== verificationSequence) return;
           try{
             const verifyStart = perfNow();
             verificationOutcome = logVerificationOutcome();
+            if(currentVerificationSequence !== verificationSequence) return;
             verifyDurationMs = Math.max(0, perfNow() - verifyStart);
             callIfFunction(
               window.logEvent,
@@ -2212,6 +3130,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
               JSON.stringify({ ms: Math.round(verifyDurationMs) }),
               "検証時間",
             );
+            if(currentVerificationSequence !== verificationSequence) return;
             applyExecutionStatus(verificationOutcome);
           }catch(err){
             callIfFunction(
@@ -2288,7 +3207,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       : null;
     const unplacedKind = (typeof window !== "undefined" && typeof window.BIT_UNPLACED === "number")
       ? window.BIT_UNPLACED
-      : -1;
+      : 0;
     const bitKindFn = (typeof window !== "undefined" && typeof window.bitKind === "function")
       ? window.bitKind
       : null;
@@ -2318,6 +3237,9 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     link.remove();
     return true;
   };
+  if(btnDownloadQr){
+    btnDownloadQr.style.display = "none";
+  }
   if(btnDownloadQr){
     btnDownloadQr.addEventListener("click", () => {
       const verifyService = globalThis.qrVerifyService;
@@ -2427,6 +3349,33 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
     codeSampleParamKey: PARAM_KEYS.CODE_SAMPLE,
     codeSamples: resolvedCodeSamples,
   });
+  try{
+    const pendingAutoReload = JSON.parse(sessionStorage.getItem(AUTO_QR_RELOAD_KEY) || "null");
+    if(pendingAutoReload && Number(pendingAutoReload.targetBoardSize) === BOARD_ROWS){
+      sessionStorage.removeItem(AUTO_QR_RELOAD_KEY);
+      if(txtInput && typeof pendingAutoReload.data === "string"){
+        txtInput.value = pendingAutoReload.data;
+        txtInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      if(userCodeInput && typeof pendingAutoReload.code === "string"){
+        userCodeInput.value = pendingAutoReload.code;
+        userCodeInput.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      setTimeout(() => {
+        if(btnGenerate && !btnGenerate.disabled){
+          btnGenerate.click();
+        }
+      }, 0);
+    }else if(pendingAutoReload){
+      sessionStorage.removeItem(AUTO_QR_RELOAD_KEY);
+    }
+  }catch(_err){
+    try{
+      sessionStorage.removeItem(AUTO_QR_RELOAD_KEY);
+    }catch(_removeErr){
+      // ignore storage cleanup failures
+    }
+  }
   if(btnGenerate && userCodeInput){
     const codeText = (typeof userCodeInput.value === "string") ? userCodeInput.value.trim() : "";
     btnGenerate.disabled = !codeText;
@@ -2483,8 +3432,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
 
     const settingEntries = [
       ["qrData", configDefaults.qrData],
+      ["qrSpec.errorCorrectionLevel", defaultErrorCorrectionLevel],
       ["initialCode", configDefaults.initialCode],
       ["historyVisible", configDefaults.historyVisible],
+      ["commandReferenceVisible", configDefaults.commandReferenceVisible],
       ["patternPanelOpen", configDefaults.patternPanelOpen],
       ["layoutLeftPaneRatio", configDefaults.layoutLeftPaneRatio],
       ["debugVisible", configDefaults.debugVisible],
@@ -2512,6 +3463,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["drawText.skipNonAlnum", configDefaults.drawText && configDefaults.drawText.skipNonAlnum],
       ["useDirection", configDefaults.useDirection],
       ["homeCursorDirection", configDefaults.homeCursorDirection],
+      ["userScriptLanguage", configDefaults.userScriptLanguage],
     ];
 
     const urlEntries = [
@@ -2520,6 +3472,7 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["p", hasParam(PARAM_KEYS.PATTERN_PANEL) ? getParam(PARAM_KEYS.PATTERN_PANEL) : undefined],
       ["d", hasParam(PARAM_KEYS.DATA) ? getParam(PARAM_KEYS.DATA) : undefined],
       ["h", hasParam(PARAM_KEYS.HISTORY) ? getParam(PARAM_KEYS.HISTORY) : undefined],
+      ["ref", hasParam(PARAM_KEYS.COMMAND_REFERENCE) ? getParam(PARAM_KEYS.COMMAND_REFERENCE) : undefined],
       ["m", hasParam(PARAM_KEYS.SAMPLES) ? getParam(PARAM_KEYS.SAMPLES) : undefined],
       ["e", hasParam(PARAM_KEYS.STEP_SPEED) ? getParam(PARAM_KEYS.STEP_SPEED) : undefined],
       ["s", hasParam(PARAM_KEYS.STEP_FLAGS) ? getParam(PARAM_KEYS.STEP_FLAGS) : undefined],
@@ -2532,6 +3485,8 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       ["x", hasParam(PARAM_KEYS.SKIP_EXISTING) ? getParam(PARAM_KEYS.SKIP_EXISTING) : undefined],
       ["t", hasParam(PARAM_KEYS.AUTO_AVOID_TIMING) ? getParam(PARAM_KEYS.AUTO_AVOID_TIMING) : undefined],
       ["r", hasParam(PARAM_KEYS.USE_DIRECTION) ? getParam(PARAM_KEYS.USE_DIRECTION) : undefined],
+      ["ec", hasParam(PARAM_KEYS.ERROR_CORRECTION_LEVEL) ? getParam(PARAM_KEYS.ERROR_CORRECTION_LEVEL) : undefined],
+      ["lang", hasParam(PARAM_KEYS.USER_SCRIPT_LANGUAGE) ? getParam(PARAM_KEYS.USER_SCRIPT_LANGUAGE) : undefined],
       ["toggleCursor", hasParam("toggleCursor") ? getParam("toggleCursor") : undefined],
       ["toggleGuide", hasParam("toggleGuide") ? getParam("toggleGuide") : undefined],
       ["toggleGrid", hasParam("toggleGrid") ? getParam("toggleGrid") : undefined],
@@ -2827,6 +3782,107 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
       const text = (typeof value === "string") ? value : "";
       const newline = text.includes("\r\n") ? "\r\n" : "\n";
       const lines = text.split(/\r?\n/);
+      const formatPythonLikeCode = () => {
+        const splitPythonComment = (raw) => {
+          const line = String(raw ?? "");
+          let quote = "";
+          let escaped = false;
+          for(let i = 0; i < line.length; i++){
+            const ch = line[i];
+            if(escaped){
+              escaped = false;
+              continue;
+            }
+            if(ch === "\\"){
+              escaped = true;
+              continue;
+            }
+            if(quote){
+              if(ch === quote){
+                quote = "";
+              }
+              continue;
+            }
+            if(ch === "\"" || ch === "'"){
+              quote = ch;
+              continue;
+            }
+            if(ch === "#"){
+              return { code: line.slice(0, i), comment: line.slice(i) };
+            }
+          }
+          return { code: line, comment: "" };
+        };
+        const normalizePythonSpacing = (code) => {
+          const source = String(code ?? "");
+          const indent = (source.match(/^[\t ]*/) || [""])[0];
+          let body = source.slice(indent.length).replace(/[ \t]+$/g, "");
+          const normalizePlain = (plain) => String(plain ?? "")
+            .replace(/\s*,\s*/g, ", ")
+            .replace(/\s*(==|!=|<=|>=)\s*/g, " $1 ")
+            .replace(/(^|[^=!<>])\s*=\s*([^=])/g, "$1 = $2")
+            .replace(/\s*:\s*$/g, ":")
+            .replace(/\s*\(\s*/g, "(")
+            .replace(/\s*\)\s*/g, ")")
+            .replace(/\s+/g, " ");
+          let normalized = "";
+          let plain = "";
+          let quote = "";
+          let escaped = false;
+          const flushPlain = () => {
+            if(!plain) return;
+            normalized += normalizePlain(plain);
+            plain = "";
+          };
+          for(let i = 0; i < body.length; i++){
+            const ch = body[i];
+            if(quote){
+              normalized += ch;
+              if(escaped){
+                escaped = false;
+              }else if(ch === "\\"){
+                escaped = true;
+              }else if(ch === quote){
+                quote = "";
+              }
+              continue;
+            }
+            if(ch === "\"" || ch === "'"){
+              flushPlain();
+              quote = ch;
+              normalized += ch;
+              continue;
+            }
+            plain += ch;
+          }
+          flushPlain();
+          body = normalized.trim();
+          return body ? indent + body : "";
+        };
+        return lines.map((rawLine) => {
+          if(FULLWIDTH_CHAR_REGEX.test(rawLine)){
+            return rawLine;
+          }
+          const original = String(rawLine ?? "");
+          if(!original.trim()){
+            return "";
+          }
+          const { code, comment } = splitPythonComment(original);
+          const formattedCode = normalizePythonSpacing(code);
+          const formattedComment = comment.replace(/[ \t]+$/g, "");
+          if(!formattedComment){
+            return formattedCode;
+          }
+          if(!formattedCode){
+            const indent = (code.match(/^[\t ]*/) || [""])[0];
+            return indent + formattedComment.trimStart();
+          }
+          return `${formattedCode} ${formattedComment.trimStart()}`;
+        }).join(newline);
+      };
+      if(activeUserScriptLanguage === "python"){
+        return formatPythonLikeCode();
+      }
       const leadingTabLines = lines.filter((line) => /^\t+/.test(line)).length;
       const leadingSpaceLines = lines.filter((line) => /^ +/.test(line)).length;
       const indentUnit = (leadingTabLines > leadingSpaceLines) ? "\t" : "    ";
@@ -2837,12 +3893,11 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         const line = String(raw ?? "");
         let min = -1;
         const candidates = [];
-        const slash = line.indexOf("//");
-        if(slash >= 0) candidates.push(slash);
-        const hash = line.indexOf("#");
-        if(hash >= 0) candidates.push(hash);
-        const apos = line.indexOf("'");
-        if(apos >= 0) candidates.push(apos);
+        const commentTokens = activeUserScriptLanguage === "python" ? ["#"] : ["//", "#", "'"];
+        commentTokens.forEach((token) => {
+          const index = line.indexOf(token);
+          if(index >= 0) candidates.push(index);
+        });
         for(const idx of candidates){
           if(idx < 0) continue;
           if(min === -1 || idx < min) min = idx;
@@ -2959,9 +4014,11 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         stepMode,
         stepSkipFunctions,
         historyVisible: getHistoryVisible(),
+        commandReferenceVisible: getCommandReferenceVisible(),
         isDebugVisible,
         defaultFlagString,
         defaultHistoryVisible,
+        defaultCommandReferenceVisible,
         defaultDebugVisible,
         defaultPatternOpen,
         defaultStepMode,
@@ -2975,6 +4032,10 @@ function runMainApp({ urlState, layoutUI, debugUI, settings = {} } = {}){
         defaultAutoAvoidTiming,
         useDirection,
         defaultUseDirection,
+        errorCorrectionLevel: currentErrorCorrectionLevel,
+        defaultErrorCorrectionLevel,
+        userScriptLanguage: activeUserScriptLanguage,
+        defaultUserScriptLanguage,
         initialDebugParamPresent,
         codePanel,
         layoutLeftPaneRatio: (typeof window.getLayoutLeftPaneRatio === "function") ? window.getLayoutLeftPaneRatio() : undefined,

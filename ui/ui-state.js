@@ -3,9 +3,9 @@
   if(!global) return;
   if(typeof global.createUiState === "function") return;
 
-  // createUiState は uiState を生成する唯一のエントリとして扱い、依存モジュールはこれを必ず呼び出す前提です。
-  // 今のところ runId/maskRunId/isStepFillRunning を含む状態オブジェクトを一元的に初期化します。
-  // ※このコメントを残すことでロード順の問題があれば即座に検出しやすくします。
+  // createUiState owns runId/maskRunId/isStepFillRunning and exposes safe accessors.
+  // Keep these counters centralized to avoid state drift across modules.
+  // Keep this module as the single source of truth for UI execution counters.
 
   function createUiState(){
     const state = {

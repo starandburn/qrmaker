@@ -1,5 +1,5 @@
 /**
- * ステップ実行用コントロール群を生成し、UIとの同期・ステップ遅延制御を担うファクトリ。
+ * Step-control module that manages stepping mode state and helpers.
  */
 (function(global){
   if(!global) return;

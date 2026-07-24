@@ -37,12 +37,12 @@ mask
   {
     label: "6",
     code: `
-// ?&a=1&u=0&x=1&t=1 で実行
+// Base sample for URL flags: ?&a=1&u=0&x=1&t=1
 base
-move y25
+move end
 red on
 repeat last
-    repeat 25
+    repeat block
         put
         left
         put
@@ -58,10 +58,10 @@ endrepeat
     code: `
 reset
 base
-move y25
+move end
 red on
 repeat last
-    repeat 25
+    repeat block
         if empty put next
         move left
         if empty put next

@@ -1,10 +1,10 @@
 /**
- * [役割] Format pattern drawing (format bits)
- * [入力] ctx, runToken, coords, helpers
- * [副作用] draws format info cells, updates cursor when stepping
- * [中断] executionControl.shouldAbort のみで中断判定
- * [非対象] data placement, mask, UI, URL, history
- * [公開] window.formatPattern: putFormatCells, drawFormatPatterns
+ * [Purpose] Format pattern drawing (format bits)
+ * [Inputs] ctx, runToken, coords, helpers
+ * [Outputs] draws format info cells, updates cursor when stepping
+ * [Abort] executionControl.shouldAbort only
+ * [Exports] window.formatPattern: putFormatCells, drawFormatPatterns
+ * [Exports] window.formatPattern: putFormatCells, drawFormatPatterns
  */
 (function(global){
   if(!global) return;
@@ -39,7 +39,11 @@
     return DIR_RIGHT;
   };
 
-  const DEFAULT_FORMAT_BOARD_SIZE = 25;
+  const getDefaultFormatBoardSize = () => {
+    if(Number.isFinite(global.BOARD_ROWS)) return global.BOARD_ROWS;
+    if(typeof global.getActiveQrBoardSize === "function") return global.getActiveQrBoardSize();
+    return 25;
+  };
   const FORMAT_DEFAULT_BITS = 0xffff;
   const FORMAT_COORDS_SIDE_0 = [
     [8, 0], [8, 1], [8, 2], [8, 3], [8, 4], [8, 5], [8, 7],
@@ -53,7 +57,7 @@
         return truncated;
       }
     }
-    return DEFAULT_FORMAT_BOARD_SIZE;
+    return getDefaultFormatBoardSize();
   };
   const buildFormatCoordsSide1 = (boardSize) => {
     const size = normalizeBoardSize(boardSize);
@@ -66,15 +70,15 @@
     }
     return coords;
   };
-  const FORMAT_COORDS_SIDE_1 = buildFormatCoordsSide1(DEFAULT_FORMAT_BOARD_SIZE);
+  const FORMAT_COORDS_SIDE_1 = buildFormatCoordsSide1(getDefaultFormatBoardSize());
   const cloneCoords = (coords) => coords.map(([row, col]) => [row, col]);
   const resolveFormatBoardSize = (ctx) => {
     if(ctx && Array.isArray(ctx.boardMatrix) && ctx.boardMatrix.length > 0){
       return normalizeBoardSize(ctx.boardMatrix.length);
     }
-    return DEFAULT_FORMAT_BOARD_SIZE;
+    return getDefaultFormatBoardSize();
   };
-  const getFormatCoords = (side, boardSize = DEFAULT_FORMAT_BOARD_SIZE) => {
+  const getFormatCoords = (side, boardSize = getDefaultFormatBoardSize()) => {
     const normalizedSide = (side === 1) ? 1 : 0;
     if(normalizedSide === 1){
       return buildFormatCoordsSide1(boardSize);

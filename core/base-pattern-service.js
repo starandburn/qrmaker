@@ -1,6 +1,5 @@
 /**
- * 基本パターン描画のロジックを切り出したサービスモジュール。
- * ステップ/即時描画の判断やレンダリングモードを管理しながら描画処理を呼ぶ。
+ * Service for drawing base QR patterns and coordinating render/step behavior.
  */
 (function(global){
   if(!global) return;
